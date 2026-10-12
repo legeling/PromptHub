@@ -123,7 +123,7 @@ describe("SkillProjectsView", () => {
     });
 
     useSettingsStore.setState({
-      translationMode: "basic",
+      translationMode: "immersive",
       skillInstallMethod: "copy",
       autoScanInstalledSkills: false,
       aiModels: [],

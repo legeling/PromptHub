@@ -1,0 +1,1 @@
+export const DESKTOP_TEST_TIMEOUT_MS = 30_000;

@@ -245,11 +245,13 @@ function makeRegistrySkill(
     slug: "writer",
     name: "Writer",
     description: "Writer",
-    category: "writing",
+    category: "general",
+    author: "PromptHub",
     tags: [],
     version: "1.0.0",
     content: "# Writer",
     source_id: "source-test",
+    source_url: "",
     ...overrides,
   };
 }

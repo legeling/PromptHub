@@ -1,3 +1,4 @@
+import { getPlatformById } from "@prompthub/shared/constants/platforms";
 import {
   act,
   fireEvent,
@@ -75,7 +76,6 @@ describe("Sidebar", () => {
         {
           id: "prompt-1",
           title: "Prompt One",
-          userPrompt: "Body",
           tags: ["alpha", "beta"],
           promptType: "text",
           currentVersion: 1,
@@ -85,7 +85,6 @@ describe("Sidebar", () => {
           isFavorite: false,
           isPinned: false,
           usageCount: 0,
-          variables: [],
         },
       ],
       filterTags: [],
@@ -399,7 +398,7 @@ describe("Sidebar", () => {
       agentScanState: {
         claude: {
           result: {
-            platform: { id: "claude", name: "Claude Code" },
+            platform: getPlatformById("claude")!,
             skillsDir: "/agents/claude/skills",
             scannedSkills: [],
           },
@@ -409,7 +408,7 @@ describe("Sidebar", () => {
         },
         codex: {
           result: {
-            platform: { id: "codex", name: "Codex CLI" },
+            platform: getPlatformById("codex")!,
             skillsDir: "/agents/codex/skills",
             scannedSkills: [],
           },
@@ -466,7 +465,6 @@ describe("Sidebar", () => {
         {
           id: "prompt-1",
           title: "Prompt One",
-          userPrompt: "Body",
           tags: [],
           promptType: "text",
           folderId: "folder-1",
@@ -477,12 +475,10 @@ describe("Sidebar", () => {
           isFavorite: false,
           isPinned: false,
           usageCount: 0,
-          variables: [],
         },
         {
           id: "prompt-2",
           title: "Prompt Two",
-          userPrompt: "Body",
           tags: [],
           promptType: "text",
           folderId: "folder-1",
@@ -493,12 +489,10 @@ describe("Sidebar", () => {
           isFavorite: false,
           isPinned: false,
           usageCount: 0,
-          variables: [],
         },
         {
           id: "prompt-3",
           title: "Prompt Three",
-          userPrompt: "Body",
           tags: [],
           promptType: "text",
           folderId: "folder-2",
@@ -509,7 +503,6 @@ describe("Sidebar", () => {
           isFavorite: false,
           isPinned: false,
           usageCount: 0,
-          variables: [],
         },
       ],
     } as Partial<ReturnType<typeof usePromptStore.getState>>);

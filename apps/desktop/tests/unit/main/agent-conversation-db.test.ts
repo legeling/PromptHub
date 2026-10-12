@@ -289,8 +289,17 @@ describe("Agent conversation projection migration", () => {
     const migrated = initDatabase(dbPath);
     expect(
       migrated
-        .pragma("table_info(agent_conversation_metadata)")
-        .map((column: { name: string }) => column.name),
+        .all("PRAGMA table_info(agent_conversation_metadata)")
+        .map((column) => {
+          if (
+            !column ||
+            typeof column !== "object" ||
+            !("name" in column) ||
+            typeof column.name !== "string"
+          )
+            throw new Error("Invalid SQLite column metadata");
+          return column.name;
+        }),
     ).not.toContain("deleted_at");
     expect(
       migrated.all(

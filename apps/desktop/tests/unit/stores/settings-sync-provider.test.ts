@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 const changeLanguageMock = vi.fn();
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -14,14 +16,8 @@ async function importStoreWithSettingsSpies(
   vi.resetModules();
   const setSpy = vi.fn().mockResolvedValue(undefined);
   const getSpy = vi.fn().mockResolvedValue(settingsFromMain);
-  window.api = {
-    ...(window.api ?? {}),
-    settings: {
-      ...(window.api?.settings ?? {}),
-      get: getSpy,
-      set: setSpy,
-    },
-  };
+  window.api.settings.get = getSpy;
+  window.api.settings.set = setSpy;
   const mod = await import("../../../src/renderer/stores/settings.store");
   await Promise.resolve();
   return {
@@ -49,11 +45,13 @@ function lastPayloadWithKey(
 
 describe("settings sync provider guards", () => {
   beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     changeLanguageMock.mockReset();
     localStorage.clear();
   });
 
   afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     localStorage.clear();
   });
 
@@ -125,6 +123,8 @@ describe("settings sync provider guards", () => {
   });
 
   it("infers the only active legacy auto-sync provider during migration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -142,6 +142,8 @@ describe("settings sync provider guards", () => {
   });
 
   it("ignores self-hosted backup automation when migrating the active sync provider", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -161,6 +163,8 @@ describe("settings sync provider guards", () => {
   });
 
   it("clamps an invalid persisted sync provider after migration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -178,6 +182,8 @@ describe("settings sync provider guards", () => {
   });
 
   it("normalizes same-version persisted sync timing values during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({

@@ -8,9 +8,11 @@ import type {
   ManagedAgentSummary,
 } from "@prompthub/shared/types";
 import { AgentSessionsPanel } from "../../../src/renderer/components/agent/AgentSessionsPanel";
+import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { sessionPanelAgent } from "../../helpers/agent-sessions";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -22,7 +24,8 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-const agent = {
+const agent: ManagedAgentSummary = {
+  ...sessionPanelAgent,
   id: "gemini",
   name: "Gemini",
   icon: "gemini",
@@ -32,9 +35,8 @@ const agent = {
   isPinned: false,
   launchable: true,
   status: "installed",
-  paths: { root: "/Users/test/.gemini" },
-  capabilities: {},
-} as ManagedAgentSummary;
+  paths: { ...sessionPanelAgent.paths, root: "/Users/test/.gemini" },
+};
 
 const warmedState = (): AgentSessionIndexPublicState => ({
   supported: true,
@@ -92,10 +94,12 @@ describe("Agent session index cache orchestration", () => {
       },
     });
 
-    const view = await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    const view = await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      { language: "en", settleAsyncEffects: true },
+    );
     await act(async () => Promise.resolve());
     expect(setSessionIndexEnabled).not.toHaveBeenCalled();
     expect(refreshSessionIndex).not.toHaveBeenCalled();
@@ -118,6 +122,7 @@ describe("Agent session index cache orchestration", () => {
   it("keeps loaded session rows visible while a refreshed index is applied", async () => {
     const warmup = deferred<AgentSessionIndexPublicState>();
     const refreshedList = deferred<AgentSessionListResult>();
+    const listConversationMetadata = vi.fn().mockResolvedValue([]);
     const listSessions = vi
       .fn()
       .mockResolvedValueOnce({
@@ -140,6 +145,7 @@ describe("Agent session index cache orchestration", () => {
           }),
           refreshSessionIndex: vi.fn(() => warmup.promise),
           listSessions,
+          listConversationMetadata,
           readSession: vi.fn().mockResolvedValue({
             agentId: "gemini",
             adapter: "gemini-json-v1",
@@ -152,11 +158,16 @@ describe("Agent session index cache orchestration", () => {
       },
     });
 
-    const view = await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    const view = await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      { language: "en", settleAsyncEffects: true },
+    );
     expect(await screen.findByText(cachedSession.title)).toBeVisible();
+    expect(listConversationMetadata).toHaveBeenCalledWith("gemini", [
+      cachedSession.id,
+    ]);
     await act(async () => warmup.resolve(warmedState()));
     await waitFor(() => expect(listSessions).toHaveBeenCalledTimes(2));
 

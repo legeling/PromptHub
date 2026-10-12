@@ -289,17 +289,13 @@ describe("Updater Service (Main Process)", () => {
       .mocked(ipcMain.handle)
       .mock.calls.find(
         ([channel]) => channel === "updater:download",
-      )?.[1] as (options: {
-      useMirror: boolean;
-      channel: "stable";
-    }) => Promise<{
-      success: boolean;
-    }>;
+      )?.[1];
+    if (!downloadHandler) throw new Error("Updater download IPC was not registered");
 
-    const result = await downloadHandler({
-      useMirror: false,
-      channel: "stable",
-    });
+    const result = await Reflect.apply(downloadHandler, undefined, [
+      {},
+      { source: "official", channel: "stable" },
+    ]);
 
     expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ success: true });

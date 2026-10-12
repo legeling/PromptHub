@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DatabaseBackup } from '../../../src/renderer/services/database-backup-format';
 import { installWindowMocks } from '../../helpers/window';
@@ -87,14 +87,18 @@ function createAuthenticatedFetch(
 }
 
 describe('self-hosted Skill sync reliability', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
-    installWindowMocks();
     window.localStorage.clear();
-    window.electron = {
-      updater: { getVersion: vi.fn().mockResolvedValue('0.5.9') },
-    } as typeof window.electron;
+    installWindowMocks({
+      electron: { updater: { getVersion: vi.fn().mockResolvedValue('0.5.9') } },
+    });
     getSettingsStateMock.mockReturnValue({
       themeMode: 'light',
       language: 'zh',

@@ -16,6 +16,7 @@ describe("quick-add-utils", () => {
           id: "image-model",
           type: "image",
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "img-key",
           apiUrl: "https://api.example.com",
           model: "gpt-image-1",
@@ -24,6 +25,7 @@ describe("quick-add-utils", () => {
           id: "chat-a",
           type: "chat",
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "key-a",
           apiUrl: "https://api.example.com",
           model: "gpt-4o-mini",
@@ -32,6 +34,7 @@ describe("quick-add-utils", () => {
           id: "chat-b",
           type: "chat",
           provider: "anthropic",
+          apiProtocol: "anthropic",
           apiKey: "key-b",
           apiUrl: "https://api.anthropic.com",
           model: "claude-sonnet",
@@ -40,6 +43,7 @@ describe("quick-add-utils", () => {
       ],
       scenarioModelDefaults: {},
       aiProvider: "",
+      aiApiProtocol: "openai",
       aiApiKey: "",
       aiApiUrl: "",
       aiModel: "",
@@ -59,6 +63,7 @@ describe("quick-add-utils", () => {
           id: "image-only",
           type: "image",
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "img-key",
           apiUrl: "https://api.example.com",
           model: "gpt-image-1",
@@ -66,6 +71,7 @@ describe("quick-add-utils", () => {
       ],
       scenarioModelDefaults: {},
       aiProvider: "openai",
+      aiApiProtocol: "openai",
       aiApiKey: "legacy-key",
       aiApiUrl: "https://api.legacy.example.com",
       aiModel: "gpt-4o",
@@ -87,6 +93,7 @@ describe("quick-add-utils", () => {
           id: "broken-chat",
           type: "chat",
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "",
           apiUrl: "https://api.example.com",
           model: "gpt-4o",
@@ -94,6 +101,7 @@ describe("quick-add-utils", () => {
       ],
       scenarioModelDefaults: {},
       aiProvider: "",
+      aiApiProtocol: "openai",
       aiApiKey: "",
       aiApiUrl: "",
       aiModel: "",
@@ -104,7 +112,9 @@ describe("quick-add-utils", () => {
 
   it("builds a fallback title from the first non-empty line", () => {
     expect(
-      getQuickAddFallbackTitle("\n  Generate image prompt for a forest  \nMore"),
+      getQuickAddFallbackTitle(
+        "\n  Generate image prompt for a forest  \nMore",
+      ),
     ).toBe("Generate image prompt for a fo");
   });
 
@@ -121,6 +131,7 @@ describe("quick-add-utils", () => {
           id: "chat-a",
           type: "chat",
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "key-a",
           apiUrl: "https://api.example.com",
           model: "gpt-4o-mini",
@@ -130,6 +141,7 @@ describe("quick-add-utils", () => {
           id: "chat-b",
           type: "chat",
           provider: "anthropic",
+          apiProtocol: "anthropic",
           apiKey: "key-b",
           apiUrl: "https://api.anthropic.com",
           model: "claude-sonnet",
@@ -142,6 +154,7 @@ describe("quick-add-utils", () => {
         fastText: "chat-b",
       },
       aiProvider: "",
+      aiApiProtocol: "openai",
       aiApiKey: "",
       aiApiUrl: "",
       aiModel: "",

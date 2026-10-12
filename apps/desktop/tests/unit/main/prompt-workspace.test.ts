@@ -666,6 +666,9 @@ File content wins.
       promptDb.insertPromptDirect({
         id,
         title,
+        promptType: "text",
+        isFavorite: false,
+        isPinned: false,
         userPrompt: content,
         variables: [],
         tags: [],

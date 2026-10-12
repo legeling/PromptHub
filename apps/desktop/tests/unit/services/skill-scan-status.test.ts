@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ScannedSkill, Skill } from "@prompthub/shared/types";
+import type { AgentScannedSkill, Skill } from "@prompthub/shared/types";
 import { computeDirectoryFingerprint } from "@prompthub/shared/utils/skill-identity";
 import {
   getSkillScanStatus,
@@ -26,9 +26,12 @@ function librarySkill(overrides: Partial<Skill> = {}): Skill {
   };
 }
 
-function scannedSkill(overrides: Partial<ScannedSkill> = {}): ScannedSkill {
+function scannedSkill(
+  overrides: Partial<AgentScannedSkill> = {},
+): AgentScannedSkill {
   return {
     name: "writer",
+    platformSkillPath: "/agent/skills/writer",
     description: "Scanned writer",
     author: "PromptHub",
     tags: [],

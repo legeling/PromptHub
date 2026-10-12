@@ -433,13 +433,12 @@ describe("SkillStore remote loading", () => {
         },
       },
     });
-    const skill = {
-      ...makeRegistrySkill("writer"),
+    const skill = makeRegistrySkill("writer", {
       source_url: "https://gitea.example.com/team/skills",
       source_branch: "main",
       source_directory: "skills/writer",
       content: "# Writer",
-    } as never;
+    });
 
     await renderWithI18n(
       <SkillStoreDetail skill={skill} isInstalled={false} onClose={vi.fn()} />,

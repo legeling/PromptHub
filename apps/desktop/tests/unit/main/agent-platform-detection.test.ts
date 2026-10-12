@@ -1,6 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { closeDatabase, initDatabase } from "../../../src/main/database";
 
 import { detectInstalledPlatforms } from "../../../src/main/services/skill-installer-platform";
+
+beforeEach(() => {
+  initDatabase();
+});
+afterEach(() => {
+  closeDatabase();
+});
 
 describe("Agent platform detection", () => {
   it("detects plugin Harness agents by CLI even before the profile root exists", async () => {

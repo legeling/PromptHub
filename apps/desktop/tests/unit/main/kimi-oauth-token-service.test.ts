@@ -396,13 +396,7 @@ describe("Kimi OAuth token service", () => {
 
   it("handles malformed refresh JSON and abort failures without leaking secrets", async () => {
     const malformedRoot = await createRoot();
-    const malformedResponse = {
-      ok: false,
-      status: 418,
-      json: async () => {
-        throw new Error("invalid JSON");
-      },
-    } as Response;
+    const malformedResponse = new Response("invalid JSON", { status: 418 });
     const malformed = createKimiOAuthTokenService({
       fetchImpl: vi.fn().mockResolvedValue(malformedResponse) as typeof fetch,
       now: () => NOW,

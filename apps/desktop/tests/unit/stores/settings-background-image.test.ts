@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 const changeLanguageMock = vi.fn();
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -10,6 +12,7 @@ vi.mock("../../../src/renderer/i18n", () => ({
 
 describe("settings background image actions", () => {
   beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     vi.resetModules();
     localStorage.clear();
     changeLanguageMock.mockReset();
@@ -19,6 +22,7 @@ describe("settings background image actions", () => {
   });
 
   afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     localStorage.clear();
     document.documentElement.style.removeProperty("--app-background-image");
     document.documentElement.style.removeProperty("--app-background-opacity");
@@ -179,6 +183,8 @@ describe("settings background image actions", () => {
   });
 
   it("defaults background image visibility to enabled during migration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -202,6 +208,8 @@ describe("settings background image actions", () => {
   });
 
   it("sanitizes same-version persisted background image state during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({

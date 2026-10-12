@@ -591,12 +591,10 @@ describe("rules store", () => {
   });
 
   it("ignores stale rule reads when the user switches selection before the first read resolves", async () => {
-    let resolveClaude:
-      | ((value: Awaited<ReturnType<typeof Promise.resolve>>) => void)
-      | null = null;
-    const readMock = vi.fn((ruleId: string) => {
+    let resolveClaude: ((value: RuleFileContent) => void) | null = null;
+    const readMock = vi.fn((ruleId: string): Promise<RuleFileContent> => {
       if (ruleId === "claude-global") {
-        return new Promise((resolve) => {
+        return new Promise<RuleFileContent>((resolve) => {
           resolveClaude = resolve;
         });
       }

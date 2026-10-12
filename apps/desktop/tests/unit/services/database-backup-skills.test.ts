@@ -37,7 +37,7 @@ describe("database-backup skill restore", () => {
   });
 
   it("restores skills, skill versions, and skill files through the shared backup pipeline", async () => {
-    window.api.skill.create.mockResolvedValue({
+    vi.mocked(window.api.skill.create).mockResolvedValue({
       id: "restored-skill-1",
       name: "writer",
     });
@@ -103,7 +103,7 @@ describe("database-backup skill restore", () => {
       }),
       { skipInitialVersion: true },
     );
-    const [createPayload] = window.api.skill.create.mock.calls[0];
+    const [createPayload] = vi.mocked(window.api.skill.create).mock.calls[0];
     expect(createPayload).not.toHaveProperty("local_repo_path");
     expect(window.api.skill.insertVersionDirect).toHaveBeenCalledWith(
       expect.objectContaining({ skillId: "restored-skill-1", version: 1 }),

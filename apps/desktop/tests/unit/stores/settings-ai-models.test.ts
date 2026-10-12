@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { installWindowMocks } from "../../helpers/window";
+
 const changeLanguageMock = vi.fn();
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -11,20 +13,22 @@ vi.mock("../../../src/renderer/i18n", () => ({
 describe("settings ai model actions", () => {
   beforeEach(() => {
     vi.resetModules();
+    installWindowMocks();
     localStorage.clear();
     changeLanguageMock.mockReset();
   });
 
   afterEach(() => {
     localStorage.clear();
-    delete (window as any).api;
+    Reflect.deleteProperty(window, "api");
   });
 
   it("syncs AI model changes to the main process JSON settings payload", async () => {
     const setSettings = vi.fn().mockResolvedValue(undefined);
     window.api = {
-      ...(window.api ?? {}),
+      ...window.api,
       settings: {
+        ...window.api.settings,
         get: vi.fn(),
         set: setSettings,
       },
@@ -62,6 +66,7 @@ describe("settings ai model actions", () => {
         expect.objectContaining({
           providerId,
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "provider-key",
           model: "gpt-4.1",
         }),
@@ -79,6 +84,7 @@ describe("settings ai model actions", () => {
           id: "chat-a",
           type: "chat",
           provider: "openai",
+          apiProtocol: "openai",
           apiKey: "key-a",
           apiUrl: "https://api.openai.com",
           model: "gpt-4.1",
@@ -88,6 +94,7 @@ describe("settings ai model actions", () => {
           id: "chat-b",
           type: "chat",
           provider: "anthropic",
+          apiProtocol: "anthropic",
           apiKey: "key-b",
           apiUrl: "https://api.anthropic.com",
           model: "claude-sonnet-4",
@@ -229,6 +236,7 @@ describe("settings ai model actions", () => {
   });
 
   it("normalizes same-version persisted AI model and provider settings during hydration", async () => {
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -248,7 +256,11 @@ describe("settings ai model actions", () => {
             },
           ],
           aiModels: [
-            { id: "broken-model", provider: "openai", apiUrl: "https://api.openai.com/v1" },
+            {
+              id: "broken-model",
+              provider: "openai",
+              apiUrl: "https://api.openai.com/v1",
+            },
             {
               id: "model-anthropic",
               type: "chat",
@@ -303,6 +315,7 @@ describe("settings ai model actions", () => {
   });
 
   it("normalizes same-version persisted AI model route defaults during hydration", async () => {
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -416,8 +429,9 @@ describe("settings ai model actions", () => {
       },
     };
     window.api = {
-      ...(window.api ?? {}),
+      ...window.api,
       settings: {
+        ...window.api.settings,
         get: vi.fn().mockResolvedValue(mainSettings),
         set: vi.fn().mockResolvedValue(undefined),
       },
@@ -469,7 +483,11 @@ describe("settings ai model actions", () => {
         },
       ],
       aiModels: [
-        { id: "broken-model", provider: "openai", apiUrl: "https://api.openai.com/v1" },
+        {
+          id: "broken-model",
+          provider: "openai",
+          apiUrl: "https://api.openai.com/v1",
+        },
         {
           id: "model-gemini",
           type: "chat",
@@ -487,8 +505,9 @@ describe("settings ai model actions", () => {
       },
     };
     window.api = {
-      ...(window.api ?? {}),
+      ...window.api,
       settings: {
+        ...window.api.settings,
         get: vi.fn().mockResolvedValue(mainSettings),
         set: vi.fn().mockResolvedValue(undefined),
       },

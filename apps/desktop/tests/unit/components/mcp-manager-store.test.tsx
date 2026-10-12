@@ -1,3 +1,4 @@
+import type { McpMarketTemplate } from "@prompthub/shared/types/mcp";
 import {
   act,
   fireEvent,
@@ -149,7 +150,7 @@ const playwrightTemplate = {
     url: "https://registry.modelcontextprotocol.io",
     trustLevel: "official",
   },
-};
+} satisfies McpMarketTemplate;
 
 const smitheryTemplate = {
   id: "smithery-sequential-thinking",

@@ -27,7 +27,8 @@ function isHiddenFromAccessibility(element: Element): boolean {
 }
 
 vi.mock("../../../src/renderer/services/ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../src/renderer/services/ai")>();
+  const actual =
+    await importOriginal<typeof import("../../../src/renderer/services/ai")>();
   return {
     ...actual,
     chatCompletion: (...args: unknown[]) => chatCompletionMock(...args),
@@ -55,8 +56,12 @@ describe("ImagePromptReverseModal", () => {
   const writeTextMock = vi.fn();
 
   const selectSavedImage = async (user: ReturnType<typeof userEvent.setup>) => {
-    window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/reference.png"]);
-    window.electron.saveImage = vi.fn().mockResolvedValue(["saved-reference.png"]);
+    window.electron.selectImage = vi
+      .fn()
+      .mockResolvedValue(["/tmp/reference.png"]);
+    window.electron.saveImage = vi
+      .fn()
+      .mockResolvedValue(["saved-reference.png"]);
     window.electron.readImageBase64 = vi.fn().mockResolvedValue("iVBORw0KGgo=");
 
     await user.click(screen.getByText("拖入图片、粘贴截图，或点击选择"));
@@ -95,7 +100,12 @@ describe("ImagePromptReverseModal", () => {
         {
           id: "prompt-1",
           title: "Existing image prompt",
-          userPrompt: "test",
+          promptType: "image",
+          isFavorite: false,
+          isPinned: false,
+          usageCount: 0,
+          currentVersion: 1,
+          version: 1,
           tags: ["product"],
           createdAt: new Date("2026-05-01T00:00:00.000Z").toISOString(),
           updatedAt: new Date("2026-05-01T00:00:00.000Z").toISOString(),
@@ -112,7 +122,7 @@ describe("ImagePromptReverseModal", () => {
       viewMode: "card",
       galleryImageSize: "medium",
       kanbanColumns: 3,
-    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    });
 
     useSettingsStore.setState({
       aiProvider: "openai",
@@ -148,11 +158,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={vi.fn()}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={vi.fn()} />
       </ToastProvider>,
       { language: "en" },
     );
@@ -181,15 +187,20 @@ describe("ImagePromptReverseModal", () => {
     const user = userEvent.setup();
     const onCreate = vi.fn().mockResolvedValue({ id: "created-prompt" });
     const onClose = vi.fn();
-    window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/reference.png"]);
-    window.electron.saveImage = vi.fn().mockResolvedValue(["saved-reference.png"]);
+    window.electron.selectImage = vi
+      .fn()
+      .mockResolvedValue(["/tmp/reference.png"]);
+    window.electron.saveImage = vi
+      .fn()
+      .mockResolvedValue(["saved-reference.png"]);
     window.electron.readImageBase64 = vi.fn().mockResolvedValue("iVBORw0KGgo=");
     chatCompletionMock.mockResolvedValue({
       content: JSON.stringify({
         title: "电影感产品图",
         promptType: "image",
         systemPrompt: "",
-        userPrompt: "cinematic product photo, soft studio light, shallow depth of field",
+        userPrompt:
+          "cinematic product photo, soft studio light, shallow depth of field",
         description: "反推产品摄影生图提示词",
         suggestedFolder: "Marketing",
         tags: ["image", "product"],
@@ -198,23 +209,23 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
 
-    expect(screen.getByRole("heading", { name: "图片反推" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "图片反推" }),
+    ).toBeInTheDocument();
     expect(document.querySelector(".max-w-2xl")).toHaveClass("animate-in");
     expect(document.querySelector(".max-w-2xl")).toHaveClass("zoom-in-95");
     expect(screen.queryByText("输出类型")).not.toBeInTheDocument();
     expect(screen.getByText("绘图")).toBeInTheDocument();
     expect(screen.getByText("保存为参考图")).toBeInTheDocument();
     expect(
-      screen.queryByText("开启后，新建的生图 Prompt 会保留这张图片作为参考图。"),
+      screen.queryByText(
+        "开启后，新建的生图 Prompt 会保留这张图片作为参考图。",
+      ),
     ).not.toBeInTheDocument();
     expect(
       screen
@@ -312,11 +323,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -359,11 +366,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -401,15 +404,20 @@ describe("ImagePromptReverseModal", () => {
   it("remembers when the user disables attaching the source image as a reference", async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn().mockResolvedValue({ id: "created-prompt" });
-    window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/reference.png"]);
-    window.electron.saveImage = vi.fn().mockResolvedValue(["saved-reference.png"]);
+    window.electron.selectImage = vi
+      .fn()
+      .mockResolvedValue(["/tmp/reference.png"]);
+    window.electron.saveImage = vi
+      .fn()
+      .mockResolvedValue(["saved-reference.png"]);
     window.electron.readImageBase64 = vi.fn().mockResolvedValue("iVBORw0KGgo=");
     chatCompletionMock.mockResolvedValue({
       content: JSON.stringify({
         title: "干净产品图",
         promptType: "image",
         systemPrompt: "",
-        userPrompt: "clean product photo, white background, soft studio lighting",
+        userPrompt:
+          "clean product photo, white background, soft studio lighting",
         description: "产品图提示词",
         suggestedFolder: null,
         tags: ["product"],
@@ -418,11 +426,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -458,11 +462,7 @@ describe("ImagePromptReverseModal", () => {
   it("highlights the image drop zone while dragging over it", async () => {
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={vi.fn()}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={vi.fn()} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -480,7 +480,8 @@ describe("ImagePromptReverseModal", () => {
   });
 
   it("revokes pasted image preview object URLs exactly once when replaced or unmounted", async () => {
-    const createObjectURL = vi.fn()
+    const createObjectURL = vi
+      .fn()
       .mockReturnValueOnce("blob:first-preview")
       .mockReturnValueOnce("blob:second-preview");
     const revokeObjectURL = vi.fn();
@@ -492,17 +493,14 @@ describe("ImagePromptReverseModal", () => {
       configurable: true,
       value: revokeObjectURL,
     });
-    window.electron.saveImageBuffer = vi.fn()
+    window.electron.saveImageBuffer = vi
+      .fn()
       .mockResolvedValueOnce("first-reference.png")
       .mockResolvedValueOnce("second-reference.png");
 
     const { unmount } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={vi.fn()}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={vi.fn()} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -525,14 +523,18 @@ describe("ImagePromptReverseModal", () => {
 
     await waitFor(() => {
       expect(
-        revokeObjectURL.mock.calls.filter(([url]) => url === "blob:first-preview"),
+        revokeObjectURL.mock.calls.filter(
+          ([url]) => url === "blob:first-preview",
+        ),
       ).toHaveLength(1);
     });
 
     unmount();
 
     expect(
-      revokeObjectURL.mock.calls.filter(([url]) => url === "blob:second-preview"),
+      revokeObjectURL.mock.calls.filter(
+        ([url]) => url === "blob:second-preview",
+      ),
     ).toHaveLength(1);
   });
 
@@ -542,16 +544,14 @@ describe("ImagePromptReverseModal", () => {
       configurable: true,
       value: createObjectURL,
     });
-    window.electron.saveImageBuffer = vi.fn().mockResolvedValue("oversized.png");
+    window.electron.saveImageBuffer = vi
+      .fn()
+      .mockResolvedValue("oversized.png");
     const oversizedFile = createOversizedImageFile();
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={vi.fn()}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={vi.fn()} />
       </ToastProvider>,
       { language: "en" },
     );
@@ -581,17 +581,15 @@ describe("ImagePromptReverseModal", () => {
       configurable: true,
       value: revokeObjectURL,
     });
-    window.electron.saveImageBuffer = vi.fn().mockResolvedValue("close-reference.png");
+    window.electron.saveImageBuffer = vi
+      .fn()
+      .mockResolvedValue("close-reference.png");
 
     const onCreate = vi.fn();
     const onClose = vi.fn();
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -644,11 +642,7 @@ describe("ImagePromptReverseModal", () => {
     const onClose = vi.fn();
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -685,11 +679,7 @@ describe("ImagePromptReverseModal", () => {
 
     rerender(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
     );
 
@@ -700,8 +690,12 @@ describe("ImagePromptReverseModal", () => {
   it("does not show a selected image after the modal closes before base64 read completes", async () => {
     const user = userEvent.setup();
     let resolveReadImageBase64: (base64: string) => void = () => undefined;
-    window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/late-reference.png"]);
-    window.electron.saveImage = vi.fn().mockResolvedValue(["late-reference.png"]);
+    window.electron.selectImage = vi
+      .fn()
+      .mockResolvedValue(["/tmp/late-reference.png"]);
+    window.electron.saveImage = vi
+      .fn()
+      .mockResolvedValue(["late-reference.png"]);
     window.electron.readImageBase64 = vi.fn(
       () =>
         new Promise<string>((resolve) => {
@@ -713,11 +707,7 @@ describe("ImagePromptReverseModal", () => {
     const onClose = vi.fn();
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -748,11 +738,7 @@ describe("ImagePromptReverseModal", () => {
 
     rerender(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
     );
 
@@ -782,11 +768,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -882,11 +864,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -934,11 +912,7 @@ describe("ImagePromptReverseModal", () => {
 
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -975,7 +949,9 @@ describe("ImagePromptReverseModal", () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
-    const onCreate = vi.fn().mockRejectedValue(new Error("database unavailable"));
+    const onCreate = vi
+      .fn()
+      .mockRejectedValue(new Error("database unavailable"));
     chatCompletionMock.mockResolvedValue({
       content: JSON.stringify({
         title: "失败创建",
@@ -990,11 +966,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -1009,7 +981,9 @@ describe("ImagePromptReverseModal", () => {
       "Image prompt reverse create failed:",
       expect.any(Error),
     );
-    expect(screen.getByRole("button", { name: "创建提示词" })).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "创建提示词" }),
+    ).not.toBeDisabled();
     consoleErrorSpy.mockRestore();
   });
 
@@ -1043,11 +1017,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -1073,11 +1043,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -1102,11 +1068,7 @@ describe("ImagePromptReverseModal", () => {
     const onClose = vi.fn();
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -1147,16 +1109,14 @@ describe("ImagePromptReverseModal", () => {
 
     rerender(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
     );
 
     expect(screen.queryByText("反推草稿")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("late reverse prompt")).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("late reverse prompt"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show reverse failures after the modal closes before AI rejects", async () => {
@@ -1175,11 +1135,7 @@ describe("ImagePromptReverseModal", () => {
     const onClose = vi.fn();
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={onClose}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -1224,11 +1180,7 @@ describe("ImagePromptReverseModal", () => {
 
     await renderWithI18n(
       <ToastProvider>
-        <ImagePromptReverseModal
-          isOpen
-          onClose={vi.fn()}
-          onCreate={onCreate}
-        />
+        <ImagePromptReverseModal isOpen onClose={vi.fn()} onCreate={onCreate} />
       </ToastProvider>,
       { language: "zh" },
     );

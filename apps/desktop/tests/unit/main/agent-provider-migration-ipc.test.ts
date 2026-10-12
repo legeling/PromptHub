@@ -108,7 +108,8 @@ describe("Agent provider migration IPC", () => {
     );
     const failure = await handlers[
       IPC_CHANNELS.AGENT_PROVIDER_MIGRATION_PREVIEW
-    ](null, "codex").catch((error) => error as Error);
+    ](null, "codex").catch((error: unknown) => error);
+    if (!(failure instanceof Error)) throw new Error("Expected IPC rejection");
     expect(failure.message).toBe("AGENT_PROVIDER_MIGRATION_FAILED");
     expect(failure.message).not.toContain("private-secret");
   });

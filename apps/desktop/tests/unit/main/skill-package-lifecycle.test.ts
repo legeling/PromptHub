@@ -89,7 +89,9 @@ function skill(overrides: Partial<Skill> = {}): Skill {
 function createHarness() {
   let storedSkill: Skill | null = null;
   const db = {
-    getById: vi.fn(() => storedSkill),
+    getById: vi.fn<SkillPackageLifecycleDependencies["db"]["getById"]>(
+      () => storedSkill,
+    ),
     getBySourceId: vi.fn(() => null),
     getByName: vi.fn(() => null),
     create: vi.fn((data: CreateSkillParams) => {

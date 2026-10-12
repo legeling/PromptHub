@@ -14,7 +14,7 @@ import { SkillStoreCustomSources } from "../../../src/renderer/components/skill/
 import { SkillStoreSourceEditModal } from "../../../src/renderer/components/skill/SkillStoreSourceEditModal";
 import { SkillStoreSourceForm } from "../../../src/renderer/components/skill/SkillStoreSourceForm";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
-import { renderWithI18n } from "../../helpers/i18n";
+import { createTestI18n, renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 import type { RegistrySkill } from "@prompthub/shared/types";
 import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
@@ -70,7 +70,8 @@ describe("SkillStore custom sources", () => {
     });
   });
 
-  it("renders custom source counts from legacy cache entries without skills arrays", async () => {
+  it("renders custom source counts from current entries with empty skills arrays", async () => {
+    const { t } = await createTestI18n("en");
     await act(async () => {
       await renderWithI18n(
         <SkillStoreCustomSources
@@ -89,12 +90,12 @@ describe("SkillStore custom sources", () => {
           loadingSourceId={null}
           onRequestDeleteCustomStoreSource={vi.fn()}
           remoteStoreEntries={{
-            "team-store": { loadedAt: Date.now(), error: null },
+            "team-store": { skills: [] },
           }}
           selectStoreSource={vi.fn()}
           selectedCustomSource={null}
           selectedStoreSourceId="new-custom"
-          t={((_key: string, fallback: string) => fallback) as never}
+          t={t}
           toggleCustomStoreSource={vi.fn()}
         />,
         { language: "en" },

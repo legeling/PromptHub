@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 vi.mock("../../../src/renderer/i18n", () => ({
   __esModule: true,
   default: { language: "en" },
@@ -8,20 +10,22 @@ vi.mock("../../../src/renderer/i18n", () => ({
 
 async function importStore() {
   vi.resetModules();
-  window.api = {
-    ...(window.api ?? {}),
-    settings: {
-      ...(window.api?.settings ?? {}),
-      get: vi.fn().mockResolvedValue({ githubToken: "" }),
-      set: vi.fn().mockResolvedValue(undefined),
-    },
-  };
+  window.api.settings.get = vi.fn().mockResolvedValue({ githubToken: "" });
+  window.api.settings.set = vi.fn().mockResolvedValue(undefined);
   return import("../../../src/renderer/stores/settings.store");
 }
 
 describe("standalone content scan settings", () => {
-  beforeEach(() => localStorage.clear());
-  afterEach(() => localStorage.clear());
+  beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
+    // Both cases exercise legacy LocalStorage persistence and migration.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
+    localStorage.clear();
+  });
+  afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
+    localStorage.clear();
+  });
   it("defaults off and persists only explicit enablement and method", async () => {
     const { useSettingsStore } = await importStore();
     expect(useSettingsStore.getState().skillSafetyScanEnabled).toBe(false);

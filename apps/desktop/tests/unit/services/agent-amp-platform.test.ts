@@ -204,7 +204,7 @@ describe("Amp current platform boundary", () => {
       evidence: "user-config-root-discovery",
     });
     expect(inventory.sessions.status).toBe("planned");
-    expect(inventory.usage.status).toBe("planned");
+    expect(inventory.usage.status).toBe("unsupported");
     expect(inventory.launch.status).toBe("planned");
     expect(inventory.maintenanceCli.status).toBe("planned");
   });

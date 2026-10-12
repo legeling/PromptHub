@@ -1,9 +1,15 @@
 /**
  * @vitest-environment node
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { closeDatabase, type Database } from "@prompthub/db";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import { ipcMain } from "electron";
+import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
+import { resetRuntimePaths } from "../../../src/main/runtime-paths";
 
 const ipcMocks = vi.hoisted(() => {
   const registered = new Set<string>();
@@ -87,17 +93,28 @@ vi.mock("../../../src/main/ipc/plugin.ipc", () => ({
 }));
 
 describe("ipc index registration order", () => {
+  let root: string;
+  let database: Database.Database;
+
   beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-ipc-index-"));
+    database = initializeAgentSettingsFixture(root);
     vi.clearAllMocks();
     ipcMocks.registered.clear();
     registerPromptIPCMock.mockReset();
     registerSkillIPCMock.mockReset();
   });
 
+  afterEach(() => {
+    closeDatabase();
+    resetRuntimePaths();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
   it("registers rules handlers before skill handlers", async () => {
     const { registerAllIPC } = await import("../../../src/main/ipc/index");
 
-    registerAllIPC({} as never, vi.fn());
+    registerAllIPC(database, vi.fn());
 
     const rulesOrder = registerRulesIPCMock.mock.invocationCallOrder[0];
     const skillOrder = registerSkillIPCMock.mock.invocationCallOrder[0];
@@ -114,8 +131,8 @@ describe("ipc index registration order", () => {
     });
     const { registerAllIPC } = await import("../../../src/main/ipc/index");
 
-    registerAllIPC({} as never, vi.fn());
-    expect(() => registerAllIPC({} as never, vi.fn())).not.toThrow();
+    registerAllIPC(database, vi.fn());
+    expect(() => registerAllIPC(database, vi.fn())).not.toThrow();
 
     expect(ipcMocks.removeHandler).toHaveBeenCalledWith(
       IPC_CHANNELS.PROMPT_GET_ALL_META,
@@ -142,7 +159,7 @@ describe("ipc index registration order", () => {
     });
     const { registerAllIPC } = await import("../../../src/main/ipc/index");
 
-    expect(() => registerAllIPC({} as never, vi.fn())).toThrow(
+    expect(() => registerAllIPC(database, vi.fn())).toThrow(
       "registration failed",
     );
     expect(ipcMocks.registered.has(IPC_CHANNELS.PROMPT_GET_ALL_META)).toBe(
@@ -152,20 +169,23 @@ describe("ipc index registration order", () => {
     registerPromptIPCMock.mockImplementation(() => {
       ipcMain.handle(IPC_CHANNELS.PROMPT_GET_ALL_META, vi.fn());
     });
-    expect(() => registerAllIPC({} as never, vi.fn())).not.toThrow();
+    expect(() => registerAllIPC(database, vi.fn())).not.toThrow();
   });
 
   it("preserves the renderer migration callback across backup database rebinds", async () => {
-    let rebind: ((database: never) => void) | undefined;
+    let rebind: ((database: Database.Database) => void) | undefined;
     registerBackupIPCMock.mockImplementationOnce(
-      (_setDbRef: unknown, onDatabaseRebind: (database: never) => void) => {
+      (
+        _setDbRef: unknown,
+        onDatabaseRebind: (database: Database.Database) => void,
+      ) => {
         rebind = onDatabaseRebind;
       },
     );
     const migrationCallback = vi.fn();
     const { registerAllIPC } = await import("../../../src/main/ipc/index");
 
-    registerAllIPC({} as never, vi.fn(), vi.fn(), migrationCallback);
+    registerAllIPC(database, vi.fn(), vi.fn(), migrationCallback);
     expect(registerSettingsIPCMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -174,7 +194,7 @@ describe("ipc index registration order", () => {
     );
     expect(rebind).toBeDefined();
 
-    rebind?.({} as never);
+    rebind?.(database);
     expect(registerSettingsIPCMock).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({

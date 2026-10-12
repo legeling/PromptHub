@@ -9,6 +9,7 @@ import type {
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 import type { McpTargetPreset } from "@prompthub/core";
+import { createWindowApiMock } from "../../helpers/window";
 
 const cachedTemplate: McpMarketTemplate = {
   id: "modelcontextprotocol:cached-server",
@@ -127,6 +128,7 @@ describe("mcp store remote market cache persistence", () => {
   it("deduplicates lightweight target inventory reads without loading markets or health", async () => {
     const targetStatusGate = createDeferred<McpTargetStatusEntry[]>();
     window.api.mcp = {
+      ...createWindowApiMock().mcp,
       ...(window.api.mcp ?? {}),
       getTargetPresets: vi.fn().mockResolvedValue([claudePreset]),
       getTargetStatus: vi.fn(() => targetStatusGate.promise),
@@ -176,6 +178,7 @@ describe("mcp store remote market cache persistence", () => {
       hasLoadedTargetInventory: true,
     });
     window.api.mcp = {
+      ...createWindowApiMock().mcp,
       ...(window.api.mcp ?? {}),
       getTargetPresets: vi.fn().mockResolvedValue([claudePreset]),
       getTargetStatus: vi.fn().mockRejectedValueOnce(new Error("read failed")),
@@ -323,6 +326,7 @@ describe("mcp store remote market cache persistence", () => {
       async (sources: McpMarketSource[]) => sources,
     );
     window.api.mcp = {
+      ...createWindowApiMock().mcp,
       ...(window.api.mcp ?? {}),
       replaceMarketSources,
     };
@@ -391,6 +395,7 @@ describe("mcp store remote market cache persistence", () => {
       ],
     });
     window.api.mcp = {
+      ...createWindowApiMock().mcp,
       ...(window.api.mcp ?? {}),
       getLibrary: vi.fn().mockResolvedValue(mcpLibrary),
       listMarket: vi.fn().mockResolvedValue([]),
@@ -443,6 +448,7 @@ describe("mcp store remote market cache persistence", () => {
       servers: [slackServer],
     };
     window.api.mcp = {
+      ...createWindowApiMock().mcp,
       ...(window.api.mcp ?? {}),
       deleteServer: vi.fn().mockResolvedValue(nextLibrary),
     };
@@ -496,6 +502,7 @@ describe("mcp store remote market cache persistence", () => {
       },
     ];
     window.api.mcp = {
+      ...createWindowApiMock().mcp,
       ...(window.api.mcp ?? {}),
       syncTargets: vi.fn().mockResolvedValue(targetSyncResult),
       checkTargetSync: vi.fn().mockResolvedValue(targetSyncChecks),

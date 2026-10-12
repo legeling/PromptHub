@@ -74,7 +74,6 @@ describe("Sidebar", () => {
         {
           id: "prompt-1",
           title: "Prompt One",
-          userPrompt: "Body",
           tags: ["alpha", "beta"],
           promptType: "text",
           currentVersion: 1,
@@ -84,7 +83,6 @@ describe("Sidebar", () => {
           isFavorite: false,
           isPinned: false,
           usageCount: 0,
-          variables: [],
         },
       ],
       filterTags: [],

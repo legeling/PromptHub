@@ -11,6 +11,11 @@ import {
 } from "../../../src/renderer/services/ai";
 import { renderWithI18n } from "../../helpers/i18n";
 
+import type {
+  AIModelConfig,
+  AIProviderConfig,
+} from "../../../src/renderer/stores/settings.store";
+
 const useSettingsStoreMock = vi.fn();
 const useToastMock = vi.fn();
 
@@ -34,17 +39,19 @@ vi.mock("../../../src/renderer/services/ai", async (importOriginal) => {
 });
 
 function createSettingsState() {
+  const aiModels: AIModelConfig[] = [];
+  const aiProviders: AIProviderConfig[] = [
+    {
+      id: "provider-1",
+      provider: "openai",
+      apiProtocol: "openai" as const,
+      apiKey: "test-key",
+      apiUrl: "https://api.example.com/v1",
+    },
+  ];
   return {
-    aiModels: [],
-    aiProviders: [
-      {
-        id: "provider-1",
-        provider: "openai",
-        apiProtocol: "openai" as const,
-        apiKey: "test-key",
-        apiUrl: "https://api.example.com/v1",
-      },
-    ],
+    aiModels,
+    aiProviders,
     scenarioModelDefaults: {},
     modelRouteDefaults: {},
     aiProvider: "openai",
@@ -66,28 +73,8 @@ function createSettingsState() {
 }
 
 function createConfiguredModel(
-  overrides: Partial<{
-    id: string;
-    providerId?: string;
-    provider: string;
-    apiProtocol: "openai" | "gemini" | "anthropic";
-    apiKey: string;
-    apiUrl: string;
-    model: string;
-    type: "chat" | "image";
-    capabilities?: {
-      chat?: boolean;
-      vision?: boolean;
-      imageGeneration?: boolean;
-      reasoning?: boolean;
-      toolUse?: boolean;
-      webSearch?: boolean;
-      embedding?: boolean;
-      rerank?: boolean;
-    };
-    lastVerifiedAt?: string;
-  }> = {},
-) {
+  overrides: Partial<AIModelConfig> = {},
+): AIModelConfig {
   return {
     id: "model-1",
     provider: "custom",
@@ -113,10 +100,10 @@ function createConfiguredModel(
 function withinModal(title: string) {
   const heading = screen.getByRole("heading", { name: title });
   const modal = heading.closest(".app-wallpaper-panel-strong");
-  if (!modal) {
+  if (!(modal instanceof HTMLElement)) {
     throw new Error(`Unable to locate modal for ${title}`);
   }
-  return within(modal as HTMLElement);
+  return within(modal);
 }
 
 function getFetchedModelButton(modelId: string) {
@@ -237,7 +224,9 @@ describe("AISettingsPrototype", () => {
     });
 
     expect(testDefaultButton).toHaveAttribute("type", "button");
-    const exposedIconMarkup = Array.from(testDefaultButton.querySelectorAll("svg"))
+    const exposedIconMarkup = Array.from(
+      testDefaultButton.querySelectorAll("svg"),
+    )
       .filter((icon) => !hasHiddenSvgAncestor(icon))
       .map((icon) => icon.outerHTML);
     expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
@@ -279,8 +268,9 @@ describe("AISettingsPrototype", () => {
 
     await renderWithI18n(<AISettingsPrototype />, { language: "en" });
 
-    expect(screen.queryByRole("heading", { name: "Edit Endpoint" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Edit Endpoint" }),
+    ).not.toBeInTheDocument();
 
     const endpointApiKeyInput = screen.getByLabelText("Endpoint API Key");
     expect(endpointApiKeyInput).toHaveAttribute("type", "password");
@@ -312,8 +302,9 @@ describe("AISettingsPrototype", () => {
       apiUrl: "https://api.changed.example/v1",
       lastVerifiedAt: undefined,
     });
-    expect(screen.queryByRole("heading", { name: "Edit Endpoint" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Edit Endpoint" }),
+    ).not.toBeInTheDocument();
   });
 
   it("adds a provider endpoint without creating a model", async () => {
@@ -842,7 +833,9 @@ describe("AISettingsPrototype", () => {
 
     const modelRow = screen.getByText("gpt-4o").closest(".group");
     expect(modelRow).not.toBeNull();
-    const row = within(modelRow!);
+    if (!(modelRow instanceof HTMLElement))
+      throw new Error("Expected model row");
+    const row = within(modelRow);
 
     expect(row.getByLabelText("Chat Model")).toBeInTheDocument();
     expect(row.getByLabelText("Vision input")).toBeInTheDocument();
@@ -871,6 +864,8 @@ describe("AISettingsPrototype", () => {
 
     const modelRow = screen.getByText("gpt-4o").closest(".group");
     expect(modelRow).not.toBeNull();
+    if (!(modelRow instanceof HTMLElement))
+      throw new Error("Expected model row");
 
     expect(
       screen
@@ -883,7 +878,7 @@ describe("AISettingsPrototype", () => {
         .querySelector(".lucide-test-tube"),
     ).toBeInTheDocument();
     expect(
-      within(modelRow!)
+      within(modelRow)
         .getByRole("button", { name: "Test" })
         .querySelector(".lucide-test-tube"),
     ).toBeInTheDocument();
@@ -905,9 +900,7 @@ describe("AISettingsPrototype", () => {
 
     const modal = withinModal("Edit Model");
     expect(modal.queryByText("Provider Endpoint")).not.toBeInTheDocument();
-    expect(
-      modal.queryByLabelText("API URL"),
-    ).not.toBeInTheDocument();
+    expect(modal.queryByLabelText("API URL")).not.toBeInTheDocument();
     expect(
       modal.queryByPlaceholderText("Enter API Key"),
     ).not.toBeInTheDocument();

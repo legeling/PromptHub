@@ -1,13 +1,14 @@
 /// <reference types="vitest" />
 import { defineConfig } from "vitest/config";
 import path from "path";
+import { DESKTOP_TEST_TIMEOUT_MS } from "./tests/helpers/test-config";
 
 export default defineConfig({
   test: {
     globals: true,
     include: [],
     exclude: ["tests/e2e/**/*", "node_modules/**/*"],
-    testTimeout: 30_000,
+    testTimeout: DESKTOP_TEST_TIMEOUT_MS,
     hookTimeout: 30_000,
     minWorkers: 1,
     maxWorkers: 2,

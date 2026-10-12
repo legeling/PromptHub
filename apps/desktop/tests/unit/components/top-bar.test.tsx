@@ -104,8 +104,8 @@ describe("TopBar", () => {
     useFolderStore.setState({
       selectedFolderId: null,
       folders: [],
-      unlockedFolderIds: [],
-    } as Partial<ReturnType<typeof useFolderStore.getState>>);
+      unlockedFolderIds: new Set<string>(),
+    });
 
     useSkillStore.setState({
       skills: [],
@@ -809,8 +809,6 @@ describe("TopBar", () => {
         {
           id: "prompt-1",
           title: "Writer",
-          userPrompt: "Write something",
-          variables: [],
           tags: [],
           isFavorite: false,
           isPinned: false,
@@ -821,7 +819,7 @@ describe("TopBar", () => {
           updatedAt: new Date(0).toISOString(),
         },
       ],
-    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    });
 
     await act(async () => {
       await renderWithI18n(
@@ -1090,26 +1088,28 @@ describe("TopBar", () => {
           id: "prompt-1",
           title: "PDF Writer",
           description: "Write PDFs",
-          userPrompt: "PDF prompt",
-          systemPrompt: "System",
           promptType: "text",
           isFavorite: false,
           tags: [],
-          createdAt: 1,
-          updatedAt: 1,
+          createdAt: new Date(1).toISOString(),
+          updatedAt: new Date(1).toISOString(),
+          isPinned: false,
+          usageCount: 0,
+          version: 1,
           currentVersion: 1,
         },
         {
           id: "prompt-2",
           title: "PDF Reader",
           description: "Read PDFs",
-          userPrompt: "PDF reader prompt",
-          systemPrompt: "System",
           promptType: "text",
           isFavorite: false,
           tags: [],
-          createdAt: 2,
-          updatedAt: 2,
+          createdAt: new Date(2).toISOString(),
+          updatedAt: new Date(2).toISOString(),
+          isPinned: false,
+          usageCount: 0,
+          version: 1,
           currentVersion: 1,
         },
       ],
@@ -1118,7 +1118,7 @@ describe("TopBar", () => {
       selectPrompt,
       filterTags: [],
       promptTypeFilter: "all",
-    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    });
 
     await act(async () => {
       await renderWithI18n(

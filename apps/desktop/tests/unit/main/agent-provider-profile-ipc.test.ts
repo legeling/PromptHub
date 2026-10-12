@@ -162,9 +162,11 @@ describe("Agent Provider Profile IPC", () => {
     vi.mocked(service.create).mockRejectedValueOnce(
       new Error("database path /private/data and token=secret-value"),
     );
-    const failure = await handlers[
-      IPC_CHANNELS.AGENT_PROVIDER_PROFILES_CREATE
-    ](null, {}).catch((error) => error as Error);
+    const failure = await handlers[IPC_CHANNELS.AGENT_PROVIDER_PROFILES_CREATE](
+      null,
+      {},
+    ).catch((error: unknown) => error);
+    if (!(failure instanceof Error)) throw new Error("Expected IPC rejection");
     expect(failure.message).toBe("AGENT_PROVIDER_PROFILE_OPERATION_FAILED");
     expect(failure.message).not.toContain("secret-value");
   });

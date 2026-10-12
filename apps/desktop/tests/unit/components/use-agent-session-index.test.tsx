@@ -154,7 +154,9 @@ describe("useAgentSessionIndex", () => {
       .fn()
       .mockResolvedValueOnce(state(true))
       .mockResolvedValueOnce(state(false));
-    const refreshSessionIndex = vi.fn(() => refresh.promise);
+    const refreshSessionIndex = vi.fn<
+      typeof window.api.agent.refreshSessionIndex
+    >(() => refresh.promise);
     const cancelSessionIndex = vi.fn().mockResolvedValue(true);
     installWindowMocks({
       api: {
@@ -176,7 +178,7 @@ describe("useAgentSessionIndex", () => {
     await waitFor(() => expect(result.current.state.supported).toBe(true));
 
     await expect(result.current.cancel()).resolves.toBe(false);
-    let enabling!: Promise<void>;
+    let enabling!: Promise<AgentSessionIndexPublicState>;
     act(() => {
       enabling = result.current.setEnabled(true);
     });
@@ -256,7 +258,9 @@ describe("useAgentSessionIndex", () => {
         agent: {
           getSessionIndexState: vi.fn().mockResolvedValue(state(true)),
           setSessionIndexEnabled,
-          refreshSessionIndex: vi.fn(() => refresh.promise),
+          refreshSessionIndex: vi.fn<
+            typeof window.api.agent.refreshSessionIndex
+          >(() => refresh.promise),
         },
       },
     });
@@ -326,7 +330,9 @@ describe("useAgentSessionIndex", () => {
       .mockReturnValueOnce(initialState.promise)
       .mockResolvedValue(state(false));
     const cancelSessionIndex = vi.fn().mockResolvedValue(true);
-    const refreshSessionIndex = vi.fn(() => lateRefresh.promise);
+    const refreshSessionIndex = vi.fn<
+      typeof window.api.agent.refreshSessionIndex
+    >(() => lateRefresh.promise);
     installWindowMocks({
       api: {
         agent: {
@@ -363,7 +369,7 @@ describe("useAgentSessionIndex", () => {
     });
     expect(result.current.error).not.toBe("refresh");
 
-    let toggling!: Promise<void>;
+    let toggling!: Promise<AgentSessionIndexPublicState>;
     act(() => {
       toggling = result.current.setEnabled(true);
     });

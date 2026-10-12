@@ -1,16 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   getPluginBatchInstallResultMessage,
   getPluginInstallErrorMessage,
 } from "../../../src/renderer/components/plugin/plugin-manager-utils";
 
+import { createTestI18n } from "../../helpers/i18n";
+
 describe("Plugin install error presentation", () => {
-  const t = vi.fn((_key: string, options?: Record<string, unknown>) => {
-    const template = String(options?.defaultValue ?? _key);
-    return template.replace(/{{(\w+)}}/g, (_match, key: string) =>
-      String(options?.[key] ?? ""),
-    );
+  let t: Awaited<ReturnType<typeof createTestI18n>>["t"];
+  beforeAll(async () => {
+    t = (await createTestI18n("en")).t;
   });
 
   it("replaces proxy and download internals with one actionable message", () => {

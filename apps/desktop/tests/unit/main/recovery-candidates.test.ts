@@ -2,6 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
+import type { RecoveryCandidate } from "@prompthub/shared/types";
 import DatabaseAdapter from "../../../src/main/database/sqlite";
 import {
   SCHEMA_INDEXES,
@@ -387,26 +388,30 @@ describe("recovery-candidates", () => {
   });
 
   it("sorts a file-authoritative candidate ahead of a newer SQLite candidate", () => {
-    const candidates = [
+    const candidates: RecoveryCandidate[] = [
       {
-        sourceType: "current-canonical-db" as const,
+        sourceType: "current-canonical-db",
+        displayName: "SQLite catalog",
+        dbSizeBytes: 0,
         sourcePath: "/newer.db",
         displayPath: "/newer.db",
         promptCount: 10,
         folderCount: 0,
         skillCount: 0,
-        dataSources: ["sqlite" as const],
+        dataSources: ["sqlite"],
         previewAvailable: true,
         lastModified: "2026-08-18T12:00:00.000Z",
       },
       {
-        sourceType: "current-file-workspace" as const,
+        sourceType: "current-file-workspace",
+        displayName: "File workspace",
+        dbSizeBytes: 0,
         sourcePath: "/files",
         displayPath: "/files",
         promptCount: 1,
         folderCount: 0,
         skillCount: 0,
-        dataSources: ["workspace" as const],
+        dataSources: ["workspace"],
         previewAvailable: true,
         lastModified: "2026-08-17T12:00:00.000Z",
       },
@@ -453,8 +458,7 @@ describe("recovery-candidates", () => {
     });
 
     const preview = await previewRecoveryCandidate({
-      id: "dir-candidate",
-      sourceType: "directory",
+      sourceType: "external-user-data",
       sourcePath: userDataPath,
       displayPath: userDataPath,
       promptCount: 1,
@@ -462,10 +466,9 @@ describe("recovery-candidates", () => {
       skillCount: 0,
       dbSizeBytes: fs.statSync(path.join(userDataPath, "data", "prompthub.db"))
         .size,
-      hasDatabaseFile: true,
-      hasWorkspaceData: false,
-      hasBrowserStorage: false,
-      title: "Unified data",
+      displayName: "Unified data",
+      dataSources: ["sqlite"],
+      lastModified: null,
       description: "Unified data dir",
       previewAvailable: true,
     });

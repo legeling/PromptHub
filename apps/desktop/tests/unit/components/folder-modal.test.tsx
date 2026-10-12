@@ -57,6 +57,8 @@ describe("FolderModal", () => {
     const sidebarShell = screen.getByTestId("sidebar-shell");
 
     expect(overlay).not.toBeNull();
+    if (!(overlay instanceof HTMLElement))
+      throw new Error("Expected folder modal overlay");
     expect(overlay?.parentElement).toBe(document.body);
     expect(sidebarShell).not.toContainElement(overlay);
   });
@@ -91,7 +93,10 @@ describe("FolderModal", () => {
     const closeButton = screen.getByRole("button", { name: "Close" });
     const buttons = Array.from(document.body.querySelectorAll("button"));
     const implicitButtonMarkup = buttons
-      .filter((button) => !["button", "submit"].includes(button.getAttribute("type") ?? ""))
+      .filter(
+        (button) =>
+          !["button", "submit"].includes(button.getAttribute("type") ?? ""),
+      )
       .map((button) => button.outerHTML);
     const exposedIconMarkup = buttons
       .flatMap((button) => Array.from(button.querySelectorAll("svg")))

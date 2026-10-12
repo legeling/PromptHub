@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 /**
  * Renderer-side tests for the GitHub token setter (issue #108).
  *
@@ -24,14 +26,8 @@ async function importStoreWithSpy() {
   vi.resetModules();
   const setSpy = vi.fn().mockResolvedValue(undefined);
   const getSpy = vi.fn().mockResolvedValue({ githubToken: "" });
-  window.api = {
-    ...(window.api ?? {}),
-    settings: {
-      ...(window.api?.settings ?? {}),
-      get: getSpy,
-      set: setSpy,
-    },
-  };
+  window.api.settings.get = getSpy;
+  window.api.settings.set = setSpy;
   const mod = await import("../../../src/renderer/stores/settings.store");
   await Promise.resolve();
   return { useSettingsStore: mod.useSettingsStore, setSpy, getSpy };
@@ -54,11 +50,13 @@ function lastPayloadWithKey(
 
 describe("settings store · setGithubToken (issue #108)", () => {
   beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     changeLanguageMock.mockReset();
     localStorage.clear();
   });
 
   afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     localStorage.clear();
   });
 
@@ -82,6 +80,8 @@ describe("settings store · setGithubToken (issue #108)", () => {
   });
 
   it("clears same-version persisted tokens during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -104,15 +104,16 @@ describe("settings store · setGithubToken (issue #108)", () => {
     const { useSettingsStore, getSpy } = await importStoreWithSpy();
     getSpy.mockResolvedValueOnce({ githubToken: "ghp_FromMain" });
 
-    const { loadSettingsFromMainProcess } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { loadSettingsFromMainProcess } =
+      await import("../../../src/renderer/stores/settings.store");
     await loadSettingsFromMainProcess();
 
     expect(useSettingsStore.getState().githubToken).toBe("ghp_FromMain");
   });
 
   it("does not overwrite an existing main-process startup setting during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -131,9 +132,8 @@ describe("settings store · setGithubToken (issue #108)", () => {
       githubToken: "",
     });
 
-    const { loadSettingsFromMainProcess } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { loadSettingsFromMainProcess } =
+      await import("../../../src/renderer/stores/settings.store");
     await loadSettingsFromMainProcess();
 
     expect(useSettingsStore.getState().launchAtStartup).toBe(true);
@@ -143,6 +143,8 @@ describe("settings store · setGithubToken (issue #108)", () => {
   });
 
   it("migrates startup settings from local storage when main-process values are missing", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -157,16 +159,15 @@ describe("settings store · setGithubToken (issue #108)", () => {
     const { useSettingsStore, getSpy, setSpy } = await importStoreWithSpy();
     getSpy.mockResolvedValueOnce({ githubToken: "" });
 
-    const { loadSettingsFromMainProcess } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { loadSettingsFromMainProcess } =
+      await import("../../../src/renderer/stores/settings.store");
     await loadSettingsFromMainProcess();
 
     expect(useSettingsStore.getState().launchAtStartup).toBe(true);
     expect(useSettingsStore.getState().minimizeOnLaunch).toBe(false);
-    expect(
-      lastPayloadWithKey(setSpy, "launchAtStartup")?.launchAtStartup,
-    ).toBe(true);
+    expect(lastPayloadWithKey(setSpy, "launchAtStartup")?.launchAtStartup).toBe(
+      true,
+    );
     expect(
       lastPayloadWithKey(setSpy, "minimizeOnLaunch")?.minimizeOnLaunch,
     ).toBe(false);

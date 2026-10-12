@@ -449,8 +449,10 @@ describe("skill i18n smoke", () => {
         label: "Batch Tags",
       },
       {
-        button: screen.getByRole("button", { name: "Batch Deploy" }),
-        label: "Batch Deploy",
+        button: screen.getByRole("button", {
+          name: "Batch install / uninstall",
+        }),
+        label: "Batch install / uninstall",
       },
       { button: batchDeleteAction, label: "Delete" },
     ];
@@ -478,7 +480,7 @@ describe("skill i18n smoke", () => {
 
     expect(screen.queryByText("Batch Mode")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Batch Deploy" }),
+      screen.queryByRole("button", { name: "Batch install / uninstall" }),
     ).not.toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });

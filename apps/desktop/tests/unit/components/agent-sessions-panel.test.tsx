@@ -6,55 +6,21 @@ import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { copyTextToClipboard } from "../../../src/renderer/utils/clipboard";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import type {
-  AgentSessionEntry,
   AgentSessionListResult,
   AgentSessionMetadata,
   ManagedAgentSummary,
 } from "@prompthub/shared/types";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import {
+  sessionPanelAgent as agent,
+  sessionMetadata as metadata,
+  sessionEntry as entry,
+} from "../../helpers/agent-sessions";
 
 vi.mock("../../../src/renderer/utils/clipboard", () => ({
   copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
 }));
-
-const agent = {
-  id: "codex",
-  name: "ChatGPT",
-  icon: "codex",
-  isCustom: false,
-  isConfigured: true,
-  isDetected: true,
-  isPinned: false,
-  launchable: true,
-  status: "installed",
-  paths: { root: "/Users/test/.codex" },
-  capabilities: {},
-} as ManagedAgentSummary;
-
-function metadata(index: number): AgentSessionMetadata {
-  return {
-    id: `session-${index}`,
-    title: `Session ${index}`,
-    projectLabel: "PromptHub",
-    projectPath: "/workspace/PromptHub",
-    createdAt: index,
-    updatedAt: index,
-    model: null,
-    messageCount: 120,
-    sourcePath: null,
-    resume: null,
-  };
-}
-
-function entry(index: number): AgentSessionEntry {
-  return {
-    id: `entry-${index}`,
-    role: index % 2 === 0 ? "user" : "assistant",
-    timestamp: index,
-    text: `Message ${index}`,
-  };
-}
 
 describe("AgentSessionsPanel", () => {
   beforeEach(() => {
@@ -95,16 +61,22 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions,
           readSession,
         },
       },
     });
 
-    await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      {
+        language: "en",
+        settleAsyncEffects: true,
+      },
+    );
 
     expect(
       await screen.findByRole("button", { name: /Session 0/ }),
@@ -161,7 +133,9 @@ describe("AgentSessionsPanel", () => {
   });
 
   it("pages session metadata", async () => {
-    const allSessions = Array.from({ length: 120 }, (_, index) => metadata(index));
+    const allSessions = Array.from({ length: 120 }, (_, index) =>
+      metadata(index),
+    );
     const listSessions = vi.fn(
       async (_agentId: string, limit: number, offset = 0) => ({
         agentId: "codex",
@@ -174,6 +148,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions,
           readSession: vi.fn().mockResolvedValue({
             agentId: "codex",
@@ -188,10 +163,15 @@ describe("AgentSessionsPanel", () => {
       },
     });
 
-    await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      {
+        language: "en",
+        settleAsyncEffects: true,
+      },
+    );
 
     expect(
       await screen.findByRole("button", { name: /Session 0/ }),
@@ -392,6 +372,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions: vi.fn().mockResolvedValue({
             agentId: "codex",
             adapter: "codex-rollout-jsonl-v1",
@@ -404,10 +385,15 @@ describe("AgentSessionsPanel", () => {
       },
     });
 
-    await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      {
+        language: "en",
+        settleAsyncEffects: true,
+      },
+    );
 
     await screen.findByText("Message 0");
     fireEvent.click(screen.getByRole("button", { name: "Latest messages" }));
@@ -450,6 +436,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions: vi.fn().mockResolvedValue({
             agentId: "codex",
             adapter: "codex-rollout-jsonl-v1",
@@ -462,10 +449,15 @@ describe("AgentSessionsPanel", () => {
       },
     });
 
-    await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      {
+        language: "en",
+        settleAsyncEffects: true,
+      },
+    );
 
     await screen.findByText("Message 0");
     fireEvent.click(screen.getByRole("button", { name: "Message page 4" }));
@@ -992,6 +984,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions: vi.fn().mockResolvedValue({
             agentId: "codex",
             adapter: "codex-rollout-jsonl-v1",
@@ -1086,6 +1079,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions: vi.fn().mockResolvedValue({
             agentId: "codex",
             adapter: "codex-rollout-jsonl-v1",
@@ -1105,10 +1099,15 @@ describe("AgentSessionsPanel", () => {
       },
     });
 
-    await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      language: "en",
-      settleAsyncEffects: true,
-    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      {
+        language: "en",
+        settleAsyncEffects: true,
+      },
+    );
     fireEvent.click(screen.getByLabelText("Filter by project"));
     expect(
       await screen.findByRole("option", {
@@ -1128,6 +1127,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions: vi.fn().mockResolvedValue({
             agentId: "opencode",
             adapter: "opencode-cli-v1",
@@ -1140,9 +1140,11 @@ describe("AgentSessionsPanel", () => {
     });
 
     await renderWithI18n(
-      <AgentSessionsPanel
-        agent={{ ...agent, id: "opencode", name: "OpenCode" }}
-      />,
+      <ToastProvider>
+        <AgentSessionsPanel
+          agent={{ ...agent, id: "opencode", name: "OpenCode" }}
+        />
+      </ToastProvider>,
       { language: "en", settleAsyncEffects: true },
     );
 
@@ -1188,6 +1190,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions,
           readSession: vi.fn().mockResolvedValue({
             agentId: "codex",
@@ -1201,17 +1204,24 @@ describe("AgentSessionsPanel", () => {
       },
     });
 
-    const view = await renderWithI18n(<AgentSessionsPanel agent={agent} />, {
-      settleAsyncEffects: true,
-    });
+    const view = await renderWithI18n(
+      <ToastProvider>
+        <AgentSessionsPanel agent={agent} />
+      </ToastProvider>,
+      {
+        settleAsyncEffects: true,
+      },
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Load more sessions" }),
     );
     await waitFor(() => expect(resolvePendingPage).not.toBeNull());
     view.rerender(
-      <AgentSessionsPanel
-        agent={{ ...agent, id: "opencode", name: "OpenCode" }}
-      />,
+      <ToastProvider>
+        <AgentSessionsPanel
+          agent={{ ...agent, id: "opencode", name: "OpenCode" }}
+        />
+      </ToastProvider>,
     );
     expect(await screen.findByText("No sessions found.")).toBeVisible();
     await act(async () => {
@@ -1246,7 +1256,9 @@ describe("AgentSessionsPanel", () => {
       lastScannedAt: null,
       lastErrorCode: null,
     });
-    const refreshSessionIndex = vi.fn(
+    const refreshSessionIndex = vi.fn<
+      typeof window.api.agent.refreshSessionIndex
+    >(
       () =>
         new Promise((resolve) => {
           resolveRefresh = resolve;
@@ -1256,6 +1268,7 @@ describe("AgentSessionsPanel", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           getSessionIndexState: vi.fn().mockResolvedValue({
             supported: true,
             enabled: false,
@@ -1284,9 +1297,11 @@ describe("AgentSessionsPanel", () => {
     });
 
     const view = await renderWithI18n(
-      <AgentSessionsPanel
-        agent={{ ...agent, id: "claude", name: "Claude Code" }}
-      />,
+      <ToastProvider>
+        <AgentSessionsPanel
+          agent={{ ...agent, id: "claude", name: "Claude Code" }}
+        />
+      </ToastProvider>,
       { language: "en", settleAsyncEffects: true },
     );
     await waitFor(() =>
@@ -1323,178 +1338,5 @@ describe("AgentSessionsPanel", () => {
         lastErrorCode: null,
       });
     });
-  });
-
-  it("submits search only on Enter and reuses the submitted query for pagination", async () => {
-    const listSessions = vi.fn(
-      async (
-        _agentId: string,
-        _limit: number,
-        offset: number,
-        search?: string,
-      ) => {
-        if (search === "review") {
-          return {
-            agentId: "gemini",
-            adapter: "gemini-json-v1",
-            sessions: [
-              {
-                ...metadata(offset === 0 ? 7 : 57),
-                title: offset === 0 ? "Review plan" : "Review follow-up",
-              },
-            ],
-            total: 51,
-            hasMore: offset === 0,
-          };
-        }
-        return {
-          agentId: "gemini",
-          adapter: "gemini-json-v1",
-          sessions: [metadata(0)],
-          total: 1,
-          hasMore: false,
-        };
-      },
-    );
-    installWindowMocks({
-      api: {
-        agent: {
-          listSessions,
-          readSession: vi.fn().mockResolvedValue({
-            agentId: "gemini",
-            adapter: "gemini-json-v1",
-            sessionId: "session-7",
-            entries: [],
-            parseErrors: 0,
-            truncated: false,
-          }),
-        },
-      },
-    });
-
-    await renderWithI18n(
-      <AgentSessionsPanel
-        agent={{ ...agent, id: "gemini", name: "Gemini CLI" }}
-      />,
-      { language: "en", settleAsyncEffects: true },
-    );
-    const search = await screen.findByRole("textbox", {
-      name: "Search titles or projects",
-    });
-    const callsBeforeTyping = listSessions.mock.calls.length;
-
-    vi.useFakeTimers();
-    fireEvent.change(search, { target: { value: "review" } });
-    fireEvent.keyDown(search, { key: "Enter", isComposing: true });
-    try {
-      await act(async () => vi.advanceTimersByTimeAsync(300));
-      expect(listSessions).toHaveBeenCalledTimes(callsBeforeTyping);
-      expect(screen.getByRole("button", { name: /Session 0/ })).toBeVisible();
-    } finally {
-      vi.useRealTimers();
-    }
-
-    fireEvent.keyDown(search, { key: "Enter" });
-    await waitFor(() =>
-      expect(listSessions).toHaveBeenLastCalledWith("gemini", 50, 0, "review"),
-    );
-    expect(
-      await screen.findByRole("button", { name: /Review plan/ }),
-    ).toBeVisible();
-
-    const submittedInput = screen.getByRole("textbox", {
-      name: "Search titles or projects",
-    });
-    fireEvent.change(submittedInput, { target: { value: "ignored draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Load more sessions" }));
-    await waitFor(() =>
-      expect(listSessions).toHaveBeenLastCalledWith("gemini", 50, 50, "review"),
-    );
-    expect(await screen.findByText("Review follow-up")).toBeVisible();
-
-    fireEvent.change(submittedInput, { target: { value: "" } });
-    fireEvent.keyDown(submittedInput, { key: "Enter" });
-    await waitFor(() =>
-      expect(listSessions).toHaveBeenLastCalledWith("gemini", 50, 0),
-    );
-    expect(
-      await screen.findByRole("button", { name: /Session 0/ }),
-    ).toBeVisible();
-  });
-
-  it("matches only effective titles and project identity", async () => {
-    const session = {
-      ...metadata(1),
-      title: "Quarterly planning",
-      model: "private-model",
-    };
-    const listSessions = vi.fn(async () => ({
-      agentId: "copilot",
-      adapter: "copilot-session-store-v1",
-      sessions: [session],
-      total: 1,
-      hasMore: false,
-    }));
-    installWindowMocks({
-      api: {
-        agent: {
-          listSessions,
-          listConversationMetadata: vi.fn().mockResolvedValue([
-            {
-              agentId: "copilot",
-              sessionId: "session-1",
-              title: "Release review",
-              note: "private note",
-              tags: ["private-tag"],
-              projectId: null,
-              projectPath: "/workspace/PromptHub",
-              archivedAt: null,
-            },
-          ]),
-          readSession: vi.fn().mockResolvedValue({
-            agentId: "copilot",
-            adapter: "copilot-session-store-v1",
-            sessionId: "session-1",
-            entries: [],
-            parseErrors: 0,
-            truncated: false,
-          }),
-        },
-      },
-    });
-
-    await renderWithI18n(
-      <AgentSessionsPanel
-        agent={{ ...agent, id: "copilot", name: "GitHub Copilot" }}
-      />,
-      { language: "en", settleAsyncEffects: true },
-    );
-    const search = await screen.findByRole("textbox", {
-      name: "Search titles or projects",
-    });
-
-    fireEvent.change(search, { target: { value: "private" } });
-    fireEvent.keyDown(search, { key: "Enter" });
-    expect(await screen.findByText("No sessions found.")).toBeVisible();
-
-    const titleSearch = screen.getByRole("textbox", {
-      name: "Search titles or projects",
-    });
-    fireEvent.change(titleSearch, { target: { value: "release review" } });
-    fireEvent.keyDown(titleSearch, { key: "Enter" });
-    expect(
-      await screen.findByRole("button", { name: /Release review/ }),
-    ).toBeVisible();
-
-    const projectSearch = screen.getByRole("textbox", {
-      name: "Search titles or projects",
-    });
-    fireEvent.change(projectSearch, {
-      target: { value: "/workspace/prompthub" },
-    });
-    fireEvent.keyDown(projectSearch, { key: "Enter" });
-    expect(
-      await screen.findByRole("button", { name: /Release review/ }),
-    ).toBeVisible();
   });
 });

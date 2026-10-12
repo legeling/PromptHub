@@ -37,6 +37,7 @@ function profile(
   return {
     id,
     ...request.profile,
+    endpoint: request.profile.endpoint ?? null,
     archived: false,
     createdAt: 1,
     updatedAt: 1,
@@ -88,7 +89,8 @@ function createHarness(
     }),
     has: vi.fn(async (ref) => persisted.has(ref)),
     hasMany: vi.fn(
-      async (refs) => new Set(refs.filter((ref) => persisted.has(ref))),
+      async (refs: string[]) =>
+        new Set(refs.filter((ref) => persisted.has(ref))),
     ),
   };
   return {

@@ -20,7 +20,7 @@ describe("ai transport", () => {
 
   it("uses the main-process stream transport for streaming chat completions", async () => {
     const onContent = vi.fn();
-    window.api.ai.requestStream.mockImplementation(
+    vi.mocked(window.api.ai.requestStream).mockImplementation(
       async (
         _request: unknown,
         handlers?: {
@@ -73,7 +73,7 @@ describe("ai transport", () => {
   });
 
   it("uses the main-process request transport for model discovery", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -119,7 +119,7 @@ describe("ai transport", () => {
   });
 
   it("uses a lightweight non-streaming probe for chat model connection tests", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -153,7 +153,7 @@ describe("ai transport", () => {
     expect(window.api.ai.request).toHaveBeenCalledTimes(1);
     expect(window.api.ai.requestStream).not.toHaveBeenCalled();
 
-    const request = window.api.ai.request.mock.calls[0]?.[0];
+    const request = vi.mocked(window.api.ai.request).mock.calls[0]?.[0];
     expect(request).toEqual(
       expect.objectContaining({
         method: "POST",
@@ -173,7 +173,7 @@ describe("ai transport", () => {
   });
 
   it("routes bounded non-streaming chat requests to intranet HTTP endpoints through the main process", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -297,7 +297,7 @@ describe("ai transport", () => {
   });
 
   it("uses the main-process request transport for OpenAI-compatible image generation", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -339,7 +339,7 @@ describe("ai transport", () => {
   });
 
   it("sends the minimal GPT Image request body when generating a single image", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -363,7 +363,7 @@ describe("ai transport", () => {
       { n: 1 },
     );
 
-    const request = window.api.ai.request.mock.calls[0]?.[0];
+    const request = vi.mocked(window.api.ai.request).mock.calls[0]?.[0];
     expect(JSON.parse(String(request?.body))).toEqual({
       prompt: "a reusable image prompt",
       model: "gpt-image-2",
@@ -371,7 +371,7 @@ describe("ai transport", () => {
   });
 
   it("keeps explicit multi-image counts for GPT Image requests", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -395,7 +395,7 @@ describe("ai transport", () => {
       { n: 2 },
     );
 
-    const request = window.api.ai.request.mock.calls[0]?.[0];
+    const request = vi.mocked(window.api.ai.request).mock.calls[0]?.[0];
     expect(JSON.parse(String(request?.body))).toEqual({
       prompt: "a reusable image prompt",
       model: "gpt-image-2",
@@ -404,7 +404,7 @@ describe("ai transport", () => {
   });
 
   it("surfaces main-process image generation network errors", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: false,
       status: 0,
       statusText: "",
@@ -430,7 +430,7 @@ describe("ai transport", () => {
   });
 
   it("formats provider HTML gateway timeout pages as a concise image generation error", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: false,
       status: 504,
       statusText: "Gateway Time-out",
@@ -532,7 +532,7 @@ describe("ai transport", () => {
       expectedImageUrl,
       expectedUrl,
     }) => {
-      window.api.ai.request.mockResolvedValue({
+      vi.mocked(window.api.ai.request).mockResolvedValue({
         ok: true,
         status: 200,
         statusText: "OK",
@@ -556,7 +556,7 @@ describe("ai transport", () => {
   );
 
   it("uses the main-process request transport for Stability image generation", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -597,7 +597,7 @@ describe("ai transport", () => {
   it("uses the main-process request transport for Replicate image generation and polling", async () => {
     vi.useFakeTimers();
     try {
-      window.api.ai.request
+      vi.mocked(window.api.ai.request)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -703,7 +703,7 @@ describe("ai transport", () => {
   });
 
   it("sends multimodal messages through the main-process request transport", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -743,7 +743,7 @@ describe("ai transport", () => {
     expect(result.content).toBe("The image contains a chart.");
     expect(window.api.ai.request).toHaveBeenCalledTimes(1);
 
-    const request = window.api.ai.request.mock.calls[0]?.[0];
+    const request = vi.mocked(window.api.ai.request).mock.calls[0]?.[0];
     expect(request).toBeDefined();
     const body = JSON.parse(String(request?.body));
 
@@ -764,7 +764,7 @@ describe("ai transport", () => {
   });
 
   it("uses Authorization bearer for Gemini OpenAI-compatible chat completions", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -802,12 +802,13 @@ describe("ai transport", () => {
       }),
     );
 
-    const headers = window.api.ai.request.mock.calls[0]?.[0]?.headers;
+    const headers = vi.mocked(window.api.ai.request).mock.calls[0]?.[0]
+      ?.headers;
     expect(headers["x-goog-api-key"]).toBeUndefined();
   });
 
   it("uses x-goog-api-key for Gemini native model discovery", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -853,7 +854,7 @@ describe("ai transport", () => {
   });
 
   it("returns a network error when model discovery times out in the main-process transport", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: false,
       status: 0,
       statusText: "",
@@ -878,7 +879,7 @@ describe("ai transport", () => {
   });
 
   it("preserves image attachments when sending Anthropic multimodal chat requests", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -907,7 +908,7 @@ describe("ai transport", () => {
     );
 
     expect(result.content).toBe("I can see the screenshot.");
-    const request = window.api.ai.request.mock.calls[0]?.[0];
+    const request = vi.mocked(window.api.ai.request).mock.calls[0]?.[0];
     const body = JSON.parse(String(request?.body));
     expect(body.system).toBe("You inspect screenshots.");
     expect(body.messages).toEqual([

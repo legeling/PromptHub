@@ -19,38 +19,6 @@ function hasHiddenSvgAncestor(element: Element): boolean {
   return false;
 }
 
-function createModelForm() {
-  return {
-    type: "chat" as const,
-    name: "",
-    provider: "openai",
-    apiProtocol: "openai" as const,
-    apiKey: "",
-    apiUrl: "https://api.openai.com",
-    model: "",
-    capabilities: {
-      vision: false,
-    },
-    chatParams: {
-      temperature: 0.7,
-      maxTokens: 2048,
-      topP: 1,
-      topK: "",
-      frequencyPenalty: 0,
-      presencePenalty: 0,
-      stream: false,
-      enableThinking: false,
-      customParamsText: "",
-    },
-    imageParams: {
-      size: "1024x1024",
-      quality: "standard" as const,
-      style: "vivid" as const,
-      n: 1,
-    },
-  };
-}
-
 describe("AvailableModelsList", () => {
   function StatefulModelsList({
     onSelectionChange,
@@ -76,11 +44,6 @@ describe("AvailableModelsList", () => {
     await renderWithI18n(
       <AvailableModelsList
         availableModels={[{ id: "custom-model-1", owned_by: "unknown-lab" }]}
-        modelForm={{
-          ...createModelForm(),
-          provider: "custom",
-          apiUrl: "https://api.example.com",
-        }}
         setModelForm={vi.fn()}
         selectedIds={[]}
         onSelectionChange={vi.fn()}
@@ -100,7 +63,6 @@ describe("AvailableModelsList", () => {
           { id: "qwen/qwen3-max", owned_by: "openai" },
           { id: "gpt-5.4", owned_by: "openai" },
         ]}
-        modelForm={createModelForm()}
         setModelForm={vi.fn()}
         selectedIds={[]}
         onSelectionChange={vi.fn()}
@@ -126,7 +88,6 @@ describe("AvailableModelsList", () => {
           { id: "x-ai/grok-4", owned_by: "openai" },
           { id: "cohere/command-r-plus", owned_by: "openai" },
         ]}
-        modelForm={createModelForm()}
         setModelForm={vi.fn()}
         selectedIds={[]}
         onSelectionChange={vi.fn()}

@@ -8,7 +8,7 @@ import {
 
 describe("Agent rule platform coverage", () => {
   it("registers every Agent with a dedicated global rule path in the Rules workspace", () => {
-    const registeredPlatformIds = new Set(
+    const registeredPlatformIds = new Set<string>(
       Object.values(KNOWN_RULE_FILE_TEMPLATES).map(
         (template) => template.platformId,
       ),

@@ -20,7 +20,7 @@ function createRegistrySkillFixture(
     name: "Writer",
     install_name: "writer",
     description: "Write better",
-    category: "writing",
+    category: "general",
     author: "PromptHub",
     source_url: "https://example.com/skills/writer",
     version: "1.0.0",

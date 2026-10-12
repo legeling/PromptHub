@@ -131,7 +131,10 @@ describe("SettingsPage", () => {
       s3StorageEnabled: false,
       desktopHomeModules: ["prompt", "skill", "rules"],
     });
-    useUIStore.getState().requestSettingsSection("cloudAccount");
+    // Exercise an unsupported runtime request; it is not a public SettingsSectionId.
+    Reflect.apply(useUIStore.getState().requestSettingsSection, undefined, [
+      "cloudAccount",
+    ]);
 
     await act(async () => {
       await renderWithI18n(<SettingsPage onBack={vi.fn()} />, {

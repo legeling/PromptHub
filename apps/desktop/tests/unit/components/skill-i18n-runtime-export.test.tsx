@@ -307,7 +307,7 @@ describe("skill i18n smoke", () => {
     const removeChild = vi.spyOn(document.body, "removeChild");
     const createElementSpy = vi
       .spyOn(document, "createElement")
-      .mockImplementation((tagName) => {
+      .mockImplementation((tagName: string) => {
         if (tagName === "a") {
           return anchor;
         }

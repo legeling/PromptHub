@@ -5,7 +5,8 @@ import * as os from "os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the database module before importing SkillInstaller
-vi.mock("@/main/database", () => ({
+vi.mock("@/main/database", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/main/database")>()),
   initDatabase: vi.fn(),
 }));
 
@@ -33,6 +34,9 @@ import {
   SCHEMA_INDEXES,
 } from "../../../src/main/database/schema";
 import { SkillDB } from "../../../src/main/database/skill";
+import { closeDatabase, getDatabase } from "@prompthub/db";
+import { AgentSettingsRepository } from "@prompthub/core";
+import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
 
 let tmpDir: string;
 
@@ -72,10 +76,12 @@ function applySkillMigrationColumns(db: Database.Database): void {
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "skill-installer-test-"));
   configureRuntimePaths({ userDataPath: tmpDir });
+  initializeAgentSettingsFixture(tmpDir);
   invalidateCustomPathsCache();
 });
 
 afterEach(async () => {
+  closeDatabase();
   invalidateCustomPathsCache();
   resetRuntimePaths();
   vi.restoreAllMocks();
@@ -948,6 +954,10 @@ describe("SkillInstaller.exportAsJson", () => {
 
 describe("SkillInstaller.getSupportedPlatforms", () => {
   it("returns the full SKILL_PLATFORMS list", () => {
+    new AgentSettingsRepository(getDatabase()).patch({
+      builtinAgentOverrides: {},
+    });
+    invalidateCustomPathsCache();
     const platforms = SkillInstaller.getSupportedPlatforms();
     expect(platforms).toStrictEqual(SKILL_PLATFORMS);
     expect(platforms.length).toBeGreaterThan(0);

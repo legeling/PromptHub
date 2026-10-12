@@ -698,7 +698,7 @@ description: Use this skill for PDF tasks.
     const fetchRemoteContent = vi.fn().mockResolvedValue(remoteContent);
     (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
 
-    const registrySkill = {
+    const registrySkill: RegistrySkill = {
       slug: "raw-url-skill",
       name: "Raw URL Skill",
       install_name: "raw-url-skill",

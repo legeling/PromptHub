@@ -693,7 +693,7 @@ describe("CorePluginLibraryService", () => {
         packageContentVersion,
         "utf8",
       );
-      return { sourcePath };
+      return { sourcePath, localRepositoryPath: sourcePath };
     });
     const service = new CorePluginLibraryService({
       fetchFn,
@@ -750,6 +750,8 @@ describe("CorePluginLibraryService", () => {
     const result = await service.updatePluginFromSource(installed.plugin.id);
 
     expect(result.status).toBe("updated");
+    if (result.status !== "updated")
+      throw new Error(`Unexpected update status: ${result.status}`);
     expect(result.plugin).toMatchObject({
       version: "2.0.0",
       description: "Bundle 2.0.0",
@@ -886,7 +888,7 @@ describe("CorePluginLibraryService", () => {
         "utf8",
       );
       fs.writeFileSync(path.join(sourcePath, "README.md"), "remote", "utf8");
-      return { sourcePath };
+      return { sourcePath, localRepositoryPath: sourcePath };
     });
     const service = new CorePluginLibraryService({
       fetchFn,

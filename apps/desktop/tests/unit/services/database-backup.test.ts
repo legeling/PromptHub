@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   downloadBackup,
   downloadCompressedBackup,
@@ -52,6 +52,12 @@ vi.mock("../../../src/renderer/services/settings-snapshot", () => ({
 }));
 
 describe("database-backup restore", () => {
+  const originalPersistence = window.api.settings.rendererPersistence;
+
+  afterEach(() => {
+    window.api.settings.rendererPersistence = originalPersistence;
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -284,20 +290,20 @@ describe("database-backup restore", () => {
   });
 
   it("exports skills, skill versions, and skill files in the unified backup payload", async () => {
-    window.api.skill.getAll.mockResolvedValue([
+    vi.mocked(window.api.skill.getAll).mockResolvedValue([
       {
         id: "skill-1",
         name: "writer",
       },
     ]);
-    window.api.skill.versionGetAll.mockResolvedValue([
+    vi.mocked(window.api.skill.versionGetAll).mockResolvedValue([
       {
         id: "version-1",
         skillId: "skill-1",
         version: 1,
       },
     ]);
-    window.api.skill.readFilesSnapshot.mockResolvedValue([
+    vi.mocked(window.api.skill.readFilesSnapshot).mockResolvedValue([
       {
         relativePath: "SKILL.md",
         content: "# Writer",
@@ -322,7 +328,7 @@ describe("database-backup restore", () => {
     expect(backup.settings).toEqual({ state: { language: "zh" } });
   });
 
-  it("exports and restores My MCP, My Plugins, and custom agent store sources", async () => {
+  it("exports and restores My MCP, My Plugins, and custom agent store sources without canonical persistence", async () => {
     const mcpLibrary = {
       kind: "prompthub-mcp-library" as const,
       version: 1 as const,
@@ -427,6 +433,7 @@ describe("database-backup restore", () => {
       },
     });
 
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     const backup = await exportDatabase();
 
     expect(backup.mcpLibrary).toEqual(mcpLibrary);
@@ -755,14 +762,16 @@ describe("database-backup restore", () => {
   });
 
   it("fails export when skill metadata cannot be collected completely", async () => {
-    window.api.skill.getAll.mockResolvedValue([
+    vi.mocked(window.api.skill.getAll).mockResolvedValue([
       {
         id: "skill-1",
         name: "writer",
       },
     ]);
-    window.api.skill.versionGetAll.mockRejectedValue(new Error("db busy"));
-    window.api.skill.readFilesSnapshot.mockResolvedValue([]);
+    vi.mocked(window.api.skill.versionGetAll).mockRejectedValue(
+      new Error("db busy"),
+    );
+    vi.mocked(window.api.skill.readFilesSnapshot).mockResolvedValue([]);
 
     await expect(exportDatabase()).rejects.toThrow(
       "Backup export failed to read 1 skill records: skill versions writer",
@@ -918,7 +927,9 @@ describe("database-backup restore", () => {
       },
     });
 
-    window.api.version.getAll.mockImplementation(async (id: string) => id === prompt.id ? [version] : []);
+    vi.mocked(window.api.version.getAll).mockImplementation(
+      async (id: string) => (id === prompt.id ? [version] : []),
+    );
     const backup = await exportDatabase();
 
     expect(backup.prompts).toEqual([prompt, targetPrompt]);
@@ -1273,12 +1284,7 @@ describe("database-backup restore", () => {
     });
 
     expect(window.electron.exportZip).toHaveBeenCalledTimes(1);
-    const exportZipArg = window.electron.exportZip.mock.calls[0]?.[0] as {
-      scope: {
-        videos?: boolean;
-        exportJson?: string;
-      };
-    };
+    const exportZipArg = vi.mocked(window.electron.exportZip).mock.calls[0][0];
     expect(exportZipArg.scope.videos).toBe(true);
     const embedded = JSON.parse(String(exportZipArg.scope.exportJson)) as {
       kind: string;
@@ -1374,9 +1380,7 @@ describe("database-backup restore", () => {
       plugins: false,
     } as any);
 
-    const exportZipArg = window.electron.exportZip.mock.calls[0]?.[0] as {
-      scope: { exportJson?: string };
-    };
+    const exportZipArg = vi.mocked(window.electron.exportZip).mock.calls[0][0];
     const embedded = JSON.parse(String(exportZipArg.scope.exportJson)) as {
       payload: {
         skills?: unknown;

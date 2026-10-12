@@ -4,7 +4,15 @@
  * 这些测试旨在发现真实的 Bug，而不是验证"快乐路径"
  * These tests aim to find real bugs, not just validate happy paths
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockedFunction,
+} from "vitest";
 import {
   generateImage,
   rewritePromptDraft,
@@ -426,7 +434,7 @@ describe("AI Service - Prompt rewrite", () => {
   });
 
   it("parses structured rewrite JSON and returns only editable fields", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -474,7 +482,7 @@ describe("AI Service - Prompt rewrite", () => {
       userPrompt: "Return a numbered plan with risks.",
     });
 
-    const request = window.api.ai.request.mock.calls[0]?.[0];
+    const request = vi.mocked(window.api.ai.request).mock.calls[0]?.[0];
     expect(request).toBeDefined();
     const body = JSON.parse(String(request?.body));
     expect(body.messages).toHaveLength(2);
@@ -488,7 +496,7 @@ describe("AI Service - Prompt rewrite", () => {
   });
 
   it("rejects rewrite responses without valid JSON", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -527,7 +535,7 @@ describe("AI Service - Prompt rewrite", () => {
   });
 
   it("rejects rewrite responses that do not change editable fields", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -568,7 +576,7 @@ describe("AI Service - Prompt rewrite", () => {
   });
 
   it("rejects invalid editable field types", async () => {
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -676,12 +684,12 @@ async function responseToTransport(response: Response) {
 }
 
 describe("generateImage - Gemini routing", () => {
-  let requestSpy: any;
+  let requestSpy: MockedFunction<Window["api"]["ai"]["request"]>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     installWindowMocks();
-    requestSpy = window.api.ai.request;
+    requestSpy = vi.mocked(window.api.ai.request);
   });
 
   afterEach(() => {
@@ -695,6 +703,7 @@ describe("generateImage - Gemini routing", () => {
 
     const result = await generateImage(
       {
+        apiProtocol: "gemini",
         apiKey: "key",
         apiUrl: "https://api.example.com/v1beta",
         model: "gemini-flash",
@@ -704,7 +713,7 @@ describe("generateImage - Gemini routing", () => {
     );
 
     // Should have called the :generateContent endpoint
-    const calledUrl = requestSpy.mock.calls[0][0].url as string;
+    const calledUrl = requestSpy.mock.calls[0][0].url;
     expect(calledUrl).toContain(":generateContent");
     expect(result.data).toHaveLength(1);
     expect(result.data[0].b64_json).toBe("base64imagedata==");
@@ -724,6 +733,7 @@ describe("generateImage - Gemini routing", () => {
 
     const result = await generateImage(
       {
+        apiProtocol: "gemini",
         apiKey: "key",
         apiUrl: "https://api.example.com/v1beta",
         model: "gemini-flash",
@@ -752,6 +762,7 @@ describe("generateImage - Gemini routing", () => {
 
     const result = await generateImage(
       {
+        apiProtocol: "gemini",
         apiKey: "key",
         apiUrl: "https://proxy.example.com",
         model: "gemini-image",
@@ -775,6 +786,7 @@ describe("generateImage - Gemini routing", () => {
 
     await generateImage(
       {
+        apiProtocol: "gemini",
         apiKey: "key",
         apiUrl: "https://api.example.com/v1beta",
         model: "some-model",
@@ -783,17 +795,18 @@ describe("generateImage - Gemini routing", () => {
       "a dog",
     );
 
-    const calledUrl = requestSpy.mock.calls[0][0].url as string;
+    const calledUrl = requestSpy.mock.calls[0][0].url;
     expect(calledUrl).toContain(":generateContent");
   });
 
-  it("routes to Gemini when apiUrl contains generativelanguage.googleapis.com", async () => {
+  it("routes to Gemini for a Google URL with a different provider label", async () => {
     requestSpy.mockResolvedValueOnce(
       await responseToTransport(makeGeminiResponse()),
     );
 
     await generateImage(
       {
+        apiProtocol: "gemini",
         apiKey: "key",
         apiUrl: "https://generativelanguage.googleapis.com/v1beta",
         model: "gemini-2.0-flash",
@@ -802,7 +815,7 @@ describe("generateImage - Gemini routing", () => {
       "a landscape",
     );
 
-    const calledUrl = requestSpy.mock.calls[0][0].url as string;
+    const calledUrl = requestSpy.mock.calls[0][0].url;
     expect(calledUrl).toContain(":generateContent");
   });
 
@@ -813,6 +826,7 @@ describe("generateImage - Gemini routing", () => {
 
     await generateImage(
       {
+        apiProtocol: "gemini",
         apiKey: "key",
         apiUrl: "https://api.example.com/v1beta",
         model: "gemini-2.0-flash-exp-image-generation",
@@ -821,7 +835,7 @@ describe("generateImage - Gemini routing", () => {
       "a city",
     );
 
-    const calledUrl = requestSpy.mock.calls[0][0].url as string;
+    const calledUrl = requestSpy.mock.calls[0][0].url;
     expect(calledUrl).toContain(":generateContent");
   });
 
@@ -832,6 +846,7 @@ describe("generateImage - Gemini routing", () => {
 
     await generateImage(
       {
+        apiProtocol: "openai",
         apiKey: "key",
         apiUrl: "https://api.openai.com/v1",
         model: "dall-e-3",
@@ -840,7 +855,7 @@ describe("generateImage - Gemini routing", () => {
       "a painting",
     );
 
-    const calledUrl = requestSpy.mock.calls[0][0].url as string;
+    const calledUrl = requestSpy.mock.calls[0][0].url;
     expect(calledUrl).toContain("/images/generations");
     expect(calledUrl).not.toContain(":generateContent");
   });
@@ -852,6 +867,7 @@ describe("generateImage - Gemini routing", () => {
 
     await generateImage(
       {
+        apiProtocol: "openai",
         apiKey: "key",
         apiUrl: "https://api.openai.com/v1",
         model: "gpt-image-1",
@@ -903,6 +919,7 @@ describe("generateImage - Gemini routing", () => {
     await expect(
       generateImage(
         {
+          apiProtocol: "openai",
           apiKey: "key",
           apiUrl: "https://api.openai.com/v1",
           model: "dall-e-3",
@@ -921,6 +938,7 @@ describe("generateImage - Gemini routing", () => {
     await expect(
       generateImage(
         {
+          apiProtocol: "openai",
           apiKey: "",
           apiUrl: "https://api.example.com/v1",
           model: "dall-e-3",
@@ -934,7 +952,13 @@ describe("generateImage - Gemini routing", () => {
   it("throws with English error when apiUrl is missing", async () => {
     await expect(
       generateImage(
-        { apiKey: "key", apiUrl: "", model: "dall-e-3", provider: "openai" },
+        {
+          apiProtocol: "openai",
+          apiKey: "key",
+          apiUrl: "",
+          model: "dall-e-3",
+          provider: "openai",
+        },
         "test",
       ),
     ).rejects.toThrow("API URL is not configured");

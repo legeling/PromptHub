@@ -12,7 +12,7 @@ function ruleFile(
   overrides: Partial<RuleFileDescriptor> = {},
 ): RuleFileDescriptor {
   return {
-    id: `${platformId}-global`,
+    id: `custom:${platformId}`,
     platformId: platformId as RuleFileDescriptor["platformId"],
     platformName: platformId,
     platformIcon: "Bot",

@@ -1,40 +1,47 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Prompt } from "@prompthub/shared/types";
 
 vi.mock("../../../src/renderer/services/webdav-save-sync", () => ({
   scheduleAllSaveSync: vi.fn(),
 }));
 
-vi.mock("../../../src/renderer/services/database", () => ({
-  createPrompt: vi.fn(),
-  updatePrompt: vi.fn(),
-  movePrompts: vi.fn(),
-  deletePrompt: vi.fn(),
-  getAllPrompts: vi.fn().mockResolvedValue([]),
-  getAllPromptSummaries: vi.fn().mockResolvedValue([]),
-  // Keep the summary projection honest in tests: ids / titles flow through.
-  promptToSummary: (prompt: {
-    id: string;
-    title: string;
-    tags?: string[];
-    createdAt?: string;
-    updatedAt?: string;
-  }) => ({
-    id: prompt.id,
-    title: prompt.title,
-    tags: prompt.tags ?? [],
-    isFavorite: false,
-    isPinned: false,
-    usageCount: 0,
-    currentVersion: 1,
-    version: 1,
-    createdAt: prompt.createdAt ?? "",
-    updatedAt: prompt.updatedAt ?? "",
-  }),
-}));
+vi.mock("../../../src/renderer/services/database", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/renderer/services/database")
+    >();
+  return {
+    ...actual,
+    createPrompt: vi.fn(),
+    updatePrompt: vi.fn(),
+    movePrompts: vi.fn(),
+    deletePrompt: vi.fn(),
+    getAllPrompts: vi.fn().mockResolvedValue([]),
+    getAllPromptSummaries: vi.fn().mockResolvedValue([]),
+  };
+});
 
 import { scheduleAllSaveSync } from "../../../src/renderer/services/webdav-save-sync";
 import * as db from "../../../src/renderer/services/database";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
+
+const prompt: Prompt = {
+  id: "prompt-1",
+  title: "Prompt",
+  description: "",
+  promptType: "text",
+  systemPrompt: "",
+  userPrompt: "Hello",
+  variables: [],
+  tags: [],
+  isFavorite: false,
+  isPinned: false,
+  usageCount: 0,
+  currentVersion: 1,
+  version: 1,
+  createdAt: "2026-05-11T00:00:00.000Z",
+  updatedAt: "2026-05-11T00:00:00.000Z",
+};
 
 describe("prompt store save-sync", () => {
   beforeEach(() => {
@@ -59,22 +66,9 @@ describe("prompt store save-sync", () => {
 
   it("schedules save-sync for prompt creation", async () => {
     vi.mocked(db.createPrompt).mockResolvedValue({
-      id: "prompt-1",
+      ...prompt,
       title: "New Prompt",
-      description: "",
-      promptType: "text",
-      systemPrompt: "",
-      userPrompt: "Hello",
-      variables: [],
-      tags: [],
-      isFavorite: false,
-      isPinned: false,
-      usageCount: 0,
-      currentVersion: 1,
-      version: 1,
-      createdAt: "2026-05-11T00:00:00.000Z",
-      updatedAt: "2026-05-11T00:00:00.000Z",
-    } as never);
+    });
 
     await usePromptStore.getState().createPrompt({
       title: "New Prompt",
@@ -89,30 +83,12 @@ describe("prompt store save-sync", () => {
 
   it("does not schedule save-sync for usage-count only updates", async () => {
     usePromptStore.setState({
-      prompts: [
-        {
-          id: "prompt-1",
-          title: "Prompt",
-          description: "",
-          promptType: "text",
-          systemPrompt: "",
-          userPrompt: "Hello",
-          variables: [],
-          tags: [],
-          isFavorite: false,
-          isPinned: false,
-          usageCount: 0,
-          currentVersion: 1,
-          version: 1,
-          createdAt: "2026-05-11T00:00:00.000Z",
-          updatedAt: "2026-05-11T00:00:00.000Z",
-        },
-      ],
+      prompts: [db.promptToSummary(prompt)],
     });
     vi.mocked(db.updatePrompt).mockResolvedValue({
-      ...usePromptStore.getState().prompts[0],
+      ...prompt,
       usageCount: 1,
-    } as never);
+    });
 
     await usePromptStore.getState().incrementUsageCount("prompt-1");
 

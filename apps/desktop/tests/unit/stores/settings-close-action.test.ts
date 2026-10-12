@@ -20,7 +20,7 @@ describe("settings close action persistence", () => {
   it("publishes close actions changed from general settings", async () => {
     const setSettings = vi.fn().mockResolvedValue(true);
     const setMainCloseAction = vi.fn();
-    window.api.settings = { ...(window.api.settings ?? {}), set: setSettings };
+    window.api.settings.set = setSettings;
     window.electron!.setCloseAction = setMainCloseAction;
     const { useSettingsStore } =
       await import("../../../src/renderer/stores/settings.store");
@@ -37,11 +37,10 @@ describe("settings close action persistence", () => {
     async (closeAction) => {
       const setMainCloseAction = vi.fn();
       window.electron!.setCloseAction = setMainCloseAction;
-      window.api.settings = {
-        ...(window.api.settings ?? {}),
-        get: vi.fn().mockResolvedValue({ githubToken: "", closeAction }),
-        set: vi.fn().mockResolvedValue(true),
-      };
+      window.api.settings.get = vi
+        .fn()
+        .mockResolvedValue({ githubToken: "", closeAction });
+      window.api.settings.set = vi.fn().mockResolvedValue(true);
       const { loadSettingsFromMainProcess, useSettingsStore } =
         await import("../../../src/renderer/stores/settings.store");
 
@@ -55,14 +54,11 @@ describe("settings close action persistence", () => {
   it("normalizes an invalid hydrated close action back to ask", async () => {
     const setMainCloseAction = vi.fn();
     window.electron!.setCloseAction = setMainCloseAction;
-    window.api.settings = {
-      ...(window.api.settings ?? {}),
-      get: vi.fn().mockResolvedValue({
-        githubToken: "",
-        closeAction: "destroy",
-      }),
-      set: vi.fn().mockResolvedValue(true),
-    };
+    window.api.settings.get = vi.fn().mockResolvedValue({
+      githubToken: "",
+      closeAction: "destroy",
+    });
+    window.api.settings.set = vi.fn().mockResolvedValue(true);
     const { loadSettingsFromMainProcess, useSettingsStore } =
       await import("../../../src/renderer/stores/settings.store");
 

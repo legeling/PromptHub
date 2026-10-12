@@ -36,14 +36,31 @@ vi.mock("os", async (importOriginal) => {
   return { ...actual, homedir, default: { ...actual, homedir } };
 });
 
-const transport = vi.hoisted(() => {
+const transport = await vi.hoisted(async () => {
+  const { EventEmitter } = await import("node:events");
+  const renderer = new EventEmitter();
+  const sender = Object.assign(new EventEmitter(), {
+    id: 1,
+    send(channel: string, ...args: unknown[]): void {
+      renderer.emit(channel, {}, ...structuredClone(args));
+    },
+  });
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   return {
     handlers,
+    renderer,
+    clear(): void {
+      sender.emit("destroyed");
+      sender.removeAllListeners();
+      renderer.removeAllListeners();
+      handlers.clear();
+    },
     async invoke(channel: string, ...args: unknown[]): Promise<unknown> {
       const handler = handlers.get(channel);
       if (!handler) throw new Error(`Unregistered IPC channel: ${channel}`);
-      return structuredClone(await handler({}, ...structuredClone(args)));
+      return structuredClone(
+        await handler({ sender }, ...structuredClone(args)),
+      );
     },
   };
 });
@@ -58,7 +75,20 @@ vi.mock("electron", () => ({
       transport.handlers.set(channel, handler);
     },
   },
-  ipcRenderer: { invoke: transport.invoke },
+  ipcRenderer: {
+    invoke: transport.invoke,
+    on: transport.renderer.on.bind(transport.renderer),
+    removeListener: transport.renderer.removeListener.bind(transport.renderer),
+  },
+  safeStorage: {
+    isEncryptionAvailable: () => false,
+    encryptString: () => {
+      throw new Error("No test secrets may be encrypted");
+    },
+    decryptString: () => {
+      throw new Error("No test secrets may be decrypted");
+    },
+  },
   session: { defaultSession: { setProxy: async () => undefined } },
 }));
 
@@ -129,7 +159,7 @@ export async function createSkillTestRuntime(): Promise<SkillTestRuntime> {
   isolatedHomePath.current = isolatedHome;
   const platformRoot = (id: string) => path.join(root, "platforms", id);
   const dispose = () => {
-    transport.handlers.clear();
+    transport.clear();
     closeDatabase();
     invalidateCustomPathsCache();
     resetRuntimePaths();
@@ -151,7 +181,7 @@ export async function createSkillTestRuntime(): Promise<SkillTestRuntime> {
       source: path.join(root, "source"),
       dispose,
       async reopen() {
-        transport.handlers.clear();
+        transport.clear();
         closeDatabase();
         await ensureCanonicalStorageAuthorityOnStartup({
           activeRoot: profile,

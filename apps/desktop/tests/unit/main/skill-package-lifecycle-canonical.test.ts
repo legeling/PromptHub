@@ -106,9 +106,7 @@ describe("canonical Skill package lifecycle", () => {
     const result = await lifecycle.run(installRequest());
 
     if (result.status !== "completed") {
-      throw new Error(
-        `install failed: ${result.failure.code}: ${result.failure.summary}`,
-      );
+      throw new Error(`install failed: ${JSON.stringify(result)}`);
     }
     expect(result).toMatchObject({ status: "completed", operation: "install" });
     const stored = skillDb.getById(result.skill.id);
@@ -137,7 +135,7 @@ describe("canonical Skill package lifecycle", () => {
     );
     const installed = await lifecycle.run(installRequest());
     if (installed.status !== "completed") {
-      throw new Error(`install failed: ${installed.failure.summary}`);
+      throw new Error(`install failed: ${JSON.stringify(installed)}`);
     }
 
     const updatedContent = "# Canonical Writer\n\nUpdated.\n";
@@ -146,7 +144,7 @@ describe("canonical Skill package lifecycle", () => {
     );
 
     if (updated.status !== "completed") {
-      throw new Error(`update failed: ${updated.failure.summary}`);
+      throw new Error(`update failed: ${JSON.stringify(updated)}`);
     }
     expect(skillDb.getVersions(installed.skill.id)).toHaveLength(2);
     expect(

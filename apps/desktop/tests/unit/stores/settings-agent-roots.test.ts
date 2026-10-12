@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const changeLanguageMock = vi.fn();
+let originalSettings: typeof window.api.settings;
 
 vi.mock("../../../src/renderer/i18n", () => ({
   __esModule: true,
@@ -33,11 +34,15 @@ async function importStore(settingsFromMain?: Record<string, unknown>) {
 
 describe("settings store agent roots", () => {
   beforeEach(() => {
+    originalSettings = window.api.settings;
+    window.api.settings = { ...originalSettings };
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     changeLanguageMock.mockReset();
     localStorage.clear();
   });
 
   afterEach(() => {
+    window.api.settings = originalSettings;
     localStorage.clear();
   });
 

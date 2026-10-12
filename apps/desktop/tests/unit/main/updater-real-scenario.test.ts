@@ -1,13 +1,8 @@
 /**
  * @vitest-environment node
- * 
- * 真实场景测试：自动更新功能
- * 直接调用 src/main/updater.ts 中的真实代码
+ * Local changelog and version contracts. No remote artifact availability is tested.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import https from 'https';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock electron 模块（因为 updater.ts 依赖 electron）
 vi.mock('electron', () => ({
@@ -37,7 +32,7 @@ vi.mock('electron-updater', () => ({
 // 导入真实的函数
 import { getChangelogForVersionRange, compareVersions } from '../../../src/main/updater';
 
-describe('自动更新 - 真实场景测试（调用真实代码）', () => {
+describe('Updater local changelog and version contracts', () => {
 
     describe('getChangelogForVersionRange - 真实代码测试', () => {
 
@@ -126,74 +121,4 @@ describe('自动更新 - 真实场景测试（调用真实代码）', () => {
         });
     });
 
-    describe('更新链接验证', () => {
-        function checkUrlAccessible(url: string): Promise<{ accessible: boolean; statusCode: number }> {
-            return new Promise((resolve) => {
-                const urlObj = new URL(url);
-                let settled = false;
-                const settle = (result: { accessible: boolean; statusCode: number }) => {
-                    if (settled) {
-                        return;
-                    }
-                    settled = true;
-                    clearTimeout(hardTimeout);
-                    resolve(result);
-                };
-                const options = {
-                    hostname: urlObj.hostname,
-                    path: urlObj.pathname + urlObj.search,
-                    method: 'HEAD',
-                    timeout: 10000,
-                };
-                const hardTimeout = setTimeout(() => {
-                    req.destroy();
-                    settle({ accessible: false, statusCode: 0 });
-                }, 12000);
-
-                const req = https.request(options, (res) => {
-                    const accessible = res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 400;
-                    res.resume();
-                    settle({ accessible, statusCode: res.statusCode || 0 });
-                });
-
-                req.on('error', () => settle({ accessible: false, statusCode: 0 }));
-                req.on('timeout', () => {
-                    req.destroy();
-                    settle({ accessible: false, statusCode: 0 });
-                });
-                req.end();
-            });
-        }
-
-        it('latest.yml 应该可以访问', async () => {
-            const url = 'https://github.com/legeling/PromptHub/releases/latest/download/latest.yml';
-            const result = await checkUrlAccessible(url);
-
-            console.log(`latest.yml 状态码: ${result.statusCode}`);
-            if (!result.accessible) {
-                console.warn('警告: 当前环境无法访问 latest.yml，跳过网络可达性断言');
-                expect(result.statusCode).toBe(0);
-                return;
-            }
-            expect(result.accessible).toBe(true);
-        }, 15000);
-
-        it('Windows x64 安装包链接应该可以访问', async () => {
-            const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../package.json'), 'utf-8'));
-            const version = packageJson.version;
-
-            const url = `https://github.com/legeling/PromptHub/releases/download/v${version}/PromptHub-Setup-${version}-x64.exe`;
-            const result = await checkUrlAccessible(url);
-
-            console.log(`Windows x64 安装包 (${url}) 状态码: ${result.statusCode}`);
-
-            if (!result.accessible) {
-                console.warn(`警告: 当前版本 ${version} 的安装包可能尚未发布`);
-            }
-
-            // 至少验证链接格式正确
-            expect(url).toContain('PromptHub-Setup-');
-            expect(url).toContain('-x64.exe');
-        }, 15000);
-    });
 });

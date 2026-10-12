@@ -869,7 +869,9 @@ describe("AgentOverviewPanel", () => {
       screen.getAllByText("This adapter is planned and is not available yet."),
     ).toHaveLength(2);
     expect(
-      screen.getAllByText("No verified adapter is available for this Agent."),
+      screen.getAllByText(
+        "This feature is not currently supported for this Agent.",
+      ),
     ).toHaveLength(5);
 
     expect(

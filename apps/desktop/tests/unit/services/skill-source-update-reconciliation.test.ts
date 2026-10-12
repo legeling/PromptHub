@@ -303,7 +303,7 @@ describe("skill source update reconciliation", () => {
 
   it("computes skill-package-sha256-v1 fingerprints with shared ignore rules", async () => {
     const binary = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
-    const entries = [
+    const entries: Parameters<typeof computeDirectoryFingerprint>[0] = [
       { path: "SKILL.md", content: "# Writer\r\n", isDirectory: false },
       { path: ".env.example", content: "API_URL=  \r\n", isDirectory: false },
       { path: "assets/icon.bin", data: binary, isDirectory: false },

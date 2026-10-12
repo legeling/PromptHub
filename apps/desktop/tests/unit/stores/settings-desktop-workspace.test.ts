@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 const changeLanguageMock = vi.fn();
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -10,12 +12,14 @@ vi.mock("../../../src/renderer/i18n", () => ({
 
 describe("settings desktop workspace actions", () => {
   beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     vi.resetModules();
     localStorage.clear();
     changeLanguageMock.mockReset();
   });
 
   afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     localStorage.clear();
   });
 
@@ -73,6 +77,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("normalizes persisted desktop workspace settings on migration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -94,6 +100,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("adds Agents, MCP and Plugin to old persisted default desktop modules during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -118,6 +126,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("moves Agents to second when hydrating the previous complete default order", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -149,6 +159,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("preserves the former default order when it is customized after migration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -180,6 +192,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("preserves a customized complete desktop module order", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -236,6 +250,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("does not add MCP to custom legacy module subsets", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -256,6 +272,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("normalizes same-version persisted desktop module settings during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -276,6 +294,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("normalizes same-version persisted sidebar tag section heights during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -297,6 +317,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("hydrates resource tag section settings from legacy skill tag settings", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -349,6 +371,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("normalizes invalid persisted skill list page sizes", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({

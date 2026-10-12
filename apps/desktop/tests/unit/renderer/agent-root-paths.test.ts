@@ -45,11 +45,14 @@ describe("agent root paths", () => {
       "~/.kilo",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.mcpRelativePath).toBe("../.config/kilo/kilo.json");
-    expect(buildAgentRootAssetPreview(config).mcpConfigPaths).toEqual([
-      "~/.config/kilo/kilo.json",
-    ]);
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath })
+        .mcpConfigPaths,
+    ).toEqual(["~/.config/kilo/kilo.json"]);
   });
 
   it("uses Cline's settings data directory for MCP config", () => {
@@ -61,13 +64,16 @@ describe("agent root paths", () => {
       "~/.cline",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.mcpRelativePath).toBe(
       "data/settings/cline_mcp_settings.json",
     );
-    expect(buildAgentRootAssetPreview(config).mcpConfigPaths).toEqual([
-      "~/.cline/data/settings/cline_mcp_settings.json",
-    ]);
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath })
+        .mcpConfigPaths,
+    ).toEqual(["~/.cline/data/settings/cline_mcp_settings.json"]);
   });
 
   it("does not invent MCP config paths for built-in agents without confirmed support", () => {
@@ -79,9 +85,14 @@ describe("agent root paths", () => {
       "~/.trae-work",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.mcpRelativePath).toBeUndefined();
-    expect(buildAgentRootAssetPreview(config).mcpConfigPaths).toEqual([]);
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath })
+        .mcpConfigPaths,
+    ).toEqual([]);
   });
 
   it("uses Tencent WorkBuddy's documented user MCP config path", () => {
@@ -93,12 +104,16 @@ describe("agent root paths", () => {
       "~/.workbuddy",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.mcpRelativePath).toBe("mcp.json");
     expect(config.agentsRelativePath).toBeUndefined();
     expect(config.commandsRelativePath).toBeUndefined();
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       mcpConfigPaths: ["~/.workbuddy/mcp.json"],
       agentDirectories: [],
       commandDirectories: [],
@@ -114,13 +129,17 @@ describe("agent root paths", () => {
       "~/.zcode",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.rulesRelativePath).toBe("AGENTS.md");
     expect(config.mcpRelativePath).toBe("cli/config.json");
     expect(config.configRelativePaths).toEqual(["cli/config.json"]);
     expect(config.pluginsRelativePath).toBeUndefined();
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       skillScanPaths: ["~/.zcode/skills"],
       mcpConfigPaths: ["~/.zcode/cli/config.json"],
       ruleCandidates: ["~/.zcode/AGENTS.md"],
@@ -138,6 +157,8 @@ describe("agent root paths", () => {
       "~/.codebuddy",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.rulesRelativePath).toBe("CODEBUDDY.md");
@@ -149,7 +170,9 @@ describe("agent root paths", () => {
       ".mcp.json",
       "CODEBUDDY.md",
     ]);
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       mcpConfigPaths: ["~/.codebuddy/.mcp.json"],
       agentDirectories: ["~/.codebuddy/agents"],
       commandDirectories: ["~/.codebuddy/commands"],
@@ -167,6 +190,8 @@ describe("agent root paths", () => {
       "~/.grok",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.pluginsRelativePath).toBe("plugins");
@@ -179,7 +204,9 @@ describe("agent root paths", () => {
       "sandbox.toml",
     ]);
     expect(config.mcpRelativePath).toBe("config.toml");
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       mcpConfigPaths: ["~/.grok/config.toml"],
       ruleCandidates: ["~/.grok/AGENTS.md"],
       agentDirectories: ["~/.grok/agents"],
@@ -203,11 +230,16 @@ describe("agent root paths", () => {
       "~/.qclaw",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.rulesRelativePath).toBe("workspace/SOUL.md");
     expect(config.mcpRelativePath).toBeUndefined();
-    expect(buildAgentRootAssetPreview(config).mcpConfigPaths).toEqual([]);
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath })
+        .mcpConfigPaths,
+    ).toEqual([]);
   });
 
   it("keeps plugin package directories only on supported built-in targets", () => {
@@ -235,6 +267,8 @@ describe("agent root paths", () => {
       "~/.kimi-code",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.mcpRelativePath).toBe("mcp.json");
@@ -245,7 +279,9 @@ describe("agent root paths", () => {
       "mcp.json",
     ]);
     expect(config.rulesRelativePath).toBe("AGENTS.md");
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       skillScanPaths: ["~/.kimi-code/skills"],
       mcpConfigPaths: ["~/.kimi-code/mcp.json"],
       pluginDirectories: ["~/.kimi-code/plugins"],
@@ -290,7 +326,11 @@ describe("agent root paths", () => {
       "~/.gemini/config",
       undefined,
     );
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       skillScanPaths: ["~/.gemini/config/skills"],
       mcpConfigPaths: ["~/.gemini/config/mcp_config.json"],
       pluginDirectories: ["~/.gemini/config/plugins"],
@@ -316,6 +356,8 @@ describe("agent root paths", () => {
       "~/.reasonix",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.mcpRelativePath).toBe("config.toml");
@@ -325,7 +367,9 @@ describe("agent root paths", () => {
       "trust.json",
     ]);
     expect(config.rulesRelativePath).toBeUndefined();
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       skillScanPaths: ["~/.reasonix/skills"],
       mcpConfigPaths: ["~/.reasonix/config.toml"],
       configCandidates: [
@@ -346,12 +390,16 @@ describe("agent root paths", () => {
       "~/.augment",
       undefined,
     );
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
     expect(config.mcpRelativePath).toBe("settings.json");
     expect(config.configRelativePaths).toEqual(["settings.json"]);
     expect(config.rulesRelativePath).toBe("user-guidelines.md");
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       skillScanPaths: ["~/.augment/skills"],
       mcpConfigPaths: ["~/.augment/settings.json"],
       ruleCandidates: ["~/.augment/user-guidelines.md"],
@@ -379,12 +427,16 @@ describe("agent root paths", () => {
     });
 
     const config = getEffectiveBuiltinAgentConfig(qwen!, "~/.qwen", undefined);
+    if (typeof config.rootPath !== "string")
+      throw new Error("Missing built-in Agent root path");
     expect(config).toMatchObject({
       agentsRelativePath: "agents",
       commandsRelativePath: "commands",
       configRelativePaths: [],
     });
-    expect(buildAgentRootAssetPreview(config)).toMatchObject({
+    expect(
+      buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
+    ).toMatchObject({
       skillScanPaths: ["~/.qwen/skills"],
       mcpConfigPaths: ["~/.qwen/settings.json"],
       pluginDirectories: ["~/.qwen/extensions"],

@@ -1,4 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const fixture = vi.hoisted(() => ({ root: "" }));
 
 const mockRegister = vi.fn();
 const mockUnregisterAll = vi.fn();
@@ -19,16 +24,19 @@ vi.mock("electron", () => ({
     on: mockIpcOn,
   },
   app: {
-    getPath: vi.fn(() => "/tmp/prompthub-test"),
+    getPath: vi.fn(() => fixture.root),
   },
 }));
 
 vi.mock("../../../src/main/runtime-paths", () => ({
-  getConfigDir: () => "/tmp/prompthub-test/config",
+  getConfigDir: () => path.join(fixture.root, "config"),
 }));
 
 describe("main shortcuts", () => {
   beforeEach(() => {
+    fixture.root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-shortcuts-"),
+    );
     vi.resetModules();
     mockRegister.mockReset();
     mockUnregisterAll.mockReset();
@@ -37,8 +45,13 @@ describe("main shortcuts", () => {
     mockIpcOn.mockReset();
   });
 
+  afterEach(() => {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  });
+
   it("toggles a visible window off for showApp", async () => {
-    const { toggleWindowForShowApp } = await import("../../../src/main/shortcuts");
+    const { toggleWindowForShowApp } =
+      await import("../../../src/main/shortcuts");
     const win = {
       isMinimized: vi.fn(() => false),
       restore: vi.fn(),
@@ -49,7 +62,7 @@ describe("main shortcuts", () => {
     };
     const onVisibilityChange = vi.fn();
 
-    toggleWindowForShowApp(win as any, onVisibilityChange);
+    toggleWindowForShowApp(win, onVisibilityChange);
 
     expect(win.hide).toHaveBeenCalledTimes(1);
     expect(win.show).not.toHaveBeenCalled();
@@ -58,7 +71,8 @@ describe("main shortcuts", () => {
   });
 
   it("restores and focuses a minimized window for showApp", async () => {
-    const { toggleWindowForShowApp } = await import("../../../src/main/shortcuts");
+    const { toggleWindowForShowApp } =
+      await import("../../../src/main/shortcuts");
     const win = {
       isMinimized: vi.fn(() => true),
       restore: vi.fn(),
@@ -69,7 +83,7 @@ describe("main shortcuts", () => {
     };
     const onVisibilityChange = vi.fn();
 
-    toggleWindowForShowApp(win as any, onVisibilityChange);
+    toggleWindowForShowApp(win, onVisibilityChange);
 
     expect(win.restore).toHaveBeenCalledTimes(1);
     expect(win.show).toHaveBeenCalledTimes(1);
@@ -116,9 +130,8 @@ describe("main shortcuts", () => {
 
   it("normalizes shortcut mode IPC payloads before saving and registering", async () => {
     mockRegister.mockReturnValue(true);
-    const { registerShortcutsIPC, getShortcutModes } = await import(
-      "../../../src/main/shortcuts"
-    );
+    const { registerShortcutsIPC, getShortcutModes } =
+      await import("../../../src/main/shortcuts");
 
     registerShortcutsIPC();
 
@@ -149,5 +162,14 @@ describe("main shortcuts", () => {
       "Alt+Shift+N",
       expect.any(Function),
     );
+    vi.resetModules();
+    const reopened = await import("../../../src/main/shortcuts");
+    reopened.registerShortcuts();
+    expect(reopened.getShortcutModes()).toEqual({
+      showApp: "global",
+      newPrompt: "global",
+      search: "local",
+      settings: "local",
+    });
   });
 });

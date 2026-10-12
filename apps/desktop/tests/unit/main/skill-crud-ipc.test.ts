@@ -22,7 +22,13 @@ import { registerSkillCrudHandlers } from "../../../src/main/ipc/skill/crud-hand
 const mocks = vi.hoisted(() => ({
   root: "",
   platforms: vi.fn(() => [{ id: "claude" }]),
-  handle: vi.fn(),
+  handle:
+    vi.fn<
+      (
+        channel: string,
+        handler: (...args: unknown[]) => Promise<unknown>,
+      ) => void
+    >(),
   inspect: vi.fn(),
   conflicts: vi.fn(),
   install: vi.fn(),

@@ -69,23 +69,15 @@ const claudePreset: McpTargetPreset = {
 const targetStatus: McpTargetStatusEntry[] = [
   {
     presetId: "codex",
-    target: "codex",
-    scope: "global",
     path: "/Users/test/.codex/config.toml",
     exists: true,
     serverNames: ["filesystem"],
-    serverCount: 1,
-    content: "{}",
   },
   {
     presetId: "claude",
-    target: "claude",
-    scope: "global",
     path: "/Users/test/.claude.json",
     exists: true,
     serverNames: [],
-    serverCount: 0,
-    content: "{}",
   },
 ];
 

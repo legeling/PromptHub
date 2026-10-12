@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installWindowMocks } from "../../helpers/window";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DatabaseBackup } from "../../../src/renderer/services/database-backup-format";
 
 const { exportDatabaseMock, restoreFromBackupMock, getSettingsStateMock } =
@@ -78,13 +79,18 @@ function createBackup(): DatabaseBackup {
 }
 
 describe("self-hosted backup-only client", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     window.localStorage.clear();
-    window.electron = {
-      updater: { getVersion: vi.fn().mockResolvedValue("0.5.9") },
-    } as typeof window.electron;
+    installWindowMocks({
+      electron: { updater: { getVersion: vi.fn().mockResolvedValue("0.5.9") } },
+    });
     getSettingsStateMock.mockReturnValue({
       themeMode: "light",
       language: "zh",

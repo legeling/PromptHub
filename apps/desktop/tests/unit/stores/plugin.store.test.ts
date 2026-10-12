@@ -11,6 +11,8 @@ import type {
   PluginVersion,
 } from "@prompthub/shared/types/plugin";
 
+import { createWindowApiMock } from "../../helpers/window";
+
 import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
 
 const library: PluginLibraryFile = {
@@ -155,6 +157,7 @@ describe("plugin store", () => {
   beforeEach(() => {
     resetPluginStore();
     window.api.plugin = {
+      ...createWindowApiMock().plugin,
       getLibrary: vi.fn().mockResolvedValue(library),
       listMarketSources: vi
         .fn()
@@ -655,14 +658,12 @@ describe("plugin store", () => {
         [importedSourcePlugin.id]: {
           status: "update-available",
           plugin: importedSourcePlugin,
-          checkedAt: "2026-06-21T00:00:00.000Z",
           localModified: false,
           remoteChanged: true,
         },
         [otherPlugin.id]: {
           status: "up-to-date",
           plugin: otherPlugin,
-          checkedAt: "2026-06-21T00:00:00.000Z",
           localModified: false,
           remoteChanged: false,
         },
@@ -689,7 +690,6 @@ describe("plugin store", () => {
       [otherPlugin.id]: {
         status: "up-to-date",
         plugin: otherPlugin,
-        checkedAt: "2026-06-21T00:00:00.000Z",
         localModified: false,
         remoteChanged: false,
       },

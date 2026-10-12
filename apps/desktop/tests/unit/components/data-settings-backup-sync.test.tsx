@@ -250,6 +250,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
     delete (window as Window & { __PROMPTHUB_WEB__?: boolean })
       .__PROMPTHUB_WEB__;
@@ -286,6 +287,9 @@ describe("DataSettings", { timeout: 60_000 }, () => {
           videos: 0,
         },
         skipped: {
+          promptRelations: 0,
+          outputFormatItems: 0,
+          rules: 0,
           folders: 0,
           prompts: 0,
           skillFiles: 0,
@@ -296,6 +300,8 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       },
     });
     vi.mocked(restoreFromFile).mockResolvedValue({
+      promptRelations: 0,
+      rules: 0,
       folders: 0,
       prompts: 0,
       outputFormatItems: 0,
@@ -305,12 +311,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       versions: 0,
     });
 
-    const input = {
-      accept: "",
-      click: vi.fn(),
-      onchange: null as null | ((event: Event) => void | Promise<void>),
-      type: "",
-    };
+    let input = originalCreateElement("input");
 
     await act(async () => {
       await renderWithI18n(<DataSettings activeSubsection="backup" />, {
@@ -321,12 +322,9 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       await Promise.resolve();
     });
 
-    vi.spyOn(document, "createElement").mockImplementation(
-      (tagName: string) => {
-        if (tagName === "input") {
-          return input as unknown as HTMLInputElement;
-        }
-        return originalCreateElement(tagName);
+    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(
+      function (this: HTMLInputElement) {
+        input = this;
       },
     );
 
@@ -337,12 +335,10 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     expect(input.type).toBe("file");
     expect(input.accept).toBe(".json,.phub,.gz,.zip,.db");
 
-    const file = { name: "prompthub-export.phub.gz" } as File;
+    const file = new File(["fixture backup"], "prompthub-export.phub.gz");
 
     await act(async () => {
-      await input.onchange?.({
-        target: { files: [file] },
-      } as unknown as Event);
+      fireEvent.change(input, { target: { files: [file] } });
     });
 
     expect(previewImportFile).toHaveBeenCalledWith(file);
@@ -410,12 +406,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       ),
     );
 
-    const input = {
-      accept: "",
-      click: vi.fn(),
-      onchange: null as null | ((event: Event) => void | Promise<void>),
-      type: "",
-    };
+    let input = originalCreateElement("input");
 
     await act(async () => {
       await renderWithI18n(<DataSettings activeSubsection="backup" />, {
@@ -426,21 +417,18 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       await Promise.resolve();
     });
 
-    vi.spyOn(document, "createElement").mockImplementation(
-      (tagName: string) => {
-        if (tagName === "input") {
-          return input as unknown as HTMLInputElement;
-        }
-        return originalCreateElement(tagName);
+    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(
+      function (this: HTMLInputElement) {
+        input = this;
       },
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Import Data" }));
 
     await act(async () => {
-      await input.onchange?.({
-        target: { files: [{ name: "broken.phub.gz" }] },
-      } as unknown as Event);
+      fireEvent.change(input, {
+        target: { files: [new File(["broken backup"], "broken.phub.gz")] },
+      });
     });
 
     expect(showToast).toHaveBeenCalledWith(
@@ -600,21 +588,16 @@ describe("DataSettings", { timeout: 60_000 }, () => {
         }),
       },
     });
-    const input = {
-      accept: "",
-      click: vi.fn(),
-      onchange: null as null | ((event: Event) => void | Promise<void>),
-      type: "",
-    };
+    let input = originalCreateElement("input");
     await act(async () => {
       await renderWithI18n(<DataSettings activeSubsection="backup" />, {
         language: "en",
       });
     });
-    vi.spyOn(document, "createElement").mockImplementation((tagName: string) =>
-      tagName === "input"
-        ? (input as unknown as HTMLInputElement)
-        : originalCreateElement(tagName),
+    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(
+      function (this: HTMLInputElement) {
+        input = this;
+      },
     );
     fireEvent.click(screen.getByRole("button", { name: "Import Data" }));
     const file = new File(
@@ -622,7 +605,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       sourcePath.split("/").at(-1) ?? "prompthub.db",
     );
     await act(async () => {
-      await input.onchange?.({ target: { files: [file] } } as unknown as Event);
+      fireEvent.change(input, { target: { files: [file] } });
     });
 
     await waitFor(() => {

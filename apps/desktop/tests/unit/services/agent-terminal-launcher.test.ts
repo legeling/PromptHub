@@ -24,7 +24,9 @@ describe("createAgentTerminalLauncher", () => {
       path.join(os.tmpdir(), "prompthub-terminal-test-"),
     );
     createdRoots.push(tempRoot);
-    const openPath = vi.fn(async () => "");
+    const openPath = vi.fn<(filePath: string) => Promise<string>>(
+      async () => "",
+    );
     const launcher = createAgentTerminalLauncher({
       platform: "darwin",
       tempRoot,

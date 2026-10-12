@@ -106,19 +106,15 @@ describe("SkillInstaller.installFromGithub", () => {
     vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
       async (_url, destDir) => {
         await fs.mkdir(destDir, { recursive: true });
+        await fs.writeFile(
+          path.join(destDir, "SKILL.md"),
+          "---\nname: repo\ndescription: Repository skill\n---\n# Repo\n",
+        );
       },
     );
     vi.spyOn(SkillInstaller, "resolveSingleSkillDirFromRepo").mockResolvedValue(
       path.join(managedSkillsDir(), "icelemon-skills"),
     );
-    vi.spyOn(SkillInstaller, "readManifest").mockResolvedValue({
-      name: "skills",
-      description: "Gitea repo",
-      version: "1.0.0",
-      author: "icelemon",
-      tags: ["gitea"],
-      instructions: "# Gitea repo",
-    });
 
     const skillId = await SkillInstaller.installFromGithub(
       "https://gitea.example.com/icelemon/skills",
@@ -159,14 +155,6 @@ describe("SkillInstaller.installFromGithub", () => {
       SkillInstaller,
       "resolveSingleSkillDirFromRepo",
     ).mockImplementation(async (installDir) => installDir);
-    vi.spyOn(SkillInstaller, "readManifest").mockResolvedValue({
-      name: "repo",
-      description: "Repo",
-      version: "1.0.0",
-      author: "owner",
-      tags: ["github"],
-      instructions: "# Repo\n",
-    });
 
     await expect(
       SkillInstaller.installFromGithub("https://github.com/owner/repo", mockDb),
@@ -203,21 +191,16 @@ describe("SkillInstaller.installFromGithub", () => {
     vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
       async (_url, destDir) => {
         await fs.mkdir(destDir, { recursive: true });
-        await fs.writeFile(path.join(destDir, "SKILL.md"), "# Repo\n");
+        await fs.writeFile(
+          path.join(destDir, "SKILL.md"),
+          "---\nname: repo\ndescription: Repository skill\n---\n# Repo\n",
+        );
       },
     );
     vi.spyOn(
       SkillInstaller,
       "resolveSingleSkillDirFromRepo",
     ).mockImplementation(async (installDir) => installDir);
-    vi.spyOn(SkillInstaller, "readManifest").mockResolvedValue({
-      name: "repo",
-      description: "Repo",
-      version: "1.0.0",
-      author: "owner",
-      tags: ["github"],
-      instructions: "# Repo\n",
-    });
     await expect(
       SkillInstaller.installFromGithub("https://github.com/owner/repo", mockDb),
     ).rejects.toThrow("update failed");
@@ -261,19 +244,15 @@ describe("SkillInstaller.installFromGithub", () => {
     vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
       async (_url, destDir) => {
         await fs.mkdir(destDir, { recursive: true });
+        await fs.writeFile(
+          path.join(destDir, "SKILL.md"),
+          "---\nname: repo\ndescription: Repository skill\n---\n# Repo\n",
+        );
       },
     );
     vi.spyOn(SkillInstaller, "resolveSingleSkillDirFromRepo").mockResolvedValue(
       path.join(managedSkillsDir(), "owner-repo"),
     );
-    vi.spyOn(SkillInstaller, "readManifest").mockResolvedValue({
-      name: "repo",
-      description: "SSH repo",
-      version: "1.0.0",
-      author: "owner",
-      tags: ["github"],
-      instructions: "# SSH repo",
-    });
 
     const skillId = await SkillInstaller.installFromGithub(
       "git@github.com:owner/repo.git",

@@ -1,3 +1,4 @@
+import { getPlatformById } from "@prompthub/shared/constants/platforms";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../src/renderer/services/ai", () => ({
@@ -719,7 +720,7 @@ describe("skill store", () => {
           scannedAt: 1,
           error: null,
           result: {
-            platform: "claude",
+            platform: getPlatformById("claude")!,
             skillsDir: "/Users/test/.claude/skills",
             scannedSkills: [
               {
@@ -827,13 +828,15 @@ describe("skill store", () => {
         ],
       },
     };
-    const agentScanState = {
+    const agentScanState: ReturnType<
+      typeof useSkillStore.getState
+    >["agentScanState"] = {
       claude: {
         isScanning: false,
         scannedAt: 1,
         error: null,
         result: {
-          platform: "claude" as const,
+          platform: getPlatformById("claude")!,
           skillsDir: "/Users/test/.claude/skills",
           scannedSkills: [
             {

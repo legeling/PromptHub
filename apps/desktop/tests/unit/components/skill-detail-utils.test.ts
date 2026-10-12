@@ -385,7 +385,7 @@ Body`;
     const removeChild = vi.spyOn(document.body, "removeChild");
     const createElementSpy = vi
       .spyOn(document, "createElement")
-      .mockImplementation((tagName) => {
+      .mockImplementation((tagName: string) => {
         if (tagName === "a") {
           return anchor;
         }
@@ -447,12 +447,14 @@ Body`;
     });
     const appendChild = vi.spyOn(document.body, "appendChild");
     const removeChild = vi.spyOn(document.body, "removeChild");
-    vi.spyOn(document, "createElement").mockImplementation((tagName) => {
-      if (tagName === "a") {
-        return anchor;
-      }
-      return originalCreateElement(tagName);
-    });
+    vi.spyOn(document, "createElement").mockImplementation(
+      (tagName: string) => {
+        if (tagName === "a") {
+          return anchor;
+        }
+        return originalCreateElement(tagName);
+      },
+    );
 
     expect(() =>
       downloadSkillZipExport({

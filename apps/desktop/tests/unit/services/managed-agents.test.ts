@@ -205,7 +205,7 @@ describe("managed Agent projection", () => {
     });
   });
 
-  it("marks the usage adapter supported for quota-capable agents and planned elsewhere", () => {
+  it("marks the usage adapter supported for quota-capable agents and unsupported elsewhere", () => {
     const agents = buildManagedAgents({
       platforms: [
         platform("claude", "Claude Code"),
@@ -230,14 +230,7 @@ describe("managed Agent projection", () => {
       osKey: "darwin",
     });
 
-    for (const id of [
-      "claude",
-      "codex",
-      "kimi",
-      "antigravity",
-      "gemini",
-      "copilot",
-    ]) {
+    for (const id of ["claude", "codex", "kimi", "antigravity"]) {
       expect(
         agents.find((agent) => agent.id === id)?.capabilities.usage,
         `${id} usage capability`,
@@ -245,7 +238,7 @@ describe("managed Agent projection", () => {
     }
     expect(
       agents.find((agent) => agent.id === "cursor")?.capabilities.usage,
-    ).toEqual({ status: "planned", reason: "adapter-pending" });
+    ).toEqual({ status: "unsupported", reason: "adapter-pending" });
   });
 
   it("enables history only for Agents with verified session adapters", () => {
@@ -382,7 +375,7 @@ describe("managed Agent projection", () => {
     expect(
       agents.find((agent) => agent.id === "kimi")?.capabilities,
     ).toMatchObject({
-      provider: { status: "supported" },
+      provider: { status: "unsupported" },
       sessions: { status: "supported" },
     });
     expect(
@@ -390,7 +383,7 @@ describe("managed Agent projection", () => {
     ).toEqual({ status: "supported" });
     expect(
       agents.find((agent) => agent.id === "cursor")?.capabilities.provider,
-    ).toEqual({ status: "planned", reason: "adapter-pending" });
+    ).toEqual({ status: "unsupported", reason: "adapter-pending" });
   });
 
   it("projects Qwen Code model and session support without claiming quota support", () => {
@@ -417,9 +410,9 @@ describe("managed Agent projection", () => {
       rules: "/Users/test/.qwen-custom/QWEN.md",
     });
     expect(agent.capabilities).toMatchObject({
-      provider: { status: "supported" },
+      provider: { status: "unsupported" },
       sessions: { status: "supported" },
-      usage: { status: "planned", reason: "adapter-pending" },
+      usage: { status: "unsupported", reason: "adapter-pending" },
     });
   });
 
@@ -459,12 +452,12 @@ describe("managed Agent projection", () => {
     });
     expect(agent.paths.rules).toBeUndefined();
     expect(agent.capabilities).toMatchObject({
-      provider: { status: "planned", reason: "adapter-pending" },
+      provider: { status: "unsupported", reason: "adapter-pending" },
       sessions: {
         status: "partial",
         reason: "verified-readonly-agent-transcripts",
       },
-      usage: { status: "planned", reason: "adapter-pending" },
+      usage: { status: "unsupported", reason: "adapter-pending" },
     });
   });
 
@@ -551,12 +544,12 @@ describe("managed Agent projection", () => {
     });
     expect(agent.paths.plugins).toBeUndefined();
     expect(agent.capabilities).toMatchObject({
-      provider: { status: "planned", reason: "adapter-pending" },
+      provider: { status: "unsupported", reason: "adapter-pending" },
       sessions: {
         status: "partial",
         reason: "verified-transcript-hook-adapter",
       },
-      usage: { status: "planned", reason: "adapter-pending" },
+      usage: { status: "unsupported", reason: "adapter-pending" },
       configFiles: {
         status: "partial",
         reason: "direct-file-editing",
@@ -604,9 +597,9 @@ describe("managed Agent projection", () => {
       ],
     });
     expect(agent.capabilities).toMatchObject({
-      provider: { status: "partial", reason: "model-config-only" },
+      provider: { status: "unsupported", reason: "adapter-pending" },
       sessions: { status: "supported" },
-      usage: { status: "planned", reason: "adapter-pending" },
+      usage: { status: "unsupported", reason: "adapter-pending" },
     });
   });
 
@@ -642,12 +635,12 @@ describe("managed Agent projection", () => {
       configFileRelativePaths: ["settings/cli.json"],
     });
     expect(agent.capabilities).toMatchObject({
-      provider: { status: "partial", reason: "model-config-only" },
+      provider: { status: "unsupported", reason: "adapter-pending" },
       sessions: {
         status: "partial",
         reason: "verified-local-session-adapter",
       },
-      usage: { status: "planned", reason: "adapter-pending" },
+      usage: { status: "unsupported", reason: "adapter-pending" },
       configFiles: { status: "partial" },
     });
     expect(agent.launchable).toBe(true);

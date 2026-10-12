@@ -221,7 +221,7 @@ describe("skill ui component contract", () => {
       expect(screen.getByText("1 selected")).toBeInTheDocument();
     });
     expect(
-      screen.getByRole("button", { name: "Batch Deploy" }),
+      screen.getByRole("button", { name: "Batch install / uninstall" }),
     ).toBeInTheDocument();
   }, 60000);
 

@@ -66,7 +66,6 @@ describe("Pi current provider import", () => {
     expect(await fs.readFile(path.join(root, "auth.json"), "utf8")).toBe(auth);
     const config = await inspectAgentModelConfig({
       agentId: "pi",
-      platformId: "pi",
       rootPath: root,
     });
     expect(config.modelCatalog?.[0]).toMatchObject({

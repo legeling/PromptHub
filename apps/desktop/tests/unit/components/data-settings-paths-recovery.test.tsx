@@ -684,6 +684,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
   });
 
   it("lets users add manual recovery scan directories and open the recovery browser", async () => {
+    const replaceRecoveryPaths = vi.fn().mockResolvedValue(undefined);
     const checkRecoveryMock = vi.fn().mockResolvedValue([
       {
         sourcePath: "C:/Users/test/AppData/Roaming/prompthub",
@@ -703,6 +704,9 @@ describe("DataSettings", { timeout: 60_000 }, () => {
 
     installWindowMocks({
       api: {
+        settings: {
+          rendererPersistence: { replaceRecoveryPaths },
+        },
         security: {
           status: vi.fn().mockResolvedValue({ configured: false }),
         },
@@ -749,6 +753,9 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     await waitFor(() => {
       expect(screen.getByText("D:/PromptHub-legacy")).toBeInTheDocument();
     });
+    expect(replaceRecoveryPaths).toHaveBeenLastCalledWith([
+      "D:/PromptHub-legacy",
+    ]);
 
     const removePathButton = screen.getByRole("button", { name: "Delete" });
     expect(removePathButton).toHaveAttribute("type", "button");
@@ -759,6 +766,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     await waitFor(() => {
       expect(screen.queryByText("D:/PromptHub-legacy")).not.toBeInTheDocument();
     });
+    expect(replaceRecoveryPaths).toHaveBeenLastCalledWith([]);
 
     fireEvent.change(
       screen.getByRole("textbox", { name: "Extra scan directories" }),

@@ -5,7 +5,8 @@ import * as os from "os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the database module before importing SkillInstaller
-vi.mock("@/main/database", () => ({
+vi.mock("@/main/database", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/main/database")>()),
   initDatabase: vi.fn(),
 }));
 
@@ -33,6 +34,8 @@ import {
   SCHEMA_INDEXES,
 } from "../../../src/main/database/schema";
 import { SkillDB } from "../../../src/main/database/skill";
+import { closeDatabase } from "@prompthub/db";
+import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
 
 let tmpDir: string;
 
@@ -72,10 +75,12 @@ function applySkillMigrationColumns(db: Database.Database): void {
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "skill-installer-test-"));
   configureRuntimePaths({ userDataPath: tmpDir });
+  initializeAgentSettingsFixture(tmpDir);
   invalidateCustomPathsCache();
 });
 
 afterEach(async () => {
+  closeDatabase();
   invalidateCustomPathsCache();
   resetRuntimePaths();
   vi.restoreAllMocks();
@@ -734,9 +739,8 @@ describe("SkillInstaller.scanLocal (with real DB)", () => {
     await SkillInstaller.init();
 
     // Create a real in-memory DB for SkillDB
-    const dbTmpDir = fsSync.mkdtempSync(
-      path.join(os.tmpdir(), "scanlocal-db-"),
-    );
+    const dbTmpDir = path.join(scanTmpDir, "database");
+    fsSync.mkdirSync(dbTmpDir, { recursive: true });
     sqliteDb = new Database(path.join(dbTmpDir, "test.db"));
     sqliteDb.exec(SCHEMA_TABLES);
     applySkillMigrationColumns(sqliteDb);
@@ -750,17 +754,9 @@ describe("SkillInstaller.scanLocal (with real DB)", () => {
     vi.restoreAllMocks();
     try {
       sqliteDb?.close();
-    } catch {
-      /* may already be closed */
+    } finally {
+      await fs.rm(scanTmpDir, { recursive: true, force: true });
     }
-    await fs.rm(scanTmpDir, { recursive: true, force: true }).catch(() => {});
-  });
-
-  afterEach(async () => {
-    resetRuntimePaths();
-    vi.restoreAllMocks();
-    sqliteDb?.close();
-    await fs.rm(scanTmpDir, { recursive: true, force: true }).catch(() => {});
   });
 
   it("returns imported count and empty skipped array for fresh import", async () => {

@@ -70,6 +70,7 @@ describe("canonical storage production projector", () => {
       description: "Writing helper",
       instructions: "Write clearly",
       protocol_type: "skill",
+      is_favorite: false,
       local_repo_path: packagePath,
     });
     const targetPath = path.join(root, "canonical-shadow");
@@ -177,6 +178,7 @@ describe("canonical storage production projector", () => {
         description: "Writing helper",
         instructions: "Write clearly",
         protocol_type: "skill",
+        is_favorite: false,
         local_repo_path: packagePath,
       });
       const targetPath = path.join(root, "canonical-shadow");

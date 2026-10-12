@@ -158,6 +158,8 @@ File current content.
     promptDb.insertPromptDirect({
       id: "shared-prompt",
       title: "Database title",
+      isFavorite: false,
+      isPinned: false,
       userPrompt: "Database current content.",
       variables: [],
       tags: [],

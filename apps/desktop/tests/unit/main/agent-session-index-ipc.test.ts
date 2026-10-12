@@ -1,3 +1,4 @@
+import type { AgentSessionIndexOperations } from "../../../src/main/ipc/agent-session-index.ipc";
 import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,12 +29,14 @@ async function setup(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
       import("@prompthub/shared/constants/ipc-channels"),
     ]);
   const service = {
-    getState: vi.fn(() => ({
+    canDelete: vi.fn(() => false),
+    delete: vi.fn(async () => undefined),
+    getState: vi.fn<AgentSessionIndexOperations["getState"]>(() => ({
       supported: true,
       enabled: false,
       source: null,
     })),
-    setEnabled: vi.fn(() => ({
+    setEnabled: vi.fn<AgentSessionIndexOperations["setEnabled"]>(() => ({
       supported: true,
       enabled: true,
       source: {

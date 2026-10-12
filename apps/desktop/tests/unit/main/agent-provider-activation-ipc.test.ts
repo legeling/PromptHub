@@ -398,7 +398,8 @@ describe("Agent Provider activation IPC", () => {
       agentId: "codex",
       profileId: "profile-1",
       expectedCurrentDigest: "digest-current",
-    }).catch((error) => error as Error);
+    }).catch((error: unknown) => error);
+    if (!(failure instanceof Error)) throw new Error("Expected IPC rejection");
     expect(failure.message).toBe("AGENT_PROVIDER_OPERATION_FAILED");
     expect(failure.message).not.toContain("secret-value");
   });

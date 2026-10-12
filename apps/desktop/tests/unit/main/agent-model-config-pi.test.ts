@@ -31,7 +31,7 @@ afterEach(async () => {
 describe("Pi model configuration", () => {
   it("registers Pi as a separate model-provider target", () => {
     expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).toContain("pi");
-    expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).toContain("oh-my-pi");
+    expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).not.toContain("oh-my-pi");
   });
 
   it("inspects and atomically updates defaultProvider/defaultModel", async () => {

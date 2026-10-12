@@ -236,7 +236,7 @@ describe("renderer Agent asset domain adapters", () => {
           description: "Claude rules",
           exists: false,
           group: "assistant",
-          id: "rule-without-sync-state",
+          id: "custom:rule-without-sync-state",
           name: "CLAUDE.md",
           path: "~/.claude/CLAUDE.md",
           platformDescription: "Claude Code",

@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -131,50 +137,48 @@ describe("Prompt modal structure", () => {
     vi.restoreAllMocks();
   });
 
-  it(
-    "keeps create modal first screen focused on type and prompt content",
-    async () => {
-      const user = userEvent.setup();
+  it("keeps create modal first screen focused on type and prompt content", async () => {
+    const user = userEvent.setup();
 
-      await renderWithI18n(
-        <ToastProvider>
-          <CreatePromptModal
-            isOpen
-            onClose={vi.fn()}
-            onCreate={vi.fn()}
-            defaultPromptType="image"
-          />
-        </ToastProvider>,
-        { language: "en" },
-      );
+    await renderWithI18n(
+      <ToastProvider>
+        <CreatePromptModal
+          isOpen
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+          defaultPromptType="image"
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
 
-      expect(screen.getByText("Prompt Type")).toBeInTheDocument();
-      expect(screen.getByText("User Prompt")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Use {{variableName}} or {{variableName:exampleValue}} to define variables, e.g., {{language}} or {{courseName:Computer Science}}",
-        ),
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Basic Info")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Description (Optional)"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText("Reference Media")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Test with image models (e.g., DALL-E). Generated images will be saved to preview.",
-        ),
-      ).not.toBeInTheDocument();
+    expect(screen.getByText("Prompt Type")).toBeInTheDocument();
+    expect(screen.getByText("User Prompt")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Use {{variableName}} or {{variableName:exampleValue}} to define variables, e.g., {{language}} or {{courseName:Computer Science}}",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Basic Info")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Description (Optional)"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Reference Media")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Test with image models (e.g., DALL-E). Generated images will be saved to preview.",
+      ),
+    ).not.toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: /More Settings/i }));
+    await user.click(screen.getByRole("button", { name: /More Settings/i }));
 
-      expect(screen.getByText("Description (Optional)")).toBeInTheDocument();
-      expect(screen.getByText("System Prompt (Optional)")).toBeInTheDocument();
-      expect(screen.getByText("Reference Media")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "More Settings" })).toBeInTheDocument();
-    },
-    30_000,
-  );
+    expect(screen.getByText("Description (Optional)")).toBeInTheDocument();
+    expect(screen.getByText("System Prompt (Optional)")).toBeInTheDocument();
+    expect(screen.getByText("Reference Media")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "More Settings" }),
+    ).toBeInTheDocument();
+  }, 30_000);
 
   it("clears discarded create modal drafts before reopening", async () => {
     const user = userEvent.setup();
@@ -182,16 +186,15 @@ describe("Prompt modal structure", () => {
 
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <CreatePromptModal
-          isOpen
-          onClose={handleClose}
-          onCreate={vi.fn()}
-        />
+        <CreatePromptModal isOpen onClose={handleClose} onCreate={vi.fn()} />
       </ToastProvider>,
       { language: "en" },
     );
 
-    await user.type(screen.getByPlaceholderText("Name your Prompt"), "Discarded draft");
+    await user.type(
+      screen.getByPlaceholderText("Name your Prompt"),
+      "Discarded draft",
+    );
     await user.type(
       screen.getByPlaceholderText(/Enter your Prompt content/),
       "This draft should not survive reopening.",
@@ -213,16 +216,16 @@ describe("Prompt modal structure", () => {
     );
     rerender(
       <ToastProvider>
-        <CreatePromptModal
-          isOpen
-          onClose={handleClose}
-          onCreate={vi.fn()}
-        />
+        <CreatePromptModal isOpen onClose={handleClose} onCreate={vi.fn()} />
       </ToastProvider>,
     );
 
-    expect(screen.queryByDisplayValue("Discarded draft")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("This draft should not survive reopening.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("Discarded draft"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("This draft should not survive reopening."),
+    ).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Name your Prompt")).toHaveValue("");
   });
 
@@ -279,7 +282,7 @@ describe("Prompt modal structure", () => {
 
   it("generates an AI rewrite draft and allows undoing it", async () => {
     const user = userEvent.setup();
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -319,7 +322,9 @@ describe("Prompt modal structure", () => {
     await user.paste("Make the output easier to scan.");
     await user.click(screen.getByRole("button", { name: "Generate rewrite" }));
 
-    expect(await screen.findByText("Improved the output structure")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Improved the output structure"),
+    ).toBeInTheDocument();
 
     const descriptionInput = screen.getByDisplayValue("Updated description");
     expect(descriptionInput).toBeInTheDocument();
@@ -330,19 +335,29 @@ describe("Prompt modal structure", () => {
     expect(userPromptTextarea).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /More Settings/i }));
-    expect(screen.getByDisplayValue("AI rewrote this draft.")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("AI rewrote this draft."),
+    ).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: "Undo AI rewrite" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Undo AI rewrite" }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Undo AI rewrite" }));
 
     await waitFor(() => {
-      expect(screen.queryByText("Improved the output structure")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Improved the output structure"),
+      ).not.toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue(basePrompt.description ?? "")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue(basePrompt.description ?? ""),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue(basePrompt.userPrompt)).toBeInTheDocument();
-    expect(screen.queryByDisplayValue("AI rewrote this draft.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("AI rewrote this draft."),
+    ).not.toBeInTheDocument();
 
     const toast = await screen.findByText(
       "Restored the draft from before the AI rewrite",
@@ -359,7 +374,7 @@ describe("Prompt modal structure", () => {
       body: string;
       headers: Record<string, string>;
     }) => void = () => undefined;
-    window.api.ai.request.mockReturnValue(
+    vi.mocked(window.api.ai.request).mockReturnValue(
       new Promise((resolve) => {
         resolveRequest = resolve;
       }),
@@ -386,7 +401,11 @@ describe("Prompt modal structure", () => {
 
     rerender(
       <ToastProvider>
-        <EditPromptModal isOpen={false} onClose={handleClose} prompt={basePrompt} />
+        <EditPromptModal
+          isOpen={false}
+          onClose={handleClose}
+          prompt={basePrompt}
+        />
       </ToastProvider>,
     );
     rerender(
@@ -426,16 +445,24 @@ describe("Prompt modal structure", () => {
     expect(
       screen.queryByText("AI draft ready. Review it before saving."),
     ).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Stale description")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Stale rewritten prompt.")).not.toBeInTheDocument();
-    expect(screen.getByDisplayValue(basePrompt.description ?? "")).toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("Stale description"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("Stale rewritten prompt."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue(basePrompt.description ?? ""),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue(basePrompt.userPrompt)).toBeInTheDocument();
   }, 30_000);
 
   it("ignores stale translate-to-English results after close and reopen", async () => {
     const user = userEvent.setup();
     const translationResponse = createDeferredAiResponse();
-    window.api.ai.request.mockReturnValue(translationResponse.promise);
+    vi.mocked(window.api.ai.request).mockReturnValue(
+      translationResponse.promise,
+    );
     const chinesePrompt: Prompt = {
       ...basePrompt,
       id: "prompt-translate-to-english",
@@ -467,7 +494,11 @@ describe("Prompt modal structure", () => {
 
     rerender(
       <ToastProvider>
-        <EditPromptModal isOpen={false} onClose={vi.fn()} prompt={chinesePrompt} />
+        <EditPromptModal
+          isOpen={false}
+          onClose={vi.fn()}
+          prompt={chinesePrompt}
+        />
       </ToastProvider>,
     );
     rerender(
@@ -486,15 +517,21 @@ describe("Prompt modal structure", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByDisplayValue("Stale English system prompt.")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Stale English user prompt.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("Stale English system prompt."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("Stale English user prompt."),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("已生成英文版 Prompt")).not.toBeInTheDocument();
   }, 30_000);
 
   it("ignores stale translate-from-English results after close and reopen", async () => {
     const user = userEvent.setup();
     const translationResponse = createDeferredAiResponse();
-    window.api.ai.request.mockReturnValue(translationResponse.promise);
+    vi.mocked(window.api.ai.request).mockReturnValue(
+      translationResponse.promise,
+    );
     const bilingualPrompt: Prompt = {
       ...basePrompt,
       id: "prompt-translate-from-english",
@@ -526,7 +563,11 @@ describe("Prompt modal structure", () => {
 
     rerender(
       <ToastProvider>
-        <EditPromptModal isOpen={false} onClose={vi.fn()} prompt={bilingualPrompt} />
+        <EditPromptModal
+          isOpen={false}
+          onClose={vi.fn()}
+          prompt={bilingualPrompt}
+        />
       </ToastProvider>,
     );
     rerender(
@@ -545,8 +586,12 @@ describe("Prompt modal structure", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByDisplayValue("过期系统提示词。")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("过期用户提示词。")).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("过期系统提示词。"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("过期用户提示词。"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("已生成当前语言版本")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("原始系统提示词。")).toBeInTheDocument();
     expect(screen.getByDisplayValue("原始用户提示词。")).toBeInTheDocument();
@@ -578,7 +623,7 @@ describe("Prompt modal structure", () => {
 
   it("surfaces rewrite failures from the AI service", async () => {
     const user = userEvent.setup();
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -633,7 +678,9 @@ describe("Prompt modal structure", () => {
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
 
     fireEvent.focus(sourceInput);
-    expect(screen.getByText("https://example.com/reference")).toBeInTheDocument();
+    expect(
+      screen.getByText("https://example.com/reference"),
+    ).toBeInTheDocument();
 
     fireEvent.blur(sourceInput);
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
@@ -661,7 +708,9 @@ describe("Prompt modal structure", () => {
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
 
     fireEvent.focus(sourceInput);
-    expect(screen.getByText("https://example.com/reference")).toBeInTheDocument();
+    expect(
+      screen.getByText("https://example.com/reference"),
+    ).toBeInTheDocument();
 
     fireEvent.blur(sourceInput);
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);

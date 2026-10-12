@@ -1,5 +1,6 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createInstance } from "i18next";
 import type { Prompt } from "@prompthub/shared/types";
 
 import { PromptDetailMetadata } from "../../../src/renderer/components/prompt/PromptDetailMetadata";
@@ -29,6 +30,24 @@ const prompt: Prompt = {
 describe("PromptDetailMetadata", () => {
   it("keeps the relationships action inside the relationship metadata row", async () => {
     const onToggleRelatedPrompts = vi.fn();
+    const i18n = createInstance();
+    await i18n.init({
+      lng: "en",
+      resources: {
+        en: {
+          translation: {
+            prompt: {
+              childPrompts: "Children",
+              openChildPrompt: "Open child prompt {{title}}",
+              relationships: {
+                openButton: "Relations",
+                openPanel: "Open prompt relationships",
+              },
+            },
+          },
+        },
+      },
+    });
 
     await renderWithI18n(
       <PromptDetailMetadata
@@ -38,17 +57,7 @@ describe("PromptDetailMetadata", () => {
         folderOptions={[]}
         relationshipCount={3}
         isRelatedPromptsOpen={false}
-        t={(key: string, options?: { title?: string }) =>
-          key === "prompt.childPrompts"
-            ? "Children"
-            : key === "prompt.relationships.openButton"
-              ? "Relations"
-              : key === "prompt.relationships.openPanel"
-                ? "Open prompt relationships"
-                : key === "prompt.openChildPrompt"
-                  ? `Open child prompt ${options?.title ?? ""}`
-                  : key
-        }
+        t={i18n.t}
         onMoveToFolder={vi.fn()}
         onSelectPrompt={vi.fn()}
         onToggleRelatedPrompts={onToggleRelatedPrompts}

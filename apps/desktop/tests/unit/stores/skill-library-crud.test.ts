@@ -23,9 +23,13 @@ describe("Skill library single-command saves", () => {
       .spyOn(window.api.skill, "update")
       .mockResolvedValue({ ...skill, instructions: "New" });
     const write = vi.spyOn(window.api.skill, "writeLocalFile");
-    await useSkillStore
-      .getState()
-      .createSkill({ name: "writer", protocol_type: "skill", content: "Old" });
+    await useSkillStore.getState().createSkill({
+      name: "writer",
+      protocol_type: "skill",
+      content: "Old",
+      instructions: "Old",
+      is_favorite: false,
+    });
     await useSkillStore
       .getState()
       .updateSkill(skill.id, { instructions: "New" });

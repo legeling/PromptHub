@@ -180,7 +180,7 @@ describe("sync backup immutable publication", () => {
     expect(getStoredManifest(fixture).data?.path).toBe(previousDataPath);
 
     restoreFromBackupMock.mockClear();
-    window.electron?.saveImageBase64?.mockResolvedValue(true);
+    vi.mocked(window.electron.saveImageBase64).mockResolvedValue(true);
     const restoreResult = await downloadSyncBackup(fixture.adapter);
     expect(restoreResult.success).toBe(true);
     expect(restoreFromBackupMock).toHaveBeenCalledWith(

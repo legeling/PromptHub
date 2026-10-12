@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 const changeLanguageMock = vi.fn<() => Promise<void>>();
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -10,6 +12,7 @@ vi.mock("../../../src/renderer/i18n", () => ({
 
 describe("settings appearance persistence", () => {
   beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     vi.resetModules();
     localStorage.clear();
     changeLanguageMock.mockReset();
@@ -17,10 +20,13 @@ describe("settings appearance persistence", () => {
   });
 
   afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     localStorage.clear();
   });
 
   it("normalizes same-version persisted appearance settings during hydration", async () => {
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({

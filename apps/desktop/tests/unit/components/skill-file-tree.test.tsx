@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createTestI18n } from "../../helpers/i18n";
+
 import { SkillFileTree } from "../../../src/renderer/components/skill/SkillFileTree";
 import { getSkillFileIconUrl } from "../../../src/renderer/components/skill/skill-file-icons";
 
@@ -27,6 +29,7 @@ const tree = [
 ];
 
 const baseProps = {
+  showFileManagerActions: true,
   canMutateStructure: true,
   expandedDirs: new Set(["docs"]),
   isLoading: false,
@@ -40,17 +43,18 @@ const baseProps = {
   onRequestSelectFile: vi.fn(),
   onToggleDir: vi.fn(),
   selectedFile: "docs/guide.md",
-  t: ((key: string, fallback: string) => fallback || key) as never,
   tree,
 };
 
 describe("SkillFileTree", () => {
-  beforeEach(() => {
+  let t: Awaited<ReturnType<typeof createTestI18n>>["t"];
+  beforeEach(async () => {
+    t = (await createTestI18n("en")).t;
     vi.clearAllMocks();
   });
 
   it("preserves tree interactions after extraction", () => {
-    render(<SkillFileTree {...baseProps} />);
+    render(<SkillFileTree {...baseProps} t={t} />);
 
     fireEvent.click(screen.getByRole("button", { name: /docs/u }));
     fireEvent.click(screen.getByRole("button", { name: /guide\.md/u }));
@@ -62,10 +66,10 @@ describe("SkillFileTree", () => {
   });
 
   it("skips recursive tree work when stable props are rerendered", () => {
-    const view = render(<SkillFileTree {...baseProps} />);
+    const view = render(<SkillFileTree {...baseProps} t={t} />);
     const iconCalls = vi.mocked(getSkillFileIconUrl).mock.calls.length;
 
-    view.rerender(<SkillFileTree {...baseProps} />);
+    view.rerender(<SkillFileTree {...baseProps} t={t} />);
 
     expect(getSkillFileIconUrl).toHaveBeenCalledTimes(iconCalls);
   });

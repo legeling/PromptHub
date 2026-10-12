@@ -5,6 +5,8 @@ import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { renderWithI18n } from "../../helpers/i18n";
 
 describe("CloseDialog", () => {
+  const originalSettingsSet = window.api.settings.set;
+
   beforeEach(() => {
     vi.clearAllMocks();
     document.body.style.overflow = "";
@@ -13,6 +15,7 @@ describe("CloseDialog", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    window.api.settings.set = originalSettingsSet;
     document.body.style.overflow = "";
   });
 
@@ -182,7 +185,7 @@ describe("CloseDialog", () => {
     const sendResult = vi.fn();
     const setMainCloseAction = vi.fn();
     const onClose = vi.fn();
-    window.api.settings = { ...(window.api.settings ?? {}), set: persist };
+    window.api.settings.set = persist;
     window.electron!.sendCloseDialogResult = sendResult;
     window.electron!.setCloseAction = setMainCloseAction;
 
@@ -222,7 +225,7 @@ describe("CloseDialog", () => {
     const sendResult = vi.fn();
     const onClose = vi.fn();
     const setMainCloseAction = vi.fn();
-    window.api.settings = { ...(window.api.settings ?? {}), set: persist };
+    window.api.settings.set = persist;
     window.electron!.sendCloseDialogResult = sendResult;
     window.electron!.setCloseAction = setMainCloseAction;
 
@@ -247,7 +250,8 @@ describe("CloseDialog", () => {
     const sendResult = vi.fn();
     const onClose = vi.fn();
     const setMainCloseAction = vi.fn();
-    window.api.settings = { ...(window.api.settings ?? {}), set: undefined };
+    // Model a malformed runtime bridge without changing the API type.
+    Reflect.deleteProperty(window.api.settings, "set");
     window.electron!.sendCloseDialogResult = sendResult;
     window.electron!.setCloseAction = setMainCloseAction;
 

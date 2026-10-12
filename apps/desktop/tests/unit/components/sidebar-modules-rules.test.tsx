@@ -21,6 +21,7 @@ import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import type { RuleFileContent } from "@prompthub/shared/types";
 
 const showToastMock = vi.fn();
 const sortableTreeMock = vi.hoisted(() => vi.fn());
@@ -74,7 +75,6 @@ describe("Sidebar", () => {
         {
           id: "prompt-1",
           title: "Prompt One",
-          userPrompt: "Body",
           tags: ["alpha", "beta"],
           promptType: "text",
           currentVersion: 1,
@@ -84,14 +84,13 @@ describe("Sidebar", () => {
           isFavorite: false,
           isPinned: false,
           usageCount: 0,
-          variables: [],
         },
       ],
       filterTags: [],
       promptTypeFilter: "all",
       relations: [],
       viewMode: "card",
-    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    });
 
     useFolderStore.setState({
       folders: [],
@@ -348,7 +347,7 @@ describe("Sidebar", () => {
   it("does not show plugin market entry count on the first-level Plugins Store nav item", async () => {
     useUIStore.setState({
       appModule: "plugin",
-      viewMode: "plugin",
+      viewMode: "prompt",
       isSidebarCollapsed: false,
     });
     usePluginStore.setState({
@@ -410,7 +409,7 @@ describe("Sidebar", () => {
     } as Partial<ReturnType<typeof useSettingsStore.getState>>);
     useUIStore.setState({
       appModule: "plugin",
-      viewMode: "plugin",
+      viewMode: "prompt",
       isSidebarCollapsed: false,
     });
     usePluginStore.setState({
@@ -464,7 +463,7 @@ describe("Sidebar", () => {
     } as Partial<ReturnType<typeof useSettingsStore.getState>>);
     useUIStore.setState({
       appModule: "mcp",
-      viewMode: "mcp",
+      viewMode: "prompt",
       isSidebarCollapsed: false,
     });
     useMcpStore.setState({
@@ -706,22 +705,7 @@ describe("Sidebar", () => {
       hasLoadedFiles: false,
     } as Partial<ReturnType<typeof useRulesStore.getState>>);
 
-    let resolveClaudeRead:
-      | ((value: {
-          id: "claude-global";
-          platformId: "claude";
-          platformName: "Claude Code";
-          platformIcon: "claude";
-          platformDescription: "Claude rules";
-          name: "CLAUDE.md";
-          description: "Claude global rule file";
-          path: "/Users/test/.claude/CLAUDE.md";
-          exists: true;
-          group: "assistant";
-          content: "# Claude rules";
-          versions: [];
-        }) => void)
-      | null = null;
+    let resolveClaudeRead: ((value: RuleFileContent) => void) | null = null;
 
     installWindowMocks({
       api: {
@@ -752,10 +736,10 @@ describe("Sidebar", () => {
               group: "assistant",
             },
           ]),
-          read: vi.fn((ruleId: string) => {
+          read: vi.fn((ruleId: string): Promise<RuleFileContent> => {
             if (ruleId === "claude-global") {
-              return new Promise((resolve) => {
-                resolveClaudeRead = resolve as typeof resolveClaudeRead;
+              return new Promise<RuleFileContent>((resolve) => {
+                resolveClaudeRead = resolve;
               });
             }
 

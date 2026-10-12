@@ -22,6 +22,7 @@ import {
   invalidateCustomPathsCache,
 } from "../../src/main/services/skill-installer-utils";
 import { renderWithI18n } from "../helpers/i18n";
+import { DESKTOP_TEST_TIMEOUT_MS } from "../helpers/test-config";
 
 const showToast = vi.hoisted(() => vi.fn());
 const refreshBadges = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
@@ -44,6 +45,9 @@ vi.mock("../../src/renderer/stores/skill.store", () => ({
   useSkillStore: (selector: (state: object) => unknown) =>
     selector({ loadDeployedStatus: refreshBadges }),
 }));
+
+// Native storage reads share the test deadline instead of the UI library's one-second wait.
+const storageWaitOptions = { timeout: DESKTOP_TEST_TIMEOUT_MS };
 
 async function createPackage(name: string): Promise<Skill> {
   const skill: Skill = await skillApi.create({
@@ -86,7 +90,11 @@ describe("Skill platform management through renderer and real storage", () => {
     const view = await renderWithI18n(
       <SkillQuickInstall skill={skill} onClose={vi.fn()} />,
     );
-    const codex = await screen.findByRole("button", { name: /^Codex$/ });
+    const codex = await screen.findByRole(
+      "button",
+      { name: /^Codex$/ },
+      storageWaitOptions,
+    );
     await waitFor(() => expect(codex).toHaveAttribute("aria-pressed", "true"));
     fireEvent.click(codex);
     fireEvent.click(screen.getByRole("button", { name: /Claude Code/ }));
@@ -148,7 +156,11 @@ describe("Skill platform management through renderer and real storage", () => {
     fs.chmodSync(runtime.platformRoot("claude"), 0o500);
     const onClose = vi.fn();
     await renderWithI18n(<SkillQuickInstall skill={skill} onClose={onClose} />);
-    const codex = await screen.findByRole("button", { name: /^Codex$/ });
+    const codex = await screen.findByRole(
+      "button",
+      { name: /^Codex$/ },
+      storageWaitOptions,
+    );
     await waitFor(() => expect(codex).toHaveAttribute("aria-pressed", "true"));
     fireEvent.click(codex);
     fireEvent.click(screen.getByRole("button", { name: /Claude Code/ }));
@@ -212,7 +224,11 @@ describe("Skill platform management through renderer and real storage", () => {
     await renderWithI18n(
       <SkillBatchDeployDialog skills={skills} onClose={onClose} />,
     );
-    await screen.findByRole("button", { name: /Claude Code/ });
+    await screen.findByRole(
+      "button",
+      { name: /Claude Code/ },
+      storageWaitOptions,
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "Batch Uninstall from Platforms" }),
     );

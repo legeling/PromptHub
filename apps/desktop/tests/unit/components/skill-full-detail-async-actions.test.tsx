@@ -115,6 +115,9 @@ function makeSkill(): Skill {
 function makeUpdateCheck(skill: Skill): RegistrySkillUpdateCheck {
   return {
     status: "update-available",
+    skillId: skill.id,
+    shouldInitializeBaseline: false,
+    hasStaleTargets: false,
     installedSkill: skill,
     registrySkill: {
       slug: "async-actions",

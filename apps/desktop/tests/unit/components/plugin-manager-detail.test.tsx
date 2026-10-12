@@ -435,6 +435,7 @@ function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
     findings: [],
   };
   window.api.plugin = {
+    ...window.api.plugin,
     getLibrary: vi.fn().mockImplementation(async () => currentLibrary),
     listMarket: vi.fn().mockResolvedValue(marketEntries),
     listMarketSources: vi.fn().mockResolvedValue(marketSources),
@@ -894,7 +895,6 @@ describe("PluginManager", () => {
           model: "gpt-test",
           type: "chat",
           isDefault: true,
-          enabled: true,
         },
       ],
     });

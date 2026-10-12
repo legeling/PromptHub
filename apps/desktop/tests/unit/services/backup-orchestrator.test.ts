@@ -219,6 +219,10 @@ describe("backup-orchestrator", () => {
 
   it("uses immutable backup creation for self-hosted interval automation", async () => {
     vi.mocked(createSelfHostedRemoteBackup).mockResolvedValue({
+      id: "backup-fixture",
+      createdAt: "2026-10-04T00:00:00.000Z",
+      clientVersion: "0.5.9",
+      serverVersion: "0.5.9",
       prompts: 3,
       folders: 2,
       rules: 1,
@@ -242,6 +246,10 @@ describe("backup-orchestrator", () => {
 
   it("uses the same upload-only backup behavior on self-hosted startup", async () => {
     vi.mocked(createSelfHostedRemoteBackup).mockResolvedValue({
+      id: "backup-fixture",
+      createdAt: "2026-10-04T00:00:00.000Z",
+      clientVersion: "0.5.9",
+      serverVersion: "0.5.9",
       prompts: 5,
       folders: 2,
       rules: 1,

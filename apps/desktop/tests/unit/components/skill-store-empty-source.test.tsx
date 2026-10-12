@@ -90,6 +90,7 @@ describe("SkillStore empty custom source", () => {
       customStoreSources: [
         {
           id: "skillhub",
+          createdAt: 1,
           name: "SkillHub",
           type: "marketplace-json",
           url: "https://skillhub.example/skills.json",

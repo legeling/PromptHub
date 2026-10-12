@@ -71,7 +71,7 @@ describe("PromptQuickRewriteDialog", () => {
 
   it("renders quick rewrite entry and previews generated draft", async () => {
     const user = userEvent.setup();
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -133,7 +133,7 @@ describe("PromptQuickRewriteDialog", () => {
     const user = userEvent.setup();
     const handleClose = vi.fn();
     const handleContinueEditing = vi.fn();
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -197,7 +197,7 @@ describe("PromptQuickRewriteDialog", () => {
 
   it("shows errors when AI rewrite response is invalid", async () => {
     const user = userEvent.setup();
-    window.api.ai.request.mockResolvedValue({
+    vi.mocked(window.api.ai.request).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -254,10 +254,9 @@ describe("PromptQuickRewriteDialog", () => {
     expect(
       screen.getByRole("textbox", { name: "AI Rewrite" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Generate draft" })).toHaveAttribute(
-      "type",
-      "button",
-    );
+    expect(
+      screen.getByRole("button", { name: "Generate draft" }),
+    ).toHaveAttribute("type", "button");
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveAttribute(
       "type",
       "button",
@@ -265,15 +264,19 @@ describe("PromptQuickRewriteDialog", () => {
     expect(
       screen.getByRole("button", { name: "Continue editing" }),
     ).toHaveAttribute("type", "button");
-    expect(screen.getByRole("button", { name: "Apply and save" })).toHaveAttribute(
-      "type",
-      "button",
-    );
+    expect(
+      screen.getByRole("button", { name: "Apply and save" }),
+    ).toHaveAttribute("type", "button");
 
     const heading = screen.getByText("Edit this prompt with AI").parentElement;
-    expect(heading?.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(heading?.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
 
-    const generateButton = screen.getByRole("button", { name: "Generate draft" });
+    const generateButton = screen.getByRole("button", {
+      name: "Generate draft",
+    });
     expect(generateButton.querySelector("svg")).toHaveAttribute(
       "aria-hidden",
       "true",
@@ -289,7 +292,7 @@ describe("PromptQuickRewriteDialog", () => {
       body: string;
       headers: Record<string, string>;
     }) => void = () => undefined;
-    window.api.ai.request.mockReturnValue(
+    vi.mocked(window.api.ai.request).mockReturnValue(
       new Promise((resolve) => {
         resolveRequest = resolve;
       }),
@@ -369,7 +372,9 @@ describe("PromptQuickRewriteDialog", () => {
 
     expect(screen.queryByText("Late summary")).not.toBeInTheDocument();
     expect(screen.queryByText("Late description")).not.toBeInTheDocument();
-    expect(screen.queryByText("Late rewritten prompt.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Late rewritten prompt."),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show rewrite errors after the dialog closes before AI rejects", async () => {
@@ -381,7 +386,7 @@ describe("PromptQuickRewriteDialog", () => {
       body: string;
       headers: Record<string, string>;
     }) => void = () => undefined;
-    window.api.ai.request.mockReturnValue(
+    vi.mocked(window.api.ai.request).mockReturnValue(
       new Promise((resolve) => {
         resolveRequest = resolve;
       }),
@@ -431,6 +436,8 @@ describe("PromptQuickRewriteDialog", () => {
     });
 
     expect(screen.queryByText(/late failure/u)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Internal Server Error/u)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Internal Server Error/u),
+    ).not.toBeInTheDocument();
   });
 });

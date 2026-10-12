@@ -409,9 +409,13 @@ describe("Agent workspace shell", () => {
     expect(screen.getByRole("tab", { name: /appearance/i })).toBeDisabled();
   });
 
-  it.each(["zh", "zh-TW", "ja"])(
-    "keeps Plugins as the English Agent workspace product term in %s",
-    async (language) => {
+  it.each<{ language: "zh" | "zh-TW" | "ja" }>([
+    { language: "zh" },
+    { language: "zh-TW" },
+    { language: "ja" },
+  ])(
+    "keeps Plugins as the English Agent workspace product term in $language",
+    async ({ language }) => {
       await renderWithI18n(<AgentsWorkspace />, {
         language,
         settleAsyncEffects: true,
@@ -1075,6 +1079,7 @@ describe("Agent workspace shell", () => {
     installWindowMocks({
       api: {
         agent: {
+          listConversationMetadata: vi.fn().mockResolvedValue([]),
           listSessions: vi.fn().mockResolvedValue({
             agentId: "claude",
             adapter: "claude-jsonl-v1",

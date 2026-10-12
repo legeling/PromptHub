@@ -159,7 +159,9 @@ describe("database backup Agent runtime exclusions", () => {
     } as never);
 
     const firstExport = JSON.parse(
-      String(window.electron.exportZip.mock.calls[0]?.[0]?.scope.exportJson),
+      String(
+        vi.mocked(window.electron.exportZip).mock.calls[0]?.[0]?.scope.exportJson,
+      ),
     ) as {
       scope: { agents?: boolean };
       payload: { agentManagement?: unknown };
@@ -183,7 +185,9 @@ describe("database backup Agent runtime exclusions", () => {
     } as never);
 
     const secondExport = JSON.parse(
-      String(window.electron.exportZip.mock.calls[1]?.[0]?.scope.exportJson),
+      String(
+        vi.mocked(window.electron.exportZip).mock.calls[1]?.[0]?.scope.exportJson,
+      ),
     ) as { payload: { agentManagement?: unknown } };
     expect(secondExport.payload.agentManagement).toBeUndefined();
     expect(window.api.agent.exportManagementBackup).toHaveBeenCalledTimes(1);

@@ -4,6 +4,7 @@ import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type AntigravityLocalRequestResult,
   createAntigravityLocalUsageClient,
   getAntigravityHelperBinaryCandidates,
   mapAntigravityLocalUsage,
@@ -351,7 +352,11 @@ describe("Antigravity local usage adapter", () => {
 
   it("queries quota through a bounded temporary helper and always stops it", async () => {
     const child = new FakeHelperProcess();
-    const spawnProcess = vi.fn(() => {
+    const spawnProcess = vi.fn<
+      NonNullable<
+        Parameters<typeof probeAntigravityBackgroundUsage>[0]["spawnProcess"]
+      >
+    >(() => {
       queueMicrotask(() =>
         child.stdout.write("listening on fixed port at 43100 for HTTP\n"),
       );
@@ -505,10 +510,12 @@ describe("Antigravity local usage adapter", () => {
         );
         return child;
       }),
-      request: vi.fn(async () => ({
-        kind: "unavailable",
-        errorCode: "connection-refused",
-      })),
+      request: vi.fn(
+        async (): Promise<AntigravityLocalRequestResult> => ({
+          kind: "unavailable",
+          errorCode: "connection-refused",
+        }),
+      ),
       queryTimeoutMs: 0,
       startupTimeoutMs: 100,
       stopTimeoutMs: 100,
@@ -559,10 +566,12 @@ describe("Antigravity local usage adapter", () => {
           stderr: "",
         })),
       },
-      request: vi.fn(async () => ({
-        kind: "unavailable",
-        errorCode: "connection-refused",
-      })),
+      request: vi.fn(
+        async (): Promise<AntigravityLocalRequestResult> => ({
+          kind: "unavailable",
+          errorCode: "connection-refused",
+        }),
+      ),
     });
 
     const result = await client.getUsage();

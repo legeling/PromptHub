@@ -18,13 +18,7 @@ async function importStoreWithSpy() {
   vi.resetModules();
   localStorage.clear();
   const setSpy = vi.fn().mockResolvedValue(undefined);
-  window.api = {
-    ...(window.api ?? {}),
-    settings: {
-      ...(window.api?.settings ?? {}),
-      set: setSpy,
-    },
-  };
+  window.api.settings.set = setSpy;
   const mod = await import("../../../src/renderer/stores/settings.store");
   // Wait one microtask so any async rehydration callback can settle.
   await Promise.resolve();

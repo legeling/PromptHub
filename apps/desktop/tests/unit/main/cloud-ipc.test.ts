@@ -51,7 +51,7 @@ describe("Cloud IPC", () => {
         metrics: { likeCount: 0, favoriteCount: 0, installCount: 0, downloadCount: 0, viewCount: 0 },
         viewerState: { liked: false, favorited: false },
       })),
-      getStorePackage: vi.fn(async () => ({
+      getStorePackage: vi.fn<CloudDesktopApi["getStorePackage"]>(async () => ({
         listing: {
           id: "listing-1",
           sourceType: "skill",
@@ -106,7 +106,7 @@ describe("Cloud IPC", () => {
       getExportDownload: vi.fn(async () => ({ downloadUrl: "https://download.example/export", expiresAt: "2026-07-13T00:00:00.000Z" })),
       requestDeletion: vi.fn(async () => ({ id: "delete-1", status: "pending", reason: null, requestedAt: "2026-07-12T00:00:00.000Z", executeAfter: "2026-08-11T00:00:00.000Z", cancelledAt: null, completedAt: null, errorCode: null })),
       cancelDeletion: vi.fn(async () => ({ id: "delete-1", status: "cancelled", reason: null, requestedAt: "2026-07-12T00:00:00.000Z", executeAfter: "2026-08-11T00:00:00.000Z", cancelledAt: "2026-07-12T00:00:00.000Z", completedAt: null, errorCode: null })),
-      getEntitlements: vi.fn(async () => ({ effectivePlan: "free", source: "free", cloudBackupEnabled: false, maxSyncDevices: 0, maxCloudStorageBytes: 0, officialAiEnabled: false, includedTextTokensMonthly: 0, includedImageGenerationsMonthly: 0, activeSubscription: null, activePlanGrant: null })),
+      getEntitlements: vi.fn<CloudDesktopApi["getEntitlements"]>(async () => ({ effectivePlan: "free", source: "free", cloudBackupEnabled: false, maxSyncDevices: 0, maxCloudStorageBytes: 0, officialAiEnabled: false, includedTextTokensMonthly: 0, includedImageGenerationsMonthly: 0, activeSubscription: null, activePlanGrant: null })),
       createInstallIntent: vi.fn(async () => {
         throw new Error("not used");
       }),

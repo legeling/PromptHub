@@ -9,14 +9,17 @@ import {
 } from "../../../src/renderer/services/settings-snapshot";
 
 const PRIMARY_SETTINGS_KEY = "prompthub-settings";
+const originalPersistence = window.api.settings.rendererPersistence;
+if (!originalPersistence) throw new Error("Expected canonical settings fixture");
 
 describe("settings-snapshot", () => {
   beforeEach(() => {
     localStorage.clear();
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
   });
 
   afterEach(() => {
-    if (window.api.settings) delete window.api.settings.rendererPersistence;
+    window.api.settings.rendererPersistence = originalPersistence;
   });
 
   it("removes model api keys from AI snapshots while preserving root config when requested", () => {
@@ -214,8 +217,9 @@ describe("settings-snapshot", () => {
   it("restores desktop snapshots through canonical main storage and propagates failures", async () => {
     const replaceSettings = vi.fn(async () => undefined);
     window.api.settings = {
-      ...(window.api.settings ?? {}),
+      ...window.api.settings,
       rendererPersistence: {
+        ...originalPersistence,
         get: vi.fn(async () => ({
           settings: {
             language: "zh",

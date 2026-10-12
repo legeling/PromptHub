@@ -36,7 +36,11 @@ const repoMocks = vi.hoisted(() => ({
 }));
 
 const utilsMocks = vi.hoisted(() => ({
-  getPlatformSkillsDir: vi.fn(() => "/platform/skills"),
+  getPlatformSkillsDir: vi.fn<
+    (
+      platform: import("@prompthub/shared/constants/platforms").SkillPlatform,
+    ) => string
+  >(() => "/platform/skills"),
   getCustomAgentPlatforms: vi.fn(() => []),
   getConfiguredBuiltinAgentPlatformIds: vi.fn(() => []),
   validateMCPConfig: vi.fn(),

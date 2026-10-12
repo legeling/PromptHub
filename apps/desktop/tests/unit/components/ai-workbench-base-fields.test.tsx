@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { FormEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { ModelFormState } from "../../../src/renderer/components/settings/ai-workbench/types";
 import { BaseFields } from "../../../src/renderer/components/settings/ai-workbench/model-form/BaseFields";
 import { PROVIDER_OPTIONS } from "../../../src/renderer/components/settings/ai-workbench/constants";
 import {
@@ -23,7 +24,7 @@ function hasHiddenSvgAncestor(element: Element): boolean {
   return false;
 }
 
-function createModelForm(provider: string = "openai") {
+function createModelForm(provider: string = "openai"): ModelFormState {
   return {
     type: "chat" as const,
     name: "",

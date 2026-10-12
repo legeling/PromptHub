@@ -584,7 +584,7 @@ describe("sync-backup-core", () => {
         versions: [],
         images: { "cover.png": imageBase64 },
       });
-      window.electron.readVideoBase64.mockResolvedValue(videoBase64);
+      vi.mocked(window.electron.readVideoBase64).mockResolvedValue(videoBase64);
 
       const expectedDataString = JSON.stringify({
         version: "4.0",

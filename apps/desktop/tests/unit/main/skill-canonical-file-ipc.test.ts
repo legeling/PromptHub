@@ -53,6 +53,8 @@ describe("canonical Skill file IPC with real SQLite and filesystem", () => {
     fs.writeFileSync(path.join(source, "asset.bin"), Buffer.from([0, 255]));
     id = db.create({
       name: "IPC Skill",
+      instructions: "# Skill",
+      protocol_type: "skill",
       content: "# Skill",
       is_favorite: false,
       local_repo_path: source,
