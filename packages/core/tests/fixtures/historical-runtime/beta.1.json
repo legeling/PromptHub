@@ -1,0 +1,3987 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "label": "beta.1",
+    "commit": "494d57d7da654b8380e4b81f8f51fc5c72e6b7f7"
+  },
+  "sourceKind": "fresh historical CLI/Core default initialization",
+  "generatedAt": "2026-10-09T03:51:54.881Z",
+  "runtime": {
+    "nodeVersion": "v26.7.0",
+    "sourceRoot": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1",
+    "profileRoot": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile",
+    "initializer": "packages/core/src/database.ts:initDatabase",
+    "pathConfiguration": "configureRuntimePaths({ userDataPath, appDataPath })"
+  },
+  "loadedSourceFiles": [
+    {
+      "path": "packages/core/src/ai-config.ts",
+      "sha256": "559c786095c76a9db568f9d2e56d61ced7b02aafde5969b151f5c8c8bdbe4ea2"
+    },
+    {
+      "path": "packages/core/src/canonical-entry-publication.ts",
+      "sha256": "1023ca4e8a948b9dbdcdd0ca8e7d073cf8d05b2307a00250e1de4bb4d14497d2"
+    },
+    {
+      "path": "packages/core/src/canonical-mcp-library.ts",
+      "sha256": "254a16bf16005a6a33f63a1a0b649a8dc37761cf48657dc45dac059f5b8676f7"
+    },
+    {
+      "path": "packages/core/src/canonical-metadata-migration.ts",
+      "sha256": "a3e3a680d5cb6c185e711d71f073544dbe7a37618c0fbb6f1ef25fbe0459c245"
+    },
+    {
+      "path": "packages/core/src/canonical-plugin-library.ts",
+      "sha256": "589a85d82b6206ed2b56fa69c343cff5c9742179f59fe36bdb483f85777020b1"
+    },
+    {
+      "path": "packages/core/src/canonical-prompt-graph-db.ts",
+      "sha256": "75d19ce7e5f3f437261c3b04d8c67316ecb93eb8ee601546c0e9bec26a3e3807"
+    },
+    {
+      "path": "packages/core/src/canonical-resource-path.ts",
+      "sha256": "1c5cb30a913ee8b4d2ed4867d104444940c53fdcef5ae88e1c8d54935f328ead"
+    },
+    {
+      "path": "packages/core/src/canonical-rule-db.ts",
+      "sha256": "f12b23d53d080843a2d8dc19c4d25fcbe1c3ef2daebbcad57e70b389413993e8"
+    },
+    {
+      "path": "packages/core/src/canonical-skill-db.ts",
+      "sha256": "2fb81695ef7702497345e4248ce59a44db0b392835f563ff1c77043e9010ffd9"
+    },
+    {
+      "path": "packages/core/src/canonical-skill-library.ts",
+      "sha256": "bbf00b46bc297dff29b33dd0ba4172e97d7ad3a60ccc6f2fb2379018b5c273dd"
+    },
+    {
+      "path": "packages/core/src/canonical-storage-authority.ts",
+      "sha256": "73a0bcccef38ae548e23902ed1332bb17939ceab4b5e11126e452f4b84ee5829"
+    },
+    {
+      "path": "packages/core/src/cli/skill-cli-service.ts",
+      "sha256": "11d80bc65e0a3f8e1af5fbda6d09b230d1e05bfcf6b25a5ef1841abfe0210a81"
+    },
+    {
+      "path": "packages/core/src/cli/skill/index.ts",
+      "sha256": "5107857d0e52f50fa699a6252c598224a2899a1ce45dac8c0b23859a89f9da52"
+    },
+    {
+      "path": "packages/core/src/cli/skill/install.ts",
+      "sha256": "a73905a01891704626364c59aa3c1a5faaf4c1a61085e616b6ccc65ee9dc1da6"
+    },
+    {
+      "path": "packages/core/src/cli/skill/parse.ts",
+      "sha256": "8c079e281195e71c1bc1aa8f0510a0728f9192ec507ad6f94fce532c4e8fb319"
+    },
+    {
+      "path": "packages/core/src/cli/skill/paths.ts",
+      "sha256": "a2de5614075d976955a85f5f55f9cb48f88839c61c0f8c8c11af1114e00efc00"
+    },
+    {
+      "path": "packages/core/src/cli/skill/service.ts",
+      "sha256": "7025662364cb1b495119bf3229e97f02bac6d97fe272be36e920a56208a4c01b"
+    },
+    {
+      "path": "packages/core/src/content-addressed-object-store.ts",
+      "sha256": "70f95da41ab527606e284e70efab83cf937848e026673b06b1aaa89d5b9299b5"
+    },
+    {
+      "path": "packages/core/src/database.ts",
+      "sha256": "47fc44e44ba622ab5506e1efb80879b141fb48d78411c388b15868dff95bc1ea"
+    },
+    {
+      "path": "packages/core/src/mcp-env-import.ts",
+      "sha256": "7521dc59397c42e844de56bcfc3609e2607c92da5c2cf19b4ae927298aa8e875"
+    },
+    {
+      "path": "packages/core/src/mcp-health.ts",
+      "sha256": "339ecfc257879dcd30dd5d74d8c229af725b9253da2855436ba471ea1fd86c75"
+    },
+    {
+      "path": "packages/core/src/mcp-import.ts",
+      "sha256": "b527ee8d40ec86f82a2071c6d6bca74468dee8cc80551b795c590585bf2c6bf6"
+    },
+    {
+      "path": "packages/core/src/mcp-library-canonical-migration.ts",
+      "sha256": "7d4b87507757cdf590de5de535f41b8073b308c21b6d97de4338a843b08e754d"
+    },
+    {
+      "path": "packages/core/src/mcp-library-persistence.ts",
+      "sha256": "7ddaeab60480743cdbc169005a9e1abbe9f4cd9c6b1d226d633e9181c40d2987"
+    },
+    {
+      "path": "packages/core/src/mcp-library.ts",
+      "sha256": "47250195b6de4a76bea924e4dc9cec0dd1f612ef8204ce9d23f6d3d7a68d91fc"
+    },
+    {
+      "path": "packages/core/src/mcp-market-reconciliation.ts",
+      "sha256": "dafb35e8d7034d6ba7fef3c836088c830f0e7c9b08076bf51b4c71d52127addf"
+    },
+    {
+      "path": "packages/core/src/mcp-resource-schema.ts",
+      "sha256": "13a800bf3be20d796ed6b1c752e80b25ebade6ec59d9c31bc10ba4db01e2534d"
+    },
+    {
+      "path": "packages/core/src/mcp-source.ts",
+      "sha256": "00358adbe6a111e3b9ff8df8454546c577f61dfa8e5ffdb6f3a9cca52590698d"
+    },
+    {
+      "path": "packages/core/src/mcp-target-presets.ts",
+      "sha256": "e543075325d00b3adaa0a66a038320052e54201b000a3f0f68961e28a000973f"
+    },
+    {
+      "path": "packages/core/src/mcp-target-projection.ts",
+      "sha256": "fcc591871a7ef4dba0f1eee8c3f76092cd06b5aa2d2397fb5c5b4a15aedd5548"
+    },
+    {
+      "path": "packages/core/src/mcp-target-sync-policy.ts",
+      "sha256": "1801a9f36cf9795d8088e5555b2cd6f4ccf083ca97924f47a1b4fe7a73e434b3"
+    },
+    {
+      "path": "packages/core/src/plugin-library.ts",
+      "sha256": "f172a8ec3371af2b4dd77091e9075adfc3b1bf2d051ca39912f5b7cdb031b35b"
+    },
+    {
+      "path": "packages/core/src/plugin-library/distribution.ts",
+      "sha256": "cea92ed6d3595c028f14fadbf96308b2594c98e5a27fb863f7e847d2d243680d"
+    },
+    {
+      "path": "packages/core/src/plugin-library/marketplace-client.ts",
+      "sha256": "3766f39c895440253efa8d597f41e58a5e0f871c0fa7669351c10b37d3985d8f"
+    },
+    {
+      "path": "packages/core/src/plugin-library/marketplace.ts",
+      "sha256": "742e4b2a9c111fea9278363be71cf47d72fb63c05072fcbcb0fa9720de853c9f"
+    },
+    {
+      "path": "packages/core/src/plugin-library/normalization.ts",
+      "sha256": "041d6d23bc18f38ef4df8f0cba0d5ee72ddf5a1bf62492c400786f921a064b3a"
+    },
+    {
+      "path": "packages/core/src/plugin-library/package-materialization.ts",
+      "sha256": "a00417f630573798a73b638eb71f13d970bedc5abcea555fecd81e3ea2d2dc1a"
+    },
+    {
+      "path": "packages/core/src/plugin-library/package-validation.ts",
+      "sha256": "649e26a479d4e33d613fd431e6dda3268115d8cdc5a7eafe0edb4a073fc8c65a"
+    },
+    {
+      "path": "packages/core/src/plugin-library/service.ts",
+      "sha256": "0e682301029b3109e04365fb5437bd77125e9e2d9f8de6483469fc957d678dec"
+    },
+    {
+      "path": "packages/core/src/plugin-library/shared.ts",
+      "sha256": "3a36444cce7dc41b1db4c731674cc4591497cd7af03fedc28b5705519ef72455"
+    },
+    {
+      "path": "packages/core/src/plugin-library/source-reconciliation.ts",
+      "sha256": "a15c62fcf0180af969cc7a72483d6054c34e2954df8a718062f7953c68c1fe61"
+    },
+    {
+      "path": "packages/core/src/plugin-library/storage.ts",
+      "sha256": "11d6b7ad4d5d8edc18350a91c970b917c62af1754da6e800e4d0cf53389f8be6"
+    },
+    {
+      "path": "packages/core/src/plugin-resource-schema.ts",
+      "sha256": "627fc676afe5f93883f059380add5af08fe38428f0372a0fde595695445c7056"
+    },
+    {
+      "path": "packages/core/src/prompt-canonical-catalog.ts",
+      "sha256": "6b4d05716f3b67df5b5ff3f2c8bedc1bbf7adc777c83fee59318d8b7ec69a2e6"
+    },
+    {
+      "path": "packages/core/src/prompt-canonical-export.ts",
+      "sha256": "1991de935bcb3e58777417060e04f2e34e049eb441d38d3b77ed366aefa0521b"
+    },
+    {
+      "path": "packages/core/src/prompt-canonical-import.ts",
+      "sha256": "6a795f24b4c9e9f2d1385e2b4b7ba7cde85013ed1b2dd38817d2173ac60a0f15"
+    },
+    {
+      "path": "packages/core/src/prompt-resource-schema.ts",
+      "sha256": "d9fc359553eab06ada5ce773048bc0b73458ccc77fb07b9fbc3a7cbb34a3dda7"
+    },
+    {
+      "path": "packages/core/src/resource-bundle-publication.ts",
+      "sha256": "0aca9823303588214fa0b6002344018314605402a291e3b5ddbfebeed4d374ae"
+    },
+    {
+      "path": "packages/core/src/resource-bundle.ts",
+      "sha256": "c365037962ff110d8d9354c9de438c75600c6990967554e203d1b50b3b3412e1"
+    },
+    {
+      "path": "packages/core/src/rule-resource-schema.ts",
+      "sha256": "f0108443987db5978f71719ddbf7b6eb04540f45da258c88d5edbfa5a1190dda"
+    },
+    {
+      "path": "packages/core/src/rules-workspace-support.ts",
+      "sha256": "119e1235d7da2ac3de3c60de5682be0dae4a78ac88cbff1eb2173a77c3332c93"
+    },
+    {
+      "path": "packages/core/src/rules-workspace.ts",
+      "sha256": "7d6ddcd40eb6939e4cbce6702a240575469cbefe1b4799914524dc1d3a85bccd"
+    },
+    {
+      "path": "packages/core/src/runtime-paths.ts",
+      "sha256": "0c61907337a54af5e69674e3b813bf726b7364e13616ef2d47a5e0c79da8a01e"
+    },
+    {
+      "path": "packages/core/src/runtime-storage-context.ts",
+      "sha256": "c71e22b479e6961c684bd3438538426193455927d111b53eba93205b364ac7c5"
+    },
+    {
+      "path": "packages/core/src/skill-distribution-targets.ts",
+      "sha256": "d67ede15cdf7fe425b0391672445bde430cadcd03cbe0fce59ceefe1bb106dab"
+    },
+    {
+      "path": "packages/core/src/skill-resource-schema.ts",
+      "sha256": "9384caa26b1806d8af00e6942b1324c8ac784d666d536415df32ddb9b769a79f"
+    },
+    {
+      "path": "packages/core/src/skills/install-flow.ts",
+      "sha256": "6396ab5f84b7c43f8651bd2874c05764b787132225272c298a10c754753057c0"
+    },
+    {
+      "path": "packages/core/src/skills/package-policy.ts",
+      "sha256": "1d591b3d0968b36b48b5dd13212884e0fe24cf43412bb1752dc27b7cb8f6c65d"
+    },
+    {
+      "path": "packages/core/src/skills/skill-frontmatter.ts",
+      "sha256": "0993ed684fc6bb9ddcd61ef2723646d322840d5ca47814b79e589f6b49eb7f44"
+    },
+    {
+      "path": "packages/core/src/storage-maintenance-intent.ts",
+      "sha256": "d924b634d4cb5997e6ff597356dbe1b67224e02fff23dfcd75308ff99062c7a8"
+    },
+    {
+      "path": "packages/core/src/storage-root-identity.ts",
+      "sha256": "b289a694929f691cf6c82cd6a475f08c8bbf670594b5aeec4126ec9f2bcce663"
+    },
+    {
+      "path": "packages/db/src/adapter.ts",
+      "sha256": "bf24d27bcb45931afd6dd7a1cdb155f3d7d04cc5984b694f927f14a5427bf529"
+    },
+    {
+      "path": "packages/db/src/agent-conversation.ts",
+      "sha256": "64dab37edbf66671da0bbcd272dc2c09ef8522fe12008339f1e9a5472b656cf8"
+    },
+    {
+      "path": "packages/db/src/agent-provider-profile.ts",
+      "sha256": "d1c715cd6e9ebfb42e86cf838bd79514353fef8a759ed0b4090d76091368425a"
+    },
+    {
+      "path": "packages/db/src/agent-session-index.ts",
+      "sha256": "4932375c2adbece26846e0b2169006751815d1160afe73f5716d1bf86cc03a0d"
+    },
+    {
+      "path": "packages/db/src/canonical-resource.ts",
+      "sha256": "1247c23aefdb4ac5a27269756f6119cbf5c62afd9405be0ee8b1cd08920a728c"
+    },
+    {
+      "path": "packages/db/src/database-client-lock.ts",
+      "sha256": "fa7ec114664d1d27553d755b0b8769b774384afffae61fa17754f888d3152672"
+    },
+    {
+      "path": "packages/db/src/database-migration-intent.ts",
+      "sha256": "28e4b51d930fc4fd10fdd6121273d9351614c7aa38e76d85774a68159bcd4a41"
+    },
+    {
+      "path": "packages/db/src/database-migration-state.ts",
+      "sha256": "8ecb09ee095fdb649b6c9a182fde815c9347c4069bd3227a682e02a47f29b403"
+    },
+    {
+      "path": "packages/db/src/database-safety-point.ts",
+      "sha256": "abcdff4f3869ed866dd2f0926751b24cf54c87640a4f795d26087af78314f380"
+    },
+    {
+      "path": "packages/db/src/folder.ts",
+      "sha256": "d86c47bedd253b341def03f5be9fddceba4999cddcd389689a308638f3f3c141"
+    },
+    {
+      "path": "packages/db/src/index.ts",
+      "sha256": "bd34cb84d3f28344b5ea8535d6981a64e582e810d88ec6c073e3c4a642ff2b11"
+    },
+    {
+      "path": "packages/db/src/init.ts",
+      "sha256": "dffbdc2e0ce6fa10194097c00d0ca60900421a0a58ab242280b29d906ab67807"
+    },
+    {
+      "path": "packages/db/src/owned-temporary-database.ts",
+      "sha256": "776f89c0a88446e615e4441918662ec478888180d7e814ea4e21f59da4cff56e"
+    },
+    {
+      "path": "packages/db/src/prompt-output-format.ts",
+      "sha256": "88c951fab1fe9253161a5960755c61e48329dd4016d549061951c20501e87c03"
+    },
+    {
+      "path": "packages/db/src/prompt-relation.ts",
+      "sha256": "db915c36eb366cbf64d2c12f9e63c97a7b8d6e8d5a55af4866caff7f670de025"
+    },
+    {
+      "path": "packages/db/src/prompt.ts",
+      "sha256": "260f5c68a936baf4d87c01fb098bbe84b402248799f6cb445f1c87b19333739e"
+    },
+    {
+      "path": "packages/db/src/rule.ts",
+      "sha256": "e46385edec6362c5f79fa80268f933b019a10c85fc51ddd36fa443c1972bbc32"
+    },
+    {
+      "path": "packages/db/src/schema.ts",
+      "sha256": "a3284602fd32340601a4f5fa8574191d49524b12e3fe82b41a715543b9196f3e"
+    },
+    {
+      "path": "packages/db/src/skill.ts",
+      "sha256": "4707aae510b0a52908121dfa16f834ade2d18758d4fe20e730bee9b07e221a76"
+    },
+    {
+      "path": "packages/shared/constants/mcp-market.ts",
+      "sha256": "eda011ba2e1dbf739b53762e3c495b110fedd1b5cc5f315a70b88a1175d5ebce"
+    },
+    {
+      "path": "packages/shared/constants/platforms.ts",
+      "sha256": "f47659c6c91b5a81d098d88abdb7330010ef63e1e281f685e44104f8d9474695"
+    },
+    {
+      "path": "packages/shared/constants/rules.ts",
+      "sha256": "64f6e5067c8bf0af3892d0889f162ccbd7b7c24e27e801872b055f38d0435621"
+    },
+    {
+      "path": "packages/shared/types/agent-definition.ts",
+      "sha256": "d19c40efc2263d3073429ca7b46b4d393d15743df91af76561c0b80c95b1e2c0"
+    },
+    {
+      "path": "packages/shared/types/agent-harness.ts",
+      "sha256": "06102bdf85ec471b467c77585e53fb9d0cfb74fa7dc52078ca767d7c00ad5a70"
+    },
+    {
+      "path": "packages/shared/types/agent.ts",
+      "sha256": "0f217cf0bfbf95151781d43ae8d93e09383fb2deb525b92c56147f9658685e34"
+    },
+    {
+      "path": "packages/shared/types/ai.ts",
+      "sha256": "cde039a8f6093ad76ddf05972921e46ab2b032351da3ac9851808c95358323b9"
+    },
+    {
+      "path": "packages/shared/types/app-command.ts",
+      "sha256": "8f72730ce446da60b986e68ea3fe2bc253222cdd4dbe3c58822ccc6cee2e7c04"
+    },
+    {
+      "path": "packages/shared/types/cli.ts",
+      "sha256": "cbe0a872d90386650cc2ef24542d8f71dbae161a4d5fd2b968cd945cb9163bce"
+    },
+    {
+      "path": "packages/shared/types/cloud.ts",
+      "sha256": "7105085e176cca5bf2c197cfcb20e4380c42690e839d3e5ad5ab8e31d0952563"
+    },
+    {
+      "path": "packages/shared/types/folder.ts",
+      "sha256": "3fd9a20b0c10a784a6f5dadbc8f51feb003de4b1512916bad71dbd09f3c641e7"
+    },
+    {
+      "path": "packages/shared/types/image-generation.ts",
+      "sha256": "adc7517c6296237545782b0964cfe392cd9fa09b828ee76f04940a5ab68d85f8"
+    },
+    {
+      "path": "packages/shared/types/index.ts",
+      "sha256": "dce91ad5706e172bb80cd1d4232ffa9c223327ef97b0f7d84c839e11f83eb89f"
+    },
+    {
+      "path": "packages/shared/types/mcp.ts",
+      "sha256": "dc502716b859593fb0e43457bceb42d0b27c682a1535e5d5a5ff69416c93b12d"
+    },
+    {
+      "path": "packages/shared/types/plugin.ts",
+      "sha256": "2e8d8d3eab323d1ddd79cc1bd833b1025d84093de08304942b96dfddcc6045c3"
+    },
+    {
+      "path": "packages/shared/types/prompt.ts",
+      "sha256": "863511980a298209e27cdae9176a63c39d7e1be77959d98fff97072c03845128"
+    },
+    {
+      "path": "packages/shared/types/provider-preset.ts",
+      "sha256": "0b7316e02ce770c07c17f3c4b35b0f4ff67ce740e537bf3623a3f938067af692"
+    },
+    {
+      "path": "packages/shared/types/recovery.ts",
+      "sha256": "49b4b7f0e0e56b8ec2c312f6c34450dd7dbb7efda0146fbb54f75294af5a6490"
+    },
+    {
+      "path": "packages/shared/types/rules.ts",
+      "sha256": "b9645bf40ff2879e5d0781b3b7295e4b37fc1e9242951137027f7804484b9039"
+    },
+    {
+      "path": "packages/shared/types/settings.ts",
+      "sha256": "0949ce982fcca5c80d41bffa1055d08deb47c9e1be10e85bb727ec52406b7260"
+    },
+    {
+      "path": "packages/shared/types/skill.ts",
+      "sha256": "c71d286bc03e6dddc0ee0ae15b3ad169030cf719b251d36fe99e2019f013f930"
+    },
+    {
+      "path": "packages/shared/types/sync.ts",
+      "sha256": "445acf9ffb82ffb4862fa37e29bfaf64997296e9f4f1013cdd68f9177ff1971d"
+    },
+    {
+      "path": "packages/shared/types/upgrade-backup.ts",
+      "sha256": "f1b355ef4759e76c4dcd5b22ebc5513633151780960c97da7978701d1e420afa"
+    },
+    {
+      "path": "packages/shared/utils/agent-management-backup.ts",
+      "sha256": "bcdd5145128501a59509833dcd72bd2074aff0968c4cbcd4dcaf20da9187b2c5"
+    },
+    {
+      "path": "packages/shared/utils/agent-provider-config.ts",
+      "sha256": "a26c9f5fd63fc9e1b7a6a05e52e82fad4469d469204b1607637cb4deb1a47f34"
+    },
+    {
+      "path": "packages/shared/utils/git-repo.ts",
+      "sha256": "c9da12ee09280606a12868c89e16590e6a0f175b48c5bec28ecc85d34a0afcd2"
+    },
+    {
+      "path": "packages/shared/utils/mcp-config-redaction.ts",
+      "sha256": "a3ff15753d932f516bfa9dae0e55ef7706cbb050545cc06e0059fcfe628c0d71"
+    },
+    {
+      "path": "packages/shared/utils/mcp-config.ts",
+      "sha256": "c87c8ce68dbffe05e0d610a92df92ef72bd7e57ad9f94c9d183002b5885ed29b"
+    },
+    {
+      "path": "packages/shared/utils/skill-identity.ts",
+      "sha256": "abd0e4146a3c8de905be9bb6b4b93e98c2ec0c337236b63c5b9ab47600bfd109"
+    },
+    {
+      "path": "packages/shared/utils/skill-package-policy.ts",
+      "sha256": "040674ef2caf17bc9dc840f2bf1557b2443d76718f29bc42cc885dcc913a1077"
+    },
+    {
+      "path": "packages/shared/utils/skill-source-update.ts",
+      "sha256": "dc9189abcb38c887135e75c3f318f3749bdb8d921b6c83987da1ef4764d2a949"
+    }
+  ],
+  "thirdPartyPackages": [
+    {
+      "name": "node-sqlite3-wasm",
+      "version": "0.8.53",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/node-sqlite3-wasm@0.8.53/node_modules/node-sqlite3-wasm",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/node-sqlite3-wasm@0.8.53/node_modules/node-sqlite3-wasm/dist/node-sqlite3-wasm.js"
+    },
+    {
+      "name": "uuid",
+      "version": "13.0.0",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist-node/version.js"
+    },
+    {
+      "name": "ignore",
+      "version": "7.0.5",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/ignore@7.0.5/node_modules/ignore",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js"
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.0",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/yaml@2.9.0/node_modules/yaml",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/index.js"
+    }
+  ],
+  "database": {
+    "relativePath": "profile/data/prompthub.db",
+    "schema": [
+      {
+        "type": "index",
+        "name": "idx_agent_conversation_handoffs_source",
+        "tbl_name": "agent_conversation_handoffs",
+        "sql": "CREATE INDEX idx_agent_conversation_handoffs_source\n  ON agent_conversation_handoffs(\n    source_agent_id,\n    source_session_id,\n    created_at DESC\n  )"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_conversation_metadata_agent_updated",
+        "tbl_name": "agent_conversation_metadata",
+        "sql": "CREATE INDEX idx_agent_conversation_metadata_agent_updated\n  ON agent_conversation_metadata(agent_id, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_conversation_metadata_project",
+        "tbl_name": "agent_conversation_metadata",
+        "sql": "CREATE INDEX idx_agent_conversation_metadata_project\n  ON agent_conversation_metadata(project_id, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_provider_model_mappings_profile",
+        "tbl_name": "agent_provider_model_mappings",
+        "sql": "CREATE INDEX idx_agent_provider_model_mappings_profile\n  ON agent_provider_model_mappings(provider_profile_id, route_key)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_provider_profiles_active_name",
+        "tbl_name": "agent_provider_profiles",
+        "sql": "CREATE UNIQUE INDEX idx_agent_provider_profiles_active_name\n  ON agent_provider_profiles(platform_id, LOWER(name))\n  WHERE archived = 0"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_provider_profiles_platform",
+        "tbl_name": "agent_provider_profiles",
+        "sql": "CREATE INDEX idx_agent_provider_profiles_platform\n  ON agent_provider_profiles(platform_id, archived, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_provider_snapshots_platform_created",
+        "tbl_name": "agent_provider_snapshots",
+        "sql": "CREATE INDEX idx_agent_provider_snapshots_platform_created\n  ON agent_provider_snapshots(platform_id, created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_provider_snapshots_profile_created",
+        "tbl_name": "agent_provider_snapshots",
+        "sql": "CREATE INDEX idx_agent_provider_snapshots_profile_created\n  ON agent_provider_snapshots(provider_profile_id, created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_session_index_source_status",
+        "tbl_name": "agent_session_index",
+        "sql": "CREATE INDEX idx_agent_session_index_source_status\n  ON agent_session_index(source_id, source_status, indexed_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_session_index_source_updated",
+        "tbl_name": "agent_session_index",
+        "sql": "CREATE INDEX idx_agent_session_index_source_updated\n  ON agent_session_index(\n    source_id,\n    COALESCE(updated_at, created_at, 0) DESC,\n    external_id\n  )"
+      },
+      {
+        "type": "index",
+        "name": "idx_agent_session_sources_platform",
+        "tbl_name": "agent_session_sources",
+        "sql": "CREATE INDEX idx_agent_session_sources_platform\n  ON agent_session_sources(platform_id, enabled, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_canonical_resources_type_updated",
+        "tbl_name": "canonical_resources",
+        "sql": "CREATE INDEX idx_canonical_resources_type_updated\n  ON canonical_resources(resource_type, updated_at DESC, resource_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_owner",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_owner ON folders(owner_user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_parent",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_parent ON folders(parent_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_sort",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_sort ON folders(sort_order)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_visibility",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_visibility ON folders(visibility)"
+      },
+      {
+        "type": "index",
+        "name": "idx_generation_batches_created",
+        "tbl_name": "generation_batches",
+        "sql": "CREATE INDEX idx_generation_batches_created ON generation_batches(created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_generation_batches_source",
+        "tbl_name": "generation_batches",
+        "sql": "CREATE INDEX idx_generation_batches_source ON generation_batches(source_prompt_id, created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_generation_batches_status",
+        "tbl_name": "generation_batches",
+        "sql": "CREATE INDEX idx_generation_batches_status ON generation_batches(status, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_generation_outputs_batch",
+        "tbl_name": "generation_outputs",
+        "sql": "CREATE INDEX idx_generation_outputs_batch ON generation_outputs(batch_id, slot_index)"
+      },
+      {
+        "type": "index",
+        "name": "idx_generation_outputs_favorite",
+        "tbl_name": "generation_outputs",
+        "sql": "CREATE INDEX idx_generation_outputs_favorite ON generation_outputs(favorite, created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_output_format_self_unique",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE UNIQUE INDEX idx_prompt_output_format_self_unique\n  ON prompt_output_format_items(source_prompt_id)\n  WHERE target_prompt_id IS NULL"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_output_format_source",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE INDEX idx_prompt_output_format_source ON prompt_output_format_items(source_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_output_format_target",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE INDEX idx_prompt_output_format_target ON prompt_output_format_items(target_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_relations_kind",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE INDEX idx_prompt_relations_kind ON prompt_relations(kind)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_relations_source",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE INDEX idx_prompt_relations_source ON prompt_relations(source_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_relations_target",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE INDEX idx_prompt_relations_target ON prompt_relations(target_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_created",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_created ON prompts(created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_favorite",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_favorite ON prompts(is_favorite)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_folder",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_folder ON prompts(folder_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_folder_favorite",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_folder_favorite ON prompts(folder_id, is_favorite)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_folder_updated",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_folder_updated ON prompts(folder_id, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_owner",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_owner ON prompts(owner_user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_parent",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_parent ON prompts(parent_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_pinned",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_pinned ON prompts(is_pinned)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_sort_order",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_sort_order ON prompts(sort_order)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_updated",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_updated ON prompts(updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_usage",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_usage ON prompts(usage_count DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_visibility",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_visibility ON prompts(visibility)"
+      },
+      {
+        "type": "index",
+        "name": "idx_refresh_tokens_expires",
+        "tbl_name": "refresh_tokens",
+        "sql": "CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at)"
+      },
+      {
+        "type": "index",
+        "name": "idx_refresh_tokens_user",
+        "tbl_name": "refresh_tokens",
+        "sql": "CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rule_versions_rule",
+        "tbl_name": "rule_versions",
+        "sql": "CREATE INDEX idx_rule_versions_rule ON rule_versions(rule_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_platform",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_platform ON rules(platform_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_project_root",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_project_root ON rules(project_root_path)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_scope",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_scope ON rules(scope)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_updated",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_updated ON rules(updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skill_versions_skill",
+        "tbl_name": "skill_versions",
+        "sql": "CREATE INDEX idx_skill_versions_skill ON skill_versions(skill_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_favorite",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_favorite ON skills(is_favorite)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_owner",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_owner ON skills(owner_user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_source_id",
+        "tbl_name": "skills",
+        "sql": "CREATE UNIQUE INDEX idx_skills_source_id ON skills(source_id) WHERE source_id IS NOT NULL AND source_id != ''"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_updated",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_updated ON skills(updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_visibility",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_visibility ON skills(visibility)"
+      },
+      {
+        "type": "index",
+        "name": "idx_user_settings_user",
+        "tbl_name": "user_settings",
+        "sql": "CREATE INDEX idx_user_settings_user ON user_settings(user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_users_role",
+        "tbl_name": "users",
+        "sql": "CREATE INDEX idx_users_role ON users(role)"
+      },
+      {
+        "type": "index",
+        "name": "idx_users_username_lower",
+        "tbl_name": "users",
+        "sql": "CREATE UNIQUE INDEX idx_users_username_lower ON users(LOWER(username))"
+      },
+      {
+        "type": "index",
+        "name": "idx_versions_prompt",
+        "tbl_name": "prompt_versions",
+        "sql": "CREATE INDEX idx_versions_prompt ON prompt_versions(prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_conversation_handoffs_1",
+        "tbl_name": "agent_conversation_handoffs",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_conversation_metadata_1",
+        "tbl_name": "agent_conversation_metadata",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_conversation_metadata_2",
+        "tbl_name": "agent_conversation_metadata",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_provider_model_mappings_1",
+        "tbl_name": "agent_provider_model_mappings",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_provider_model_mappings_2",
+        "tbl_name": "agent_provider_model_mappings",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_provider_profiles_1",
+        "tbl_name": "agent_provider_profiles",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_provider_snapshots_1",
+        "tbl_name": "agent_provider_snapshots",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_session_index_1",
+        "tbl_name": "agent_session_index",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_session_index_2",
+        "tbl_name": "agent_session_index",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_session_sources_1",
+        "tbl_name": "agent_session_sources",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_agent_session_sources_2",
+        "tbl_name": "agent_session_sources",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_canonical_resources_1",
+        "tbl_name": "canonical_resources",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_database_migration_history_1",
+        "tbl_name": "database_migration_history",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_folders_1",
+        "tbl_name": "folders",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_generation_batches_1",
+        "tbl_name": "generation_batches",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_generation_batches_2",
+        "tbl_name": "generation_batches",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_generation_outputs_1",
+        "tbl_name": "generation_outputs",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_generation_outputs_2",
+        "tbl_name": "generation_outputs",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_output_format_items_1",
+        "tbl_name": "prompt_output_format_items",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_output_format_items_2",
+        "tbl_name": "prompt_output_format_items",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_relations_1",
+        "tbl_name": "prompt_relations",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_relations_2",
+        "tbl_name": "prompt_relations",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_versions_1",
+        "tbl_name": "prompt_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_versions_2",
+        "tbl_name": "prompt_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompts_1",
+        "tbl_name": "prompts",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_refresh_tokens_1",
+        "tbl_name": "refresh_tokens",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_rule_versions_1",
+        "tbl_name": "rule_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_rule_versions_2",
+        "tbl_name": "rule_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_rules_1",
+        "tbl_name": "rules",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_schema_migrations_1",
+        "tbl_name": "schema_migrations",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_settings_1",
+        "tbl_name": "settings",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_skill_versions_1",
+        "tbl_name": "skill_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_skill_versions_2",
+        "tbl_name": "skill_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_skills_1",
+        "tbl_name": "skills",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_user_settings_1",
+        "tbl_name": "user_settings",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_users_1",
+        "tbl_name": "users",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_users_2",
+        "tbl_name": "users",
+        "sql": null
+      },
+      {
+        "type": "table",
+        "name": "agent_conversation_handoffs",
+        "tbl_name": "agent_conversation_handoffs",
+        "sql": "CREATE TABLE agent_conversation_handoffs (\n  id TEXT PRIMARY KEY,\n  source_agent_id TEXT NOT NULL,\n  source_session_id TEXT NOT NULL,\n  target_agent_id TEXT NOT NULL,\n  project_id TEXT,\n  project_path TEXT,\n  transport TEXT NOT NULL\n    CHECK(transport IN ('direct', 'launch', 'unavailable')),\n  payload_digest TEXT NOT NULL,\n  status TEXT NOT NULL CHECK(status IN ('planned', 'launched', 'failed')),\n  target_session_id TEXT,\n  error_code TEXT,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "agent_conversation_metadata",
+        "tbl_name": "agent_conversation_metadata",
+        "sql": "CREATE TABLE agent_conversation_metadata (\n  id TEXT PRIMARY KEY,\n  agent_id TEXT NOT NULL,\n  session_id TEXT NOT NULL,\n  title TEXT,\n  project_id TEXT,\n  project_path TEXT,\n  tags_json TEXT NOT NULL DEFAULT '[]',\n  note TEXT,\n  is_favorite INTEGER NOT NULL DEFAULT 0 CHECK(is_favorite IN (0, 1)),\n  archived_at INTEGER,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  UNIQUE(agent_id, session_id)\n)"
+      },
+      {
+        "type": "table",
+        "name": "agent_provider_model_mappings",
+        "tbl_name": "agent_provider_model_mappings",
+        "sql": "CREATE TABLE agent_provider_model_mappings (\n  id TEXT PRIMARY KEY,\n  provider_profile_id TEXT NOT NULL REFERENCES agent_provider_profiles(id) ON DELETE CASCADE,\n  route_key TEXT NOT NULL,\n  model_id TEXT NOT NULL,\n  parameters_json TEXT NOT NULL DEFAULT '{}',\n  UNIQUE(provider_profile_id, route_key)\n)"
+      },
+      {
+        "type": "table",
+        "name": "agent_provider_profiles",
+        "tbl_name": "agent_provider_profiles",
+        "sql": "CREATE TABLE agent_provider_profiles (\n  id TEXT PRIMARY KEY,\n  platform_id TEXT NOT NULL,\n  name TEXT NOT NULL,\n  provider_kind TEXT NOT NULL,\n  protocol TEXT NOT NULL,\n  endpoint TEXT,\n  config_json TEXT NOT NULL DEFAULT '{}',\n  secret_ref TEXT,\n  source TEXT NOT NULL CHECK(source IN ('manual', 'native-import', 'universal', 'import')),\n  archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0, 1)),\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "agent_provider_snapshots",
+        "tbl_name": "agent_provider_snapshots",
+        "sql": "CREATE TABLE agent_provider_snapshots (\n  id TEXT PRIMARY KEY,\n  platform_id TEXT NOT NULL,\n  provider_profile_id TEXT REFERENCES agent_provider_profiles(id) ON DELETE SET NULL,\n  native_digest TEXT NOT NULL,\n  redacted_snapshot TEXT NOT NULL,\n  backup_ref TEXT,\n  operation TEXT NOT NULL CHECK(operation IN ('import', 'activate', 'backfill', 'restore')),\n  result TEXT NOT NULL CHECK(result IN ('planned', 'applied', 'verified', 'rolled-back', 'failed')),\n  created_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "agent_session_index",
+        "tbl_name": "agent_session_index",
+        "sql": "CREATE TABLE agent_session_index (\n  id TEXT PRIMARY KEY,\n  source_id TEXT NOT NULL REFERENCES agent_session_sources(id) ON DELETE CASCADE,\n  external_id TEXT NOT NULL,\n  title TEXT NOT NULL,\n  project_path TEXT,\n  created_at INTEGER,\n  updated_at INTEGER,\n  model TEXT,\n  message_count INTEGER CHECK(message_count IS NULL OR message_count >= 0),\n  redacted_preview TEXT,\n  source_path TEXT NOT NULL,\n  source_mtime_ms INTEGER,\n  source_size_bytes INTEGER\n    CHECK(source_size_bytes IS NULL OR source_size_bytes >= 0),\n  source_digest TEXT,\n  source_status TEXT NOT NULL\n    CHECK(source_status IN ('present', 'missing', 'parse-error')),\n  tags_json TEXT NOT NULL DEFAULT '[]',\n  note TEXT,\n  indexed_at INTEGER NOT NULL,\n  annotation_updated_at INTEGER,\n  UNIQUE(source_id, external_id)\n)"
+      },
+      {
+        "type": "table",
+        "name": "agent_session_sources",
+        "tbl_name": "agent_session_sources",
+        "sql": "CREATE TABLE agent_session_sources (\n  id TEXT PRIMARY KEY,\n  platform_id TEXT NOT NULL,\n  root_path TEXT NOT NULL,\n  adapter_id TEXT NOT NULL,\n  adapter_version TEXT NOT NULL,\n  enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),\n  scan_cursor TEXT,\n  last_status TEXT NOT NULL DEFAULT 'idle'\n    CHECK(last_status IN ('idle', 'ok', 'partial', 'error')),\n  last_scanned_at INTEGER,\n  last_error_code TEXT,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  UNIQUE(platform_id, root_path, adapter_id)\n)"
+      },
+      {
+        "type": "table",
+        "name": "canonical_resources",
+        "tbl_name": "canonical_resources",
+        "sql": "CREATE TABLE canonical_resources (\n  resource_type TEXT NOT NULL,\n  resource_id TEXT NOT NULL,\n  schema_version INTEGER NOT NULL,\n  revision INTEGER NOT NULL,\n  content_hash TEXT NOT NULL,\n  manifest_path TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  PRIMARY KEY(resource_type, resource_id)\n)"
+      },
+      {
+        "type": "table",
+        "name": "database_migration_history",
+        "tbl_name": "database_migration_history",
+        "sql": "CREATE TABLE database_migration_history (\n      migration_id INTEGER PRIMARY KEY,\n      name TEXT NOT NULL UNIQUE,\n      checksum TEXT NOT NULL,\n      app_version TEXT NOT NULL,\n      applied_at INTEGER NOT NULL,\n      duration_ms INTEGER NOT NULL\n    )"
+      },
+      {
+        "type": "table",
+        "name": "folders",
+        "tbl_name": "folders",
+        "sql": "CREATE TABLE folders (\n  id TEXT PRIMARY KEY,\n  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,\n  visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),\n  name TEXT NOT NULL,\n  icon TEXT,\n  parent_id TEXT,\n  sort_order INTEGER DEFAULT 0,\n  is_private INTEGER DEFAULT 0,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER,\n  FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE\n)"
+      },
+      {
+        "type": "table",
+        "name": "generation_batches",
+        "tbl_name": "generation_batches",
+        "sql": "CREATE TABLE generation_batches (\n  id TEXT PRIMARY KEY,\n  manifest_path TEXT NOT NULL UNIQUE,\n  status TEXT NOT NULL,\n  title TEXT NOT NULL,\n  source_prompt_id TEXT REFERENCES prompts(id) ON DELETE SET NULL,\n  provider TEXT NOT NULL,\n  model TEXT NOT NULL,\n  requested_count INTEGER NOT NULL,\n  succeeded_count INTEGER NOT NULL DEFAULT 0,\n  failed_count INTEGER NOT NULL DEFAULT 0,\n  cancelled_count INTEGER NOT NULL DEFAULT 0,\n  interrupted_count INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  completed_at TEXT\n)"
+      },
+      {
+        "type": "table",
+        "name": "generation_outputs",
+        "tbl_name": "generation_outputs",
+        "sql": "CREATE TABLE generation_outputs (\n  id TEXT PRIMARY KEY,\n  batch_id TEXT NOT NULL REFERENCES generation_batches(id) ON DELETE CASCADE,\n  slot_index INTEGER NOT NULL,\n  status TEXT NOT NULL,\n  file_name TEXT,\n  mime_type TEXT,\n  byte_size INTEGER,\n  sha256 TEXT,\n  favorite INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT,\n  deleted_at TEXT,\n  UNIQUE(batch_id, slot_index)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompt_output_format_items",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE TABLE prompt_output_format_items (\n  id TEXT PRIMARY KEY,\n  source_prompt_id TEXT NOT NULL,\n  target_prompt_id TEXT,\n  sort_order INTEGER NOT NULL DEFAULT 0,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  UNIQUE(source_prompt_id, target_prompt_id)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompt_relations",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE TABLE prompt_relations (\n  id TEXT PRIMARY KEY,\n  source_prompt_id TEXT NOT NULL,\n  target_prompt_id TEXT NOT NULL,\n  kind TEXT NOT NULL CHECK(kind IN ('related_to', 'variant_of', 'depends_on', 'next_step')),\n  note TEXT,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  CHECK(source_prompt_id != target_prompt_id),\n  UNIQUE(source_prompt_id, target_prompt_id, kind)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompt_versions",
+        "tbl_name": "prompt_versions",
+        "sql": "CREATE TABLE prompt_versions (\n  id TEXT PRIMARY KEY,\n  prompt_id TEXT NOT NULL,\n  version INTEGER NOT NULL,\n  system_prompt TEXT,\n  system_prompt_en TEXT,\n  user_prompt TEXT NOT NULL,\n  user_prompt_en TEXT,\n  variables TEXT,\n  note TEXT,\n  ai_response TEXT,\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  UNIQUE(prompt_id, version)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompts",
+        "tbl_name": "prompts",
+        "sql": "CREATE TABLE prompts (\n  id TEXT PRIMARY KEY,\n  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,\n  visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),\n  title TEXT NOT NULL,\n  description TEXT,\n  prompt_type TEXT DEFAULT 'text',\n  system_prompt TEXT,\n  system_prompt_en TEXT,\n  user_prompt TEXT NOT NULL,\n  user_prompt_en TEXT,\n  variables TEXT,\n  tags TEXT,\n  folder_id TEXT,\n  parent_id TEXT,\n  sort_order INTEGER DEFAULT 0,\n  images TEXT,\n  videos TEXT,\n  is_favorite INTEGER DEFAULT 0,\n  is_pinned INTEGER DEFAULT 0,\n  current_version INTEGER DEFAULT 0,\n  usage_count INTEGER DEFAULT 0,\n  source TEXT,\n  notes TEXT,\n  last_ai_response TEXT,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,\n  FOREIGN KEY (parent_id) REFERENCES prompts(id) ON DELETE SET NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts",
+        "tbl_name": "prompts_fts",
+        "sql": "CREATE VIRTUAL TABLE prompts_fts USING fts5(\n  title, description, system_prompt, user_prompt, tags,\n  content='prompts', content_rowid='rowid'\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_config",
+        "tbl_name": "prompts_fts_config",
+        "sql": "CREATE TABLE 'prompts_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_data",
+        "tbl_name": "prompts_fts_data",
+        "sql": "CREATE TABLE 'prompts_fts_data'(id INTEGER PRIMARY KEY, block BLOB)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_docsize",
+        "tbl_name": "prompts_fts_docsize",
+        "sql": "CREATE TABLE 'prompts_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_idx",
+        "tbl_name": "prompts_fts_idx",
+        "sql": "CREATE TABLE 'prompts_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID"
+      },
+      {
+        "type": "table",
+        "name": "refresh_tokens",
+        "tbl_name": "refresh_tokens",
+        "sql": "CREATE TABLE refresh_tokens (\n  id TEXT PRIMARY KEY,\n  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n  token_hash TEXT NOT NULL,\n  expires_at INTEGER NOT NULL,\n  created_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "rule_versions",
+        "tbl_name": "rule_versions",
+        "sql": "CREATE TABLE rule_versions (\n  id TEXT PRIMARY KEY,\n  rule_id TEXT NOT NULL,\n  version INTEGER NOT NULL,\n  file_path TEXT NOT NULL,\n  source TEXT NOT NULL CHECK(source IN ('manual-save', 'ai-rewrite', 'create')),\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE CASCADE,\n  UNIQUE(rule_id, version)\n)"
+      },
+      {
+        "type": "table",
+        "name": "rules",
+        "tbl_name": "rules",
+        "sql": "CREATE TABLE rules (\n  id TEXT PRIMARY KEY,\n  scope TEXT NOT NULL CHECK(scope IN ('global', 'project')),\n  platform_id TEXT NOT NULL,\n  platform_name TEXT NOT NULL,\n  platform_icon TEXT NOT NULL,\n  platform_description TEXT NOT NULL,\n  canonical_file_name TEXT NOT NULL,\n  description TEXT NOT NULL,\n  managed_path TEXT NOT NULL,\n  target_path TEXT NOT NULL,\n  project_root_path TEXT,\n  sync_status TEXT NOT NULL CHECK(sync_status IN ('synced', 'target-missing', 'out-of-sync', 'sync-error')),\n  current_version INTEGER NOT NULL DEFAULT 0,\n  content_hash TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "schema_migrations",
+        "tbl_name": "schema_migrations",
+        "sql": "CREATE TABLE schema_migrations (\n        name TEXT PRIMARY KEY,\n        applied_at INTEGER NOT NULL\n      )"
+      },
+      {
+        "type": "table",
+        "name": "settings",
+        "tbl_name": "settings",
+        "sql": "CREATE TABLE settings (\n  key TEXT PRIMARY KEY,\n  value TEXT NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "skill_versions",
+        "tbl_name": "skill_versions",
+        "sql": "CREATE TABLE skill_versions (\n  id TEXT PRIMARY KEY,\n  skill_id TEXT NOT NULL,\n  version INTEGER NOT NULL,\n  content TEXT,\n  files_snapshot TEXT,\n  note TEXT,\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,\n  UNIQUE(skill_id, version)\n)"
+      },
+      {
+        "type": "table",
+        "name": "skills",
+        "tbl_name": "skills",
+        "sql": "CREATE TABLE skills (\n  id TEXT PRIMARY KEY,\n  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,\n  visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),\n  name TEXT NOT NULL,\n  description TEXT,\n  content TEXT,\n  mcp_config TEXT,\n  protocol_type TEXT DEFAULT 'mcp',\n  version TEXT,\n  author TEXT,\n  tags TEXT,\n  is_favorite INTEGER DEFAULT 0,\n  source_url TEXT,\n  source_id TEXT,\n  source_label TEXT,\n  source_branch TEXT,\n  source_directory TEXT,\n  canonical_skill_path TEXT,\n  logical_name TEXT,\n  variant_key TEXT,\n  local_repo_path TEXT,\n  directory_fingerprint TEXT,\n  icon_url TEXT,\n  icon_emoji TEXT,\n  icon_background TEXT,\n  category TEXT DEFAULT 'general',\n  is_builtin INTEGER DEFAULT 0,\n  registry_slug TEXT,\n  content_url TEXT,\n  installed_content_hash TEXT,\n  installed_directory_fingerprint TEXT,\n  fingerprint_algorithm TEXT,\n  source_last_checked_at INTEGER,\n  source_last_error TEXT,\n  source_binding_state TEXT,\n  installed_version TEXT,\n  installed_at INTEGER,\n  updated_from_store_at INTEGER,\n  prerequisites TEXT,\n  compatibility TEXT,\n  original_tags TEXT,\n  safety_level TEXT,\n  safety_score INTEGER,\n  safety_report TEXT,\n  safety_scanned_at INTEGER,\n  current_version INTEGER DEFAULT 0,\n  version_tracking_enabled INTEGER DEFAULT 0,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "user_settings",
+        "tbl_name": "user_settings",
+        "sql": "CREATE TABLE user_settings (\n  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n  key TEXT NOT NULL,\n  value TEXT NOT NULL,\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY (user_id, key)\n)"
+      },
+      {
+        "type": "table",
+        "name": "users",
+        "tbl_name": "users",
+        "sql": "CREATE TABLE users (\n  id TEXT PRIMARY KEY,\n  username TEXT NOT NULL UNIQUE,\n  password_hash TEXT NOT NULL,\n  role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "trigger",
+        "name": "prompts_ad",
+        "tbl_name": "prompts",
+        "sql": "CREATE TRIGGER prompts_ad AFTER DELETE ON prompts BEGIN\n  INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES ('delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags);\nEND"
+      },
+      {
+        "type": "trigger",
+        "name": "prompts_ai",
+        "tbl_name": "prompts",
+        "sql": "CREATE TRIGGER prompts_ai AFTER INSERT ON prompts BEGIN\n  INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES (NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags);\nEND"
+      },
+      {
+        "type": "trigger",
+        "name": "prompts_au",
+        "tbl_name": "prompts",
+        "sql": "CREATE TRIGGER prompts_au AFTER UPDATE ON prompts BEGIN\n  INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES ('delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags);\n  INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES (NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags);\nEND"
+      }
+    ],
+    "tables": {
+      "agent_conversation_handoffs": [],
+      "agent_conversation_metadata": [],
+      "agent_provider_model_mappings": [],
+      "agent_provider_profiles": [
+        {
+          "id": "25031c43-bb3f-4132-a742-37d9727f4908",
+          "platform_id": "codex",
+          "name": "Historical alternate",
+          "provider_kind": "openai-compatible",
+          "protocol": "responses",
+          "endpoint": "https://fixture.invalid/v1",
+          "config_json": "{\"model\":\"synthetic-model\"}",
+          "secret_ref": null,
+          "source": "manual",
+          "archived": 0,
+          "created_at": 1791517914572,
+          "updated_at": 1791517914572
+        },
+        {
+          "id": "99de3987-5e23-4bc3-9018-43253cc5e4a7",
+          "platform_id": "codex",
+          "name": "Historical provider",
+          "provider_kind": "openai-compatible",
+          "protocol": "responses",
+          "endpoint": "https://fixture.invalid/v1",
+          "config_json": "{\"model\":\"synthetic-model\"}",
+          "secret_ref": null,
+          "source": "manual",
+          "archived": 0,
+          "created_at": 1791517914563,
+          "updated_at": 1791517914563
+        }
+      ],
+      "agent_provider_snapshots": [],
+      "agent_session_index": [],
+      "agent_session_sources": [],
+      "canonical_resources": [],
+      "database_migration_history": [
+        {
+          "migration_id": 1,
+          "name": "shared-schema-baseline-v1",
+          "checksum": "c3f5afb1253a833e319686cab98c6f8b36fae9c17d74ce0845927d1dbe0bc408",
+          "app_version": "0.6.0",
+          "applied_at": 1791517914335,
+          "duration_ms": 26
+        },
+        {
+          "migration_id": 2,
+          "name": "skills-logical-identity-v2",
+          "checksum": "a2cd25aca1d04fc3351252402db15f74e128470ce404af58ccef15e0bac76f1f",
+          "app_version": "0.6.0",
+          "applied_at": 1791517914335,
+          "duration_ms": 26
+        },
+        {
+          "migration_id": 3,
+          "name": "canonical-resource-catalog-v3",
+          "checksum": "e3b1b811d812c75e69b4709e2b9f9ef43b8c9bb5bcf1a3cc49a26ee4d2ce0e77",
+          "app_version": "0.6.0",
+          "applied_at": 1791517914335,
+          "duration_ms": 26
+        }
+      ],
+      "folders": [
+        {
+          "id": "c0c016ba-133c-4a09-a340-ca9e18fa8508",
+          "owner_user_id": null,
+          "visibility": "private",
+          "name": "Historical folder",
+          "icon": "Folder",
+          "parent_id": null,
+          "sort_order": 0,
+          "is_private": 0,
+          "created_at": 1791517914376,
+          "updated_at": 1791517914376
+        }
+      ],
+      "generation_batches": [],
+      "generation_outputs": [],
+      "prompt_output_format_items": [
+        {
+          "id": "b4c2b9a9-cd96-4a85-b103-4a08d6aa1ca8",
+          "source_prompt_id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "target_prompt_id": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "sort_order": 0,
+          "created_at": 1791517914458,
+          "updated_at": 1791517914458
+        }
+      ],
+      "prompt_relations": [
+        {
+          "id": "29b71279-28e1-4d6d-b37b-6363b46add29",
+          "source_prompt_id": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "target_prompt_id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "kind": "related_to",
+          "note": "Historical relation",
+          "created_at": 1791517914447,
+          "updated_at": 1791517914447
+        }
+      ],
+      "prompt_versions": [
+        {
+          "id": "3ef68ddd-2e00-4518-978b-9fad037c1962",
+          "prompt_id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 2,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": null,
+          "ai_response": "Synthetic AI response — no provider was called",
+          "created_at": 1791517914425
+        },
+        {
+          "id": "b32d21b3-7019-4be0-a649-91c9edf85eb1",
+          "prompt_id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 3,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": "Historical content revision",
+          "ai_response": "Synthetic AI response — no provider was called",
+          "created_at": 1791517914434
+        },
+        {
+          "id": "b78692bb-d77c-4cee-9aac-325135d90775",
+          "prompt_id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 1,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical first prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": "Initial version",
+          "ai_response": null,
+          "created_at": 1791517914398
+        },
+        {
+          "id": "c107a7f7-9f0d-43d9-bf16-b5a432485b60",
+          "prompt_id": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "version": 1,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Return JSON with a title.",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": "Initial version",
+          "ai_response": null,
+          "created_at": 1791517914416
+        }
+      ],
+      "prompts": [
+        {
+          "id": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "owner_user_id": null,
+          "visibility": "private",
+          "title": "Historical output",
+          "description": null,
+          "prompt_type": "text",
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Return JSON with a title.",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "tags": "[]",
+          "folder_id": null,
+          "parent_id": null,
+          "sort_order": 0,
+          "images": "[]",
+          "videos": "[]",
+          "is_favorite": 0,
+          "is_pinned": 0,
+          "current_version": 1,
+          "usage_count": 0,
+          "source": null,
+          "notes": null,
+          "last_ai_response": null,
+          "created_at": 1791517914408,
+          "updated_at": 1791517914408
+        },
+        {
+          "id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "owner_user_id": null,
+          "visibility": "private",
+          "title": "Historical primary",
+          "description": null,
+          "prompt_type": "text",
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "tags": "[\"fixture\"]",
+          "folder_id": "c0c016ba-133c-4a09-a340-ca9e18fa8508",
+          "parent_id": null,
+          "sort_order": 0,
+          "images": "[]",
+          "videos": "[]",
+          "is_favorite": 0,
+          "is_pinned": 0,
+          "current_version": 3,
+          "usage_count": 0,
+          "source": null,
+          "notes": "Non-secret notes: quote \" and newline\nretained",
+          "last_ai_response": "Synthetic AI response — no provider was called",
+          "created_at": 1791517914387,
+          "updated_at": 1791517914424
+        }
+      ],
+      "prompts_fts": [
+        {
+          "title": "Historical output",
+          "description": null,
+          "system_prompt": null,
+          "user_prompt": "Return JSON with a title.",
+          "tags": "[]"
+        },
+        {
+          "title": "Historical primary",
+          "description": null,
+          "system_prompt": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "tags": "[\"fixture\"]"
+        }
+      ],
+      "prompts_fts_config": [
+        {
+          "k": "version",
+          "v": 4
+        }
+      ],
+      "prompts_fts_data": [
+        {
+          "id": 1,
+          "block": {
+            "0": 2,
+            "1": 4,
+            "2": 0,
+            "3": 0,
+            "4": 11,
+            "5": 1
+          }
+        },
+        {
+          "id": 10,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 1,
+            "5": 7,
+            "6": 7,
+            "7": 0,
+            "8": 7,
+            "9": 1,
+            "10": 1,
+            "11": 1,
+            "12": 2,
+            "13": 1,
+            "14": 1,
+            "15": 3,
+            "16": 1,
+            "17": 1,
+            "18": 4,
+            "19": 1,
+            "20": 1,
+            "21": 5,
+            "22": 1,
+            "23": 1,
+            "24": 6,
+            "25": 1,
+            "26": 1,
+            "27": 7,
+            "28": 1,
+            "29": 1
+          }
+        },
+        {
+          "id": 137438953473,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 105,
+            "4": 6,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 114,
+            "9": 115,
+            "10": 116,
+            "11": 1,
+            "12": 6,
+            "13": 1,
+            "14": 3,
+            "15": 3,
+            "16": 3,
+            "17": 5,
+            "18": 120,
+            "19": 116,
+            "20": 117,
+            "21": 114,
+            "22": 101,
+            "23": 1,
+            "24": 6,
+            "25": 1,
+            "26": 4,
+            "27": 2,
+            "28": 1,
+            "29": 10,
+            "30": 104,
+            "31": 105,
+            "32": 115,
+            "33": 116,
+            "34": 111,
+            "35": 114,
+            "36": 105,
+            "37": 99,
+            "38": 97,
+            "39": 108,
+            "40": 1,
+            "41": 8,
+            "42": 2,
+            "43": 1,
+            "44": 3,
+            "45": 2,
+            "46": 1,
+            "47": 7,
+            "48": 112,
+            "49": 114,
+            "50": 105,
+            "51": 109,
+            "52": 97,
+            "53": 114,
+            "54": 121,
+            "55": 1,
+            "56": 2,
+            "57": 3,
+            "58": 3,
+            "59": 4,
+            "60": 111,
+            "61": 109,
+            "62": 112,
+            "63": 116,
+            "64": 1,
+            "65": 6,
+            "66": 1,
+            "67": 3,
+            "68": 4,
+            "69": 1,
+            "70": 5,
+            "71": 116,
+            "72": 111,
+            "73": 112,
+            "74": 105,
+            "75": 99,
+            "76": 1,
+            "77": 6,
+            "78": 1,
+            "79": 3,
+            "80": 7,
+            "81": 1,
+            "82": 6,
+            "83": 228,
+            "84": 184,
+            "85": 173,
+            "86": 230,
+            "87": 150,
+            "88": 135,
+            "89": 1,
+            "90": 6,
+            "91": 1,
+            "92": 3,
+            "93": 5,
+            "94": 1,
+            "95": 4,
+            "96": 240,
+            "97": 159,
+            "98": 166,
+            "99": 140,
+            "100": 1,
+            "101": 6,
+            "102": 1,
+            "103": 3,
+            "104": 6,
+            "105": 4,
+            "106": 12,
+            "107": 12,
+            "108": 18,
+            "109": 12,
+            "110": 11,
+            "111": 12,
+            "112": 13
+          }
+        },
+        {
+          "id": 274877906945,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 105,
+            "4": 6,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 114,
+            "9": 115,
+            "10": 116,
+            "11": 1,
+            "12": 7,
+            "13": 1,
+            "14": 3,
+            "15": 3,
+            "16": 3,
+            "17": 5,
+            "18": 120,
+            "19": 116,
+            "20": 117,
+            "21": 114,
+            "22": 101,
+            "23": 1,
+            "24": 7,
+            "25": 1,
+            "26": 4,
+            "27": 2,
+            "28": 1,
+            "29": 10,
+            "30": 104,
+            "31": 105,
+            "32": 115,
+            "33": 116,
+            "34": 111,
+            "35": 114,
+            "36": 105,
+            "37": 99,
+            "38": 97,
+            "39": 108,
+            "40": 1,
+            "41": 9,
+            "42": 2,
+            "43": 1,
+            "44": 3,
+            "45": 2,
+            "46": 1,
+            "47": 7,
+            "48": 112,
+            "49": 114,
+            "50": 105,
+            "51": 109,
+            "52": 97,
+            "53": 114,
+            "54": 121,
+            "55": 1,
+            "56": 3,
+            "57": 3,
+            "58": 3,
+            "59": 4,
+            "60": 111,
+            "61": 109,
+            "62": 112,
+            "63": 116,
+            "64": 1,
+            "65": 7,
+            "66": 1,
+            "67": 3,
+            "68": 4,
+            "69": 1,
+            "70": 5,
+            "71": 116,
+            "72": 111,
+            "73": 112,
+            "74": 105,
+            "75": 99,
+            "76": 1,
+            "77": 7,
+            "78": 1,
+            "79": 3,
+            "80": 7,
+            "81": 1,
+            "82": 6,
+            "83": 228,
+            "84": 184,
+            "85": 173,
+            "86": 230,
+            "87": 150,
+            "88": 135,
+            "89": 1,
+            "90": 7,
+            "91": 1,
+            "92": 3,
+            "93": 5,
+            "94": 1,
+            "95": 4,
+            "96": 240,
+            "97": 159,
+            "98": 166,
+            "99": 140,
+            "100": 1,
+            "101": 7,
+            "102": 1,
+            "103": 3,
+            "104": 6,
+            "105": 4,
+            "106": 12,
+            "107": 12,
+            "108": 18,
+            "109": 12,
+            "110": 11,
+            "111": 12,
+            "112": 13
+          }
+        },
+        {
+          "id": 412316860417,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 85,
+            "4": 2,
+            "5": 48,
+            "6": 97,
+            "7": 2,
+            "8": 6,
+            "9": 1,
+            "10": 3,
+            "11": 5,
+            "12": 1,
+            "13": 10,
+            "14": 104,
+            "15": 105,
+            "16": 115,
+            "17": 116,
+            "18": 111,
+            "19": 114,
+            "20": 105,
+            "21": 99,
+            "22": 97,
+            "23": 108,
+            "24": 2,
+            "25": 2,
+            "26": 2,
+            "27": 1,
+            "28": 4,
+            "29": 106,
+            "30": 115,
+            "31": 111,
+            "32": 110,
+            "33": 2,
+            "34": 6,
+            "35": 1,
+            "36": 3,
+            "37": 3,
+            "38": 1,
+            "39": 6,
+            "40": 111,
+            "41": 117,
+            "42": 116,
+            "43": 112,
+            "44": 117,
+            "45": 116,
+            "46": 2,
+            "47": 2,
+            "48": 3,
+            "49": 1,
+            "50": 6,
+            "51": 114,
+            "52": 101,
+            "53": 116,
+            "54": 117,
+            "55": 114,
+            "56": 110,
+            "57": 2,
+            "58": 6,
+            "59": 1,
+            "60": 3,
+            "61": 2,
+            "62": 1,
+            "63": 5,
+            "64": 116,
+            "65": 105,
+            "66": 116,
+            "67": 108,
+            "68": 101,
+            "69": 2,
+            "70": 6,
+            "71": 1,
+            "72": 3,
+            "73": 6,
+            "74": 1,
+            "75": 4,
+            "76": 119,
+            "77": 105,
+            "78": 116,
+            "79": 104,
+            "80": 2,
+            "81": 6,
+            "82": 1,
+            "83": 3,
+            "84": 4,
+            "85": 4,
+            "86": 8,
+            "87": 15,
+            "88": 11,
+            "89": 11,
+            "90": 13,
+            "91": 12
+          }
+        },
+        {
+          "id": 549755813889,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 85,
+            "4": 2,
+            "5": 48,
+            "6": 97,
+            "7": 2,
+            "8": 7,
+            "9": 1,
+            "10": 3,
+            "11": 5,
+            "12": 1,
+            "13": 10,
+            "14": 104,
+            "15": 105,
+            "16": 115,
+            "17": 116,
+            "18": 111,
+            "19": 114,
+            "20": 105,
+            "21": 99,
+            "22": 97,
+            "23": 108,
+            "24": 2,
+            "25": 3,
+            "26": 2,
+            "27": 1,
+            "28": 4,
+            "29": 106,
+            "30": 115,
+            "31": 111,
+            "32": 110,
+            "33": 2,
+            "34": 7,
+            "35": 1,
+            "36": 3,
+            "37": 3,
+            "38": 1,
+            "39": 6,
+            "40": 111,
+            "41": 117,
+            "42": 116,
+            "43": 112,
+            "44": 117,
+            "45": 116,
+            "46": 2,
+            "47": 3,
+            "48": 3,
+            "49": 1,
+            "50": 6,
+            "51": 114,
+            "52": 101,
+            "53": 116,
+            "54": 117,
+            "55": 114,
+            "56": 110,
+            "57": 2,
+            "58": 7,
+            "59": 1,
+            "60": 3,
+            "61": 2,
+            "62": 1,
+            "63": 5,
+            "64": 116,
+            "65": 105,
+            "66": 116,
+            "67": 108,
+            "68": 101,
+            "69": 2,
+            "70": 7,
+            "71": 1,
+            "72": 3,
+            "73": 6,
+            "74": 1,
+            "75": 4,
+            "76": 119,
+            "77": 105,
+            "78": 116,
+            "79": 104,
+            "80": 2,
+            "81": 7,
+            "82": 1,
+            "83": 3,
+            "84": 4,
+            "85": 4,
+            "86": 8,
+            "87": 15,
+            "88": 11,
+            "89": 11,
+            "90": 13,
+            "91": 12
+          }
+        },
+        {
+          "id": 687194767361,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 116,
+            "4": 6,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 114,
+            "9": 115,
+            "10": 116,
+            "11": 1,
+            "12": 1,
+            "13": 3,
+            "14": 5,
+            "15": 120,
+            "16": 116,
+            "17": 117,
+            "18": 114,
+            "19": 101,
+            "20": 1,
+            "21": 7,
+            "22": 1,
+            "23": 4,
+            "24": 2,
+            "25": 1,
+            "26": 10,
+            "27": 104,
+            "28": 105,
+            "29": 115,
+            "30": 116,
+            "31": 111,
+            "32": 114,
+            "33": 105,
+            "34": 99,
+            "35": 97,
+            "36": 108,
+            "37": 1,
+            "38": 9,
+            "39": 2,
+            "40": 1,
+            "41": 3,
+            "42": 2,
+            "43": 1,
+            "44": 7,
+            "45": 112,
+            "46": 114,
+            "47": 105,
+            "48": 109,
+            "49": 97,
+            "50": 114,
+            "51": 121,
+            "52": 1,
+            "53": 3,
+            "54": 3,
+            "55": 3,
+            "56": 4,
+            "57": 111,
+            "58": 109,
+            "59": 112,
+            "60": 116,
+            "61": 1,
+            "62": 7,
+            "63": 1,
+            "64": 3,
+            "65": 4,
+            "66": 1,
+            "67": 5,
+            "68": 116,
+            "69": 111,
+            "70": 112,
+            "71": 105,
+            "72": 99,
+            "73": 1,
+            "74": 7,
+            "75": 1,
+            "76": 3,
+            "77": 7,
+            "78": 1,
+            "79": 7,
+            "80": 117,
+            "81": 112,
+            "82": 100,
+            "83": 97,
+            "84": 116,
+            "85": 101,
+            "86": 100,
+            "87": 1,
+            "88": 6,
+            "89": 1,
+            "90": 3,
+            "91": 3,
+            "92": 1,
+            "93": 6,
+            "94": 228,
+            "95": 184,
+            "96": 173,
+            "97": 230,
+            "98": 150,
+            "99": 135,
+            "100": 1,
+            "101": 7,
+            "102": 1,
+            "103": 3,
+            "104": 5,
+            "105": 1,
+            "106": 4,
+            "107": 240,
+            "108": 159,
+            "109": 166,
+            "110": 140,
+            "111": 1,
+            "112": 7,
+            "113": 1,
+            "114": 3,
+            "115": 6,
+            "116": 4,
+            "117": 9,
+            "118": 12,
+            "119": 18,
+            "120": 12,
+            "121": 11,
+            "122": 12,
+            "123": 14,
+            "124": 13
+          }
+        },
+        {
+          "id": 824633720833,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 109,
+            "4": 8,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 120,
+            "9": 116,
+            "10": 117,
+            "11": 114,
+            "12": 101,
+            "13": 1,
+            "14": 7,
+            "15": 1,
+            "16": 4,
+            "17": 2,
+            "18": 1,
+            "19": 10,
+            "20": 104,
+            "21": 105,
+            "22": 115,
+            "23": 116,
+            "24": 111,
+            "25": 114,
+            "26": 105,
+            "27": 99,
+            "28": 97,
+            "29": 108,
+            "30": 1,
+            "31": 9,
+            "32": 2,
+            "33": 1,
+            "34": 3,
+            "35": 2,
+            "36": 1,
+            "37": 7,
+            "38": 112,
+            "39": 114,
+            "40": 105,
+            "41": 109,
+            "42": 97,
+            "43": 114,
+            "44": 121,
+            "45": 1,
+            "46": 3,
+            "47": 3,
+            "48": 3,
+            "49": 4,
+            "50": 111,
+            "51": 109,
+            "52": 112,
+            "53": 116,
+            "54": 1,
+            "55": 7,
+            "56": 1,
+            "57": 3,
+            "58": 4,
+            "59": 1,
+            "60": 5,
+            "61": 116,
+            "62": 111,
+            "63": 112,
+            "64": 105,
+            "65": 99,
+            "66": 1,
+            "67": 7,
+            "68": 1,
+            "69": 3,
+            "70": 7,
+            "71": 1,
+            "72": 7,
+            "73": 117,
+            "74": 112,
+            "75": 100,
+            "76": 97,
+            "77": 116,
+            "78": 101,
+            "79": 100,
+            "80": 1,
+            "81": 7,
+            "82": 1,
+            "83": 3,
+            "84": 3,
+            "85": 1,
+            "86": 6,
+            "87": 228,
+            "88": 184,
+            "89": 173,
+            "90": 230,
+            "91": 150,
+            "92": 135,
+            "93": 1,
+            "94": 7,
+            "95": 1,
+            "96": 3,
+            "97": 5,
+            "98": 1,
+            "99": 4,
+            "100": 240,
+            "101": 159,
+            "102": 166,
+            "103": 140,
+            "104": 1,
+            "105": 7,
+            "106": 1,
+            "107": 3,
+            "108": 6,
+            "109": 4,
+            "110": 14,
+            "111": 18,
+            "112": 12,
+            "113": 11,
+            "114": 12,
+            "115": 14,
+            "116": 13
+          }
+        },
+        {
+          "id": 962072674305,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 109,
+            "4": 8,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 120,
+            "9": 116,
+            "10": 117,
+            "11": 114,
+            "12": 101,
+            "13": 1,
+            "14": 7,
+            "15": 1,
+            "16": 4,
+            "17": 2,
+            "18": 1,
+            "19": 10,
+            "20": 104,
+            "21": 105,
+            "22": 115,
+            "23": 116,
+            "24": 111,
+            "25": 114,
+            "26": 105,
+            "27": 99,
+            "28": 97,
+            "29": 108,
+            "30": 1,
+            "31": 9,
+            "32": 2,
+            "33": 1,
+            "34": 3,
+            "35": 2,
+            "36": 1,
+            "37": 7,
+            "38": 112,
+            "39": 114,
+            "40": 105,
+            "41": 109,
+            "42": 97,
+            "43": 114,
+            "44": 121,
+            "45": 1,
+            "46": 3,
+            "47": 3,
+            "48": 3,
+            "49": 4,
+            "50": 111,
+            "51": 109,
+            "52": 112,
+            "53": 116,
+            "54": 1,
+            "55": 7,
+            "56": 1,
+            "57": 3,
+            "58": 4,
+            "59": 1,
+            "60": 5,
+            "61": 116,
+            "62": 111,
+            "63": 112,
+            "64": 105,
+            "65": 99,
+            "66": 1,
+            "67": 7,
+            "68": 1,
+            "69": 3,
+            "70": 7,
+            "71": 1,
+            "72": 7,
+            "73": 117,
+            "74": 112,
+            "75": 100,
+            "76": 97,
+            "77": 116,
+            "78": 101,
+            "79": 100,
+            "80": 1,
+            "81": 7,
+            "82": 1,
+            "83": 3,
+            "84": 3,
+            "85": 1,
+            "86": 6,
+            "87": 228,
+            "88": 184,
+            "89": 173,
+            "90": 230,
+            "91": 150,
+            "92": 135,
+            "93": 1,
+            "94": 7,
+            "95": 1,
+            "96": 3,
+            "97": 5,
+            "98": 1,
+            "99": 4,
+            "100": 240,
+            "101": 159,
+            "102": 166,
+            "103": 140,
+            "104": 1,
+            "105": 7,
+            "106": 1,
+            "107": 3,
+            "108": 6,
+            "109": 4,
+            "110": 14,
+            "111": 18,
+            "112": 12,
+            "113": 11,
+            "114": 12,
+            "115": 14,
+            "116": 13
+          }
+        }
+      ],
+      "prompts_fts_docsize": [
+        {
+          "id": 1,
+          "sz": {
+            "0": 2,
+            "1": 0,
+            "2": 0,
+            "3": 6,
+            "4": 1
+          }
+        },
+        {
+          "id": 2,
+          "sz": {
+            "0": 2,
+            "1": 0,
+            "2": 0,
+            "3": 5,
+            "4": 0
+          }
+        }
+      ],
+      "prompts_fts_idx": [
+        {
+          "segid": 1,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 2,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 3,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 4,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 5,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 6,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 7,
+          "term": {},
+          "pgno": 2
+        }
+      ],
+      "refresh_tokens": [],
+      "rule_versions": [
+        {
+          "id": "project%3Ahistorical-source-1791517914522",
+          "rule_id": "project:historical-source",
+          "version": 1,
+          "file_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/rules/.versions/project%3Ahistorical-source/0001.md",
+          "source": "create",
+          "created_at": 1791517914522
+        },
+        {
+          "id": "project%3Ahistorical-source-1791517914544",
+          "rule_id": "project:historical-source",
+          "version": 2,
+          "file_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/rules/.versions/project%3Ahistorical-source/0002.md",
+          "source": "manual-save",
+          "created_at": 1791517914544
+        }
+      ],
+      "rules": [
+        {
+          "id": "project:historical-source",
+          "scope": "project",
+          "platform_id": "workspace",
+          "platform_name": "Historical rules",
+          "platform_icon": "FolderRoot",
+          "platform_description": "Project rules from /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/rule-project",
+          "canonical_file_name": "AGENTS.md",
+          "description": "Project rule file loaded from a user-managed directory.",
+          "managed_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/rules/projects/historical-rules__historical-source/AGENTS.md",
+          "target_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/rule-project/AGENTS.md",
+          "project_root_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/rule-project",
+          "sync_status": "synced",
+          "current_version": 2,
+          "content_hash": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5",
+          "created_at": 1791517914521,
+          "updated_at": 1791517914545
+        }
+      ],
+      "schema_migrations": [
+        {
+          "name": "agent_conversation_handoff_launch_v2",
+          "applied_at": 1791517914323
+        },
+        {
+          "name": "agent_conversation_projection_v1",
+          "applied_at": 1791517914323
+        },
+        {
+          "name": "agent_provider_profiles_v1",
+          "applied_at": 1791517914322
+        },
+        {
+          "name": "agent_session_index_v1",
+          "applied_at": 1791517914323
+        },
+        {
+          "name": "backfill_local_repo_path_v1",
+          "applied_at": 1791517914324
+        },
+        {
+          "name": "backfill_skill_legacy_fingerprint_algorithm_v1",
+          "applied_at": 1791517914324
+        },
+        {
+          "name": "drop_agent_conversation_metadata_deleted_at_v1",
+          "applied_at": 1791517914323
+        },
+        {
+          "name": "drop_skill_name_unique_v2",
+          "applied_at": 1791517914326
+        },
+        {
+          "name": "fix_prompt_current_version_v1",
+          "applied_at": 1791517914326
+        },
+        {
+          "name": "normalize_skill_version_tracking_v1",
+          "applied_at": 1791517914325
+        },
+        {
+          "name": "repair_empty_prompt_version_chain_v1",
+          "applied_at": 1791517914327
+        },
+        {
+          "name": "server_auth_tables_v1",
+          "applied_at": 1791517914325
+        }
+      ],
+      "settings": [],
+      "skill_versions": [
+        {
+          "id": "949195c5-725d-4e33-a295-1ee484793ce2",
+          "skill_id": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "version": 2,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "files_snapshot": "[{\"relativePath\":\"SKILL.md\",\"content\":\"---\\nname: historical-skill\\ndescription: Synthetic source fixture\\nversion: 1.0.0\\n---\\n\\n# Historical Skill\\nKeep package files.\\n\"},{\"relativePath\":\"docs/guide.md\",\"content\":\"Updated historical guide bytes\\n\"},{\"relativePath\":\"docs/pixel.bin\",\"content\":\"[binary file]\"}]",
+          "note": "Historical package revision",
+          "created_at": 1791517914512
+        },
+        {
+          "id": "e073fccd-c63e-46f6-9495-39c2798541b6",
+          "skill_id": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "version": 1,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "files_snapshot": "[{\"relativePath\":\"SKILL.md\",\"content\":\"---\\nname: historical-skill\\ndescription: Synthetic source fixture\\nversion: 1.0.0\\n---\\n\\n# Historical Skill\\nKeep package files.\\n\"},{\"relativePath\":\"docs/guide.md\",\"content\":\"Historical guide bytes\\n\"},{\"relativePath\":\"docs/pixel.bin\",\"content\":\"[binary file]\"}]",
+          "note": "Historical original package",
+          "created_at": 1791517914499
+        }
+      ],
+      "skills": [
+        {
+          "id": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "owner_user_id": null,
+          "visibility": "private",
+          "name": "historical-skill",
+          "description": "Synthetic source fixture",
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "mcp_config": null,
+          "protocol_type": "skill",
+          "version": "1.0.0",
+          "author": "Local",
+          "tags": "[]",
+          "is_favorite": 0,
+          "source_url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/skill",
+          "source_id": null,
+          "source_label": null,
+          "source_branch": null,
+          "source_directory": null,
+          "canonical_skill_path": null,
+          "logical_name": null,
+          "variant_key": null,
+          "local_repo_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/skills/historical-skill",
+          "directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+          "icon_url": null,
+          "icon_emoji": null,
+          "icon_background": null,
+          "category": "general",
+          "is_builtin": 0,
+          "registry_slug": null,
+          "content_url": null,
+          "installed_content_hash": null,
+          "installed_directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+          "fingerprint_algorithm": "skill-package-sha256-v1",
+          "source_last_checked_at": 1791517914487,
+          "source_last_error": null,
+          "source_binding_state": "bound",
+          "installed_version": null,
+          "installed_at": null,
+          "updated_from_store_at": null,
+          "prerequisites": null,
+          "compatibility": null,
+          "original_tags": "[]",
+          "safety_level": null,
+          "safety_score": null,
+          "safety_report": null,
+          "safety_scanned_at": null,
+          "current_version": 2,
+          "version_tracking_enabled": 1,
+          "created_at": 1791517914487,
+          "updated_at": 1791517914487
+        }
+      ],
+      "user_settings": [],
+      "users": []
+    },
+    "foreignKeys": {
+      "agent_conversation_handoffs": [],
+      "agent_conversation_metadata": [],
+      "agent_provider_model_mappings": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "agent_provider_profiles",
+          "from": "provider_profile_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "agent_provider_profiles": [],
+      "agent_provider_snapshots": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "agent_provider_profiles",
+          "from": "provider_profile_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "agent_session_index": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "agent_session_sources",
+          "from": "source_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "agent_session_sources": [],
+      "canonical_resources": [],
+      "database_migration_history": [],
+      "folders": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "folders",
+          "from": "parent_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "users",
+          "from": "owner_user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "generation_batches": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "source_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "generation_outputs": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "generation_batches",
+          "from": "batch_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompt_output_format_items": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "target_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "prompts",
+          "from": "source_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompt_relations": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "target_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "prompts",
+          "from": "source_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompt_versions": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompts": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "parent_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "folders",
+          "from": "folder_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        },
+        {
+          "id": 2,
+          "seq": 0,
+          "table": "users",
+          "from": "owner_user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "prompts_fts": [],
+      "prompts_fts_config": [],
+      "prompts_fts_data": [],
+      "prompts_fts_docsize": [],
+      "prompts_fts_idx": [],
+      "refresh_tokens": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "users",
+          "from": "user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "rule_versions": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "rules",
+          "from": "rule_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "rules": [],
+      "schema_migrations": [],
+      "settings": [],
+      "skill_versions": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "skills",
+          "from": "skill_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "skills": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "users",
+          "from": "owner_user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "user_settings": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "users",
+          "from": "user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "users": []
+    },
+    "userVersion": [
+      {
+        "user_version": 3
+      }
+    ]
+  },
+  "inventory": [
+    {
+      "path": "profile/config/ai-models.json",
+      "bytes": 742,
+      "sha256": "f26828dbbb51ff9bcb73bb3ef0f161a3d1cdca78ce0794e8d5b2f6812c9f23f4"
+    },
+    {
+      "path": "profile/data/mcp/library.json",
+      "bytes": 662,
+      "sha256": "fa81fe01a6676bf1a31f75c0253419ad8f129937e762fb8a2044b233572f0c73"
+    },
+    {
+      "path": "profile/data/plugins/agent-codex-historical-plugin/package/.codex-plugin/plugin.json",
+      "bytes": 91,
+      "sha256": "62d9b620d35b10385a0e01ef1ebe8175f556c98832d87a56cc44a40a59ce40b8"
+    },
+    {
+      "path": "profile/data/plugins/agent-codex-historical-plugin/package/commands/review.md",
+      "bytes": 36,
+      "sha256": "578ac1a8e71748b3b4f54c6293e141e0ff9748c195e960b2d44a9e054e985a33"
+    },
+    {
+      "path": "profile/data/plugins/agent-codex-historical-plugin/package/skills/writer/pixel.bin",
+      "bytes": 4,
+      "sha256": "a33bb2aed757bc839807d7a9deab0688c3cf06d36e53cb428f2e539c8dc76c5b"
+    },
+    {
+      "path": "profile/data/plugins/agent-codex-historical-plugin/package/skills/writer/SKILL.md",
+      "bytes": 124,
+      "sha256": "7a3ac377f294307eeaf1aebc043bab6428f46f6adf1be8749cfc88f598bc1ae1"
+    },
+    {
+      "path": "profile/data/plugins/library.json",
+      "bytes": 2282,
+      "sha256": "9570fab11ade9b671174bb6b7bed01ac6e4ebadf691ba555be3486f460c7b748"
+    },
+    {
+      "path": "profile/data/plugins/versions.json",
+      "bytes": 3646,
+      "sha256": "596bc6af585805e7a4579f0fda9b20b6efe124442866169a07917465742ffa8c"
+    },
+    {
+      "path": "profile/data/prompthub.db",
+      "bytes": 532480,
+      "sha256": "41f5d359dbb12e98277719a7199e97301d472fb43edb67d35273325aca5d91bd"
+    },
+    {
+      "path": "profile/data/rules/.versions/project%3Ahistorical-source/0001.md",
+      "bytes": 26,
+      "sha256": "982fa4315121e17f77ed92d71125f7e28f7d5579d080b6347a9b98769d3de2e9"
+    },
+    {
+      "path": "profile/data/rules/.versions/project%3Ahistorical-source/0002.md",
+      "bytes": 36,
+      "sha256": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5"
+    },
+    {
+      "path": "profile/data/rules/.versions/project%3Ahistorical-source/index.json",
+      "bytes": 321,
+      "sha256": "c4aba22ab95ba16fc3ae642d1ce8e0acb339070f0ab7c5220910446e36cab283"
+    },
+    {
+      "path": "profile/data/rules/projects/historical-rules__historical-source/_rule.json",
+      "bytes": 1086,
+      "sha256": "c8ddb326d54322ad6a1f2c807a2e8e371b8d8e9d97185fa6d397981df8b57c95"
+    },
+    {
+      "path": "profile/data/rules/projects/historical-rules__historical-source/AGENTS.md",
+      "bytes": 36,
+      "sha256": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5"
+    },
+    {
+      "path": "profile/data/skills/historical-skill/docs/guide.md",
+      "bytes": 31,
+      "sha256": "b165b4201ce49fadebd6995fc29cc24f7b9ed87a4daaa71f943921028e4a3de0"
+    },
+    {
+      "path": "profile/data/skills/historical-skill/docs/pixel.bin",
+      "bytes": 4,
+      "sha256": "a33bb2aed757bc839807d7a9deab0688c3cf06d36e53cb428f2e539c8dc76c5b"
+    },
+    {
+      "path": "profile/data/skills/historical-skill/SKILL.md",
+      "bytes": 124,
+      "sha256": "7a3ac377f294307eeaf1aebc043bab6428f46f6adf1be8749cfc88f598bc1ae1"
+    },
+    {
+      "path": "profile/fixture-inputs/plugin/.codex-plugin/plugin.json",
+      "bytes": 91,
+      "sha256": "62d9b620d35b10385a0e01ef1ebe8175f556c98832d87a56cc44a40a59ce40b8"
+    },
+    {
+      "path": "profile/fixture-inputs/plugin/commands/review.md",
+      "bytes": 36,
+      "sha256": "578ac1a8e71748b3b4f54c6293e141e0ff9748c195e960b2d44a9e054e985a33"
+    },
+    {
+      "path": "profile/fixture-inputs/plugin/skills/writer/pixel.bin",
+      "bytes": 4,
+      "sha256": "a33bb2aed757bc839807d7a9deab0688c3cf06d36e53cb428f2e539c8dc76c5b"
+    },
+    {
+      "path": "profile/fixture-inputs/plugin/skills/writer/SKILL.md",
+      "bytes": 124,
+      "sha256": "7a3ac377f294307eeaf1aebc043bab6428f46f6adf1be8749cfc88f598bc1ae1"
+    },
+    {
+      "path": "profile/fixture-inputs/rule-project/AGENTS.md",
+      "bytes": 36,
+      "sha256": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5"
+    },
+    {
+      "path": "profile/fixture-inputs/skill/docs/guide.md",
+      "bytes": 23,
+      "sha256": "4da02ad8dc1b360e15f3c256230c981f7c549f7755795df049897ffbd0ca1282"
+    },
+    {
+      "path": "profile/fixture-inputs/skill/docs/pixel.bin",
+      "bytes": 4,
+      "sha256": "a33bb2aed757bc839807d7a9deab0688c3cf06d36e53cb428f2e539c8dc76c5b"
+    },
+    {
+      "path": "profile/fixture-inputs/skill/SKILL.md",
+      "bytes": 124,
+      "sha256": "7a3ac377f294307eeaf1aebc043bab6428f46f6adf1be8749cfc88f598bc1ae1"
+    }
+  ],
+  "archive": {
+    "filename": "beta.1.tar.gz",
+    "bytes": 20480,
+    "sha256": "e478cc5281358936813908c3da1eec4d88cf0afdf4383e0af78363f3955521ab"
+  },
+  "observations": {
+    "seeded": {
+      "prompts": [
+        {
+          "id": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "visibility": "private",
+          "title": "Historical output",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Return JSON with a title.",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [],
+          "folderId": null,
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 1,
+          "currentVersion": 1,
+          "usageCount": 0,
+          "source": null,
+          "notes": null,
+          "lastAiResponse": null,
+          "createdAt": "2026-10-09T03:51:54.408Z",
+          "updatedAt": "2026-10-09T03:51:54.408Z"
+        },
+        {
+          "id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "visibility": "private",
+          "title": "Historical primary",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [
+            "fixture"
+          ],
+          "folderId": "c0c016ba-133c-4a09-a340-ca9e18fa8508",
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 3,
+          "currentVersion": 3,
+          "usageCount": 0,
+          "source": null,
+          "notes": "Non-secret notes: quote \" and newline\nretained",
+          "lastAiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:54.387Z",
+          "updatedAt": "2026-10-09T03:51:54.424Z"
+        }
+      ],
+      "promptVersions": [
+        {
+          "id": "b32d21b3-7019-4be0-a649-91c9edf85eb1",
+          "promptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 3,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Historical content revision",
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:54.434Z"
+        },
+        {
+          "id": "3ef68ddd-2e00-4518-978b-9fad037c1962",
+          "promptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 2,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": null,
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:54.425Z"
+        },
+        {
+          "id": "b78692bb-d77c-4cee-9aac-325135d90775",
+          "promptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 1,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical first prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Initial version",
+          "aiResponse": null,
+          "createdAt": "2026-10-09T03:51:54.398Z"
+        }
+      ],
+      "folders": [
+        {
+          "id": "c0c016ba-133c-4a09-a340-ca9e18fa8508",
+          "visibility": "private",
+          "name": "Historical folder",
+          "icon": "Folder",
+          "order": 0,
+          "isPrivate": false,
+          "createdAt": "2026-10-09T03:51:54.376Z",
+          "updatedAt": "2026-10-09T03:51:54.376Z"
+        }
+      ],
+      "relations": [
+        {
+          "id": "29b71279-28e1-4d6d-b37b-6363b46add29",
+          "sourcePromptId": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "targetPromptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "kind": "related_to",
+          "note": "Historical relation",
+          "createdAt": "2026-10-09T03:51:54.447Z",
+          "updatedAt": "2026-10-09T03:51:54.447Z"
+        }
+      ],
+      "formats": [
+        {
+          "id": "b4c2b9a9-cd96-4a85-b103-4a08d6aa1ca8",
+          "sourcePromptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "targetPromptId": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "sortOrder": 0,
+          "createdAt": "2026-10-09T03:51:54.458Z",
+          "updatedAt": "2026-10-09T03:51:54.458Z"
+        }
+      ],
+      "skill": {
+        "id": "5f02c508-8698-4544-a931-977f2e88b6c3",
+        "visibility": "private",
+        "name": "historical-skill",
+        "description": "Synthetic source fixture",
+        "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "instructions": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "protocol_type": "skill",
+        "version": "1.0.0",
+        "author": "Local",
+        "tags": [],
+        "is_favorite": false,
+        "currentVersion": 2,
+        "versionTrackingEnabled": true,
+        "created_at": 1791517914487,
+        "updated_at": 1791517914487,
+        "source_url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/skill",
+        "local_repo_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/skills/historical-skill",
+        "directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "category": "general",
+        "is_builtin": false,
+        "installed_directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "fingerprint_algorithm": "skill-package-sha256-v1",
+        "source_last_checked_at": 1791517914487,
+        "source_binding_state": "bound",
+        "original_tags": []
+      },
+      "skillVersions": [
+        {
+          "id": "949195c5-725d-4e33-a295-1ee484793ce2",
+          "skillId": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "version": 2,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Updated historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical package revision",
+          "createdAt": "2026-10-09T03:51:54.512Z"
+        },
+        {
+          "id": "e073fccd-c63e-46f6-9495-39c2798541b6",
+          "skillId": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "version": 1,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical original package",
+          "createdAt": "2026-10-09T03:51:54.499Z"
+        }
+      ],
+      "skillFiles": [
+        {
+          "path": "SKILL.md",
+          "isDirectory": false,
+          "size": 124
+        },
+        {
+          "path": "docs",
+          "isDirectory": true
+        },
+        {
+          "path": "docs/guide.md",
+          "isDirectory": false,
+          "size": 31
+        },
+        {
+          "path": "docs/pixel.bin",
+          "isDirectory": false,
+          "size": 4
+        }
+      ],
+      "rule": {
+        "id": "project:historical-source",
+        "content": "Historical updated rules — 中文\n",
+        "versions": [
+          {
+            "id": "project%3Ahistorical-source-1791517914544",
+            "savedAt": "2026-10-09T03:51:54.544Z",
+            "source": "manual-save",
+            "content": "Historical updated rules — 中文\n"
+          },
+          {
+            "id": "project%3Ahistorical-source-1791517914522",
+            "savedAt": "2026-10-09T03:51:54.522Z",
+            "source": "create",
+            "content": "Historical original rules\n"
+          }
+        ]
+      },
+      "settings": {
+        "kind": "prompthub-ai-config",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:54.563Z",
+        "providers": [
+          {
+            "id": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1"
+          }
+        ],
+        "models": [
+          {
+            "id": "fixture-model",
+            "type": "chat",
+            "providerId": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1",
+            "model": "synthetic-model",
+            "isDefault": false,
+            "capabilities": {
+              "chat": true,
+              "imageGeneration": false
+            }
+          }
+        ],
+        "modelRouteDefaults": {
+          "mainText": "fixture-model"
+        }
+      },
+      "profiles": [
+        {
+          "id": "25031c43-bb3f-4132-a742-37d9727f4908",
+          "platformId": "codex",
+          "name": "Historical alternate",
+          "providerKind": "openai-compatible",
+          "protocol": "responses",
+          "endpoint": "https://fixture.invalid/v1",
+          "config": {
+            "model": "synthetic-model"
+          },
+          "secretRef": null,
+          "source": "manual",
+          "archived": false,
+          "createdAt": 1791517914572,
+          "updatedAt": 1791517914572
+        },
+        {
+          "id": "99de3987-5e23-4bc3-9018-43253cc5e4a7",
+          "platformId": "codex",
+          "name": "Historical provider",
+          "providerKind": "openai-compatible",
+          "protocol": "responses",
+          "endpoint": "https://fixture.invalid/v1",
+          "config": {
+            "model": "synthetic-model"
+          },
+          "secretRef": null,
+          "source": "manual",
+          "archived": false,
+          "createdAt": 1791517914563,
+          "updatedAt": 1791517914563
+        }
+      ],
+      "pluginLibrary": {
+        "kind": "prompthub-plugin-library",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:54.585Z",
+        "plugins": [
+          {
+            "id": "agent-codex:historical-plugin",
+            "name": "historical-plugin",
+            "displayName": "historical-plugin",
+            "description": "Synthetic historical package",
+            "version": "1.0.0",
+            "trustLevel": "custom",
+            "inventory": {
+              "skills": 1,
+              "mcpServers": 0,
+              "apps": 0,
+              "commands": 1,
+              "hooks": 0,
+              "agents": 0,
+              "assets": 0,
+              "docs": 0,
+              "lspServers": 0,
+              "scripts": 0
+            },
+            "classification": "bundle",
+            "source": {
+              "kind": "local",
+              "sourceId": "codex",
+              "label": "Synthetic Codex",
+              "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+              "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+              "url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/plugin"
+            },
+            "isFavorite": false,
+            "tags": [],
+            "userTags": [],
+            "nativeTargetIds": [
+              "codex"
+            ],
+            "invalidNativeTargetIds": [],
+            "distributedTargetIds": [],
+            "managedPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+            "installedManifestHash": "02d24c8b5a6063a209497879af4ecb4470ea1f0ccfeb66d9a15f10cd545d202c",
+            "installedPackageHash": "8d7215d098df753f5b4ec4259ad718ff29e6877c82ed922cb3ce2e2bd6557285",
+            "installedAt": 1791517914585,
+            "updatedAt": 1791517914585
+          }
+        ]
+      },
+      "pluginVersions": [
+        {
+          "id": "agent-codex-historical-plugin-v1-94c90b19-c77e-46f5-a7a1-69139bbe0018",
+          "pluginId": "agent-codex:historical-plugin",
+          "version": 1,
+          "note": "Historical package version",
+          "createdAt": "2026-10-09T03:51:54.586Z",
+          "plugin": {
+            "id": "agent-codex:historical-plugin",
+            "name": "historical-plugin",
+            "displayName": "historical-plugin",
+            "description": "Synthetic historical package",
+            "version": "1.0.0",
+            "trustLevel": "custom",
+            "inventory": {
+              "skills": 1,
+              "mcpServers": 0,
+              "apps": 0,
+              "commands": 1,
+              "hooks": 0,
+              "agents": 0,
+              "assets": 0,
+              "docs": 0,
+              "lspServers": 0,
+              "scripts": 0
+            },
+            "classification": "bundle",
+            "source": {
+              "kind": "local",
+              "sourceId": "codex",
+              "label": "Synthetic Codex",
+              "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+              "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+              "url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/plugin"
+            },
+            "isFavorite": false,
+            "tags": [],
+            "userTags": [],
+            "nativeTargetIds": [
+              "codex"
+            ],
+            "invalidNativeTargetIds": [],
+            "distributedTargetIds": [],
+            "managedPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+            "installedManifestHash": "02d24c8b5a6063a209497879af4ecb4470ea1f0ccfeb66d9a15f10cd545d202c",
+            "installedPackageHash": "8d7215d098df753f5b4ec4259ad718ff29e6877c82ed922cb3ce2e2bd6557285",
+            "installedAt": 1791517914585,
+            "updatedAt": 1791517914585
+          },
+          "packageSnapshot": {
+            "pluginId": "agent-codex:historical-plugin",
+            "files": [
+              {
+                "relativePath": ".codex-plugin/plugin.json",
+                "contentBase64": "eyJuYW1lIjoiaGlzdG9yaWNhbC1wbHVnaW4iLCJ2ZXJzaW9uIjoiMS4wLjAiLCJkZXNjcmlwdGlvbiI6IlN5bnRoZXRpYyBoaXN0b3JpY2FsIHBhY2thZ2UifQ==",
+                "size": 91
+              },
+              {
+                "relativePath": "commands/review.md",
+                "contentBase64": "U3ludGhldGljIGhpc3RvcmljYWwgcmV2aWV3IGNvbW1hbmQK",
+                "size": 36
+              },
+              {
+                "relativePath": "skills/writer/SKILL.md",
+                "contentBase64": "LS0tCm5hbWU6IGhpc3RvcmljYWwtc2tpbGwKZGVzY3JpcHRpb246IFN5bnRoZXRpYyBzb3VyY2UgZml4dHVyZQp2ZXJzaW9uOiAxLjAuMAotLS0KCiMgSGlzdG9yaWNhbCBTa2lsbApLZWVwIHBhY2thZ2UgZmlsZXMuCg==",
+                "size": 124
+              },
+              {
+                "relativePath": "skills/writer/pixel.bin",
+                "contentBase64": "AP8QgA==",
+                "size": 4
+              }
+            ]
+          }
+        }
+      ],
+      "mcp": {
+        "kind": "prompthub-mcp-library",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:54.587Z",
+        "servers": [
+          {
+            "id": "mcp_ay3cwkhxsq",
+            "name": "historical-mcp",
+            "displayName": "historical-mcp",
+            "description": "Updated historical MCP config",
+            "transport": "stdio",
+            "command": "fixture-command",
+            "args": [
+              "--synthetic"
+            ],
+            "env": {
+              "FIXTURE_LABEL": "non-secret"
+            },
+            "enabled": true,
+            "isFavorite": false,
+            "tags": [],
+            "source": {
+              "type": "manual"
+            },
+            "createdAt": 1791517914587,
+            "updatedAt": 1791517914587
+          }
+        ],
+        "bindings": []
+      }
+    },
+    "reopened": {
+      "prompts": [
+        {
+          "id": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "visibility": "private",
+          "title": "Historical output",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Return JSON with a title.",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [],
+          "folderId": null,
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 1,
+          "currentVersion": 1,
+          "usageCount": 0,
+          "source": null,
+          "notes": null,
+          "lastAiResponse": null,
+          "createdAt": "2026-10-09T03:51:54.408Z",
+          "updatedAt": "2026-10-09T03:51:54.408Z"
+        },
+        {
+          "id": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "visibility": "private",
+          "title": "Historical primary",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [
+            "fixture"
+          ],
+          "folderId": "c0c016ba-133c-4a09-a340-ca9e18fa8508",
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 3,
+          "currentVersion": 3,
+          "usageCount": 0,
+          "source": null,
+          "notes": "Non-secret notes: quote \" and newline\nretained",
+          "lastAiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:54.387Z",
+          "updatedAt": "2026-10-09T03:51:54.424Z"
+        }
+      ],
+      "promptVersions": [
+        {
+          "id": "b32d21b3-7019-4be0-a649-91c9edf85eb1",
+          "promptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 3,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Historical content revision",
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:54.434Z"
+        },
+        {
+          "id": "3ef68ddd-2e00-4518-978b-9fad037c1962",
+          "promptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 2,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": null,
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:54.425Z"
+        },
+        {
+          "id": "b78692bb-d77c-4cee-9aac-325135d90775",
+          "promptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "version": 1,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical first prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Initial version",
+          "aiResponse": null,
+          "createdAt": "2026-10-09T03:51:54.398Z"
+        }
+      ],
+      "folders": [
+        {
+          "id": "c0c016ba-133c-4a09-a340-ca9e18fa8508",
+          "visibility": "private",
+          "name": "Historical folder",
+          "icon": "Folder",
+          "order": 0,
+          "isPrivate": false,
+          "createdAt": "2026-10-09T03:51:54.376Z",
+          "updatedAt": "2026-10-09T03:51:54.376Z"
+        }
+      ],
+      "relations": [
+        {
+          "id": "29b71279-28e1-4d6d-b37b-6363b46add29",
+          "sourcePromptId": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "targetPromptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "kind": "related_to",
+          "note": "Historical relation",
+          "createdAt": "2026-10-09T03:51:54.447Z",
+          "updatedAt": "2026-10-09T03:51:54.447Z"
+        }
+      ],
+      "formats": [
+        {
+          "id": "b4c2b9a9-cd96-4a85-b103-4a08d6aa1ca8",
+          "sourcePromptId": "7f79e103-86a8-4bf2-b6fb-119e7a06f5a2",
+          "targetPromptId": "07c640fe-b43c-4a76-8147-cf6ec9ef2799",
+          "sortOrder": 0,
+          "createdAt": "2026-10-09T03:51:54.458Z",
+          "updatedAt": "2026-10-09T03:51:54.458Z"
+        }
+      ],
+      "skill": {
+        "id": "5f02c508-8698-4544-a931-977f2e88b6c3",
+        "visibility": "private",
+        "name": "historical-skill",
+        "description": "Synthetic source fixture",
+        "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "instructions": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "protocol_type": "skill",
+        "version": "1.0.0",
+        "author": "Local",
+        "tags": [],
+        "is_favorite": false,
+        "currentVersion": 2,
+        "versionTrackingEnabled": true,
+        "created_at": 1791517914487,
+        "updated_at": 1791517914487,
+        "source_url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/skill",
+        "local_repo_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/skills/historical-skill",
+        "directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "category": "general",
+        "is_builtin": false,
+        "installed_directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "fingerprint_algorithm": "skill-package-sha256-v1",
+        "source_last_checked_at": 1791517914487,
+        "source_binding_state": "bound",
+        "original_tags": []
+      },
+      "skillVersions": [
+        {
+          "id": "949195c5-725d-4e33-a295-1ee484793ce2",
+          "skillId": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "version": 2,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Updated historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical package revision",
+          "createdAt": "2026-10-09T03:51:54.512Z"
+        },
+        {
+          "id": "e073fccd-c63e-46f6-9495-39c2798541b6",
+          "skillId": "5f02c508-8698-4544-a931-977f2e88b6c3",
+          "version": 1,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical original package",
+          "createdAt": "2026-10-09T03:51:54.499Z"
+        }
+      ],
+      "skillFiles": [
+        {
+          "path": "SKILL.md",
+          "isDirectory": false,
+          "size": 124
+        },
+        {
+          "path": "docs",
+          "isDirectory": true
+        },
+        {
+          "path": "docs/guide.md",
+          "isDirectory": false,
+          "size": 31
+        },
+        {
+          "path": "docs/pixel.bin",
+          "isDirectory": false,
+          "size": 4
+        }
+      ],
+      "rule": {
+        "id": "project:historical-source",
+        "content": "Historical updated rules — 中文\n",
+        "versions": [
+          {
+            "id": "project%3Ahistorical-source-1791517914544",
+            "savedAt": "2026-10-09T03:51:54.544Z",
+            "source": "manual-save",
+            "content": "Historical updated rules — 中文\n"
+          },
+          {
+            "id": "project%3Ahistorical-source-1791517914522",
+            "savedAt": "2026-10-09T03:51:54.522Z",
+            "source": "create",
+            "content": "Historical original rules\n"
+          }
+        ]
+      },
+      "settings": {
+        "kind": "prompthub-ai-config",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:54.563Z",
+        "providers": [
+          {
+            "id": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1"
+          }
+        ],
+        "models": [
+          {
+            "id": "fixture-model",
+            "type": "chat",
+            "providerId": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1",
+            "model": "synthetic-model",
+            "isDefault": false,
+            "capabilities": {
+              "chat": true,
+              "imageGeneration": false
+            }
+          }
+        ],
+        "modelRouteDefaults": {
+          "mainText": "fixture-model"
+        }
+      },
+      "profiles": [
+        {
+          "id": "25031c43-bb3f-4132-a742-37d9727f4908",
+          "platformId": "codex",
+          "name": "Historical alternate",
+          "providerKind": "openai-compatible",
+          "protocol": "responses",
+          "endpoint": "https://fixture.invalid/v1",
+          "config": {
+            "model": "synthetic-model"
+          },
+          "secretRef": null,
+          "source": "manual",
+          "archived": false,
+          "createdAt": 1791517914572,
+          "updatedAt": 1791517914572
+        },
+        {
+          "id": "99de3987-5e23-4bc3-9018-43253cc5e4a7",
+          "platformId": "codex",
+          "name": "Historical provider",
+          "providerKind": "openai-compatible",
+          "protocol": "responses",
+          "endpoint": "https://fixture.invalid/v1",
+          "config": {
+            "model": "synthetic-model"
+          },
+          "secretRef": null,
+          "source": "manual",
+          "archived": false,
+          "createdAt": 1791517914563,
+          "updatedAt": 1791517914563
+        }
+      ],
+      "pluginLibrary": {
+        "kind": "prompthub-plugin-library",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:54.585Z",
+        "plugins": [
+          {
+            "id": "agent-codex:historical-plugin",
+            "name": "historical-plugin",
+            "displayName": "historical-plugin",
+            "description": "Synthetic historical package",
+            "version": "1.0.0",
+            "trustLevel": "custom",
+            "inventory": {
+              "skills": 1,
+              "mcpServers": 0,
+              "apps": 0,
+              "commands": 1,
+              "hooks": 0,
+              "agents": 0,
+              "assets": 0,
+              "docs": 0,
+              "lspServers": 0,
+              "scripts": 0
+            },
+            "classification": "bundle",
+            "source": {
+              "kind": "local",
+              "sourceId": "codex",
+              "label": "Synthetic Codex",
+              "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+              "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+              "url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/plugin"
+            },
+            "isFavorite": false,
+            "tags": [],
+            "userTags": [],
+            "nativeTargetIds": [
+              "codex"
+            ],
+            "invalidNativeTargetIds": [],
+            "distributedTargetIds": [],
+            "managedPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+            "installedManifestHash": "02d24c8b5a6063a209497879af4ecb4470ea1f0ccfeb66d9a15f10cd545d202c",
+            "installedPackageHash": "8d7215d098df753f5b4ec4259ad718ff29e6877c82ed922cb3ce2e2bd6557285",
+            "installedAt": 1791517914585,
+            "updatedAt": 1791517914585
+          }
+        ]
+      },
+      "pluginVersions": [
+        {
+          "id": "agent-codex-historical-plugin-v1-94c90b19-c77e-46f5-a7a1-69139bbe0018",
+          "pluginId": "agent-codex:historical-plugin",
+          "version": 1,
+          "note": "Historical package version",
+          "createdAt": "2026-10-09T03:51:54.586Z",
+          "plugin": {
+            "id": "agent-codex:historical-plugin",
+            "name": "historical-plugin",
+            "displayName": "historical-plugin",
+            "description": "Synthetic historical package",
+            "version": "1.0.0",
+            "trustLevel": "custom",
+            "inventory": {
+              "skills": 1,
+              "mcpServers": 0,
+              "apps": 0,
+              "commands": 1,
+              "hooks": 0,
+              "agents": 0,
+              "assets": 0,
+              "docs": 0,
+              "lspServers": 0,
+              "scripts": 0
+            },
+            "classification": "bundle",
+            "source": {
+              "kind": "local",
+              "sourceId": "codex",
+              "label": "Synthetic Codex",
+              "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+              "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+              "url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/fixture-inputs/plugin"
+            },
+            "isFavorite": false,
+            "tags": [],
+            "userTags": [],
+            "nativeTargetIds": [
+              "codex"
+            ],
+            "invalidNativeTargetIds": [],
+            "distributedTargetIds": [],
+            "managedPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localRepositoryPath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin",
+            "localPackagePath": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile/data/plugins/agent-codex-historical-plugin/package",
+            "installedManifestHash": "02d24c8b5a6063a209497879af4ecb4470ea1f0ccfeb66d9a15f10cd545d202c",
+            "installedPackageHash": "8d7215d098df753f5b4ec4259ad718ff29e6877c82ed922cb3ce2e2bd6557285",
+            "installedAt": 1791517914585,
+            "updatedAt": 1791517914585
+          },
+          "packageSnapshot": {
+            "pluginId": "agent-codex:historical-plugin",
+            "files": [
+              {
+                "relativePath": ".codex-plugin/plugin.json",
+                "contentBase64": "eyJuYW1lIjoiaGlzdG9yaWNhbC1wbHVnaW4iLCJ2ZXJzaW9uIjoiMS4wLjAiLCJkZXNjcmlwdGlvbiI6IlN5bnRoZXRpYyBoaXN0b3JpY2FsIHBhY2thZ2UifQ==",
+                "size": 91
+              },
+              {
+                "relativePath": "commands/review.md",
+                "contentBase64": "U3ludGhldGljIGhpc3RvcmljYWwgcmV2aWV3IGNvbW1hbmQK",
+                "size": 36
+              },
+              {
+                "relativePath": "skills/writer/SKILL.md",
+                "contentBase64": "LS0tCm5hbWU6IGhpc3RvcmljYWwtc2tpbGwKZGVzY3JpcHRpb246IFN5bnRoZXRpYyBzb3VyY2UgZml4dHVyZQp2ZXJzaW9uOiAxLjAuMAotLS0KCiMgSGlzdG9yaWNhbCBTa2lsbApLZWVwIHBhY2thZ2UgZmlsZXMuCg==",
+                "size": 124
+              },
+              {
+                "relativePath": "skills/writer/pixel.bin",
+                "contentBase64": "AP8QgA==",
+                "size": 4
+              }
+            ]
+          }
+        }
+      ],
+      "mcp": {
+        "kind": "prompthub-mcp-library",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:54.587Z",
+        "servers": [
+          {
+            "id": "mcp_ay3cwkhxsq",
+            "name": "historical-mcp",
+            "displayName": "historical-mcp",
+            "description": "Updated historical MCP config",
+            "transport": "stdio",
+            "command": "fixture-command",
+            "args": [
+              "--synthetic"
+            ],
+            "env": {
+              "FIXTURE_LABEL": "non-secret"
+            },
+            "enabled": true,
+            "isFavorite": false,
+            "tags": [],
+            "source": {
+              "type": "manual"
+            },
+            "createdAt": 1791517914587,
+            "updatedAt": 1791517914587
+          }
+        ],
+        "bindings": []
+      }
+    }
+  },
+  "unsupported": [
+    "MCP bundle history is not covered by the default database-catalog runtime; canonical Desktop startup is a separate fixture batch.",
+    "Desktop ordinary Settings IPC and canonical startup were not executed."
+  ],
+  "commands": [
+    {
+      "command": "git",
+      "args": [
+        "archive",
+        "494d57d7da654b8380e4b81f8f51fc5c72e6b7f7",
+        "packages/core",
+        "packages/db",
+        "packages/shared"
+      ],
+      "pid": 41774,
+      "startedAt": "2026-10-09T03:51:53.904Z",
+      "endedAt": "2026-10-09T03:51:53.936Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "tar",
+      "args": [
+        "-xf",
+        "-",
+        "-C",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1"
+      ],
+      "pid": 41801,
+      "startedAt": "2026-10-09T03:51:53.936Z",
+      "endedAt": "2026-10-09T03:51:53.972Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "--import",
+        "tsx",
+        "--import",
+        "./harness/register-audit.mjs",
+        "./harness/source-runner.mjs",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile",
+        "beta.1",
+        "seed",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/seed.json"
+      ],
+      "pid": 41802,
+      "startedAt": "2026-10-09T03:51:53.973Z",
+      "endedAt": "2026-10-09T03:51:54.599Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "--import",
+        "tsx",
+        "--import",
+        "./harness/register-audit.mjs",
+        "./harness/source-runner.mjs",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/profile",
+        "beta.1",
+        "reopen",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1/reopen.json"
+      ],
+      "pid": 41805,
+      "startedAt": "2026-10-09T03:51:54.600Z",
+      "endedAt": "2026-10-09T03:51:54.861Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "tar",
+      "args": [
+        "-czf",
+        "-",
+        "-C",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/beta.1",
+        "profile"
+      ],
+      "pid": 41830,
+      "startedAt": "2026-10-09T03:51:54.871Z",
+      "endedAt": "2026-10-09T03:51:54.881Z",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

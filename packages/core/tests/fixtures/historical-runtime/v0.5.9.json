@@ -1,0 +1,2919 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "label": "v0.5.9",
+    "commit": "1e933ae29726361982c5ce7b49bc4f4c6da326ba"
+  },
+  "sourceKind": "fresh historical CLI/Core default initialization",
+  "generatedAt": "2026-10-09T03:51:53.899Z",
+  "runtime": {
+    "nodeVersion": "v26.7.0",
+    "sourceRoot": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9",
+    "profileRoot": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile",
+    "initializer": "packages/core/src/database.ts:initDatabase",
+    "pathConfiguration": "configureRuntimePaths({ userDataPath, appDataPath })"
+  },
+  "loadedSourceFiles": [
+    {
+      "path": "packages/core/src/ai-config.ts",
+      "sha256": "82e79cb0160f689420fda81f1eaaaea05177cb79caff4606a23c0819ddcbecae"
+    },
+    {
+      "path": "packages/core/src/cli/skill-cli-service.ts",
+      "sha256": "11d80bc65e0a3f8e1af5fbda6d09b230d1e05bfcf6b25a5ef1841abfe0210a81"
+    },
+    {
+      "path": "packages/core/src/cli/skill/index.ts",
+      "sha256": "5107857d0e52f50fa699a6252c598224a2899a1ce45dac8c0b23859a89f9da52"
+    },
+    {
+      "path": "packages/core/src/cli/skill/install.ts",
+      "sha256": "5ff886b9af77d22655c3ca0634c6a699b50320058da15ee647e82f59bf9c36aa"
+    },
+    {
+      "path": "packages/core/src/cli/skill/parse.ts",
+      "sha256": "8c079e281195e71c1bc1aa8f0510a0728f9192ec507ad6f94fce532c4e8fb319"
+    },
+    {
+      "path": "packages/core/src/cli/skill/paths.ts",
+      "sha256": "e5565f4bf012a6c2b5b8b38ce8333fffc6abe4c5a584d1017e13f7303e4847e5"
+    },
+    {
+      "path": "packages/core/src/cli/skill/service.ts",
+      "sha256": "81b805c77030671c553bcfc2360ff1ba9f0afbdd03b4ae7e7a7307326917312b"
+    },
+    {
+      "path": "packages/core/src/database.ts",
+      "sha256": "78a9d7f0359f4860312b39697c6d73651b1595f0d57f721a3213bff3a0dd5590"
+    },
+    {
+      "path": "packages/core/src/mcp-env-import.ts",
+      "sha256": "ae4ca3806b6a1758a947db068b3366ed2b41d49d5f23f2bce9d34a3d16485e24"
+    },
+    {
+      "path": "packages/core/src/mcp-library.ts",
+      "sha256": "2fc8b5149a3c4de73018c7b2b65b4aeb44c0582268c64754bebc554b9e68028d"
+    },
+    {
+      "path": "packages/core/src/mcp-market-reconciliation.ts",
+      "sha256": "437eb604f561eaf292c7b5d0f46dcdb6ce8ce0f08ccdd06a95dbf9755d2ede80"
+    },
+    {
+      "path": "packages/core/src/mcp-source.ts",
+      "sha256": "00358adbe6a111e3b9ff8df8454546c577f61dfa8e5ffdb6f3a9cca52590698d"
+    },
+    {
+      "path": "packages/core/src/mcp-target-presets.ts",
+      "sha256": "88fd35485c39489d6e8264ed9fbcc58657c9ef6e0d6a72503593cb33c734fa6c"
+    },
+    {
+      "path": "packages/core/src/mcp-target-sync-policy.ts",
+      "sha256": "1801a9f36cf9795d8088e5555b2cd6f4ccf083ca97924f47a1b4fe7a73e434b3"
+    },
+    {
+      "path": "packages/core/src/platform-paths.ts",
+      "sha256": "cbb3d3784720a300d5b8e8b7d4ff496dc2b300d50d9dd7f20c9c72dcfc93c6e7"
+    },
+    {
+      "path": "packages/core/src/plugin-library.ts",
+      "sha256": "1bfabd048dbbd93174ef0e7bcef7dac7d0c557a47d24925ac131ead9af15c734"
+    },
+    {
+      "path": "packages/core/src/plugin-library/distribution.ts",
+      "sha256": "97bcde1c78768354529d6fab5b0af8fd618e64a194fe620899185634373d741e"
+    },
+    {
+      "path": "packages/core/src/plugin-library/marketplace-client.ts",
+      "sha256": "3766f39c895440253efa8d597f41e58a5e0f871c0fa7669351c10b37d3985d8f"
+    },
+    {
+      "path": "packages/core/src/plugin-library/marketplace.ts",
+      "sha256": "742e4b2a9c111fea9278363be71cf47d72fb63c05072fcbcb0fa9720de853c9f"
+    },
+    {
+      "path": "packages/core/src/plugin-library/normalization.ts",
+      "sha256": "0bb8d35389785df705679a650eeb799de99e61e455da5c2d362d431335e8ef31"
+    },
+    {
+      "path": "packages/core/src/plugin-library/package-materialization.ts",
+      "sha256": "b79737cf23996a6d26b2ca0c6a7527ff5f04c5f54cc82d2a58b998de591dfe5a"
+    },
+    {
+      "path": "packages/core/src/plugin-library/package-validation.ts",
+      "sha256": "211ff872b4f199151ce957376533d5780fb88a3cb73b98e971d48e93faaa1039"
+    },
+    {
+      "path": "packages/core/src/plugin-library/service.ts",
+      "sha256": "480b3fdbdf65a997ef8bd3bd5867943846ade24baf356ffd34214aa3f96cdb10"
+    },
+    {
+      "path": "packages/core/src/plugin-library/shared.ts",
+      "sha256": "15b0db1e06366d4aaced76b35960d48003e826b12665b0b373501e9ee1118e31"
+    },
+    {
+      "path": "packages/core/src/plugin-library/source-reconciliation.ts",
+      "sha256": "a15c62fcf0180af969cc7a72483d6054c34e2954df8a718062f7953c68c1fe61"
+    },
+    {
+      "path": "packages/core/src/plugin-library/storage.ts",
+      "sha256": "421cc62cc7cb13fa0e2f36da03bee92911385be60d3bf0fd5c8fe2bcf083c5f6"
+    },
+    {
+      "path": "packages/core/src/rules-workspace.ts",
+      "sha256": "95c6bc91a1ddbd06a1b4e0addc551fcdc4a8826571a37ca60da46f2291c30441"
+    },
+    {
+      "path": "packages/core/src/runtime-paths.ts",
+      "sha256": "0bd9b19a5598a82a84ac4b6fd503d941c93d05f2eb2dc454216b667da9e5b12c"
+    },
+    {
+      "path": "packages/core/src/skills/install-flow.ts",
+      "sha256": "6396ab5f84b7c43f8651bd2874c05764b787132225272c298a10c754753057c0"
+    },
+    {
+      "path": "packages/core/src/skills/skill-frontmatter.ts",
+      "sha256": "0993ed684fc6bb9ddcd61ef2723646d322840d5ca47814b79e589f6b49eb7f44"
+    },
+    {
+      "path": "packages/db/src/adapter.ts",
+      "sha256": "bf24d27bcb45931afd6dd7a1cdb155f3d7d04cc5984b694f927f14a5427bf529"
+    },
+    {
+      "path": "packages/db/src/database-client-lock.ts",
+      "sha256": "74dc9eb42874b22c3abb48ad02417f3e15ec27a96054864d1ae15896b4ca27ff"
+    },
+    {
+      "path": "packages/db/src/folder.ts",
+      "sha256": "e2558cf61f74301a87d2357bbeb96bacecb1bf1d66b7692f10d40981acd6f3d7"
+    },
+    {
+      "path": "packages/db/src/index.ts",
+      "sha256": "d295311b9117d4f140bace2d253e13c0fcd54bb131e21bcb7404b8f4669d02d3"
+    },
+    {
+      "path": "packages/db/src/init.ts",
+      "sha256": "228f2bcca7fb5565e2c78442751817bde137b6ce4d1607f893376b337569057e"
+    },
+    {
+      "path": "packages/db/src/prompt-output-format.ts",
+      "sha256": "dda4a9821b1783ff018681ee46dd71a66bacca8c724446c31d10780a95a4340e"
+    },
+    {
+      "path": "packages/db/src/prompt-relation.ts",
+      "sha256": "1f7fcc87f31adf02eae377e15a62c15d9875fd4d8016497e31ee7fbb2119346d"
+    },
+    {
+      "path": "packages/db/src/prompt.ts",
+      "sha256": "3b72248b6e41aefb5fa763d8c411f400952c3c34bc43e91abcafb6dc0838d92f"
+    },
+    {
+      "path": "packages/db/src/rule.ts",
+      "sha256": "dccd561bd33a9c6082fd461924d8945bb018a209475dc4b1a4c3810dbbca6141"
+    },
+    {
+      "path": "packages/db/src/schema.ts",
+      "sha256": "fad0f6e2d77fe76c00e2512f23af7afc5c428b4982a79c1184f40c113755397b"
+    },
+    {
+      "path": "packages/db/src/skill.ts",
+      "sha256": "ef3879a40a95d584e16f0515ad64fde48644556bba37dc9dfe12cf17f42d234c"
+    },
+    {
+      "path": "packages/shared/constants/mcp-market.ts",
+      "sha256": "eda011ba2e1dbf739b53762e3c495b110fedd1b5cc5f315a70b88a1175d5ebce"
+    },
+    {
+      "path": "packages/shared/constants/platforms.ts",
+      "sha256": "56cee765865af1ffbfa8a1d5f8d533f60d85ede2e59a982c8757d37e0919024f"
+    },
+    {
+      "path": "packages/shared/constants/rules.ts",
+      "sha256": "d816a4a39be6972b27307f6a2b759a8bb41ee47356cd052ffd2dbe29de94dada"
+    },
+    {
+      "path": "packages/shared/types/ai.ts",
+      "sha256": "cde039a8f6093ad76ddf05972921e46ab2b032351da3ac9851808c95358323b9"
+    },
+    {
+      "path": "packages/shared/types/app-command.ts",
+      "sha256": "14154df3bba3de988ad7821c688a5553e316b0157d629856dfb213d16d15ed17"
+    },
+    {
+      "path": "packages/shared/types/cli.ts",
+      "sha256": "ad34cb7dbbd0c2b0b584ffe9295d3a0755d16e2b0b1e62e116fa3cee6c833ea6"
+    },
+    {
+      "path": "packages/shared/types/cloud.ts",
+      "sha256": "7105085e176cca5bf2c197cfcb20e4380c42690e839d3e5ad5ab8e31d0952563"
+    },
+    {
+      "path": "packages/shared/types/folder.ts",
+      "sha256": "3fd9a20b0c10a784a6f5dadbc8f51feb003de4b1512916bad71dbd09f3c641e7"
+    },
+    {
+      "path": "packages/shared/types/index.ts",
+      "sha256": "6c347a8a0616954a1834ae8d3d5ec2a5be46c1edb02aa29428d38f948f6ef2fd"
+    },
+    {
+      "path": "packages/shared/types/mcp.ts",
+      "sha256": "1abeecdbb2ba221d209d147d776570d8c7797d01bd69d13fbc8dfc5cfcccd2a4"
+    },
+    {
+      "path": "packages/shared/types/plugin.ts",
+      "sha256": "d9d083264f487445fa382a8225b4f156be03bb386414ba65b0900e408fec9dff"
+    },
+    {
+      "path": "packages/shared/types/prompt.ts",
+      "sha256": "79000fb1d2da67c99924ec99582555e209fa7f433d9c8a7471b3470ac9cd0a8d"
+    },
+    {
+      "path": "packages/shared/types/recovery.ts",
+      "sha256": "da688fb1a2039c70f666440a175b84ff1cbe07057da546a6518776f780f29dc7"
+    },
+    {
+      "path": "packages/shared/types/rules.ts",
+      "sha256": "cd00fe2403da1b60442f2e261d1a40b0f06d102778d79e8ba5c52198592ffd1f"
+    },
+    {
+      "path": "packages/shared/types/settings.ts",
+      "sha256": "bb5e5312a7135e8421425e038eb68a0ffb82284ec1caf69a9fa8cdb51645b6b3"
+    },
+    {
+      "path": "packages/shared/types/skill.ts",
+      "sha256": "c316d7b145016281ae7a584e6401b79a9ea4b2f0c130434e69252337935fe058"
+    },
+    {
+      "path": "packages/shared/types/sync.ts",
+      "sha256": "e656d982f4f922879a401399dff4f7beadd8bb86186bd37b8b287697e0e0aee0"
+    },
+    {
+      "path": "packages/shared/types/upgrade-backup.ts",
+      "sha256": "f1b355ef4759e76c4dcd5b22ebc5513633151780960c97da7978701d1e420afa"
+    },
+    {
+      "path": "packages/shared/utils/git-repo.ts",
+      "sha256": "c9da12ee09280606a12868c89e16590e6a0f175b48c5bec28ecc85d34a0afcd2"
+    },
+    {
+      "path": "packages/shared/utils/mcp-config.ts",
+      "sha256": "43650d30a0c0dbf192cc7a50f6e638bdc2f392fd7957be7f17ff968bb31cbd21"
+    },
+    {
+      "path": "packages/shared/utils/skill-identity.ts",
+      "sha256": "6e39951d6c4212831ae8236784a477a624f496fe74206af573863c3f23732e8f"
+    },
+    {
+      "path": "packages/shared/utils/skill-source-update.ts",
+      "sha256": "dc9189abcb38c887135e75c3f318f3749bdb8d921b6c83987da1ef4764d2a949"
+    }
+  ],
+  "thirdPartyPackages": [
+    {
+      "name": "node-sqlite3-wasm",
+      "version": "0.8.53",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/node-sqlite3-wasm@0.8.53/node_modules/node-sqlite3-wasm",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/node-sqlite3-wasm@0.8.53/node_modules/node-sqlite3-wasm/dist/node-sqlite3-wasm.js"
+    },
+    {
+      "name": "uuid",
+      "version": "13.0.0",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist-node/version.js"
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.0",
+      "directory": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/yaml@2.9.0/node_modules/yaml",
+      "loadedEntry": "/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/index.js"
+    }
+  ],
+  "database": {
+    "relativePath": "profile/data/prompthub.db",
+    "schema": [
+      {
+        "type": "index",
+        "name": "idx_folders_owner",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_owner ON folders(owner_user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_parent",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_parent ON folders(parent_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_sort",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_sort ON folders(sort_order)"
+      },
+      {
+        "type": "index",
+        "name": "idx_folders_visibility",
+        "tbl_name": "folders",
+        "sql": "CREATE INDEX idx_folders_visibility ON folders(visibility)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_output_format_self_unique",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE UNIQUE INDEX idx_prompt_output_format_self_unique\n  ON prompt_output_format_items(source_prompt_id)\n  WHERE target_prompt_id IS NULL"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_output_format_source",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE INDEX idx_prompt_output_format_source ON prompt_output_format_items(source_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_output_format_target",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE INDEX idx_prompt_output_format_target ON prompt_output_format_items(target_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_relations_kind",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE INDEX idx_prompt_relations_kind ON prompt_relations(kind)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_relations_source",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE INDEX idx_prompt_relations_source ON prompt_relations(source_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompt_relations_target",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE INDEX idx_prompt_relations_target ON prompt_relations(target_prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_created",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_created ON prompts(created_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_favorite",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_favorite ON prompts(is_favorite)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_folder",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_folder ON prompts(folder_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_folder_favorite",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_folder_favorite ON prompts(folder_id, is_favorite)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_folder_updated",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_folder_updated ON prompts(folder_id, updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_owner",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_owner ON prompts(owner_user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_parent",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_parent ON prompts(parent_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_pinned",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_pinned ON prompts(is_pinned)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_sort_order",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_sort_order ON prompts(sort_order)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_updated",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_updated ON prompts(updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_usage",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_usage ON prompts(usage_count DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_prompts_visibility",
+        "tbl_name": "prompts",
+        "sql": "CREATE INDEX idx_prompts_visibility ON prompts(visibility)"
+      },
+      {
+        "type": "index",
+        "name": "idx_refresh_tokens_expires",
+        "tbl_name": "refresh_tokens",
+        "sql": "CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at)"
+      },
+      {
+        "type": "index",
+        "name": "idx_refresh_tokens_user",
+        "tbl_name": "refresh_tokens",
+        "sql": "CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rule_versions_rule",
+        "tbl_name": "rule_versions",
+        "sql": "CREATE INDEX idx_rule_versions_rule ON rule_versions(rule_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_platform",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_platform ON rules(platform_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_project_root",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_project_root ON rules(project_root_path)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_scope",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_scope ON rules(scope)"
+      },
+      {
+        "type": "index",
+        "name": "idx_rules_updated",
+        "tbl_name": "rules",
+        "sql": "CREATE INDEX idx_rules_updated ON rules(updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skill_versions_skill",
+        "tbl_name": "skill_versions",
+        "sql": "CREATE INDEX idx_skill_versions_skill ON skill_versions(skill_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_favorite",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_favorite ON skills(is_favorite)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_owner",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_owner ON skills(owner_user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_source_id",
+        "tbl_name": "skills",
+        "sql": "CREATE UNIQUE INDEX idx_skills_source_id ON skills(source_id) WHERE source_id IS NOT NULL AND source_id != ''"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_updated",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_updated ON skills(updated_at DESC)"
+      },
+      {
+        "type": "index",
+        "name": "idx_skills_visibility",
+        "tbl_name": "skills",
+        "sql": "CREATE INDEX idx_skills_visibility ON skills(visibility)"
+      },
+      {
+        "type": "index",
+        "name": "idx_user_settings_user",
+        "tbl_name": "user_settings",
+        "sql": "CREATE INDEX idx_user_settings_user ON user_settings(user_id)"
+      },
+      {
+        "type": "index",
+        "name": "idx_users_role",
+        "tbl_name": "users",
+        "sql": "CREATE INDEX idx_users_role ON users(role)"
+      },
+      {
+        "type": "index",
+        "name": "idx_users_username_lower",
+        "tbl_name": "users",
+        "sql": "CREATE UNIQUE INDEX idx_users_username_lower ON users(LOWER(username))"
+      },
+      {
+        "type": "index",
+        "name": "idx_versions_prompt",
+        "tbl_name": "prompt_versions",
+        "sql": "CREATE INDEX idx_versions_prompt ON prompt_versions(prompt_id)"
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_folders_1",
+        "tbl_name": "folders",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_output_format_items_1",
+        "tbl_name": "prompt_output_format_items",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_output_format_items_2",
+        "tbl_name": "prompt_output_format_items",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_relations_1",
+        "tbl_name": "prompt_relations",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_relations_2",
+        "tbl_name": "prompt_relations",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_versions_1",
+        "tbl_name": "prompt_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompt_versions_2",
+        "tbl_name": "prompt_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_prompts_1",
+        "tbl_name": "prompts",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_refresh_tokens_1",
+        "tbl_name": "refresh_tokens",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_rule_versions_1",
+        "tbl_name": "rule_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_rule_versions_2",
+        "tbl_name": "rule_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_rules_1",
+        "tbl_name": "rules",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_schema_migrations_1",
+        "tbl_name": "schema_migrations",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_settings_1",
+        "tbl_name": "settings",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_skill_versions_1",
+        "tbl_name": "skill_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_skill_versions_2",
+        "tbl_name": "skill_versions",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_skills_1",
+        "tbl_name": "skills",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_user_settings_1",
+        "tbl_name": "user_settings",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_users_1",
+        "tbl_name": "users",
+        "sql": null
+      },
+      {
+        "type": "index",
+        "name": "sqlite_autoindex_users_2",
+        "tbl_name": "users",
+        "sql": null
+      },
+      {
+        "type": "table",
+        "name": "folders",
+        "tbl_name": "folders",
+        "sql": "CREATE TABLE folders (\n  id TEXT PRIMARY KEY,\n  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,\n  visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),\n  name TEXT NOT NULL,\n  icon TEXT,\n  parent_id TEXT,\n  sort_order INTEGER DEFAULT 0,\n  is_private INTEGER DEFAULT 0,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER,\n  FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompt_output_format_items",
+        "tbl_name": "prompt_output_format_items",
+        "sql": "CREATE TABLE prompt_output_format_items (\n  id TEXT PRIMARY KEY,\n  source_prompt_id TEXT NOT NULL,\n  target_prompt_id TEXT,\n  sort_order INTEGER NOT NULL DEFAULT 0,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  UNIQUE(source_prompt_id, target_prompt_id)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompt_relations",
+        "tbl_name": "prompt_relations",
+        "sql": "CREATE TABLE prompt_relations (\n  id TEXT PRIMARY KEY,\n  source_prompt_id TEXT NOT NULL,\n  target_prompt_id TEXT NOT NULL,\n  kind TEXT NOT NULL CHECK(kind IN ('related_to', 'variant_of', 'depends_on', 'next_step')),\n  note TEXT,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  CHECK(source_prompt_id != target_prompt_id),\n  UNIQUE(source_prompt_id, target_prompt_id, kind)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompt_versions",
+        "tbl_name": "prompt_versions",
+        "sql": "CREATE TABLE prompt_versions (\n  id TEXT PRIMARY KEY,\n  prompt_id TEXT NOT NULL,\n  version INTEGER NOT NULL,\n  system_prompt TEXT,\n  system_prompt_en TEXT,\n  user_prompt TEXT NOT NULL,\n  user_prompt_en TEXT,\n  variables TEXT,\n  note TEXT,\n  ai_response TEXT,\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,\n  UNIQUE(prompt_id, version)\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompts",
+        "tbl_name": "prompts",
+        "sql": "CREATE TABLE prompts (\n  id TEXT PRIMARY KEY,\n  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,\n  visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),\n  title TEXT NOT NULL,\n  description TEXT,\n  prompt_type TEXT DEFAULT 'text',\n  system_prompt TEXT,\n  system_prompt_en TEXT,\n  user_prompt TEXT NOT NULL,\n  user_prompt_en TEXT,\n  variables TEXT,\n  tags TEXT,\n  folder_id TEXT,\n  parent_id TEXT,\n  sort_order INTEGER DEFAULT 0,\n  images TEXT,\n  videos TEXT,\n  is_favorite INTEGER DEFAULT 0,\n  is_pinned INTEGER DEFAULT 0,\n  current_version INTEGER DEFAULT 0,\n  usage_count INTEGER DEFAULT 0,\n  source TEXT,\n  notes TEXT,\n  last_ai_response TEXT,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,\n  FOREIGN KEY (parent_id) REFERENCES prompts(id) ON DELETE SET NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts",
+        "tbl_name": "prompts_fts",
+        "sql": "CREATE VIRTUAL TABLE prompts_fts USING fts5(\n  title, description, system_prompt, user_prompt, tags,\n  content='prompts', content_rowid='rowid'\n)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_config",
+        "tbl_name": "prompts_fts_config",
+        "sql": "CREATE TABLE 'prompts_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_data",
+        "tbl_name": "prompts_fts_data",
+        "sql": "CREATE TABLE 'prompts_fts_data'(id INTEGER PRIMARY KEY, block BLOB)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_docsize",
+        "tbl_name": "prompts_fts_docsize",
+        "sql": "CREATE TABLE 'prompts_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)"
+      },
+      {
+        "type": "table",
+        "name": "prompts_fts_idx",
+        "tbl_name": "prompts_fts_idx",
+        "sql": "CREATE TABLE 'prompts_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID"
+      },
+      {
+        "type": "table",
+        "name": "refresh_tokens",
+        "tbl_name": "refresh_tokens",
+        "sql": "CREATE TABLE refresh_tokens (\n  id TEXT PRIMARY KEY,\n  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n  token_hash TEXT NOT NULL,\n  expires_at INTEGER NOT NULL,\n  created_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "rule_versions",
+        "tbl_name": "rule_versions",
+        "sql": "CREATE TABLE rule_versions (\n  id TEXT PRIMARY KEY,\n  rule_id TEXT NOT NULL,\n  version INTEGER NOT NULL,\n  file_path TEXT NOT NULL,\n  source TEXT NOT NULL CHECK(source IN ('manual-save', 'ai-rewrite', 'create')),\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE CASCADE,\n  UNIQUE(rule_id, version)\n)"
+      },
+      {
+        "type": "table",
+        "name": "rules",
+        "tbl_name": "rules",
+        "sql": "CREATE TABLE rules (\n  id TEXT PRIMARY KEY,\n  scope TEXT NOT NULL CHECK(scope IN ('global', 'project')),\n  platform_id TEXT NOT NULL,\n  platform_name TEXT NOT NULL,\n  platform_icon TEXT NOT NULL,\n  platform_description TEXT NOT NULL,\n  canonical_file_name TEXT NOT NULL,\n  description TEXT NOT NULL,\n  managed_path TEXT NOT NULL,\n  target_path TEXT NOT NULL,\n  project_root_path TEXT,\n  sync_status TEXT NOT NULL CHECK(sync_status IN ('synced', 'target-missing', 'out-of-sync', 'sync-error')),\n  current_version INTEGER NOT NULL DEFAULT 0,\n  content_hash TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "schema_migrations",
+        "tbl_name": "schema_migrations",
+        "sql": "CREATE TABLE schema_migrations (\n        name TEXT PRIMARY KEY,\n        applied_at INTEGER NOT NULL\n      )"
+      },
+      {
+        "type": "table",
+        "name": "settings",
+        "tbl_name": "settings",
+        "sql": "CREATE TABLE settings (\n  key TEXT PRIMARY KEY,\n  value TEXT NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "skill_versions",
+        "tbl_name": "skill_versions",
+        "sql": "CREATE TABLE skill_versions (\n  id TEXT PRIMARY KEY,\n  skill_id TEXT NOT NULL,\n  version INTEGER NOT NULL,\n  content TEXT,\n  files_snapshot TEXT,\n  note TEXT,\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,\n  UNIQUE(skill_id, version)\n)"
+      },
+      {
+        "type": "table",
+        "name": "skills",
+        "tbl_name": "skills",
+        "sql": "CREATE TABLE skills (\n  id TEXT PRIMARY KEY,\n  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,\n  visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),\n  name TEXT NOT NULL,\n  description TEXT,\n  content TEXT,\n  mcp_config TEXT,\n  protocol_type TEXT DEFAULT 'mcp',\n  version TEXT,\n  author TEXT,\n  tags TEXT,\n  is_favorite INTEGER DEFAULT 0,\n  source_url TEXT,\n  source_id TEXT,\n  source_label TEXT,\n  source_branch TEXT,\n  source_directory TEXT,\n  canonical_skill_path TEXT,\n  local_repo_path TEXT,\n  directory_fingerprint TEXT,\n  icon_url TEXT,\n  icon_emoji TEXT,\n  icon_background TEXT,\n  category TEXT DEFAULT 'general',\n  is_builtin INTEGER DEFAULT 0,\n  registry_slug TEXT,\n  content_url TEXT,\n  installed_content_hash TEXT,\n  installed_directory_fingerprint TEXT,\n  fingerprint_algorithm TEXT,\n  source_last_checked_at INTEGER,\n  source_last_error TEXT,\n  source_binding_state TEXT,\n  installed_version TEXT,\n  installed_at INTEGER,\n  updated_from_store_at INTEGER,\n  prerequisites TEXT,\n  compatibility TEXT,\n  original_tags TEXT,\n  safety_level TEXT,\n  safety_score INTEGER,\n  safety_report TEXT,\n  safety_scanned_at INTEGER,\n  current_version INTEGER DEFAULT 0,\n  version_tracking_enabled INTEGER DEFAULT 0,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "table",
+        "name": "user_settings",
+        "tbl_name": "user_settings",
+        "sql": "CREATE TABLE user_settings (\n  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n  key TEXT NOT NULL,\n  value TEXT NOT NULL,\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY (user_id, key)\n)"
+      },
+      {
+        "type": "table",
+        "name": "users",
+        "tbl_name": "users",
+        "sql": "CREATE TABLE users (\n  id TEXT PRIMARY KEY,\n  username TEXT NOT NULL UNIQUE,\n  password_hash TEXT NOT NULL,\n  role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)"
+      },
+      {
+        "type": "trigger",
+        "name": "prompts_ad",
+        "tbl_name": "prompts",
+        "sql": "CREATE TRIGGER prompts_ad AFTER DELETE ON prompts BEGIN\n  INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES ('delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags);\nEND"
+      },
+      {
+        "type": "trigger",
+        "name": "prompts_ai",
+        "tbl_name": "prompts",
+        "sql": "CREATE TRIGGER prompts_ai AFTER INSERT ON prompts BEGIN\n  INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES (NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags);\nEND"
+      },
+      {
+        "type": "trigger",
+        "name": "prompts_au",
+        "tbl_name": "prompts",
+        "sql": "CREATE TRIGGER prompts_au AFTER UPDATE ON prompts BEGIN\n  INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES ('delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags);\n  INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)\n  VALUES (NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags);\nEND"
+      }
+    ],
+    "tables": {
+      "folders": [
+        {
+          "id": "d030df7f-9dea-4dfe-8cbb-2bcbe0f62a28",
+          "owner_user_id": null,
+          "visibility": "private",
+          "name": "Historical folder",
+          "icon": "Folder",
+          "parent_id": null,
+          "sort_order": 0,
+          "is_private": 0,
+          "created_at": 1791517913438,
+          "updated_at": 1791517913438
+        }
+      ],
+      "prompt_output_format_items": [
+        {
+          "id": "290bbb73-b87e-4f67-9719-3b5069ffcdd0",
+          "source_prompt_id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "target_prompt_id": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "sort_order": 0,
+          "created_at": 1791517913542,
+          "updated_at": 1791517913542
+        }
+      ],
+      "prompt_relations": [
+        {
+          "id": "4f4b9469-daa4-48b6-b299-4832054c3e6e",
+          "source_prompt_id": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "target_prompt_id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "kind": "related_to",
+          "note": "Historical relation",
+          "created_at": 1791517913531,
+          "updated_at": 1791517913531
+        }
+      ],
+      "prompt_versions": [
+        {
+          "id": "0ad15101-8805-4b5e-b123-c566b1dce507",
+          "prompt_id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 3,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": "Historical content revision",
+          "ai_response": "Synthetic AI response — no provider was called",
+          "created_at": 1791517913517
+        },
+        {
+          "id": "1640ae4f-5eb6-43a9-b6f2-dbf20861e666",
+          "prompt_id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 2,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": null,
+          "ai_response": "Synthetic AI response — no provider was called",
+          "created_at": 1791517913505
+        },
+        {
+          "id": "c122b0e5-a3ff-43ef-ab0d-579abcd671a8",
+          "prompt_id": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "version": 1,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Return JSON with a title.",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": "Initial version",
+          "ai_response": null,
+          "created_at": 1791517913491
+        },
+        {
+          "id": "f58b0492-a4d3-44dc-9c90-e871bfaf679e",
+          "prompt_id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 1,
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical first prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "note": "Initial version",
+          "ai_response": null,
+          "created_at": 1791517913464
+        }
+      ],
+      "prompts": [
+        {
+          "id": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "owner_user_id": null,
+          "visibility": "private",
+          "title": "Historical output",
+          "description": null,
+          "prompt_type": "text",
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Return JSON with a title.",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "tags": "[]",
+          "folder_id": null,
+          "parent_id": null,
+          "sort_order": 0,
+          "images": "[]",
+          "videos": "[]",
+          "is_favorite": 0,
+          "is_pinned": 0,
+          "current_version": 1,
+          "usage_count": 0,
+          "source": null,
+          "notes": null,
+          "last_ai_response": null,
+          "created_at": 1791517913478,
+          "updated_at": 1791517913478
+        },
+        {
+          "id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "owner_user_id": null,
+          "visibility": "private",
+          "title": "Historical primary",
+          "description": null,
+          "prompt_type": "text",
+          "system_prompt": null,
+          "system_prompt_en": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "user_prompt_en": null,
+          "variables": "[]",
+          "tags": "[\"fixture\"]",
+          "folder_id": "d030df7f-9dea-4dfe-8cbb-2bcbe0f62a28",
+          "parent_id": null,
+          "sort_order": 0,
+          "images": "[]",
+          "videos": "[]",
+          "is_favorite": 0,
+          "is_pinned": 0,
+          "current_version": 3,
+          "usage_count": 0,
+          "source": null,
+          "notes": "Non-secret notes: quote \" and newline\nretained",
+          "last_ai_response": "Synthetic AI response — no provider was called",
+          "created_at": 1791517913449,
+          "updated_at": 1791517913504
+        }
+      ],
+      "prompts_fts": [
+        {
+          "title": "Historical output",
+          "description": null,
+          "system_prompt": null,
+          "user_prompt": "Return JSON with a title.",
+          "tags": "[]"
+        },
+        {
+          "title": "Historical primary",
+          "description": null,
+          "system_prompt": null,
+          "user_prompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "tags": "[\"fixture\"]"
+        }
+      ],
+      "prompts_fts_config": [
+        {
+          "k": "version",
+          "v": 4
+        }
+      ],
+      "prompts_fts_data": [
+        {
+          "id": 1,
+          "block": {
+            "0": 2,
+            "1": 4,
+            "2": 0,
+            "3": 0,
+            "4": 11,
+            "5": 1
+          }
+        },
+        {
+          "id": 10,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 1,
+            "5": 7,
+            "6": 7,
+            "7": 0,
+            "8": 7,
+            "9": 1,
+            "10": 1,
+            "11": 1,
+            "12": 2,
+            "13": 1,
+            "14": 1,
+            "15": 3,
+            "16": 1,
+            "17": 1,
+            "18": 4,
+            "19": 1,
+            "20": 1,
+            "21": 5,
+            "22": 1,
+            "23": 1,
+            "24": 6,
+            "25": 1,
+            "26": 1,
+            "27": 7,
+            "28": 1,
+            "29": 1
+          }
+        },
+        {
+          "id": 137438953473,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 105,
+            "4": 6,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 114,
+            "9": 115,
+            "10": 116,
+            "11": 1,
+            "12": 6,
+            "13": 1,
+            "14": 3,
+            "15": 3,
+            "16": 3,
+            "17": 5,
+            "18": 120,
+            "19": 116,
+            "20": 117,
+            "21": 114,
+            "22": 101,
+            "23": 1,
+            "24": 6,
+            "25": 1,
+            "26": 4,
+            "27": 2,
+            "28": 1,
+            "29": 10,
+            "30": 104,
+            "31": 105,
+            "32": 115,
+            "33": 116,
+            "34": 111,
+            "35": 114,
+            "36": 105,
+            "37": 99,
+            "38": 97,
+            "39": 108,
+            "40": 1,
+            "41": 8,
+            "42": 2,
+            "43": 1,
+            "44": 3,
+            "45": 2,
+            "46": 1,
+            "47": 7,
+            "48": 112,
+            "49": 114,
+            "50": 105,
+            "51": 109,
+            "52": 97,
+            "53": 114,
+            "54": 121,
+            "55": 1,
+            "56": 2,
+            "57": 3,
+            "58": 3,
+            "59": 4,
+            "60": 111,
+            "61": 109,
+            "62": 112,
+            "63": 116,
+            "64": 1,
+            "65": 6,
+            "66": 1,
+            "67": 3,
+            "68": 4,
+            "69": 1,
+            "70": 5,
+            "71": 116,
+            "72": 111,
+            "73": 112,
+            "74": 105,
+            "75": 99,
+            "76": 1,
+            "77": 6,
+            "78": 1,
+            "79": 3,
+            "80": 7,
+            "81": 1,
+            "82": 6,
+            "83": 228,
+            "84": 184,
+            "85": 173,
+            "86": 230,
+            "87": 150,
+            "88": 135,
+            "89": 1,
+            "90": 6,
+            "91": 1,
+            "92": 3,
+            "93": 5,
+            "94": 1,
+            "95": 4,
+            "96": 240,
+            "97": 159,
+            "98": 166,
+            "99": 140,
+            "100": 1,
+            "101": 6,
+            "102": 1,
+            "103": 3,
+            "104": 6,
+            "105": 4,
+            "106": 12,
+            "107": 12,
+            "108": 18,
+            "109": 12,
+            "110": 11,
+            "111": 12,
+            "112": 13
+          }
+        },
+        {
+          "id": 274877906945,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 105,
+            "4": 6,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 114,
+            "9": 115,
+            "10": 116,
+            "11": 1,
+            "12": 7,
+            "13": 1,
+            "14": 3,
+            "15": 3,
+            "16": 3,
+            "17": 5,
+            "18": 120,
+            "19": 116,
+            "20": 117,
+            "21": 114,
+            "22": 101,
+            "23": 1,
+            "24": 7,
+            "25": 1,
+            "26": 4,
+            "27": 2,
+            "28": 1,
+            "29": 10,
+            "30": 104,
+            "31": 105,
+            "32": 115,
+            "33": 116,
+            "34": 111,
+            "35": 114,
+            "36": 105,
+            "37": 99,
+            "38": 97,
+            "39": 108,
+            "40": 1,
+            "41": 9,
+            "42": 2,
+            "43": 1,
+            "44": 3,
+            "45": 2,
+            "46": 1,
+            "47": 7,
+            "48": 112,
+            "49": 114,
+            "50": 105,
+            "51": 109,
+            "52": 97,
+            "53": 114,
+            "54": 121,
+            "55": 1,
+            "56": 3,
+            "57": 3,
+            "58": 3,
+            "59": 4,
+            "60": 111,
+            "61": 109,
+            "62": 112,
+            "63": 116,
+            "64": 1,
+            "65": 7,
+            "66": 1,
+            "67": 3,
+            "68": 4,
+            "69": 1,
+            "70": 5,
+            "71": 116,
+            "72": 111,
+            "73": 112,
+            "74": 105,
+            "75": 99,
+            "76": 1,
+            "77": 7,
+            "78": 1,
+            "79": 3,
+            "80": 7,
+            "81": 1,
+            "82": 6,
+            "83": 228,
+            "84": 184,
+            "85": 173,
+            "86": 230,
+            "87": 150,
+            "88": 135,
+            "89": 1,
+            "90": 7,
+            "91": 1,
+            "92": 3,
+            "93": 5,
+            "94": 1,
+            "95": 4,
+            "96": 240,
+            "97": 159,
+            "98": 166,
+            "99": 140,
+            "100": 1,
+            "101": 7,
+            "102": 1,
+            "103": 3,
+            "104": 6,
+            "105": 4,
+            "106": 12,
+            "107": 12,
+            "108": 18,
+            "109": 12,
+            "110": 11,
+            "111": 12,
+            "112": 13
+          }
+        },
+        {
+          "id": 412316860417,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 85,
+            "4": 2,
+            "5": 48,
+            "6": 97,
+            "7": 2,
+            "8": 6,
+            "9": 1,
+            "10": 3,
+            "11": 5,
+            "12": 1,
+            "13": 10,
+            "14": 104,
+            "15": 105,
+            "16": 115,
+            "17": 116,
+            "18": 111,
+            "19": 114,
+            "20": 105,
+            "21": 99,
+            "22": 97,
+            "23": 108,
+            "24": 2,
+            "25": 2,
+            "26": 2,
+            "27": 1,
+            "28": 4,
+            "29": 106,
+            "30": 115,
+            "31": 111,
+            "32": 110,
+            "33": 2,
+            "34": 6,
+            "35": 1,
+            "36": 3,
+            "37": 3,
+            "38": 1,
+            "39": 6,
+            "40": 111,
+            "41": 117,
+            "42": 116,
+            "43": 112,
+            "44": 117,
+            "45": 116,
+            "46": 2,
+            "47": 2,
+            "48": 3,
+            "49": 1,
+            "50": 6,
+            "51": 114,
+            "52": 101,
+            "53": 116,
+            "54": 117,
+            "55": 114,
+            "56": 110,
+            "57": 2,
+            "58": 6,
+            "59": 1,
+            "60": 3,
+            "61": 2,
+            "62": 1,
+            "63": 5,
+            "64": 116,
+            "65": 105,
+            "66": 116,
+            "67": 108,
+            "68": 101,
+            "69": 2,
+            "70": 6,
+            "71": 1,
+            "72": 3,
+            "73": 6,
+            "74": 1,
+            "75": 4,
+            "76": 119,
+            "77": 105,
+            "78": 116,
+            "79": 104,
+            "80": 2,
+            "81": 6,
+            "82": 1,
+            "83": 3,
+            "84": 4,
+            "85": 4,
+            "86": 8,
+            "87": 15,
+            "88": 11,
+            "89": 11,
+            "90": 13,
+            "91": 12
+          }
+        },
+        {
+          "id": 549755813889,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 85,
+            "4": 2,
+            "5": 48,
+            "6": 97,
+            "7": 2,
+            "8": 7,
+            "9": 1,
+            "10": 3,
+            "11": 5,
+            "12": 1,
+            "13": 10,
+            "14": 104,
+            "15": 105,
+            "16": 115,
+            "17": 116,
+            "18": 111,
+            "19": 114,
+            "20": 105,
+            "21": 99,
+            "22": 97,
+            "23": 108,
+            "24": 2,
+            "25": 3,
+            "26": 2,
+            "27": 1,
+            "28": 4,
+            "29": 106,
+            "30": 115,
+            "31": 111,
+            "32": 110,
+            "33": 2,
+            "34": 7,
+            "35": 1,
+            "36": 3,
+            "37": 3,
+            "38": 1,
+            "39": 6,
+            "40": 111,
+            "41": 117,
+            "42": 116,
+            "43": 112,
+            "44": 117,
+            "45": 116,
+            "46": 2,
+            "47": 3,
+            "48": 3,
+            "49": 1,
+            "50": 6,
+            "51": 114,
+            "52": 101,
+            "53": 116,
+            "54": 117,
+            "55": 114,
+            "56": 110,
+            "57": 2,
+            "58": 7,
+            "59": 1,
+            "60": 3,
+            "61": 2,
+            "62": 1,
+            "63": 5,
+            "64": 116,
+            "65": 105,
+            "66": 116,
+            "67": 108,
+            "68": 101,
+            "69": 2,
+            "70": 7,
+            "71": 1,
+            "72": 3,
+            "73": 6,
+            "74": 1,
+            "75": 4,
+            "76": 119,
+            "77": 105,
+            "78": 116,
+            "79": 104,
+            "80": 2,
+            "81": 7,
+            "82": 1,
+            "83": 3,
+            "84": 4,
+            "85": 4,
+            "86": 8,
+            "87": 15,
+            "88": 11,
+            "89": 11,
+            "90": 13,
+            "91": 12
+          }
+        },
+        {
+          "id": 687194767361,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 116,
+            "4": 6,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 114,
+            "9": 115,
+            "10": 116,
+            "11": 1,
+            "12": 1,
+            "13": 3,
+            "14": 5,
+            "15": 120,
+            "16": 116,
+            "17": 117,
+            "18": 114,
+            "19": 101,
+            "20": 1,
+            "21": 7,
+            "22": 1,
+            "23": 4,
+            "24": 2,
+            "25": 1,
+            "26": 10,
+            "27": 104,
+            "28": 105,
+            "29": 115,
+            "30": 116,
+            "31": 111,
+            "32": 114,
+            "33": 105,
+            "34": 99,
+            "35": 97,
+            "36": 108,
+            "37": 1,
+            "38": 9,
+            "39": 2,
+            "40": 1,
+            "41": 3,
+            "42": 2,
+            "43": 1,
+            "44": 7,
+            "45": 112,
+            "46": 114,
+            "47": 105,
+            "48": 109,
+            "49": 97,
+            "50": 114,
+            "51": 121,
+            "52": 1,
+            "53": 3,
+            "54": 3,
+            "55": 3,
+            "56": 4,
+            "57": 111,
+            "58": 109,
+            "59": 112,
+            "60": 116,
+            "61": 1,
+            "62": 7,
+            "63": 1,
+            "64": 3,
+            "65": 4,
+            "66": 1,
+            "67": 5,
+            "68": 116,
+            "69": 111,
+            "70": 112,
+            "71": 105,
+            "72": 99,
+            "73": 1,
+            "74": 7,
+            "75": 1,
+            "76": 3,
+            "77": 7,
+            "78": 1,
+            "79": 7,
+            "80": 117,
+            "81": 112,
+            "82": 100,
+            "83": 97,
+            "84": 116,
+            "85": 101,
+            "86": 100,
+            "87": 1,
+            "88": 6,
+            "89": 1,
+            "90": 3,
+            "91": 3,
+            "92": 1,
+            "93": 6,
+            "94": 228,
+            "95": 184,
+            "96": 173,
+            "97": 230,
+            "98": 150,
+            "99": 135,
+            "100": 1,
+            "101": 7,
+            "102": 1,
+            "103": 3,
+            "104": 5,
+            "105": 1,
+            "106": 4,
+            "107": 240,
+            "108": 159,
+            "109": 166,
+            "110": 140,
+            "111": 1,
+            "112": 7,
+            "113": 1,
+            "114": 3,
+            "115": 6,
+            "116": 4,
+            "117": 9,
+            "118": 12,
+            "119": 18,
+            "120": 12,
+            "121": 11,
+            "122": 12,
+            "123": 14,
+            "124": 13
+          }
+        },
+        {
+          "id": 824633720833,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 109,
+            "4": 8,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 120,
+            "9": 116,
+            "10": 117,
+            "11": 114,
+            "12": 101,
+            "13": 1,
+            "14": 7,
+            "15": 1,
+            "16": 4,
+            "17": 2,
+            "18": 1,
+            "19": 10,
+            "20": 104,
+            "21": 105,
+            "22": 115,
+            "23": 116,
+            "24": 111,
+            "25": 114,
+            "26": 105,
+            "27": 99,
+            "28": 97,
+            "29": 108,
+            "30": 1,
+            "31": 9,
+            "32": 2,
+            "33": 1,
+            "34": 3,
+            "35": 2,
+            "36": 1,
+            "37": 7,
+            "38": 112,
+            "39": 114,
+            "40": 105,
+            "41": 109,
+            "42": 97,
+            "43": 114,
+            "44": 121,
+            "45": 1,
+            "46": 3,
+            "47": 3,
+            "48": 3,
+            "49": 4,
+            "50": 111,
+            "51": 109,
+            "52": 112,
+            "53": 116,
+            "54": 1,
+            "55": 7,
+            "56": 1,
+            "57": 3,
+            "58": 4,
+            "59": 1,
+            "60": 5,
+            "61": 116,
+            "62": 111,
+            "63": 112,
+            "64": 105,
+            "65": 99,
+            "66": 1,
+            "67": 7,
+            "68": 1,
+            "69": 3,
+            "70": 7,
+            "71": 1,
+            "72": 7,
+            "73": 117,
+            "74": 112,
+            "75": 100,
+            "76": 97,
+            "77": 116,
+            "78": 101,
+            "79": 100,
+            "80": 1,
+            "81": 7,
+            "82": 1,
+            "83": 3,
+            "84": 3,
+            "85": 1,
+            "86": 6,
+            "87": 228,
+            "88": 184,
+            "89": 173,
+            "90": 230,
+            "91": 150,
+            "92": 135,
+            "93": 1,
+            "94": 7,
+            "95": 1,
+            "96": 3,
+            "97": 5,
+            "98": 1,
+            "99": 4,
+            "100": 240,
+            "101": 159,
+            "102": 166,
+            "103": 140,
+            "104": 1,
+            "105": 7,
+            "106": 1,
+            "107": 3,
+            "108": 6,
+            "109": 4,
+            "110": 14,
+            "111": 18,
+            "112": 12,
+            "113": 11,
+            "114": 12,
+            "115": 14,
+            "116": 13
+          }
+        },
+        {
+          "id": 962072674305,
+          "block": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 109,
+            "4": 8,
+            "5": 48,
+            "6": 102,
+            "7": 105,
+            "8": 120,
+            "9": 116,
+            "10": 117,
+            "11": 114,
+            "12": 101,
+            "13": 1,
+            "14": 7,
+            "15": 1,
+            "16": 4,
+            "17": 2,
+            "18": 1,
+            "19": 10,
+            "20": 104,
+            "21": 105,
+            "22": 115,
+            "23": 116,
+            "24": 111,
+            "25": 114,
+            "26": 105,
+            "27": 99,
+            "28": 97,
+            "29": 108,
+            "30": 1,
+            "31": 9,
+            "32": 2,
+            "33": 1,
+            "34": 3,
+            "35": 2,
+            "36": 1,
+            "37": 7,
+            "38": 112,
+            "39": 114,
+            "40": 105,
+            "41": 109,
+            "42": 97,
+            "43": 114,
+            "44": 121,
+            "45": 1,
+            "46": 3,
+            "47": 3,
+            "48": 3,
+            "49": 4,
+            "50": 111,
+            "51": 109,
+            "52": 112,
+            "53": 116,
+            "54": 1,
+            "55": 7,
+            "56": 1,
+            "57": 3,
+            "58": 4,
+            "59": 1,
+            "60": 5,
+            "61": 116,
+            "62": 111,
+            "63": 112,
+            "64": 105,
+            "65": 99,
+            "66": 1,
+            "67": 7,
+            "68": 1,
+            "69": 3,
+            "70": 7,
+            "71": 1,
+            "72": 7,
+            "73": 117,
+            "74": 112,
+            "75": 100,
+            "76": 97,
+            "77": 116,
+            "78": 101,
+            "79": 100,
+            "80": 1,
+            "81": 7,
+            "82": 1,
+            "83": 3,
+            "84": 3,
+            "85": 1,
+            "86": 6,
+            "87": 228,
+            "88": 184,
+            "89": 173,
+            "90": 230,
+            "91": 150,
+            "92": 135,
+            "93": 1,
+            "94": 7,
+            "95": 1,
+            "96": 3,
+            "97": 5,
+            "98": 1,
+            "99": 4,
+            "100": 240,
+            "101": 159,
+            "102": 166,
+            "103": 140,
+            "104": 1,
+            "105": 7,
+            "106": 1,
+            "107": 3,
+            "108": 6,
+            "109": 4,
+            "110": 14,
+            "111": 18,
+            "112": 12,
+            "113": 11,
+            "114": 12,
+            "115": 14,
+            "116": 13
+          }
+        }
+      ],
+      "prompts_fts_docsize": [
+        {
+          "id": 1,
+          "sz": {
+            "0": 2,
+            "1": 0,
+            "2": 0,
+            "3": 6,
+            "4": 1
+          }
+        },
+        {
+          "id": 2,
+          "sz": {
+            "0": 2,
+            "1": 0,
+            "2": 0,
+            "3": 5,
+            "4": 0
+          }
+        }
+      ],
+      "prompts_fts_idx": [
+        {
+          "segid": 1,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 2,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 3,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 4,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 5,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 6,
+          "term": {},
+          "pgno": 2
+        },
+        {
+          "segid": 7,
+          "term": {},
+          "pgno": 2
+        }
+      ],
+      "refresh_tokens": [],
+      "rule_versions": [
+        {
+          "id": "project%3Ahistorical-source-1791517913616",
+          "rule_id": "project:historical-source",
+          "version": 1,
+          "file_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/data/rules/.versions/project%3Ahistorical-source/0001.md",
+          "source": "create",
+          "created_at": 1791517913616
+        },
+        {
+          "id": "project%3Ahistorical-source-1791517913641",
+          "rule_id": "project:historical-source",
+          "version": 2,
+          "file_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/data/rules/.versions/project%3Ahistorical-source/0002.md",
+          "source": "manual-save",
+          "created_at": 1791517913641
+        }
+      ],
+      "rules": [
+        {
+          "id": "project:historical-source",
+          "scope": "project",
+          "platform_id": "workspace",
+          "platform_name": "Historical rules",
+          "platform_icon": "FolderRoot",
+          "platform_description": "Project rules from /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/fixture-inputs/rule-project",
+          "canonical_file_name": "AGENTS.md",
+          "description": "Project rule file loaded from a user-managed directory.",
+          "managed_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/data/rules/projects/historical-rules__historical-source/AGENTS.md",
+          "target_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/fixture-inputs/rule-project/AGENTS.md",
+          "project_root_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/fixture-inputs/rule-project",
+          "sync_status": "synced",
+          "current_version": 2,
+          "content_hash": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5",
+          "created_at": 1791517913615,
+          "updated_at": 1791517913641
+        }
+      ],
+      "schema_migrations": [
+        {
+          "name": "backfill_local_repo_path_v1",
+          "applied_at": 1791517912931
+        },
+        {
+          "name": "backfill_skill_legacy_fingerprint_algorithm_v1",
+          "applied_at": 1791517912930
+        },
+        {
+          "name": "drop_skill_name_unique_v2",
+          "applied_at": 1791517912931
+        },
+        {
+          "name": "fix_prompt_current_version_v1",
+          "applied_at": 1791517912931
+        },
+        {
+          "name": "normalize_skill_version_tracking_v1",
+          "applied_at": 1791517912931
+        },
+        {
+          "name": "server_auth_tables_v1",
+          "applied_at": 1791517912931
+        }
+      ],
+      "settings": [],
+      "skill_versions": [
+        {
+          "id": "7103e937-f9c9-4687-962f-387311ff8974",
+          "skill_id": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "version": 1,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "files_snapshot": "[{\"relativePath\":\"SKILL.md\",\"content\":\"---\\nname: historical-skill\\ndescription: Synthetic source fixture\\nversion: 1.0.0\\n---\\n\\n# Historical Skill\\nKeep package files.\\n\"},{\"relativePath\":\"docs/guide.md\",\"content\":\"Historical guide bytes\\n\"},{\"relativePath\":\"docs/pixel.bin\",\"content\":\"[binary file]\"}]",
+          "note": "Historical original package",
+          "created_at": 1791517913590
+        },
+        {
+          "id": "7c3d8c50-bb07-4c2c-9246-a1f054020af0",
+          "skill_id": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "version": 2,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "files_snapshot": "[{\"relativePath\":\"SKILL.md\",\"content\":\"---\\nname: historical-skill\\ndescription: Synthetic source fixture\\nversion: 1.0.0\\n---\\n\\n# Historical Skill\\nKeep package files.\\n\"},{\"relativePath\":\"docs/guide.md\",\"content\":\"Updated historical guide bytes\\n\"},{\"relativePath\":\"docs/pixel.bin\",\"content\":\"[binary file]\"}]",
+          "note": "Historical package revision",
+          "created_at": 1791517913603
+        }
+      ],
+      "skills": [
+        {
+          "id": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "owner_user_id": null,
+          "visibility": "private",
+          "name": "historical-skill",
+          "description": "Synthetic source fixture",
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "mcp_config": null,
+          "protocol_type": "skill",
+          "version": "1.0.0",
+          "author": "Local",
+          "tags": "[]",
+          "is_favorite": 0,
+          "source_url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/fixture-inputs/skill",
+          "source_id": null,
+          "source_label": null,
+          "source_branch": null,
+          "source_directory": null,
+          "canonical_skill_path": null,
+          "local_repo_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/data/skills/historical-skill",
+          "directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+          "icon_url": null,
+          "icon_emoji": null,
+          "icon_background": null,
+          "category": "general",
+          "is_builtin": 0,
+          "registry_slug": null,
+          "content_url": null,
+          "installed_content_hash": null,
+          "installed_directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+          "fingerprint_algorithm": "skill-package-sha256-v1",
+          "source_last_checked_at": 1791517913576,
+          "source_last_error": null,
+          "source_binding_state": "bound",
+          "installed_version": null,
+          "installed_at": null,
+          "updated_from_store_at": null,
+          "prerequisites": null,
+          "compatibility": null,
+          "original_tags": "[]",
+          "safety_level": null,
+          "safety_score": null,
+          "safety_report": null,
+          "safety_scanned_at": null,
+          "current_version": 2,
+          "version_tracking_enabled": 1,
+          "created_at": 1791517913577,
+          "updated_at": 1791517913577
+        }
+      ],
+      "user_settings": [],
+      "users": []
+    },
+    "foreignKeys": {
+      "folders": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "folders",
+          "from": "parent_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "users",
+          "from": "owner_user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "prompt_output_format_items": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "target_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "prompts",
+          "from": "source_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompt_relations": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "target_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "prompts",
+          "from": "source_prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompt_versions": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "prompt_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "prompts": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "prompts",
+          "from": "parent_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "folders",
+          "from": "folder_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        },
+        {
+          "id": 2,
+          "seq": 0,
+          "table": "users",
+          "from": "owner_user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "prompts_fts": [],
+      "prompts_fts_config": [],
+      "prompts_fts_data": [],
+      "prompts_fts_docsize": [],
+      "prompts_fts_idx": [],
+      "refresh_tokens": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "users",
+          "from": "user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "rule_versions": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "rules",
+          "from": "rule_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "rules": [],
+      "schema_migrations": [],
+      "settings": [],
+      "skill_versions": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "skills",
+          "from": "skill_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "skills": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "users",
+          "from": "owner_user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "SET NULL",
+          "match": "NONE"
+        }
+      ],
+      "user_settings": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "users",
+          "from": "user_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "CASCADE",
+          "match": "NONE"
+        }
+      ],
+      "users": []
+    },
+    "userVersion": [
+      {
+        "user_version": 0
+      }
+    ]
+  },
+  "inventory": [
+    {
+      "path": "profile/config/ai-models.json",
+      "bytes": 742,
+      "sha256": "4e9f112f441efd141efaf50ba272ed1e8387dd16c57c4bb90d2351522774ce1c"
+    },
+    {
+      "path": "profile/data/prompthub.db",
+      "bytes": 335872,
+      "sha256": "aca029a8261c17e8b9b89e2330d50d457fa449b827e4b2f4b9f8b501939ea19a"
+    },
+    {
+      "path": "profile/data/rules/.versions/project%3Ahistorical-source/0001.md",
+      "bytes": 26,
+      "sha256": "982fa4315121e17f77ed92d71125f7e28f7d5579d080b6347a9b98769d3de2e9"
+    },
+    {
+      "path": "profile/data/rules/.versions/project%3Ahistorical-source/0002.md",
+      "bytes": 36,
+      "sha256": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5"
+    },
+    {
+      "path": "profile/data/rules/.versions/project%3Ahistorical-source/index.json",
+      "bytes": 321,
+      "sha256": "005dd1d2c44bc8eafdd1b9156e3557bed30e8634c6cec7d6ba30c3c578caae2f"
+    },
+    {
+      "path": "profile/data/rules/projects/historical-rules__historical-source/_rule.json",
+      "bytes": 1086,
+      "sha256": "e866f8b4d11b7d44db03137db12de0f337492d492124ecd5244d23b1de38c702"
+    },
+    {
+      "path": "profile/data/rules/projects/historical-rules__historical-source/AGENTS.md",
+      "bytes": 36,
+      "sha256": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5"
+    },
+    {
+      "path": "profile/data/skills/historical-skill/docs/guide.md",
+      "bytes": 31,
+      "sha256": "b165b4201ce49fadebd6995fc29cc24f7b9ed87a4daaa71f943921028e4a3de0"
+    },
+    {
+      "path": "profile/data/skills/historical-skill/docs/pixel.bin",
+      "bytes": 4,
+      "sha256": "a33bb2aed757bc839807d7a9deab0688c3cf06d36e53cb428f2e539c8dc76c5b"
+    },
+    {
+      "path": "profile/data/skills/historical-skill/SKILL.md",
+      "bytes": 124,
+      "sha256": "7a3ac377f294307eeaf1aebc043bab6428f46f6adf1be8749cfc88f598bc1ae1"
+    },
+    {
+      "path": "profile/fixture-inputs/rule-project/AGENTS.md",
+      "bytes": 36,
+      "sha256": "295b117af7eb0eea77cb9da00b2d919a37bfed927d43784bb274be42221556b5"
+    },
+    {
+      "path": "profile/fixture-inputs/skill/docs/guide.md",
+      "bytes": 23,
+      "sha256": "4da02ad8dc1b360e15f3c256230c981f7c549f7755795df049897ffbd0ca1282"
+    },
+    {
+      "path": "profile/fixture-inputs/skill/docs/pixel.bin",
+      "bytes": 4,
+      "sha256": "a33bb2aed757bc839807d7a9deab0688c3cf06d36e53cb428f2e539c8dc76c5b"
+    },
+    {
+      "path": "profile/fixture-inputs/skill/SKILL.md",
+      "bytes": 124,
+      "sha256": "7a3ac377f294307eeaf1aebc043bab6428f46f6adf1be8749cfc88f598bc1ae1"
+    }
+  ],
+  "archive": {
+    "filename": "v0.5.9.tar.gz",
+    "bytes": 20480,
+    "sha256": "bb96c0b31ffc0198eabf35e33d123de748de930af8732ddb1b31964b6f2ebb44"
+  },
+  "observations": {
+    "seeded": {
+      "prompts": [
+        {
+          "id": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "visibility": "private",
+          "title": "Historical output",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Return JSON with a title.",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [],
+          "folderId": null,
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 1,
+          "currentVersion": 1,
+          "usageCount": 0,
+          "source": null,
+          "notes": null,
+          "lastAiResponse": null,
+          "createdAt": "2026-10-09T03:51:53.478Z",
+          "updatedAt": "2026-10-09T03:51:53.478Z"
+        },
+        {
+          "id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "visibility": "private",
+          "title": "Historical primary",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [
+            "fixture"
+          ],
+          "folderId": "d030df7f-9dea-4dfe-8cbb-2bcbe0f62a28",
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 3,
+          "currentVersion": 3,
+          "usageCount": 0,
+          "source": null,
+          "notes": "Non-secret notes: quote \" and newline\nretained",
+          "lastAiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:53.449Z",
+          "updatedAt": "2026-10-09T03:51:53.504Z"
+        }
+      ],
+      "promptVersions": [
+        {
+          "id": "0ad15101-8805-4b5e-b123-c566b1dce507",
+          "promptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 3,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Historical content revision",
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:53.517Z"
+        },
+        {
+          "id": "1640ae4f-5eb6-43a9-b6f2-dbf20861e666",
+          "promptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 2,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": null,
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:53.505Z"
+        },
+        {
+          "id": "f58b0492-a4d3-44dc-9c90-e871bfaf679e",
+          "promptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 1,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical first prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Initial version",
+          "aiResponse": null,
+          "createdAt": "2026-10-09T03:51:53.464Z"
+        }
+      ],
+      "folders": [
+        {
+          "id": "d030df7f-9dea-4dfe-8cbb-2bcbe0f62a28",
+          "visibility": "private",
+          "name": "Historical folder",
+          "icon": "Folder",
+          "order": 0,
+          "isPrivate": false,
+          "createdAt": "2026-10-09T03:51:53.438Z",
+          "updatedAt": "2026-10-09T03:51:53.438Z"
+        }
+      ],
+      "relations": [
+        {
+          "id": "4f4b9469-daa4-48b6-b299-4832054c3e6e",
+          "sourcePromptId": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "targetPromptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "kind": "related_to",
+          "note": "Historical relation",
+          "createdAt": "2026-10-09T03:51:53.531Z",
+          "updatedAt": "2026-10-09T03:51:53.531Z"
+        }
+      ],
+      "formats": [
+        {
+          "id": "290bbb73-b87e-4f67-9719-3b5069ffcdd0",
+          "sourcePromptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "targetPromptId": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "sortOrder": 0,
+          "createdAt": "2026-10-09T03:51:53.542Z",
+          "updatedAt": "2026-10-09T03:51:53.542Z"
+        }
+      ],
+      "skill": {
+        "id": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+        "name": "historical-skill",
+        "description": "Synthetic source fixture",
+        "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "instructions": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "protocol_type": "skill",
+        "version": "1.0.0",
+        "author": "Local",
+        "tags": [],
+        "is_favorite": false,
+        "currentVersion": 2,
+        "versionTrackingEnabled": true,
+        "created_at": 1791517913577,
+        "updated_at": 1791517913577,
+        "source_url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/fixture-inputs/skill",
+        "local_repo_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/data/skills/historical-skill",
+        "directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "category": "general",
+        "is_builtin": false,
+        "installed_directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "fingerprint_algorithm": "skill-package-sha256-v1",
+        "source_last_checked_at": 1791517913576,
+        "source_binding_state": "bound",
+        "original_tags": []
+      },
+      "skillVersions": [
+        {
+          "id": "7c3d8c50-bb07-4c2c-9246-a1f054020af0",
+          "skillId": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "version": 2,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Updated historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical package revision",
+          "createdAt": "2026-10-09T03:51:53.603Z"
+        },
+        {
+          "id": "7103e937-f9c9-4687-962f-387311ff8974",
+          "skillId": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "version": 1,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical original package",
+          "createdAt": "2026-10-09T03:51:53.590Z"
+        }
+      ],
+      "skillFiles": [
+        {
+          "path": "SKILL.md",
+          "isDirectory": false,
+          "size": 124
+        },
+        {
+          "path": "docs",
+          "isDirectory": true
+        },
+        {
+          "path": "docs/guide.md",
+          "isDirectory": false,
+          "size": 31
+        },
+        {
+          "path": "docs/pixel.bin",
+          "isDirectory": false,
+          "size": 4
+        }
+      ],
+      "rule": {
+        "id": "project:historical-source",
+        "content": "Historical updated rules — 中文\n",
+        "versions": [
+          {
+            "id": "project%3Ahistorical-source-1791517913641",
+            "savedAt": "2026-10-09T03:51:53.641Z",
+            "source": "manual-save",
+            "content": "Historical updated rules — 中文\n"
+          },
+          {
+            "id": "project%3Ahistorical-source-1791517913616",
+            "savedAt": "2026-10-09T03:51:53.616Z",
+            "source": "create",
+            "content": "Historical original rules\n"
+          }
+        ]
+      },
+      "settings": {
+        "kind": "prompthub-ai-config",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:53.663Z",
+        "providers": [
+          {
+            "id": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1"
+          }
+        ],
+        "models": [
+          {
+            "id": "fixture-model",
+            "type": "chat",
+            "providerId": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1",
+            "model": "synthetic-model",
+            "isDefault": false,
+            "capabilities": {
+              "chat": true,
+              "imageGeneration": false
+            }
+          }
+        ],
+        "modelRouteDefaults": {
+          "mainText": "fixture-model"
+        }
+      }
+    },
+    "reopened": {
+      "prompts": [
+        {
+          "id": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "visibility": "private",
+          "title": "Historical output",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Return JSON with a title.",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [],
+          "folderId": null,
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 1,
+          "currentVersion": 1,
+          "usageCount": 0,
+          "source": null,
+          "notes": null,
+          "lastAiResponse": null,
+          "createdAt": "2026-10-09T03:51:53.478Z",
+          "updatedAt": "2026-10-09T03:51:53.478Z"
+        },
+        {
+          "id": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "visibility": "private",
+          "title": "Historical primary",
+          "description": null,
+          "promptType": "text",
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "tags": [
+            "fixture"
+          ],
+          "folderId": "d030df7f-9dea-4dfe-8cbb-2bcbe0f62a28",
+          "parentId": null,
+          "order": 0,
+          "images": [],
+          "videos": [],
+          "isFavorite": false,
+          "isPinned": false,
+          "version": 3,
+          "currentVersion": 3,
+          "usageCount": 0,
+          "source": null,
+          "notes": "Non-secret notes: quote \" and newline\nretained",
+          "lastAiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:53.449Z",
+          "updatedAt": "2026-10-09T03:51:53.504Z"
+        }
+      ],
+      "promptVersions": [
+        {
+          "id": "0ad15101-8805-4b5e-b123-c566b1dce507",
+          "promptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 3,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Historical content revision",
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:53.517Z"
+        },
+        {
+          "id": "1640ae4f-5eb6-43a9-b6f2-dbf20861e666",
+          "promptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 2,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical updated prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": null,
+          "aiResponse": "Synthetic AI response — no provider was called",
+          "createdAt": "2026-10-09T03:51:53.505Z"
+        },
+        {
+          "id": "f58b0492-a4d3-44dc-9c90-e871bfaf679e",
+          "promptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "version": 1,
+          "systemPrompt": null,
+          "systemPromptEn": null,
+          "userPrompt": "Historical first prompt — 中文 🦌\n{{topic}}",
+          "userPromptEn": null,
+          "variables": [],
+          "note": "Initial version",
+          "aiResponse": null,
+          "createdAt": "2026-10-09T03:51:53.464Z"
+        }
+      ],
+      "folders": [
+        {
+          "id": "d030df7f-9dea-4dfe-8cbb-2bcbe0f62a28",
+          "visibility": "private",
+          "name": "Historical folder",
+          "icon": "Folder",
+          "order": 0,
+          "isPrivate": false,
+          "createdAt": "2026-10-09T03:51:53.438Z",
+          "updatedAt": "2026-10-09T03:51:53.438Z"
+        }
+      ],
+      "relations": [
+        {
+          "id": "4f4b9469-daa4-48b6-b299-4832054c3e6e",
+          "sourcePromptId": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "targetPromptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "kind": "related_to",
+          "note": "Historical relation",
+          "createdAt": "2026-10-09T03:51:53.531Z",
+          "updatedAt": "2026-10-09T03:51:53.531Z"
+        }
+      ],
+      "formats": [
+        {
+          "id": "290bbb73-b87e-4f67-9719-3b5069ffcdd0",
+          "sourcePromptId": "63efa23a-351f-4370-81e9-fbadaf775c56",
+          "targetPromptId": "3d7c23eb-0abd-41fa-a073-13d7205a0cb4",
+          "sortOrder": 0,
+          "createdAt": "2026-10-09T03:51:53.542Z",
+          "updatedAt": "2026-10-09T03:51:53.542Z"
+        }
+      ],
+      "skill": {
+        "id": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+        "name": "historical-skill",
+        "description": "Synthetic source fixture",
+        "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "instructions": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+        "protocol_type": "skill",
+        "version": "1.0.0",
+        "author": "Local",
+        "tags": [],
+        "is_favorite": false,
+        "currentVersion": 2,
+        "versionTrackingEnabled": true,
+        "created_at": 1791517913577,
+        "updated_at": 1791517913577,
+        "source_url": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/fixture-inputs/skill",
+        "local_repo_path": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile/data/skills/historical-skill",
+        "directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "category": "general",
+        "is_builtin": false,
+        "installed_directory_fingerprint": "34a851c7b256f0c8cd35c05f71af72824a73d42302b9b3765046afa70fdebfb3",
+        "fingerprint_algorithm": "skill-package-sha256-v1",
+        "source_last_checked_at": 1791517913576,
+        "source_binding_state": "bound",
+        "original_tags": []
+      },
+      "skillVersions": [
+        {
+          "id": "7c3d8c50-bb07-4c2c-9246-a1f054020af0",
+          "skillId": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "version": 2,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Updated historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical package revision",
+          "createdAt": "2026-10-09T03:51:53.603Z"
+        },
+        {
+          "id": "7103e937-f9c9-4687-962f-387311ff8974",
+          "skillId": "3b6ac6dd-efde-4f5a-a00e-fe762c6043ec",
+          "version": 1,
+          "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n",
+          "filesSnapshot": [
+            {
+              "relativePath": "SKILL.md",
+              "content": "---\nname: historical-skill\ndescription: Synthetic source fixture\nversion: 1.0.0\n---\n\n# Historical Skill\nKeep package files.\n"
+            },
+            {
+              "relativePath": "docs/guide.md",
+              "content": "Historical guide bytes\n"
+            },
+            {
+              "relativePath": "docs/pixel.bin",
+              "content": "[binary file]"
+            }
+          ],
+          "note": "Historical original package",
+          "createdAt": "2026-10-09T03:51:53.590Z"
+        }
+      ],
+      "skillFiles": [
+        {
+          "path": "SKILL.md",
+          "isDirectory": false,
+          "size": 124
+        },
+        {
+          "path": "docs",
+          "isDirectory": true
+        },
+        {
+          "path": "docs/guide.md",
+          "isDirectory": false,
+          "size": 31
+        },
+        {
+          "path": "docs/pixel.bin",
+          "isDirectory": false,
+          "size": 4
+        }
+      ],
+      "rule": {
+        "id": "project:historical-source",
+        "content": "Historical updated rules — 中文\n",
+        "versions": [
+          {
+            "id": "project%3Ahistorical-source-1791517913641",
+            "savedAt": "2026-10-09T03:51:53.641Z",
+            "source": "manual-save",
+            "content": "Historical updated rules — 中文\n"
+          },
+          {
+            "id": "project%3Ahistorical-source-1791517913616",
+            "savedAt": "2026-10-09T03:51:53.616Z",
+            "source": "create",
+            "content": "Historical original rules\n"
+          }
+        ]
+      },
+      "settings": {
+        "kind": "prompthub-ai-config",
+        "version": 1,
+        "updatedAt": "2026-10-09T03:51:53.663Z",
+        "providers": [
+          {
+            "id": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1"
+          }
+        ],
+        "models": [
+          {
+            "id": "fixture-model",
+            "type": "chat",
+            "providerId": "fixture-provider",
+            "provider": "openai",
+            "apiProtocol": "openai",
+            "apiKey": "",
+            "apiUrl": "https://fixture.invalid/v1",
+            "model": "synthetic-model",
+            "isDefault": false,
+            "capabilities": {
+              "chat": true,
+              "imageGeneration": false
+            }
+          }
+        ],
+        "modelRouteDefaults": {
+          "mainText": "fixture-model"
+        }
+      }
+    }
+  },
+  "unsupported": [
+    "Agent provider profiles were not present in this source runtime.",
+    "Desktop ordinary Settings IPC and canonical startup were not executed."
+  ],
+  "commands": [
+    {
+      "command": "git",
+      "args": [
+        "archive",
+        "1e933ae29726361982c5ce7b49bc4f4c6da326ba",
+        "packages/core",
+        "packages/db",
+        "packages/shared"
+      ],
+      "pid": 41665,
+      "startedAt": "2026-10-09T03:51:52.461Z",
+      "endedAt": "2026-10-09T03:51:52.502Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "tar",
+      "args": [
+        "-xf",
+        "-",
+        "-C",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9"
+      ],
+      "pid": 41690,
+      "startedAt": "2026-10-09T03:51:52.502Z",
+      "endedAt": "2026-10-09T03:51:52.518Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "--import",
+        "tsx",
+        "--import",
+        "./harness/register-audit.mjs",
+        "./harness/source-runner.mjs",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile",
+        "v0.5.9",
+        "seed",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/seed.json"
+      ],
+      "pid": 41691,
+      "startedAt": "2026-10-09T03:51:52.520Z",
+      "endedAt": "2026-10-09T03:51:53.673Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "--import",
+        "tsx",
+        "--import",
+        "./harness/register-audit.mjs",
+        "./harness/source-runner.mjs",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/profile",
+        "v0.5.9",
+        "reopen",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9/reopen.json"
+      ],
+      "pid": 41719,
+      "startedAt": "2026-10-09T03:51:53.673Z",
+      "endedAt": "2026-10-09T03:51:53.855Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "command": "tar",
+      "args": [
+        "-czf",
+        "-",
+        "-C",
+        "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-historical-runtime-THGK1w/v0.5.9",
+        "profile"
+      ],
+      "pid": 41749,
+      "startedAt": "2026-10-09T03:51:53.891Z",
+      "endedAt": "2026-10-09T03:51:53.899Z",
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
