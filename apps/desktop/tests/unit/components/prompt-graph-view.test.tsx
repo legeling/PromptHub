@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Prompt, PromptRelation } from "@prompthub/shared/types";
 
 import { PromptGraphView } from "../../../src/renderer/components/prompt/PromptGraphView";
+import { PROMPT_GRAPH_SIMULATION } from "../../../src/renderer/components/prompt/prompt-graph-motion";
 import {
   buildPromptGraphData,
   createPromptGraphLinks,
@@ -104,11 +105,16 @@ describe("PromptGraphView", () => {
     expect(mock.getAttribute("data-node-count")).toBe("3");
     // 1 hierarchy link (parent → child) + 1 semantic link (child → related).
     expect(mock.getAttribute("data-link-count")).toBe("2");
-    expect(graphProps.current.warmupTicks).toBe(0);
-    expect(graphProps.current.cooldownTicks).toBe(30);
-    expect(graphProps.current.cooldownTime).toBe(750);
-    expect(graphProps.current.d3AlphaDecay).toBe(0.1);
-    expect(graphProps.current.d3AlphaMin).toBe(0.08);
+    const standardMotion = PROMPT_GRAPH_SIMULATION.motion.standard;
+    expect(graphProps.current.warmupTicks).toBe(standardMotion.warmupTicks);
+    expect(graphProps.current.cooldownTicks).toBe(standardMotion.cooldownTicks);
+    expect(graphProps.current.cooldownTime).toBe(
+      PROMPT_GRAPH_SIMULATION.cooldownTimeMs,
+    );
+    expect(graphProps.current.d3AlphaDecay).toBe(standardMotion.alphaDecay);
+    expect(graphProps.current.d3AlphaMin).toBe(
+      PROMPT_GRAPH_SIMULATION.alphaMin,
+    );
 
     fireEvent.click(screen.getByTestId("graph-node-prompt-child"));
     expect(onSelectPrompt).toHaveBeenCalledWith(childPrompt.id);

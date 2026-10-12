@@ -230,6 +230,45 @@ pnpm --dir apps/desktop exec vitest run --project unit tests/unit/components/mai
 源码/测试类型检查、定向 ESLint 和规范检查通过。Canvas 运输由测试替身替换，
 不构成实际 Canvas 视觉验收；现有开发服务已提供新配色模块，未执行 Electron GUI 控制。
 
+### 2.10 Relationship Graph Motion
+
+- 图谱使用 renderer 的 `motionPreference` 与 `prompt-graph-motion.ts` 的唯一模拟配置。
+  标准模式先执行有界预布局，容器尺寸和物理力在首屏绘制前准备，避免先显示初始
+  分布再突然调整。从空列表加载出 Prompt 时重新测量新挂载的画布容器，避免沿用
+  默认尺寸。主题、选择和 hover 不重建图数据或重启布局。
+- 标准与减少动画模式在每次节点拖拽开始时恢复已冷却的物理模拟，拖动期间沿用
+  图谱引擎的低强度牵引；同一拖拽不逐次恢复最高强度。松手后恢复一次有界收敛，
+  相邻节点应实际响应，计算完成后停止。关闭动画时仍允许直接拖动节点，但不唤醒
+  其他节点的物理动画。只拖动空白画布仍是视口平移，不重新布局节点。
+- 修复不修改 Prompt、关系、坐标持久化、SQLite 或 IPC；图坐标和拖拽标志均为
+  当前图谱实例的临时状态，切换离开视图后释放。
+- 回归：`apps/desktop/tests/unit/components/prompt-graph-motion.test.tsx` 通过真实
+  `PromptGraphView` 回调连接当前安装的 canvas force engine，覆盖冷却后拖拽、
+  松手、重复手势、关闭动画、初始布局、时间上限及 118 节点测量。Canvas 绘制和
+  原生鼠标事件运输由测试边界替换；不将此证据等同于 Electron 实际拖拽验收。
+- 复杂度：节点准备为 O(V + E)，沿用引擎的空间索引进行斥力和碰撞计算；新增
+  拖拽标志为 O(1)，同一手势不重复唤醒。标准预布局最多 24 tick，松手后最多
+  30 tick / 750 ms；没有新增网络、存储写入或常驻模拟。
+
+验证（2026-10-12）：图谱数据/控件 9 项、主题集成 4 项、真实引擎回归 7 项通过；
+未受后续布局修复影响的激活视图隔离 7 项也通过。Desktop 源码/测试类型检查、
+定向 ESLint、生产构建和 governance 范围的 quick 门禁 3/3 通过。118 节点样本
+的最新测量为预布局约 15 ms、拖拽收敛计算约 9 ms / 25 tick；这是本机无 Canvas
+绘制的计算证据，不推断其他设备的渲染帧率。首次真实引擎测试因 jsdom 与 Node
+对象类型环境冲突未执行，构建步骤隔离到受控 Node 子进程后全部通过。
+
+隔离的源码变异关闭拖拽唤醒、恢复标准模式零预布局及旧尺寸测量生命周期，
+针对初始突跳、标准/减少模式冷却后拖拽、118 节点拖拽及空态加载尺寸共命中
+5 项业务断言失败（退出码 1），验证后临时配置已清理，未改写共享工作区源码。
+GUI 验收未执行，当前请求未授权
+控制用户窗口；未执行发行包、跨平台或完整 release 门禁，未提交或推送。
+
+```sh
+pnpm --filter @prompthub/desktop test -- tests/unit/components/prompt-graph-motion.test.tsx tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/prompt-graph-theme.test.tsx tests/unit/components/prompt-active-view-isolation.test.tsx --run --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --filter @prompthub/desktop build
+```
+
 ### 3. Stable Internal Sources
 
 - 桌面 Prompt 普通增删改、版本、关系、输出格式及文件夹写入，由 Core 的现有

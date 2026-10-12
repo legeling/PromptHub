@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { forceCollide, forceManyBody, forceX, forceY } from "d3-force";
 import {
   Maximize2Icon,
@@ -13,6 +13,7 @@ import ForceGraph2D, {
 } from "react-force-graph-2d";
 import type { PromptSummary, PromptRelation } from "@prompthub/shared/types";
 import { usePromptGraphTheme } from "./prompt-graph-theme";
+import { PROMPT_GRAPH_SIMULATION } from "./prompt-graph-motion";
 import { useSettingsStore } from "../../stores/settings.store";
 import {
   buildNeighborIndex,
@@ -35,14 +36,13 @@ const ZOOM_STEP = 1.35;
 
 type ForceGraphRef = ForceGraphMethods<PromptGraphNode, PromptGraphLink>;
 
-function useContainerSize(): [
-  React.RefObject<HTMLDivElement>,
-  { width: number; height: number },
-] {
+function useContainerSize(
+  hasNodes: boolean,
+): [React.RefObject<HTMLDivElement>, { width: number; height: number }] {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = ref.current;
     if (!element) {
       return;
@@ -65,7 +65,7 @@ function useContainerSize(): [
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [hasNodes]);
 
   return [ref, size];
 }
@@ -81,7 +81,8 @@ export function PromptGraphView({
   const theme = usePromptGraphTheme();
 
   const graphRef = useRef<ForceGraphRef | undefined>(undefined);
-  const [containerRef, size] = useContainerSize();
+  const isDragging = useRef(false);
+  const [containerRef, size] = useContainerSize(prompts.length > 0);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isPointerInside, setIsPointerInside] = useState(false);
@@ -113,7 +114,9 @@ export function PromptGraphView({
   // centre, which balances the repulsion into a tight equilibrium. forceCenter
   // alone only recentres the centroid, so nodes would drift apart forever and
   // "explode" whenever the simulation reheated on drag.
-  useEffect(() => {
+  // Configure forces during commit, before the library's deferred warmup.
+  // A passive effect can otherwise replace the forces after the first paint.
+  useLayoutEffect(() => {
     const graph = graphRef.current;
     if (!graph) {
       return;
@@ -153,21 +156,21 @@ export function PromptGraphView({
     graph.d3Force("center", null);
     graph.d3Force("x", forceX<PromptGraphNode>(0).strength(0.06));
     graph.d3Force("y", forceY<PromptGraphNode>(0).strength(0.06));
-    graph.d3ReheatSimulation();
   }, [graphData]);
 
-  // Motion preference: "off" freezes after warmup (no live animation),
-  // "reduced" settles fast, "standard" gets the full planetary drift then rests.
-  // cooldownTicks is finite so the simulation actually stops — an always-on
-  // sim keeps drifting and balloons on every interaction.
-  const motionConfig = useMemo(() => {
-    if (motionPreference === "off") {
-      return { warmupTicks: 24, cooldownTicks: 0, alphaDecay: 0.18 };
-    }
-    if (motionPreference === "reduced") {
-      return { warmupTicks: 8, cooldownTicks: 12, alphaDecay: 0.12 };
-    }
-    return { warmupTicks: 0, cooldownTicks: 30, alphaDecay: 0.1 };
+  const motionConfig = PROMPT_GRAPH_SIMULATION.motion[motionPreference];
+
+  const handleNodeDrag = useCallback(() => {
+    if (isDragging.current) return;
+    isDragging.current = true;
+    // The library resets its clock on drag but cannot tick a cooled engine
+    // below alphaMin. Reheat once per gesture, not on every pointer move.
+    if (motionPreference !== "off") graphRef.current?.d3ReheatSimulation();
+  }, [motionPreference]);
+
+  const handleNodeDragEnd = useCallback(() => {
+    isDragging.current = false;
+    if (motionPreference !== "off") graphRef.current?.d3ReheatSimulation();
   }, [motionPreference]);
 
   const handleZoom = useCallback((transform: { k: number }) => {
@@ -381,14 +384,16 @@ export function PromptGraphView({
           }
           warmupTicks={motionConfig.warmupTicks}
           cooldownTicks={motionConfig.cooldownTicks}
-          cooldownTime={750}
-          d3AlphaMin={0.08}
+          cooldownTime={PROMPT_GRAPH_SIMULATION.cooldownTimeMs}
+          d3AlphaMin={PROMPT_GRAPH_SIMULATION.alphaMin}
           d3AlphaDecay={motionConfig.alphaDecay}
-          d3VelocityDecay={0.32}
+          d3VelocityDecay={PROMPT_GRAPH_SIMULATION.velocityDecay}
           enableNodeDrag={isPointerInside}
           enablePointerInteraction={isPointerInside}
           onNodeClick={handleNodeClick}
           onNodeHover={handleNodeHover}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragEnd={handleNodeDragEnd}
           onZoom={handleZoom}
         />
       </div>
