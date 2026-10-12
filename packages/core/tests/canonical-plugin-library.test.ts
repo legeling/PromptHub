@@ -169,7 +169,7 @@ describe("canonical Plugin library", () => {
       root,
       "data",
       "plugins",
-      "agent-codex:writing-tools",
+      "agent-codex%3Awriting-tools",
     );
 
     expect(result.plugin.localPackagePath).toBe(path.join(bundlePath, "files"));
@@ -181,7 +181,7 @@ describe("canonical Plugin library", () => {
       ),
     ).toBe("review\n");
     expect(fs.readdirSync(path.join(root, "data", "plugins")).sort()).toEqual([
-      "agent-codex:writing-tools",
+      "agent-codex%3Awriting-tools",
     ]);
     expect(
       fs.readFileSync(path.join(bundlePath, "plugin.json"), "utf8"),

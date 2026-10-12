@@ -222,6 +222,8 @@ it("rebuilds a missing database without publishing an empty writable graph", () 
 });
 
 it("Core startup repairs stale state once and reuses its open handle", () => {
+  initDatabase();
+  closeDatabase();
   const preserved = preservedRows();
   staleCatalog();
   const db = initDatabase();

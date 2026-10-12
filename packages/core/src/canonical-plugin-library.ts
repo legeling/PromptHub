@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
 import path from "node:path";
 
 import type {
@@ -127,7 +128,7 @@ function listBundles(): LoadedPlugin[] {
       throw new Error("Canonical Plugin resource path is unsafe");
     const bundlePath = path.join(root, entry.name);
     const resource = readPluginResourceBundle(bundlePath);
-    if (resource.plugin.id !== entry.name)
+    if (encodeCanonicalResourceDirectory(resource.plugin.id) !== entry.name)
       throw new Error("Canonical Plugin bundle path does not match its id");
     return [{ bundlePath, resource }];
   });
@@ -302,7 +303,7 @@ export function writeCanonicalPluginState(input: {
         stableJson(portableVersions(versions));
     if (unchanged) continue;
     mutations.push({
-      targetPath: path.join(rootPath(), id),
+      targetPath: path.join(rootPath(), encodeCanonicalResourceDirectory(id)),
       prepare(stagePath) {
         materializePluginResourceBundle({
           bundlePath: stagePath,
