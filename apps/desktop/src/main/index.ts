@@ -112,7 +112,7 @@ import { logStartupEvent, scrubPath } from "./startup-log";
 import { shouldOpenStartupDevTools } from "./devtools-policy";
 import { handleExternalWindowOpen } from "./external-links";
 import { resolveLocalMediaProtocolPath } from "./local-media-protocol";
-import { applyNetworkProxySettings } from "./services/network-proxy";
+import { applyStoredNetworkProxySettings } from "./services/network-proxy-startup";
 import { createTrayController } from "./tray-controller";
 import { dispatchTrayAppCommand } from "./tray-command-dispatcher";
 import { handleLegacyDesktopCliInvocation } from "./legacy-cli-invocation";
@@ -127,7 +127,6 @@ import { performSelectedCanonicalRecovery } from "./services/canonical-storage-r
 import { registerDataPathChangeIPC } from "./services/data-path-change-ipc";
 import { registerWindowControlIPC } from "./ipc/window-control.ipc";
 import { registerNativeShellIPC } from "./ipc/native-shell.ipc";
-import { readRendererSettingsWithAIRecovery } from "./services/renderer-ai-config-recovery";
 import { reconcileManagedSkillSymlinksOnStartup } from "./services/skill-platform-symlink-startup";
 import { upgradeSkillPlatformDataOnStartup } from "./services/skill-platform-data-upgrade";
 let mainWindow: BrowserWindow | null = null;
@@ -144,31 +143,6 @@ let closeAction: "ask" | "minimize" | "exit" = "ask";
 // 是否正在等待用户选择关闭行为
 let pendingCloseAction = false;
 let isDebugMode = false;
-
-async function applyStoredNetworkProxySettings(
-  db: Database.Database,
-): Promise<void> {
-  const canonical = await readRendererSettingsWithAIRecovery({
-    activeRoot: getUserDataPath(),
-    encryption: safeStorage,
-  });
-  if (canonical.migrationComplete) {
-    await applyNetworkProxySettings(canonical.settings.networkProxy);
-    return;
-  }
-  const row = db
-    .prepare("SELECT value FROM settings WHERE key = ?")
-    .get("networkProxy") as { value: string } | undefined;
-  let value: unknown;
-  if (row) {
-    try {
-      value = JSON.parse(row.value);
-    } catch {
-      value = undefined;
-    }
-  }
-  await applyNetworkProxySettings(value);
-}
 
 export function __setMainWindowForTests(windowRef: BrowserWindow | null) {
   mainWindow = windowRef;
