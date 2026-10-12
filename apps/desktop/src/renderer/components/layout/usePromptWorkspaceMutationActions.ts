@@ -131,14 +131,12 @@ export function useAiTestModalAction(params: AiTestParams) {
       // The AI test dialog renders the full prompt content; hydrate from the
       // list projection before opening.
       // AI 测试弹窗渲染完整内容，打开前按需加载。
-      void params
-        .getPromptDetail(prompt.id)
-        .then((detail) => {
-          if (!detail) return;
-          params.setAiTestPrompt(detail);
-          params.setAiTestInitialMode(initialMode);
-          params.setIsAiTestModalOpen(true);
-        });
+      void params.getPromptDetail(prompt.id).then((detail) => {
+        if (!detail) return;
+        params.setAiTestPrompt(detail);
+        params.setAiTestInitialMode(initialMode);
+        params.setIsAiTestModalOpen(true);
+      });
     },
     [params],
   );
