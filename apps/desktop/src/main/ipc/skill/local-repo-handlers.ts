@@ -66,13 +66,15 @@ async function syncSkillFromRepo(
   skillId: string,
   repoPath?: string,
 ) {
+  const resolvedRepoPath =
+    repoPath ?? (await ensureLocalRepoPath(context.db, skillId));
+  // Path recovery can update the record even when the package is unchanged.
+  // Return that current record rather than the obsolete checkout location.
   const skill = context.db.getById(skillId);
   if (!skill) {
     return null;
   }
 
-  const resolvedRepoPath =
-    repoPath ?? (await ensureLocalRepoPath(context.db, skillId));
   if (!resolvedRepoPath) {
     return skill;
   }

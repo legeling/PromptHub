@@ -7,6 +7,7 @@ import { getRuntimeStorageContext } from "@prompthub/core/runtime-paths";
 import type { SkillDB } from "../../database/skill";
 import { SkillInstaller } from "../../services/skill-installer";
 import type {
+  Skill,
   SkillFileSnapshot,
 } from "@prompthub/shared/types";
 
@@ -23,6 +24,27 @@ async function isExistingDirectory(repoPath: string): Promise<boolean> {
   }
 }
 
+async function ensureCanonicalRepoPath(
+  db: SkillDB,
+  skill: Skill,
+): Promise<string | null | undefined> {
+  // Undefined selects the existing external/legacy route; null means the
+  // canonical package cannot be materialized and must not be bootstrapped.
+  if (getRuntimeStorageContext().localAuthority !== "canonical-files") return undefined;
+  const workspacePath = getCanonicalSkillWorkspacePath(skill.id);
+  if (skill.local_repo_path !== workspacePath &&
+    (!skill.local_repo_path || !(await SkillInstaller.isManagedRepoPath(skill.local_repo_path)))) {
+    return undefined;
+  }
+  const repoPath = (await isExistingDirectory(workspacePath))
+    ? workspacePath
+    : hydrateCanonicalSkillWorkspace(skill.id);
+  if (repoPath !== null && skill.local_repo_path !== repoPath) {
+    db.update(skill.id, { local_repo_path: repoPath });
+  }
+  return repoPath;
+}
+
 export async function ensureLocalRepoPath(
   db: SkillDB,
   skillId: string,
@@ -30,11 +52,8 @@ export async function ensureLocalRepoPath(
   const skill = db.getById(skillId);
   if (!skill) return null;
 
-  if (getRuntimeStorageContext().localAuthority === "canonical-files" &&
-    skill.local_repo_path === getCanonicalSkillWorkspacePath(skillId) &&
-    !(await isExistingDirectory(skill.local_repo_path))) {
-    return hydrateCanonicalSkillWorkspace(skillId);
-  }
+  const canonicalRepoPath = await ensureCanonicalRepoPath(db, skill);
+  if (canonicalRepoPath !== undefined) return canonicalRepoPath;
 
   if (
     skill.local_repo_path &&

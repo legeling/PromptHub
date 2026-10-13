@@ -101,6 +101,7 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - v1 durable package fingerprint 使用 `skill-package-sha256-v1`；桌面主进程、CLI 和 renderer 远程包指纹解析不得把旧版 stable-text 目录摘要标记为该算法。Git tree/API 中只有 blob hash、没有包文件内容时，不得直接产出 durable `directory_fingerprint`；必须留空等待 clone/materialize 后按 v1 计算，或在未来能取得文件内容时按 v1 manifest 计算。旧版只记录 `SKILL.md` hash 的安装，只能在旧 hash 证明本地与远程入口一致时静默升级基线，否则进入无法确定历史的状态。
 - 兼容旧版安装时，如果缺少 `installed_directory_fingerprint` 但旧 `installed_content_hash` 与远程入口 hash 一致，来源检查可以把当前本地 package fingerprint 作为可推断基线，再判断远程 package 是否变化。自动检查不得绕过 `baseline-missing` 的冲突保护；PromptHub 托管副本只有在用户显式选择覆盖/重置后，才能重新暂存来源并建立基线。链接外部目录即使显式覆盖也不得被 PromptHub 写入。
 - 来源更新检查必须通过共享的 `B/L/R` 对账逻辑产生 `localModified`、`remoteChanged` 和状态，UI/store 不得各自手写不一致的状态机。
+- Git 子目录 Skill 的 `source_directory` / `canonical_skill_path` 描述上游包位置，`local_repo_path` 描述安装后的本地包根目录；本地快照不得以仓库根目录或已清理的 checkout 为包根。canonical authority 下的旧托管路径必须按 Skill id 从已有完整 bundle 物化当前 workspace，不能走旧 variant 目录的仅入口引导；外部链接目录仍由用户拥有。Desktop `syncFromRepo` 必须在路径恢复之后读取并返回当前记录，即使内容和 fingerprint 均未改变，也不能返回路径修复之前的对象。不放宽 root `SKILL.md` 校验，不增加目录猜测或持久化格式；bundle 缺失时保持原有无法物化结果，不退回仅入口引导。
 - 从 Project/Agent 扫描结果复制导入 My Skills 时，必须立即持久化基于确切本地目录的 `source_id`、内容 hash、目录 fingerprint、安装版本/时间和来源基线；后续检查与更新必须继续从该来源目录解析，而不是把复制后的 PromptHub 托管 repo 误当成远程来源。
 - 如果 Project/Agent 扫描条目是指向外部目录的 symlink，复制导入必须以解析后的 `symlinkTargetPath` 作为来源身份和来源读取目录，同时保留扫描到的 shortcut 作为 Agent/Project 分发路径；PromptHub 自己管理的 symlink 不适用该外部目标归一化规则。已导入且由 PromptHub 管理的非内置 Agent Skill 详情必须提供来源检查/更新入口，但不应因此暴露 My Skills 的快照、编辑或删除操作。
 - 本地来源的 package 校验、目录复制和 package fingerprint 必须复用同一个忽略谓词；依赖、缓存、运行态和本地环境文件不能因为数量或大小限制让有效 Agent 来源变成 `source-unavailable`，也不能被复制进托管 package。可分发模板仍需参与校验、复制和 fingerprint。
@@ -141,6 +142,7 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 
 ### 2.1.2 Functional acceptance
 
+- `apps/desktop/tests/integration/skill-nested-git-source-update.test.ts` 对应 #218：使用报告中的深层 GitHub tree URL 与旁支 Skill，通过实际目录选择、renderer store、preload/IPC、Git checkout、SQLite 和完整包文件验证导入、检查、仅附件/二进制变化的更新与关闭重开；旧托管 checkout 路径恢复必须让数据库和 renderer 都使用修复后的根目录。仓库根目录仍须拒绝；远程入口丢失不得改变本地包、来源基线或版本。替换 Git/GitHub 网络传输和 Electron 运输，不替换业务服务；不代表真实 Windows GUI 或网络验收。此修复属于 Desktop IPC，CLI/Web 不消费该桌面同步和本地快照 IPC，既有 Web bridge 明确不支持本机 repo 操作。
 - `apps/desktop/tests/integration/skill-public-workflow.test.ts` 从生产 preload API 和完整 IPC 注册入口执行真实服务、磁盘 SQLite、首次 canonical 迁移与关闭重开。正常流程覆盖手工创建、元数据和嵌套文件编辑、版本、完整目录导入、二进制、copy/symlink 分发、改名、来源更新、卸载和删除；之后从同一 IPC 边界验证非法输入、路径穿越、缺失入口和陈旧来源，检查错误类型与持久化结果。Electron 消息运输及隔离 home 属于测试环境边界，不替换业务服务。
 - 该功能用例由现有 desktop integration shards 自动纳入。真实按钮流程 `agent-skill-lifecycle.spec.ts` 纳入既有 E2E smoke；`skill-create-structure.spec.ts` 检查当前 canonical bundle 和 workspace，移除过期 variant container 断言。接口流程与 E2E 证据分别记录，mock 组件/store 测试只证明局部交互。
 - 多步骤正常流程测试保留顺序断言，允许超过 50 行以直接呈现输入、结果和关闭重开边界；文件 inventory 一次线性遍历，只在临时小包上比较完整字节。此前 170 项聚焦测试与覆盖率仅证明各自局部边界，不作为完整功能可用的结论。
