@@ -2,6 +2,7 @@ import type {
   SkillPlatform,
   SkillPlatformOsKey,
 } from "@prompthub/shared/constants/platforms";
+import { getPlatformMcpRelativePath } from "@prompthub/shared/constants/platforms";
 import { getAgentPlatformCapabilityInventory } from "@prompthub/shared/constants/agent-platform-capabilities";
 import type {
   AgentIdentityChoice,
@@ -265,7 +266,11 @@ export function buildManagedAgents({
             profiles: joinPath(root, platform.harnessProfilesRelativePath),
             mcp: joinPath(
               root,
-              override.mcpRelativePath || platform.mcpRelativePath,
+              override.mcpRelativePath ||
+                getPlatformMcpRelativePath(
+                  platform,
+                  Boolean(override.rootPath?.trim()),
+                ),
             ),
             plugins: joinPath(
               root,

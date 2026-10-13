@@ -41,6 +41,8 @@ export interface SkillPlatform {
   assetModel?: "directory" | "plugin-harness";
   harnessProfilesRelativePath?: string;
   mcpRelativePath?: string;
+  /** Native MCP location when the user configuration root is explicitly set. */
+  configuredRootMcpRelativePath?: string;
   pluginsRelativePath?: string;
   agentsRelativePath?: string;
   commandsRelativePath?: string;

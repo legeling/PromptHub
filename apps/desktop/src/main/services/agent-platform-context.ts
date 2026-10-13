@@ -1,4 +1,6 @@
 import path from "node:path";
+import { isPlatformRootConfigured } from "@prompthub/core/platform-paths";
+import { getPlatformById } from "@prompthub/shared/constants/platforms";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
 
@@ -14,6 +16,18 @@ export interface AgentConfigContext {
   agentId: string;
   rootPath: string;
   relativePaths: string[];
+}
+
+export function getClaudeNativeConfigDirectory(
+  rootPath: string,
+): string | undefined {
+  const platform = getPlatformById("claude");
+  if (!platform) throw new Error("Missing Claude platform definition");
+  return isPlatformRootConfigured(platform, rootPath, {
+    rootOverride: getBuiltinAgentOverride("claude")?.rootPath,
+  })
+    ? rootPath
+    : undefined;
 }
 
 function normalizeDeclaredPath(value: string): string {

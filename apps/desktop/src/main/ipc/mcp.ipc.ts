@@ -13,6 +13,7 @@ import {
   redactMcpServerConfig,
 } from "@prompthub/shared/utils/mcp-config";
 import { SkillInstaller } from "../services/skill-installer";
+import { getBuiltinAgentOverride } from "../services/skill-installer-utils";
 import {
   authorizeMcpMarketFetch,
   readRegisteredMcpMarketSources,
@@ -247,7 +248,9 @@ export function registerMcpIPC(
       replaceCustomMcpMarketSources(Array.isArray(sources) ? sources : []),
   );
   ipcMain.handle(IPC_CHANNELS.MCP_TARGET_PRESETS, async () =>
-    getMcpTargetPresets(),
+    getMcpTargetPresets(undefined, undefined, undefined, {
+      claude: getBuiltinAgentOverride("claude") ?? {},
+    }),
   );
   ipcMain.handle(
     IPC_CHANNELS.MCP_SERVER_CREATE,

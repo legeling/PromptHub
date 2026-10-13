@@ -9,9 +9,11 @@ import * as path from "path";
 import {
   SHARED_AGENT_SKILLS_TARGET_ID,
   sharedSkillDistributionService,
+  isPlatformRootConfigured,
 } from "@prompthub/core";
 import {
   SKILL_PLATFORMS,
+  getPlatformMcpRelativePath,
   type SkillPlatform,
 } from "@prompthub/shared/constants/platforms";
 import type {
@@ -40,6 +42,7 @@ import {
 import {
   getPlatformSkillsDir,
   getPlatformRootDir,
+  getBuiltinAgentOverride,
   getConfiguredBuiltinAgentPlatformIds,
   getCustomAgentPlatforms,
   validateMCPConfig,
@@ -469,11 +472,23 @@ async function copySkillRepoToPlatform(
  */
 export function getSupportedPlatforms(): SkillPlatform[] {
   const configuredBuiltinIds = new Set(getConfiguredBuiltinAgentPlatformIds());
-  const builtinPlatforms = SKILL_PLATFORMS.map((platform) =>
-    configuredBuiltinIds.has(platform.id)
+  const builtinPlatforms = SKILL_PLATFORMS.map((platform) => {
+    const configured = configuredBuiltinIds.has(platform.id)
       ? { ...platform, isConfigured: true }
-      : platform,
-  );
+      : platform;
+    if (platform.id !== "claude") return configured;
+    const root = getPlatformRootDir(platform);
+    return {
+      ...configured,
+      resolvedRootPath: root,
+      mcpRelativePath: getPlatformMcpRelativePath(
+        platform,
+        isPlatformRootConfigured(platform, root, {
+          rootOverride: getBuiltinAgentOverride(platform.id)?.rootPath,
+        }),
+      ),
+    };
+  });
 
   return [...builtinPlatforms, ...getCustomAgentPlatforms()];
 }

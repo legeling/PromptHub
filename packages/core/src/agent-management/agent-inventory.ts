@@ -6,6 +6,8 @@ import type {
   SkillPlatform,
   SkillPlatformOsKey,
 } from "@prompthub/shared/constants/platforms";
+import { getPlatformMcpRelativePath } from "@prompthub/shared/constants/platforms";
+import { isPlatformRootConfigured } from "../platform-paths";
 import type {
   BuiltinAgentOverrideConfig,
   CustomAgentConfig,
@@ -162,6 +164,16 @@ export async function buildCliManagedAgentInventory(
       return {
         ...platform,
         resolvedRootPath: root,
+        mcpRelativePath: getPlatformMcpRelativePath(
+          platform,
+          isPlatformRootConfigured(platform, root, {
+            rootOverride: override?.rootPath,
+            environment: options.environment,
+            targetPlatform: options.platform,
+            homeDir:
+              options.environment?.HOME || options.environment?.USERPROFILE,
+          }),
+        ),
         isConfigured:
           platform.isCustom ||
           platform.isConfigured ||
@@ -182,6 +194,9 @@ export async function buildCliManagedAgentInventory(
         {
           ...settings.builtinAgentOverrides[entry.id],
           rootPath: entry.root,
+          mcpRelativePath:
+            settings.builtinAgentOverrides[entry.id]?.mcpRelativePath ||
+            entry.mcpRelativePath,
         },
       ]),
   );

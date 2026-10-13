@@ -4,6 +4,7 @@ export const claudeAgentDefinition = {
   platform: {
     id: "claude",
     name: "Claude Code",
+    rootEnvironmentVariable: "CLAUDE_CONFIG_DIR",
     icon: "Sparkles",
     rootDir: {
       darwin: "~/.claude",
@@ -12,6 +13,7 @@ export const claudeAgentDefinition = {
     },
     skillsRelativePath: "skills",
     mcpRelativePath: "../.claude.json",
+    configuredRootMcpRelativePath: ".claude.json",
     pluginsRelativePath: "plugins/cache/prompthub",
     globalRuleFile: "CLAUDE.md",
     configFiles: ["settings.json"],

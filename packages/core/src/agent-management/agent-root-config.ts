@@ -175,7 +175,10 @@ export function getEffectiveBuiltinAgentConfig(
       undefined,
     mcpRelativePath:
       normalizedOverride.mcpRelativePath ||
-      getDefaultMcpRelativePath(platform.id) ||
+      getPlatformMcpRelativePath(
+        platform,
+        Boolean(normalizedOverride.rootPath),
+      ) ||
       undefined,
     pluginsRelativePath:
       normalizedOverride.pluginsRelativePath ||
@@ -214,10 +217,6 @@ const KNOWN_RULE_RELATIVE_PATHS = uniqPaths(
 const KNOWN_CONFIG_RELATIVE_PATHS = uniqPaths(
   SKILL_PLATFORMS.flatMap((platform) => platform.configFiles ?? []),
 );
-
-function getDefaultMcpRelativePath(platformId?: string): string | undefined {
-  return platformId ? getPlatformMcpRelativePath(platformId) : "mcp.json";
-}
 
 export function getDefaultPluginsRelativePath(
   platformId?: string,

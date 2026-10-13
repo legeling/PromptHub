@@ -1,21 +1,20 @@
 import os from "node:os";
-import path from "node:path";
 
 import type { AgentSessionIndexDB } from "@prompthub/db";
 import type { AgentSessionIndexOperations } from "../ipc/agent-session-index.ipc";
 import { createAgentSessionIndexService } from "./agent-session-index-service";
 import { createAgentSessionService } from "./agent-session-service";
-import { getAgentConfigContext } from "./agent-platform-context";
+import {
+  getAgentConfigContext,
+  getClaudeNativeConfigDirectory,
+} from "./agent-platform-context";
 
 function rootOption(agentId: string, rootPath: string) {
   switch (agentId) {
     case "claude": {
-      const configuredRoot = process.env.CLAUDE_CONFIG_DIR;
+      const configuredRoot = getClaudeNativeConfigDirectory(rootPath);
       return {
-        claudeConfigDir:
-          configuredRoot && path.isAbsolute(configuredRoot)
-            ? configuredRoot
-            : rootPath,
+        ...(configuredRoot ? { claudeConfigDir: configuredRoot } : {}),
       };
     }
     case "copilot":
@@ -62,15 +61,11 @@ function createAgentSessionReader(agentId: string) {
 export function resolveAgentSessionIndexSource(agentId: string) {
   if (agentId !== "claude" && agentId !== "gemini") return null;
 
-  const claudeConfigDir =
-    agentId === "claude" &&
-    process.env.CLAUDE_CONFIG_DIR &&
-    path.isAbsolute(process.env.CLAUDE_CONFIG_DIR)
-      ? process.env.CLAUDE_CONFIG_DIR
-      : undefined;
-  const reader = createAgentSessionService({
-    homeDir: os.homedir(),
-    ...(claudeConfigDir ? { claudeConfigDir } : {}),
-  });
+  const reader =
+    agentId === "claude"
+      ? createAgentSessionReader(agentId)
+      : createAgentSessionService({
+          homeDir: os.homedir(),
+        });
   return reader.getIndexSource(agentId);
 }

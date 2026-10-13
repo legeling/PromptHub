@@ -97,13 +97,16 @@ export function normalizeLegacySkillPathToRootTemplate(
 
 export function getPlatformMcpRelativePath(
   platformOrId: SkillPlatform | string | undefined,
+  configuredRoot = false,
 ): string | undefined {
   const platform =
     typeof platformOrId === "string"
       ? getPlatformById(platformOrId)
       : platformOrId;
 
-  return platform?.mcpRelativePath;
+  return configuredRoot && platform?.configuredRootMcpRelativePath
+    ? platform.configuredRootMcpRelativePath
+    : platform?.mcpRelativePath;
 }
 
 export function getPlatformPluginsRelativePath(

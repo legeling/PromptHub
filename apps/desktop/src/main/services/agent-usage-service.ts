@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { isPlatformRootConfigured } from "@prompthub/core/platform-paths";
+import { getPlatformById } from "@prompthub/shared/constants/platforms";
+import { isClaudeCloudProviderEnabled } from "@prompthub/shared/utils/claude-config";
 
 import { parse as parseToml } from "smol-toml";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
@@ -24,7 +27,10 @@ import {
   percentageFromUsed,
 } from "./agent-usage-contract";
 import { SkillInstaller } from "./skill-installer";
-import { getPlatformRootDir } from "./skill-installer-utils";
+import {
+  getPlatformRootDir,
+  getBuiltinAgentOverride,
+} from "./skill-installer-utils";
 import {
   createNativeCommandRunner,
   type NativeCommandRunner,
@@ -43,6 +49,7 @@ export interface AgentUsageServiceOptions {
   readDir?: (dirPath: string) => Promise<string[]>;
   now?: () => number;
   homeDir?: string;
+  environment?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
   antigravityLocalClient?: AntigravityLocalUsageClient;
   kimiOAuthTokenService?: KimiOAuthTokenService;
@@ -690,7 +697,24 @@ export function createAgentUsageService(
       validateCredentialFile: options.readFile === undefined,
     });
 
-  const cache = new Map<string, { quota: AgentUsageQuota; storedAt: number }>();
+  const cache = new Map<
+    string,
+    { quota: AgentUsageQuota; storedAt: number; credentialScope: string }
+  >();
+
+  function claudeCredentialScope(configRoot: string): string {
+    const definition = getPlatformById("claude");
+    if (!definition) throw new Error("Missing Claude platform definition");
+    return isPlatformRootConfigured(definition, configRoot, {
+      homeDir,
+      environment: options.environment,
+      rootOverride: options.resolveConfigRoot
+        ? undefined
+        : getBuiltinAgentOverride("claude")?.rootPath,
+    })
+      ? hashedKeychainService(configRoot)
+      : LEGACY_KEYCHAIN_SERVICE;
+  }
 
   async function readKeychainCredentials(
     serviceName: string,
@@ -723,14 +747,11 @@ export function createAgentUsageService(
 
   async function resolveCredentials(
     configRoot: string,
+    credentialScope: string,
   ): Promise<ClaudeCredentials | null> {
     if (platform === "darwin") {
-      const legacy = await readKeychainCredentials(LEGACY_KEYCHAIN_SERVICE);
-      if (legacy) return legacy;
-      const hashed = await readKeychainCredentials(
-        hashedKeychainService(configRoot),
-      );
-      if (hashed) return hashed;
+      const credentials = await readKeychainCredentials(credentialScope);
+      if (credentials) return credentials;
     }
     return readFileCredentials(configRoot);
   }
@@ -833,19 +854,21 @@ export function createAgentUsageService(
   // subscription, so the official usage endpoint must not be called.
   async function isClaudeCustomGateway(configRoot: string): Promise<boolean> {
     try {
-      const raw = await readFile(path.join(configRoot, getAgentPrimaryModelConfigPath("claude")));
+      const raw = await readFile(
+        path.join(configRoot, getAgentPrimaryModelConfigPath("claude")),
+      );
       const parsed: unknown = JSON.parse(raw);
       if (!isRecord(parsed) || !isRecord(parsed.env)) return false;
       const env = parsed.env;
-      return [
-        "ANTHROPIC_BASE_URL",
-        "CLAUDE_CODE_USE_BEDROCK",
-        "CLAUDE_CODE_USE_VERTEX",
-        "CLAUDE_CODE_USE_FOUNDRY",
-      ].some((key) => {
-        const value = env[key];
-        return typeof value === "string" && value.trim().length > 0;
-      });
+      const endpoint = env.ANTHROPIC_BASE_URL;
+      return (
+        (typeof endpoint === "string" && endpoint.trim().length > 0) ||
+        [
+          "CLAUDE_CODE_USE_BEDROCK",
+          "CLAUDE_CODE_USE_VERTEX",
+          "CLAUDE_CODE_USE_FOUNDRY",
+        ].some((key) => isClaudeCloudProviderEnabled(env[key]))
+      );
     } catch {
       return false;
     }
@@ -1389,10 +1412,14 @@ export function createAgentUsageService(
     });
   }
 
-  async function queryUsage(agentId: string): Promise<AgentUsageQuota> {
+  async function queryUsage(
+    agentId: string,
+    claudeRoot?: string,
+    credentialScope = "",
+  ): Promise<AgentUsageQuota> {
     // Resolving the config root through the platform registry doubles as the
     // agentId allowlist check; unknown ids throw before any lookup happens.
-    const configRoot = resolveConfigRoot(agentId);
+    const configRoot = claudeRoot ?? resolveConfigRoot(agentId);
     if (!isAgentDepthCapabilityAvailable(agentId, "usage")) {
       return buildQuota(agentId, "unavailable", now(), {
         adapter: "unsupported",
@@ -1439,7 +1466,7 @@ export function createAgentUsageService(
       });
     }
 
-    const credentials = await resolveCredentials(configRoot);
+    const credentials = await resolveCredentials(configRoot, credentialScope);
     if (!credentials) {
       return buildQuota(agentId, "no-credentials", now());
     }
@@ -1479,17 +1506,23 @@ export function createAgentUsageService(
         throw new Error("Agent usage query requires a non-empty agentId");
       }
 
+      const claudeRoot =
+        agentId === "claude" ? resolveConfigRoot(agentId) : undefined;
+      const credentialScope = claudeRoot
+        ? claudeCredentialScope(claudeRoot)
+        : "";
       const cached = cache.get(agentId);
       if (
         !getOptions.forceRefresh &&
         cached &&
+        cached.credentialScope === credentialScope &&
         now() - cached.storedAt < CACHE_TTL_MS
       ) {
         return cached.quota;
       }
 
-      const quota = await queryUsage(agentId);
-      cache.set(agentId, { quota, storedAt: now() });
+      const quota = await queryUsage(agentId, claudeRoot, credentialScope);
+      cache.set(agentId, { quota, storedAt: now(), credentialScope });
       return quota;
     },
   };

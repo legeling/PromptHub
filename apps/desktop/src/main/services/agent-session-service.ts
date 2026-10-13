@@ -11,6 +11,7 @@ import type {
   AgentSessionIndexRecord,
   AgentSessionListResult,
   AgentSessionMetadata,
+  AgentResumeCommand,
   AgentSessionScanRecordInput,
 } from "@prompthub/shared/types";
 import {
@@ -115,6 +116,7 @@ export interface AgentSessionIndexSourceDescriptor {
   rootPath: string;
   adapterId: string;
   adapterVersion: string;
+  resumeEnvironment?: AgentResumeCommand["environment"];
 }
 
 export interface AgentSessionIndexScanProgress {
@@ -429,6 +431,7 @@ function parseClaudeMetadata(
 
 async function claudeMetadata(
   file: SessionFile,
+  environment: AgentResumeCommand["environment"],
 ): Promise<AgentSessionMetadata> {
   const { raw } = await readPrefix(file.path, MAX_METADATA_BYTES);
   const { title, projectPath, resumeId } = parseClaudeMetadata(raw, file.id);
@@ -450,6 +453,7 @@ async function claudeMetadata(
     resume: {
       executable: "claude",
       args: ["--resume", resumeId],
+      environment,
       ...(projectPath ? { cwd: projectPath } : {}),
     },
   };
@@ -980,6 +984,9 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
           rootPath: claudeProjectsRoot,
           adapterId: "claude-jsonl-v1",
           adapterVersion: "2",
+          resumeEnvironment: {
+            CLAUDE_CONFIG_DIR: options.claudeConfigDir || null,
+          },
         };
       }
       if (agentId === "gemini") {
@@ -1028,7 +1035,13 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
       if (agentId === "claude") {
         const files = await scanClaudeFiles(claudeProjectsRoot);
         const selected = files.slice(offset, offset + input.limit);
-        const sessions = await Promise.all(selected.map(claudeMetadata));
+        const sessions = await Promise.all(
+          selected.map((file) =>
+            claudeMetadata(file, {
+              CLAUDE_CONFIG_DIR: options.claudeConfigDir || null,
+            }),
+          ),
+        );
         return {
           agentId,
           adapter: "claude-jsonl-v1",

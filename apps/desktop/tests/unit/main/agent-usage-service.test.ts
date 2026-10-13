@@ -51,6 +51,7 @@ function createHarness(
   overrides: {
     resolveConfigRoot?: (agentId: string) => string;
     platform?: NodeJS.Platform;
+    environment?: NodeJS.ProcessEnv;
   } = {},
 ): Harness {
   let clock = INITIAL_CLOCK;
@@ -63,6 +64,8 @@ function createHarness(
     run: runnerRun,
   };
   const service = createAgentUsageService({
+    homeDir: "/Users/tester",
+    environment: overrides.environment ?? {},
     resolveConfigRoot:
       overrides.resolveConfigRoot ??
       ((agentId: string) => {
@@ -117,11 +120,11 @@ describe("Agent usage service", () => {
       );
     });
 
-    it("falls back to the hashed keychain variant when the legacy lookup fails", async () => {
-      const h = createHarness();
-      h.runnerRun
-        .mockRejectedValueOnce(new Error("security: exit code 44"))
-        .mockResolvedValueOnce({ stdout: keychainPayload(), stderr: "" });
+    it("uses the scoped keychain entry when the default directory is explicitly selected", async () => {
+      const h = createHarness({
+        environment: { CLAUDE_CONFIG_DIR: CONFIG_ROOT },
+      });
+      h.runnerRun.mockResolvedValue({ stdout: keychainPayload(), stderr: "" });
       h.fetchImpl.mockResolvedValue(fakeResponse(200, usagePayload()));
 
       const quota = await h.service.getUsage("claude");
@@ -131,9 +134,9 @@ describe("Agent usage service", () => {
         .update(CONFIG_ROOT)
         .digest("hex")
         .slice(0, 8);
-      expect(h.runnerRun).toHaveBeenCalledTimes(2);
+      expect(h.runnerRun).toHaveBeenCalledTimes(1);
       expect(h.runnerRun).toHaveBeenNthCalledWith(
-        2,
+        1,
         "/usr/bin/security",
         [
           "find-generic-password",
@@ -169,7 +172,7 @@ describe("Agent usage service", () => {
         .digest("hex")
         .slice(0, 8)}`;
       expect(h.runnerRun).toHaveBeenNthCalledWith(
-        2,
+        1,
         "/usr/bin/security",
         ["find-generic-password", "-s", expectedServiceName, "-w"],
         expect.objectContaining({ timeout: 10_000 }),
@@ -185,7 +188,7 @@ describe("Agent usage service", () => {
       const quota = await h.service.getUsage("claude");
 
       expect(quota.status).toBe("ok");
-      expect(h.runnerRun).toHaveBeenCalledTimes(2);
+      expect(h.runnerRun).toHaveBeenCalledTimes(1);
       expect(h.readFile).toHaveBeenCalledWith(
         path.join(CONFIG_ROOT, ".credentials.json"),
       );

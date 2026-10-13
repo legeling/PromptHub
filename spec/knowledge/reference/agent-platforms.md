@@ -412,7 +412,16 @@ Current support boundary:
 
 ### Claude Code
 
-- Root: `~/.claude`
+- Root: an explicit PromptHub Agent root override, then `CLAUDE_CONFIG_DIR`,
+  then `~/.claude`. Provider, sessions, session-index backup sources and MCP
+  targets consume this same selection; inherited environment values do not
+  override an explicit PromptHub setting a second time.
+- Global MCP is `~/.claude.json` with the native default root. A configured
+  root uses `<root>/.claude.json`, including when explicitly set to `~/.claude`.
+  An explicit MCP relative-path override remains authoritative.
+- Native resume carries the selected `CLAUDE_CONFIG_DIR` to the generated
+  terminal command. Default-root resume explicitly unsets an inherited value;
+  working directory and session id retain their existing semantics.
 - Rules and context:
   - `~/.claude/CLAUDE.md`
   - project `CLAUDE.md` or `./.claude/CLAUDE.md`
@@ -440,7 +449,14 @@ Current support boundary:
   - PromptHub-managed credentials may project only
     `env.ANTHROPIC_API_KEY` or `env.ANTHROPIC_AUTH_TOKEN`
   - Bedrock, Vertex and Foundry flags are detected and imported as read-only
-    platform-native profiles until dedicated adapters exist
+    platform-native profiles until dedicated adapters exist; only `1`, `true`,
+    `yes` and `on` enable these flags (case-insensitive, whitespace-trimmed).
+    `0`, `false`, `no` and `off` do not disable the official quota flow.
+  - macOS quota reads the selected root's Keychain namespace: the native
+    default uses `Claude Code-credentials`, configured roots use its SHA-256
+    directory suffix. A Keychain miss may read only that root's
+    `.credentials.json`, never another root's account. Switching the selected
+    namespace invalidates cached quota before a new result is displayed.
   - Claude-owned `.credentials.json` remains outside PromptHub Provider
     activation, backup and export
 - Evidence note:

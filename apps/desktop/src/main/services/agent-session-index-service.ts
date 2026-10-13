@@ -7,6 +7,7 @@ import type {
   AgentSessionIndexRecord,
   AgentSessionListResult,
   AgentSessionMetadata,
+  AgentResumeCommand,
   AgentSessionScanCommitResult,
   AgentSessionSource,
 } from "@prompthub/shared/types";
@@ -105,11 +106,13 @@ function projectLabel(
 function resumeCommand(
   agentId: string,
   record: AgentSessionIndexRecord,
+  environment: AgentResumeCommand["environment"],
 ): AgentSessionMetadata["resume"] {
   if (agentId === "claude") {
     return {
       executable: "claude",
       args: ["--resume", record.externalId],
+      environment,
       ...(record.projectPath ? { cwd: record.projectPath } : {}),
     };
   }
@@ -124,6 +127,7 @@ function toMetadata(
   agentId: string,
   record: AgentSessionIndexRecord,
   nativeDeleteSupported: boolean,
+  environment: AgentResumeCommand["environment"],
 ): AgentSessionMetadata {
   return {
     id: record.externalId,
@@ -137,7 +141,7 @@ function toMetadata(
     sizeBytes: record.sourceSizeBytes,
     nativeDeleteSupported,
     sourcePath: record.sourcePath,
-    resume: resumeCommand(agentId, record),
+    resume: resumeCommand(agentId, record, environment),
   };
 }
 
@@ -273,11 +277,18 @@ export function createAgentSessionIndexService(
       limit: input.limit,
       offset: input.offset || 0,
     });
+    const resumeEnvironment =
+      options.reader.getIndexSource(agentId)?.resumeEnvironment;
     return {
       agentId,
       adapter: state.source.adapterId,
       sessions: page.items.map((record) =>
-        toMetadata(agentId, record, options.reader.canDelete(agentId)),
+        toMetadata(
+          agentId,
+          record,
+          options.reader.canDelete(agentId),
+          resumeEnvironment,
+        ),
       ),
       total: page.total,
       hasMore: page.hasMore,

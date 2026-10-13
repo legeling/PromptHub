@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
+import { isClaudeCloudProviderEnabled } from "@prompthub/shared/utils/claude-config";
 import path from "node:path";
 import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
@@ -178,9 +179,12 @@ function digest(raw: string | null): string {
 }
 
 function nativeProvider(env: JsonRecord | undefined): string {
-  if (getString(env, "CLAUDE_CODE_USE_BEDROCK")) return "amazon-bedrock";
-  if (getString(env, "CLAUDE_CODE_USE_VERTEX")) return "google-vertex";
-  if (getString(env, "CLAUDE_CODE_USE_FOUNDRY")) return "microsoft-foundry";
+  if (isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_BEDROCK))
+    return "amazon-bedrock";
+  if (isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_VERTEX))
+    return "google-vertex";
+  if (isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_FOUNDRY))
+    return "microsoft-foundry";
   return getString(env, "ANTHROPIC_BASE_URL") ? "custom-gateway" : "anthropic";
 }
 

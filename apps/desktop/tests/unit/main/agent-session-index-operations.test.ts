@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   createIndex: vi.fn(),
   createReader: vi.fn(),
   getContext: vi.fn(),
+  getNativeDirectory: vi.fn(),
   homedir: vi.fn(() => "/Users/test"),
 }));
 
@@ -18,6 +19,7 @@ vi.mock("../../../src/main/services/agent-session-service", () => ({
 }));
 vi.mock("../../../src/main/services/agent-platform-context", () => ({
   getAgentConfigContext: mocks.getContext,
+  getClaudeNativeConfigDirectory: mocks.getNativeDirectory,
 }));
 
 import {
@@ -34,6 +36,7 @@ describe("Agent session index operation factory", () => {
     mocks.getContext.mockImplementation((agentId: string) => ({
       rootPath: `/roots/${agentId}`,
     }));
+    mocks.getNativeDirectory.mockImplementation((root: string) => root);
     mocks.createReader.mockReturnValue({
       reader: true,
       getIndexSource: vi.fn(() => null),
@@ -82,12 +85,12 @@ describe("Agent session index operation factory", () => {
     },
   );
 
-  it("uses an absolute Claude override and rejects relative overrides", () => {
+  it("keeps the resolved Claude root instead of reapplying an inherited environment override", () => {
     process.env.CLAUDE_CONFIG_DIR = "/managed/claude";
     createAgentSessionIndexOperations({} as never, "claude");
     expect(mocks.createReader).toHaveBeenLastCalledWith({
       homeDir: "/Users/test",
-      claudeConfigDir: "/managed/claude",
+      claudeConfigDir: "/roots/claude",
     });
 
     process.env.CLAUDE_CONFIG_DIR = "relative/claude";
@@ -106,7 +109,7 @@ describe("Agent session index operation factory", () => {
     });
   });
 
-  it("resolves only persistent index descriptors without loading platform config", () => {
+  it("resolves Claude backup descriptors through the same configured reader", () => {
     const descriptor = {
       platformId: "claude",
       rootPath: "/Users/test/.claude/projects",
@@ -120,25 +123,26 @@ describe("Agent session index operation factory", () => {
     expect(resolveAgentSessionIndexSource("claude")).toEqual(descriptor);
     expect(mocks.createReader).toHaveBeenCalledWith({
       homeDir: "/Users/test",
+      claudeConfigDir: "/roots/claude",
     });
-    expect(mocks.getContext).not.toHaveBeenCalled();
+    expect(mocks.getContext).toHaveBeenCalledWith("claude");
 
     process.env.CLAUDE_CONFIG_DIR = "/managed/claude";
     expect(resolveAgentSessionIndexSource("claude")).toEqual(descriptor);
     expect(mocks.createReader).toHaveBeenLastCalledWith({
       homeDir: "/Users/test",
-      claudeConfigDir: "/managed/claude",
+      claudeConfigDir: "/roots/claude",
     });
-    expect(mocks.getContext).not.toHaveBeenCalled();
+    expect(mocks.getContext).toHaveBeenCalledTimes(2);
 
     expect(resolveAgentSessionIndexSource("gemini")).toEqual(descriptor);
     expect(mocks.createReader).toHaveBeenLastCalledWith({
       homeDir: "/Users/test",
     });
-    expect(mocks.getContext).not.toHaveBeenCalled();
+    expect(mocks.getContext).toHaveBeenCalledTimes(2);
 
     expect(resolveAgentSessionIndexSource("codex")).toBeNull();
     expect(mocks.createReader).toHaveBeenCalledTimes(3);
-    expect(mocks.getContext).not.toHaveBeenCalled();
+    expect(mocks.getContext).toHaveBeenCalledTimes(2);
   });
 });

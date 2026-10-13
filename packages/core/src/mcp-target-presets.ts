@@ -1,5 +1,14 @@
 import os from "os";
 import path from "path";
+import {
+  getPlatformById,
+  getPlatformMcpRelativePath,
+} from "@prompthub/shared/constants/platforms";
+import type { BuiltinAgentOverrideConfig } from "@prompthub/shared/types";
+import {
+  getDefaultPlatformRootDir,
+  isPlatformRootConfigured,
+} from "./platform-paths";
 
 import type {
   McpTargetKind,
@@ -28,7 +37,29 @@ export function getMcpTargetPresets(
   homeDir = os.homedir(),
   platform: NodeJS.Platform = process.platform,
   environment: NodeJS.ProcessEnv = process.env,
+  builtinOverrides: Record<string, BuiltinAgentOverrideConfig> = {},
 ): McpTargetPreset[] {
+  const claude = getPlatformById("claude");
+  if (!claude) throw new Error("Missing Claude MCP platform");
+  const claudeRoot = getDefaultPlatformRootDir(
+    claude,
+    platform,
+    environment,
+    homeDir,
+    builtinOverrides.claude?.rootPath,
+  );
+  const claudeMcpRelativePath =
+    builtinOverrides.claude?.mcpRelativePath ||
+    getPlatformMcpRelativePath(
+      claude,
+      isPlatformRootConfigured(claude, claudeRoot, {
+        rootOverride: builtinOverrides.claude?.rootPath,
+        environment, homeDir, targetPlatform: platform,
+      }),
+    );
+  if (!claudeMcpRelativePath) {
+    throw new Error("Missing Claude MCP configuration path");
+  }
   const qwenHome = resolveQwenHome(homeDir, environment.QWEN_HOME);
   const ohMyPiHome = resolveOhMyPiHome(
     homeDir,
@@ -72,7 +103,7 @@ export function getMcpTargetPresets(
       target: "claude",
       scope: "global",
       label: "Claude Code",
-      path: path.join(homeDir, ".claude.json"),
+      path: path.join(claudeRoot, claudeMcpRelativePath),
       platformId: "claude",
     },
     {

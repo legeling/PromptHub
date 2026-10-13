@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { isClaudeCloudProviderEnabled } from "@prompthub/shared/utils/claude-config";
 import path from "node:path";
 import {
   applyEdits,
@@ -294,11 +295,11 @@ function inspectClaude(
   const model = getString(data, "model");
   const env = getRecord(data, "env");
   const endpoint = sanitizeEndpoint(getString(env, "ANTHROPIC_BASE_URL"));
-  const provider = getString(env, "CLAUDE_CODE_USE_BEDROCK")
+  const provider = isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_BEDROCK)
     ? "amazon-bedrock"
-    : getString(env, "CLAUDE_CODE_USE_VERTEX")
+    : isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_VERTEX)
       ? "google-vertex"
-      : getString(env, "CLAUDE_CODE_USE_FOUNDRY")
+      : isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_FOUNDRY)
         ? "microsoft-foundry"
         : endpoint
           ? "custom-gateway"
