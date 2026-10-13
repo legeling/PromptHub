@@ -247,7 +247,7 @@ export function registerSettingsIPC(
     rendererPersistence?: RendererPersistenceStore;
     onRendererPersistenceMigration?: (
       result: RendererPersistenceMigrationResult,
-    ) => void;
+    ) => void | Promise<void>;
   } = {},
 ): void {
   // Get settings
@@ -353,7 +353,7 @@ export function registerSettingsIPC(
       });
       migrateAgentSettingsV1(db, getUserDataPath());
       scrubRendererSecretSettingsRows(db);
-      options.onRendererPersistenceMigration?.(result);
+      await options.onRendererPersistenceMigration?.(result);
       return result;
     },
   );

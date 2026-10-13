@@ -93,6 +93,7 @@ vi.mock("electron", () => ({
 }));
 
 export const invokeSkillIPC = transport.invoke;
+export const clearSkillIPC = transport.clear;
 
 export interface SkillTestRuntime {
   root: string;
@@ -148,7 +149,9 @@ async function prepareFreshProfile(profile: string): Promise<void> {
     throw new Error(`Fresh profile did not become ready: ${result.status}`);
 }
 
-export async function createSkillTestRuntime(): Promise<SkillTestRuntime> {
+export async function createSkillTestRuntime(
+  options: { freshStartup?: boolean } = {},
+): Promise<SkillTestRuntime> {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-skill-functional-"),
   );
@@ -172,7 +175,16 @@ export async function createSkillTestRuntime(): Promise<SkillTestRuntime> {
         "Skill test home isolation must be active before loading services",
       );
     }
-    await prepareFreshProfile(profile);
+    if (options.freshStartup) {
+      configureRuntimePaths({ userDataPath: profile });
+      writeRuntimeLayoutState(profile);
+      const startup = await ensureCanonicalStorageAuthorityOnStartup({
+        activeRoot: profile,
+        sourceDatabasePath: getDatabasePath(),
+      });
+      if (startup.status !== "waiting-renderer-migration")
+        throw new Error(`Unexpected fresh startup: ${startup.status}`);
+    } else await prepareFreshProfile(profile);
     await openSkillRuntime(profile, platformRoot);
     return {
       root,

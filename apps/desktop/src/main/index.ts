@@ -32,6 +32,7 @@ import {
   detectRecoverableDatabaseFiles,
 } from "./database";
 import { registerAllIPC } from "./ipc";
+import { resumeCanonicalStorageAfterRendererMigration } from "./services/renderer-storage-startup";
 import { getMinimizeOnLaunchSetting } from "./settings/settings-readers";
 import { readLanguageSetting } from "./settings/language-setting";
 import { createMenu } from "./menu";
@@ -334,7 +335,24 @@ function registerDatabaseBoundIpc(database: Database.Database): void {
       agentProviderRuntime = runtime;
       void trayController.reloadAgentProviders();
     },
-    packagedStartupSmoke.controller.onRendererPersistenceMigration,
+    async (result) => {
+      const activeRoot = getUserDataPath();
+      await resumeCanonicalStorageAfterRendererMigration({
+        activeRoot,
+        sourceDatabasePath: getDatabasePath(),
+        persistExtractedMcpSecrets: (secrets) =>
+          createMcpResourceSecretStore({
+            filePath: path.join(
+              activeRoot,
+              "secrets",
+              "mcp-resource-secrets.json",
+            ),
+            encryption: safeStorage,
+          }).writeMany(secrets),
+        registerDatabase: registerDatabaseBoundIpc,
+      });
+      packagedStartupSmoke.controller.onRendererPersistenceMigration(result);
+    },
   );
 }
 

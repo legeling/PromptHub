@@ -132,6 +132,7 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 ### 2.1.1 Library CRUD command boundary
 
 - Desktop 创建、编辑、改名和删除只使用已迁移完成的 canonical 文件权威。移除 CRUD 中旧式按名称移动托管目录、独立 frontmatter 补写、renderer 再写 SKILL.md 和忽略失败的路径；未完成迁移明确报错，不启动第二套存储逻辑。
+- 首启等待 renderer persistence 时，迁移 IPC 必须等待主进程接续已有 authority 发布和数据库/IPC 重新绑定完成后再确认；失败明确返回且允许重试，不要求用户重启，不移除写入保护。CLI/Web 没有 renderer 迁移前置条件。
 - 创建先准备入口文件，再一次发布完整 bundle。编辑从 canonical inventory 暂存完整包，正文、元数据、fingerprint 和修改前版本在一次 finalize 中发布；用户 tags 不写入来源 frontmatter，未知 YAML 字段和二进制资源保留。仅收藏/用户标签等修改不复制暂存包。源布局和 schema 不变，缓存仍使用稳定 Skill ID。
 - 改名只迁移明确安装的目标，不传旧名/新名兼容清理列表；目标冲突提前失败。原分发副本暂存用于失败恢复，符号链接保持模式。全部目标处理完才提交库内名称；失败保留旧名称并恢复分发，恢复失败明确报告保留的临时备份位置。备份、分发和清理按目标顺序执行，有界占用为本次包和已部署副本总大小。
 - 删除先撤回指定分发，再由 canonical 层删除 bundle 和缓存。任何前置撤回失败保留库内记录供重试，不显示完成；外部来源不删除。调用者可保留 copy，symlink 必须撤回。canonical 提交后缓存清理失败沿用已提交错误语义，不能伪装为未提交或完整成功。
@@ -141,6 +142,8 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - 本批回归覆盖单次创建/编辑、二进制和未知 YAML 保留、版本和陈旧编辑、改名失败与冲突、删除失败/重试、复制/链接替换失败及来源变化。核心 6 个相关测试文件共 54 项、桌面 8 个相关测试文件共 116 项通过；Desktop TypeScript、相关源码和新增测试 ESLint、文件大小门禁及 diff whitespace 检查通过。目标替换函数达到 100% 行/函数/分支；library command 为 100% 行/函数、95.60% 分支，Desktop CRUD 为 100% 行/函数、95.38% 分支。剩余未命中分支为正文/名称 nullish 防御、创建失败后 ID 回读，以及错误传播的 finally 路径；它们没有被计为完整覆盖，后续需补投影缺字段和组合故障夹具。128 文件、2 MiB 同级目标替换实测 96 ms，单次本机观察不代表所有文件系统。GUI、真实远程服务、跨平台、全量发布构建和中断进程后的分发恢复未执行。改名跨目标补偿和完整包准备函数按顺序集中处理，允许超过 50 行以保持快照、提交和恢复顺序可审查。
 
 ### 2.1.2 Functional acceptance
+
+- #227：`skill-first-launch.test.ts` 从全新 profile 执行 renderer migration IPC，返回前即可从真实 Skill preload 创建，并验证重复迁移、失败重试及关闭重开。
 
 - `apps/desktop/tests/integration/skill-nested-git-source-update.test.ts` 对应 #218：使用报告中的深层 GitHub tree URL 与旁支 Skill，通过实际目录选择、renderer store、preload/IPC、Git checkout、SQLite 和完整包文件验证导入、检查、仅附件/二进制变化的更新与关闭重开；旧托管 checkout 路径恢复必须让数据库和 renderer 都使用修复后的根目录。仓库根目录仍须拒绝；远程入口丢失不得改变本地包、来源基线或版本。替换 Git/GitHub 网络传输和 Electron 运输，不替换业务服务；不代表真实 Windows GUI 或网络验收。此修复属于 Desktop IPC，CLI/Web 不消费该桌面同步和本地快照 IPC，既有 Web bridge 明确不支持本机 repo 操作。
 - `apps/desktop/tests/integration/skill-public-workflow.test.ts` 从生产 preload API 和完整 IPC 注册入口执行真实服务、磁盘 SQLite、首次 canonical 迁移与关闭重开。正常流程覆盖手工创建、元数据和嵌套文件编辑、版本、完整目录导入、二进制、copy/symlink 分发、改名、来源更新、卸载和删除；之后从同一 IPC 边界验证非法输入、路径穿越、缺失入口和陈旧来源，检查错误类型与持久化结果。Electron 消息运输及隔离 home 属于测试环境边界，不替换业务服务。

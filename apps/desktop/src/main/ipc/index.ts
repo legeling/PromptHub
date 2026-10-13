@@ -406,7 +406,7 @@ function registerAllIpcGroups(
     undefined,
   onRendererPersistenceMigration: (
     result: RendererPersistenceMigrationResult,
-  ) => void = () => undefined,
+  ) => void | Promise<void> = () => undefined,
 ): void {
   const promptDB = new PromptDB(db);
   const folderDB = new FolderDB(db);
@@ -623,7 +623,7 @@ export function registerAllIPC(
     undefined,
   onRendererPersistenceMigration: (
     result: RendererPersistenceMigrationResult,
-  ) => void = () => undefined,
+  ) => void | Promise<void> = () => undefined,
 ): void {
   resetAllRegisteredIpcHandlers();
   const captured = new Set<string>();
