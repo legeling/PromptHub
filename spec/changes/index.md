@@ -7,8 +7,8 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 47 |
-| Recorded complete (original path) | 0 |
+| Active | 46 |
+| Recorded complete (original path) | 1 |
 | Archived | 235 |
 | Legacy | 1 |
 
@@ -49,7 +49,6 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `r2-direct-downloads` | active | `spec/changes/active/r2-direct-downloads/` |
 | `release-0-6-0-version-alignment` | active | `spec/changes/active/release-0-6-0-version-alignment/` |
 | `risk-aware-verification-harness` | active | `spec/changes/active/risk-aware-verification-harness/` |
-| `rules-issue-193-missing-project-reconciliation` | active | `spec/changes/active/rules-issue-193-missing-project-reconciliation/` |
 | `rules-managed-copies` | active | `spec/changes/active/rules-managed-copies/` |
 | `self-hosted-skill-sync-reliability` | active | `spec/changes/active/self-hosted-skill-sync-reliability/` |
 | `skill-canonical-prompthub-bundle-recovery` | active | `spec/changes/active/skill-canonical-prompthub-bundle-recovery/` |
@@ -72,7 +71,7 @@ rules are superseded by [current documentation policy](../rules/document-routing
 
 | Change | Recorded status | Path |
 | --- | --- | --- |
-
+| `rules-issue-193-missing-project-reconciliation` | completed | `spec/changes/active/rules-issue-193-missing-project-reconciliation/` |
 
 ## Archived
 
