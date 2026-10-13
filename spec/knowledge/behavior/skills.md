@@ -147,6 +147,7 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 
 - #227：`skill-first-launch.test.ts` 从全新 profile 执行 renderer migration IPC，返回前即可从真实 Skill preload 创建，并验证重复迁移、失败重试及关闭重开。
 - #228：`skill-scanned-import.test.ts` 验证 Copy/Link 完整嵌套文本/二进制、用户标签、来源基线、重开、外部文件和元数据编辑、提交失败后的入口恢复/重试及删除保全，并复用 Plugin 子 Skill renderer 组合用例。
+- #229：`skill-file-save-display.test.tsx` 等待真实保存完成后验证查看器内容、UTF-8 字节数和重开。Desktop 本机文件写入的规范返回值为 `Promise<void>`；带 revision 的自定义文件源仍返回其定义的文件对象，不把布尔值当成文件。检查结果见现有 [核心操作验收记录](../../changes/active/existing-feature-release-acceptance/skill-actions-audit.md)。
 
 - `apps/desktop/tests/integration/skill-nested-git-source-update.test.ts` 对应 #218：使用报告中的深层 GitHub tree URL 与旁支 Skill，通过实际目录选择、renderer store、preload/IPC、Git checkout、SQLite 和完整包文件验证导入、检查、仅附件/二进制变化的更新与关闭重开；旧托管 checkout 路径恢复必须让数据库和 renderer 都使用修复后的根目录。仓库根目录仍须拒绝；远程入口丢失不得改变本地包、来源基线或版本。替换 Git/GitHub 网络传输和 Electron 运输，不替换业务服务；不代表真实 Windows GUI 或网络验收。此修复属于 Desktop IPC，CLI/Web 不消费该桌面同步和本地快照 IPC，既有 Web bridge 明确不支持本机 repo 操作。
 - `apps/desktop/tests/integration/skill-public-workflow.test.ts` 从生产 preload API 和完整 IPC 注册入口执行真实服务、磁盘 SQLite、首次 canonical 迁移与关闭重开。正常流程覆盖手工创建、元数据和嵌套文件编辑、版本、完整目录导入、二进制、copy/symlink 分发、改名、来源更新、卸载和删除；之后从同一 IPC 边界验证非法输入、路径穿越、缺失入口和陈旧来源，检查错误类型与持久化结果。Electron 消息运输及隔离 home 属于测试环境边界，不替换业务服务。

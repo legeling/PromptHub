@@ -515,12 +515,20 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       relativePath: string,
       content: string,
       options?: { skipVersionSnapshot?: boolean },
-    ) => {
+    ): Promise<void> => {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:writeLocalFile requires a non-empty skillId");
       }
-      if (typeof content !== "string") throw new Error("skill:writeLocalFile requires string content");
-      if (await mutateCanonicalSkillPackage(db, skillId, { kind: "write", relativePath, content })) return true;
+      if (typeof content !== "string")
+        throw new Error("skill:writeLocalFile requires string content");
+      if (
+        await mutateCanonicalSkillPackage(db, skillId, {
+          kind: "write",
+          relativePath,
+          content,
+        })
+      )
+        return;
       const repoPath = await resolveManagedRepoPath({ db }, skillId);
       const result = await SkillInstaller.writeLocalRepoFileByPath(
         repoPath,

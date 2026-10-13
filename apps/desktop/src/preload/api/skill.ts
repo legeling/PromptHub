@@ -257,7 +257,7 @@ export const skillApi = {
     relativePath: string,
     content: string,
     options?: { skipVersionSnapshot?: boolean },
-  ) =>
+  ): Promise<void> =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_WRITE_LOCAL_FILE,
       skillId,
@@ -313,7 +313,7 @@ export const skillApi = {
     localPath: string,
     relativePath: string,
     content: string,
-  ) =>
+  ): Promise<void> =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_WRITE_LOCAL_FILE_BY_PATH,
       localPath,
