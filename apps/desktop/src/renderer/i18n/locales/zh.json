@@ -3765,6 +3765,7 @@
     "resizeAria": "调整文件夹侧边栏宽度"
   },
   "mcp": {
+    "noDescription": "暂无描述",
     "title": "MCP",
     "subtitle": "本地 MCP 配置库",
     "myMcp": "我的 MCP",

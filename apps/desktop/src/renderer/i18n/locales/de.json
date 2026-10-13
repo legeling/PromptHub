@@ -3727,6 +3727,7 @@
     "resizeAria": "Ordner-Seitenleiste vergrößern oder verkleinern"
   },
   "mcp": {
+    "noDescription": "Keine Beschreibung",
     "title": "MCP",
     "subtitle": "Lokale MCP-Konfigurationsbibliothek",
     "myMcp": "Meine MCP",

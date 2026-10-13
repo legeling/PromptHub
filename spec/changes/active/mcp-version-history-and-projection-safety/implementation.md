@@ -74,3 +74,13 @@ tests/mcp-target-projection.test.ts --coverage
 
 This change must remain active until implementation, adversarial verification,
 stable documentation sync, and issue-state reconciliation are complete.
+
+## MCP correction #231 — 2026-10-13
+
+Saved MCP entries with no description display the dedicated empty-description
+key in all seven locales. `mcp-detail-feedback.test.tsx` asserts the rendered
+empty state and absence of the selection/save hint. In an isolated copy,
+restoring the original hint makes this test fail on the empty-state assertion
+(exit 1); the repaired MCP component batch passes 204 tests in 26 files.
+The isolated English Electron detail view displays the repaired text before
+and after process restart. No CLI/Web entrypoint uses this Desktop detail UI.

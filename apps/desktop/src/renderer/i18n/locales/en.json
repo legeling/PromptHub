@@ -3767,6 +3767,7 @@
     "resizeAria": "Resize folder sidebar"
   },
   "mcp": {
+    "noDescription": "No description provided",
     "title": "MCP",
     "subtitle": "Local MCP configuration library",
     "myMcp": "My MCP",

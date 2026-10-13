@@ -3727,6 +3727,7 @@
     "resizeAria": "フォルダサイドバーの幅を変更"
   },
   "mcp": {
+    "noDescription": "説明はありません",
     "title": "MCP",
     "subtitle": "Local MCP configuration library",
     "myMcp": "My MCP",

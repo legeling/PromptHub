@@ -3727,6 +3727,7 @@
     "resizeAria": "調整資料夾側邊欄寬度"
   },
   "mcp": {
+    "noDescription": "尚無描述",
     "title": "MCP",
     "subtitle": "本機 MCP 設定庫",
     "myMcp": "我的 MCP",

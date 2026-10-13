@@ -373,6 +373,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 ### 13. MCP Store Source And Update Boundaries
 
+- 已保存 MCP 缺少 description 时显示独立的空描述状态，不显示“先选择或保存”提示（#231）。
 - My MCP 的当前定义和版本以 `data/mcp/<server-id>/` 下的 canonical bundle
   为唯一真源；SQLite、renderer 状态以及 Agent/project 原生 MCP 文件都是派生投影。
   设备 binding 位于 `config/devices/mcp-bindings.json`。非空 literal `env`/header

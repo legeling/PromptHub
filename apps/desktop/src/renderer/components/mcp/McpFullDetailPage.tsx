@@ -600,10 +600,7 @@ export function McpFullDetailPage({
                   <div className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
                     <p className="text-sm text-foreground/90 leading-relaxed">
                       {server.description ||
-                        t(
-                          "mcp.selectServerHint",
-                          "Select or save an MCP first",
-                        )}
+                        t("mcp.noDescription", "No description provided")}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs bg-accent px-2 py-1 rounded-full font-medium text-foreground/80">

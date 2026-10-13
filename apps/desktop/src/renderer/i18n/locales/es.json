@@ -3727,6 +3727,7 @@
     "resizeAria": "Cambiar el ancho de la barra lateral de carpetas"
   },
   "mcp": {
+    "noDescription": "Sin descripción",
     "title": "MCP",
     "subtitle": "Biblioteca local de configuración MCP",
     "myMcp": "Mis MCP",

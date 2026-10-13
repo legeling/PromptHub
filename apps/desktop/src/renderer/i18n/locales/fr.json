@@ -3728,6 +3728,7 @@
     "resizeAria": "Redimensionner la barre latérale des dossiers"
   },
   "mcp": {
+    "noDescription": "Aucune description",
     "title": "MCP",
     "subtitle": "Bibliothèque locale de configuration MCP",
     "myMcp": "Mes MCP",
