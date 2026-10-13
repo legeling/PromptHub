@@ -27,6 +27,40 @@ import type { AgentAssetFileSnapshot } from "@prompthub/shared/types/sync";
 import type { McpTargetPreset } from "@prompthub/core";
 
 export const mcpApi = {
+  listVersions: (
+    id: string,
+    options?: import("@prompthub/shared/types/mcp").McpVersionListOptions,
+  ): Promise<import("@prompthub/shared/types/mcp").McpVersionPage> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_LIST, id, options),
+  getVersion: (
+    id: string,
+    version: number,
+  ): Promise<import("@prompthub/shared/types/mcp").McpVersionDetail> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_GET, id, version),
+  compareVersions: (
+    id: string,
+    from: number,
+    to: number,
+  ): Promise<import("@prompthub/shared/types/mcp").McpVersionComparison> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_COMPARE, id, from, to),
+  createVersion: (
+    id: string,
+    note?: string,
+  ): Promise<import("@prompthub/shared/types/mcp").McpVersionDetail> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_CREATE, id, note),
+  restoreVersion: (
+    id: string,
+    version: number,
+  ): Promise<import("@prompthub/shared/types/mcp").McpVersionDetail> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_RESTORE, id, version),
+  updateVersionNote: (
+    id: string,
+    version: number,
+    note: string,
+  ): Promise<import("@prompthub/shared/types/mcp").McpVersionDetail> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_NOTE, id, version, note),
+  deleteVersion: (id: string, version: number): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_VERSION_DELETE, id, version),
   getLibrary: (): Promise<McpLibraryFile> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_LIBRARY_GET),
   replaceLibrary: (library: McpLibraryFile): Promise<McpLibraryFile> =>

@@ -1,4 +1,5 @@
 import path from "path";
+import { handleMcpVersionCommand } from "./mcp-version-command";
 
 import { CoreMcpLibraryService } from "../mcp-library";
 import { CliError, EXIT_CODES, type CliContext } from "./types";
@@ -33,6 +34,10 @@ export async function handleMcpCommand(
 
   const service = new CoreMcpLibraryService();
   const action = requirePositional(args, 0, "mcp 子命令");
+  if (action === "version") {
+    handleMcpVersionCommand(args.slice(1), context, service);
+    return;
+  }
 
   if (action === "list") {
     ensureNoUnknownOptions(args.slice(1));

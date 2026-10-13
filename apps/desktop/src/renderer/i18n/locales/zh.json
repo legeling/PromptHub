@@ -3766,6 +3766,23 @@
   },
   "mcp": {
     "noDescription": "暂无描述",
+    "history": {
+      "title": "版本历史",
+      "help": "恢复会生成新版本；只有明确同步后才会修改 Agent 配置。",
+      "create": "创建版本",
+      "current": "当前",
+      "empty": "暂无版本",
+      "note": "版本备注",
+      "saveNote": "保存备注",
+      "compare": "与当前版本比较",
+      "restore": "恢复版本",
+      "delete": "删除版本",
+      "restoreConfirm": "将 v{{version}} 恢复为新版本？Agent 配置不会改变。",
+      "deleteConfirm": "删除历史版本 v{{version}}？",
+      "restoredFrom": "恢复自 v{{version}}",
+      "definition": "配置定义",
+      "noChanges": "配置没有变化"
+    },
     "healthIssues": {
       "MISSING_COMMAND": "stdio MCP 服务缺少命令",
       "COMMAND_NOT_FOUND": "找不到命令：{{command}}",

@@ -3728,6 +3728,23 @@
   },
   "mcp": {
     "noDescription": "尚無描述",
+    "history": {
+      "title": "版本歷史",
+      "help": "還原會產生新版本；只有明確同步後才會修改 Agent 設定。",
+      "create": "建立版本",
+      "current": "目前",
+      "empty": "尚無版本",
+      "note": "版本備註",
+      "saveNote": "儲存備註",
+      "compare": "與目前版本比較",
+      "restore": "還原版本",
+      "delete": "刪除版本",
+      "restoreConfirm": "將 v{{version}} 還原為新版本？Agent 設定不會變更。",
+      "deleteConfirm": "刪除歷史版本 v{{version}}？",
+      "restoredFrom": "還原自 v{{version}}",
+      "definition": "設定定義",
+      "noChanges": "設定沒有變更"
+    },
     "healthIssues": {
       "MISSING_COMMAND": "stdio MCP 服務缺少命令",
       "COMMAND_NOT_FOUND": "找不到命令：{{command}}",

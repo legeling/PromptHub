@@ -432,7 +432,9 @@ export function readCanonicalStorageShadow(
   const promptGraph = readPromptCanonicalGraph(rootPath);
   const skills = skillPaths.map(readSkillResourceBundle);
   const rules = rulePaths.map(readRuleResourceBundle);
-  const mcpServers = mcpPaths.map(readMcpServerResourceBundle);
+  const mcpServers = mcpPaths.map((bundlePath) =>
+    readMcpServerResourceBundle(bundlePath),
+  );
   const plugins = pluginPaths.map(readPluginResourceBundle);
   const agentProviders = agentPaths.map(readAgentProviderResourceBundle);
   const objectsRoot = path.join(rootPath, "assets", "objects");

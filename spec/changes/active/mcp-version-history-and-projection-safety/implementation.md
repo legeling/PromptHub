@@ -106,3 +106,43 @@ the orphan opening marker (exit 1); the repaired cleanup/backup batch passes
 27 tests. Isolated Electron distribution/uninstall and process restart preserve
 the unrelated Codex entry and leave neither managed marker. Desktop and CLI
 consume the shared remover; Web's existing Agent MCP surface is read-only.
+
+## MCP history entrypoints #234 — 2026-10-13
+
+Desktop Versions and initialized-workspace CLI expose list/detail/diff/manual
+create/note/restore/delete. Public Core regressions cover configuration versus
+metadata changes, secret masking, credential-only diff, publication rollback,
+target preservation and reopen. A 100-version fixture reads only the selected
+five version payloads plus the current version (4.42 ms on the test machine);
+this is a scoped measurement, not a general performance guarantee. The clean
+submission snapshot's equivalent measurement was 4.08 ms with the same six
+payloads. Keeping the current definition during a restore instead of loading
+the historical definition makes two Core assertions fail (arguments and
+historical credentials, exit 1); this mutation was limited to an isolated copy.
+
+Registered preload/IPC tests cover all actions, 11 malformed inputs without
+mutation, and the existing asset snapshot export/restore with complete retained
+history and notes after reopen (3 passed). CLI `runCli` covers every version
+action in an initialized workspace using a non-secret fixture. The independently built CLI bin entry reads
+the Electron-created retained versions and v1 note/definition after reopen.
+A fresh CLI profile can still create a server, but its history request fails
+with the explicit initialization error (exit 10), confirming the remaining gap.
+Isolated Electron GUI accepts automatic v2, manual
+v3, comparison/note, restored v4, cancelled/confirmed historical deletion, v5
+without number reuse, current-version deletion protection, light/dark rendering
+and process restart with the retained history/note. Restoring history never
+rewrites the distributed Codex file. A HEAD-plus-owned-changes submission
+snapshot, excluding other dirty adaptation work, passes 82 Core/schema/resource/
+backup tests, the 3 registered history IPC tests, and the CLI history workflow.
+Desktop source/test, Core and CLI typechecks and the standalone CLI build pass
+on that snapshot. These checks overlap the earlier dirty-source batches.
+
+The CLI still does not construct the device secret-store adapter; list/detail
+use redaction, but comparison/restoration involving stored credentials require
+an adapter and remain unsupported there. Core credential tests inject a fixture
+store and do not prove OS vault security or CLI credential access.
+
+The JSON-only standalone CLI initialization/migration, device vault access and O(S) mutation target
+remain incomplete, so #234 is in_progress and must not use Closes. SQLite
+foundation ownership conversion, full #203 sidecar/retention scope, entry import
+conflict workflows and Windows/Linux release acceptance remain separate gates.

@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { registerMcpVersionIPC } from "./mcp-version.ipc";
 import path from "path";
 import {
   getMcpLibraryFilePath,
@@ -211,6 +212,7 @@ function redactMcpMarketUpdateResult(
 export function registerMcpIPC(
   service = createDesktopMcpLibraryService(),
 ): void {
+  registerMcpVersionIPC(service);
   ipcMain.handle(IPC_CHANNELS.MCP_LIBRARY_GET, async () =>
     redactMcpLibraryForTransport(service.readForTransport()),
   );

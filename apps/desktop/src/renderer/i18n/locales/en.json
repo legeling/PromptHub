@@ -3768,6 +3768,23 @@
   },
   "mcp": {
     "noDescription": "No description provided",
+    "history": {
+      "title": "Versions",
+      "help": "History restores create a new version. Agent configurations are not changed until explicitly synchronized.",
+      "create": "Create version",
+      "current": "Current",
+      "empty": "No versions",
+      "note": "Version note",
+      "saveNote": "Save note",
+      "compare": "Compare with current",
+      "restore": "Restore version",
+      "delete": "Delete version",
+      "restoreConfirm": "Restore v{{version}} as a new version? Agent configurations will not change.",
+      "deleteConfirm": "Delete historical version v{{version}}?",
+      "restoredFrom": "Restored from v{{version}}",
+      "definition": "Definition",
+      "noChanges": "No configuration changes"
+    },
     "healthIssues": {
       "MISSING_COMMAND": "stdio MCP server is missing a command",
       "COMMAND_NOT_FOUND": "Command not found: {{command}}",

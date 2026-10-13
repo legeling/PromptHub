@@ -1,4 +1,11 @@
 import fs from "fs";
+import { McpVersionHistoryService } from "./mcp-version-history";
+import type {
+  McpVersionPage,
+  McpVersionDetail,
+  McpVersionComparison,
+  McpVersionListOptions,
+} from "@prompthub/shared/types/mcp";
 import path from "path";
 
 import {
@@ -489,6 +496,40 @@ export class CoreMcpLibraryService {
   constructor(
     private readonly canonicalOptions: CanonicalMcpLibraryOptions = {},
   ) {}
+
+  private history(): McpVersionHistoryService {
+    if (getRuntimeStorageContext().localAuthority !== "canonical-files")
+      throw new Error(
+        "MCP version history requires an initialized PromptHub workspace",
+      );
+    if (fs.existsSync(getMcpLibraryFilePath())) this.read();
+    return new McpVersionHistoryService(this.canonicalOptions);
+  }
+  listVersions(id: string, options?: McpVersionListOptions): McpVersionPage {
+    return this.history().list(id, options);
+  }
+  getVersion(id: string, version: number): McpVersionDetail {
+    return this.history().get(id, version);
+  }
+  compareVersions(id: string, from: number, to: number): McpVersionComparison {
+    return this.history().compare(id, from, to);
+  }
+  createVersion(id: string, note?: string): McpVersionDetail {
+    return this.history().create(id, note);
+  }
+  restoreVersion(id: string, version: number): McpVersionDetail {
+    return this.history().restore(id, version);
+  }
+  updateVersionNote(
+    id: string,
+    version: number,
+    note: string,
+  ): McpVersionDetail {
+    return this.history().updateNote(id, version, note);
+  }
+  deleteVersion(id: string, version: number): void {
+    this.history().delete(id, version);
+  }
 
   read(): McpLibraryFile {
     if (getRuntimeStorageContext().localAuthority === "canonical-files") {

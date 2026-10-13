@@ -70,6 +70,11 @@ export interface MaterializeResourceBundleInput {
 }
 
 export interface ReadResourceBundleOptions {
+  /** On-demand readers still validate the full manifest and file inventory. */
+  verifyPayload?: (
+    file: ResourceBundlePayloadFile,
+    manifest: ResourceBundleManifest,
+  ) => boolean;
   expectedResourceType?: string;
   expectedResourceId?: string;
   limits?: Partial<ResourceBundleLimits>;
@@ -870,7 +875,10 @@ export function readResourceBundle(
   for (const file of manifest.payloadFiles) {
     if (!found.has(file.path))
       throw new Error(`resource bundle missing payload: ${file.path}`);
-    totalPayloadBytes += verifyPayloadFile(bundlePath, file);
+    totalPayloadBytes += file.size;
+    if (!options.verifyPayload || options.verifyPayload(file, manifest)) {
+      verifyPayloadFile(bundlePath, file);
+    }
   }
   return {
     manifest,

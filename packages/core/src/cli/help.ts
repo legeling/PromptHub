@@ -270,6 +270,16 @@ export const SKILL_HELP = [
 ].join("\n");
 
 export const MCP_HELP = [
+  "Version history (initialized PromptHub workspace):",
+  "  prompthub mcp version list <id|name> [--offset <n>] [--limit <n>]",
+  "  prompthub mcp version get <id|name> <version>",
+  "  prompthub mcp version diff <id|name> <from> <to>",
+  "  prompthub mcp version create <id|name> [--note <text>]",
+  "  prompthub mcp version note <id|name> <version> --note <text>",
+  "  prompthub mcp version restore <id|name> <version>",
+  "  prompthub mcp version delete <id|name> <version>",
+  "Restore creates a new version; targets are only changed by explicit apply/sync.",
+  "",
   "MCP 命令",
   "",
   "用法:",

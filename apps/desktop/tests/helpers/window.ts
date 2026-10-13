@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { MCP_VERSION_PAGE_SIZE } from "@prompthub/shared/types/mcp";
 
 type MockRecord = Record<string, unknown>;
 
@@ -353,6 +354,21 @@ function createWindowApiDefaults() {
       import: vi.fn(),
     },
     mcp: {
+      listVersions: vi
+        .fn()
+        .mockResolvedValue({
+          currentVersion: 0,
+          total: 0,
+          offset: 0,
+          limit: MCP_VERSION_PAGE_SIZE,
+          items: [],
+        }),
+      getVersion: vi.fn(),
+      compareVersions: vi.fn(),
+      createVersion: vi.fn(),
+      restoreVersion: vi.fn(),
+      updateVersionNote: vi.fn(),
+      deleteVersion: vi.fn(),
       checkTargetSync: vi.fn(),
       syncTargets: vi.fn(),
 

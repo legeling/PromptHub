@@ -363,18 +363,24 @@ function stableValue(value: unknown): unknown {
   );
 }
 
-function semanticSnapshot(
+export function getMcpVersionedDefinition(
   server: McpServerConfig,
-  references: McpResourceSecretReferences,
 ): Record<string, unknown> {
+  // Excluding named metadata fields requires a keyed snapshot, not mutations to the typed server.
   const snapshot = structuredClone(server) as unknown as Record<
     string,
     unknown
   >;
   for (const field of ["isFavorite", "tags", "notes", "createdAt", "updatedAt"])
     delete snapshot[field];
-  snapshot.secretReferences = references;
   return snapshot;
+}
+
+function semanticSnapshot(
+  server: McpServerConfig,
+  references: McpResourceSecretReferences,
+): Record<string, unknown> {
+  return { ...getMcpVersionedDefinition(server), secretReferences: references };
 }
 
 function semanticDigest(
@@ -610,9 +616,26 @@ function parseVersionDocument(
 
 export function readMcpServerResourceBundle(
   bundlePath: string,
+  requestedVersions?: readonly number[],
 ): ReadMcpServerResourceResult {
+  let newestPath: string | undefined;
+  const requestedPaths = new Set(requestedVersions?.map(versionPath));
   const bundle = readResourceBundle(bundlePath, {
     expectedResourceType: "mcp-server",
+    ...(requestedVersions !== undefined && {
+      verifyPayload: (file, manifest) => {
+        newestPath ??= manifest.payloadFiles
+          .filter((p) => p.role === "version")
+          .map((p) => p.path)
+          .sort()
+          .at(-1);
+        return (
+          file.role === "current" ||
+          file.path === newestPath ||
+          requestedPaths.has(file.path)
+        );
+      },
+    }),
   });
   const currentPayloads = bundle.manifest.payloadFiles.filter(
     (file) => file.role === "current",
@@ -641,6 +664,12 @@ export function readMcpServerResourceBundle(
     throw new Error("MCP resource semantic digest is invalid");
   const versions = bundle.manifest.payloadFiles
     .filter((file) => file.role === "version")
+    .filter(
+      (file) =>
+        requestedVersions === undefined ||
+        file.path === versionPath(currentVersion) ||
+        requestedPaths.has(file.path),
+    )
     .map((file) => {
       const document = parseVersionDocument(
         parseJsonRecord(path.join(bundlePath, ...file.path.split("/"))),

@@ -3728,6 +3728,23 @@
   },
   "mcp": {
     "noDescription": "説明はありません",
+    "history": {
+      "title": "バージョン履歴",
+      "help": "復元すると新しいバージョンが作成されます。明示的に同期するまで Agent の設定は変更されません。",
+      "create": "バージョンを作成",
+      "current": "現在",
+      "empty": "バージョンはありません",
+      "note": "バージョンのメモ",
+      "saveNote": "メモを保存",
+      "compare": "現在のバージョンと比較",
+      "restore": "バージョンを復元",
+      "delete": "バージョンを削除",
+      "restoreConfirm": "v{{version}} を新しいバージョンとして復元しますか？Agent の設定は変更されません。",
+      "deleteConfirm": "過去のバージョン v{{version}} を削除しますか？",
+      "restoredFrom": "v{{version}} から復元",
+      "definition": "設定内容",
+      "noChanges": "設定の変更はありません"
+    },
     "healthIssues": {
       "MISSING_COMMAND": "stdio MCP のコマンドがありません",
       "COMMAND_NOT_FOUND": "コマンドが見つかりません: {{command}}",

@@ -3728,6 +3728,23 @@
   },
   "mcp": {
     "noDescription": "Keine Beschreibung",
+    "history": {
+      "title": "Versionsverlauf",
+      "help": "Eine Wiederherstellung erstellt eine neue Version. Agent-Konfigurationen ändern sich erst bei ausdrücklicher Synchronisierung.",
+      "create": "Version erstellen",
+      "current": "Aktuell",
+      "empty": "Keine Versionen",
+      "note": "Versionsnotiz",
+      "saveNote": "Notiz speichern",
+      "compare": "Mit aktueller Version vergleichen",
+      "restore": "Version wiederherstellen",
+      "delete": "Version löschen",
+      "restoreConfirm": "v{{version}} als neue Version wiederherstellen? Agent-Konfigurationen bleiben unverändert.",
+      "deleteConfirm": "Historische Version v{{version}} löschen?",
+      "restoredFrom": "Aus v{{version}} wiederhergestellt",
+      "definition": "Definition",
+      "noChanges": "Keine Konfigurationsänderungen"
+    },
     "healthIssues": {
       "MISSING_COMMAND": "Befehl für stdio-MCP-Server fehlt",
       "COMMAND_NOT_FOUND": "Befehl nicht gefunden: {{command}}",

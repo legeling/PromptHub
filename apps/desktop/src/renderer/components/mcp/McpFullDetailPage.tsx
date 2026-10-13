@@ -41,6 +41,7 @@ import {
   toMcpServerEntry,
 } from "@prompthub/shared/utils/mcp-config";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import { McpVersionHistoryModal } from "./McpVersionHistoryModal";
 import {
   DETAIL_PAGE_CONTENT_CLASS,
   DETAIL_PAGE_PREVIEW_GRID_CLASS,
@@ -299,6 +300,7 @@ export function McpFullDetailPage({
   const [isSyncingTargets, setIsSyncingTargets] = useState(false);
   const [envDraft, setEnvDraft] = useState<Record<string, string>>({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState(server.notes ?? "");
@@ -517,6 +519,13 @@ export function McpFullDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsHistoryOpen(true)}
+            className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
+          >
+            {t("mcp.history.title")}
+          </button>
           {sourceSummary.url ? (
             <a
               href={sourceSummary.url}
@@ -1138,6 +1147,12 @@ export function McpFullDetailPage({
         </div>
       </div>
 
+      {isHistoryOpen && (
+        <McpVersionHistoryModal
+          serverId={server.id}
+          onClose={() => setIsHistoryOpen(false)}
+        />
+      )}
       {isEditModalOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"

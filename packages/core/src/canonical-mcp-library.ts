@@ -14,6 +14,7 @@ import {
 } from "./canonical-entry-publication";
 import {
   createMcpBindingConfigDocument,
+  getMcpVersionedDefinition,
   hydrateMcpServerResourceSecretsSync,
   hydrateMcpServerVersionSecretsSync,
   materializeMcpServerResourceBundle,
@@ -60,6 +61,7 @@ export interface CanonicalMcpLibraryOptions {
 
 export interface CanonicalMcpLibraryReadOptions extends CanonicalMcpLibraryOptions {
   secretReadMode?: "strict" | "redacted";
+  includeHistory?: boolean;
 }
 
 interface LoadedServer {
@@ -81,6 +83,15 @@ function stableValue(value: unknown): unknown {
 
 function stableJson(value: unknown): string {
   return JSON.stringify(stableValue(value));
+}
+
+function definitionJson(server: McpServerConfig): string {
+  return stableJson(getMcpVersionedDefinition(server));
+}
+
+export interface CanonicalMcpHistoryUpdate {
+  currentVersion: number;
+  versions: McpServerResourceVersionInput[];
 }
 
 function bindingPath(): string {
@@ -201,7 +212,10 @@ function requireSecretReader(
 function loadServers(options: CanonicalMcpLibraryReadOptions): LoadedServer[] {
   return listBundlePaths()
     .map((bundlePath): LoadedServer => {
-      const resource = readMcpServerResourceBundle(bundlePath);
+      const resource = readMcpServerResourceBundle(
+        bundlePath,
+        options.includeHistory === false ? [] : undefined,
+      );
       if (path.basename(bundlePath) !== resource.server.id) {
         throw new Error(
           "Canonical MCP bundle path does not match its server id",
@@ -299,6 +313,7 @@ function writeJsonStage(stagePath: string, value: unknown): void {
 export function writeCanonicalMcpLibrary(
   library: McpLibraryFile,
   options: CanonicalMcpLibraryOptions = {},
+  historyUpdates: ReadonlyMap<string, CanonicalMcpHistoryUpdate> = new Map(),
 ): void {
   recoverCanonicalEntryPublication(getUserDataPath(), OPERATION_KEY);
   const strictOptions: CanonicalMcpLibraryOptions = {
@@ -322,18 +337,31 @@ export function writeCanonicalMcpLibrary(
 
   for (const [id, server] of next) {
     const current = previous.get(id);
-    if (current && stableJson(current.hydrated) === stableJson(server)) {
+    const historyUpdate = historyUpdates.get(id);
+    if (
+      !historyUpdate &&
+      current &&
+      stableJson(current.hydrated) === stableJson(server)
+    ) {
       for (const ref of collectRefs(current.resource)) retainedRefs.add(ref);
       continue;
     }
-    const currentVersion = (current?.resource.currentVersion ?? 0) + 1;
-    const versions = [
+    const changed =
+      !current || definitionJson(current.hydrated) !== definitionJson(server);
+    const currentVersion =
+      historyUpdate?.currentVersion ??
+      (current?.resource.currentVersion ?? 0) + (changed ? 1 : 0);
+    const versions = historyUpdate?.versions ?? [
       ...(current ? hydrateVersions(current, strictOptions) : []),
-      {
-        version: currentVersion,
-        server,
-        createdAt: new Date(server.updatedAt).toISOString(),
-      },
+      ...(changed
+        ? [
+            {
+              version: currentVersion,
+              server,
+              createdAt: new Date(server.updatedAt).toISOString(),
+            },
+          ]
+        : []),
     ];
     mutations.push({
       targetPath: path.join(mcpRoot(), id),

@@ -195,6 +195,41 @@ secret storage owns only non-empty literal credential values.
 
 ## Non-Functional Requirements
 
+### 2026-10-13 entrypoint implementation boundary (#234)
+
+Version entrypoints expose the already deployed MCP bundle/vault contract; they
+do not add a second history store or perform the pending foundation-wide
+SQLite ownership conversion. That confirmed target remains owned by
+`FR-FOUNDATION-003`. The independent CLI's uninitialized JSON-only workspace
+does not yet have the same MCP history/vault initialization; its migration
+scope is pending confirmation, rather than silently changing root authority.
+Existing initialized workspaces retain their bundle schema and secret refs.
+The CLI has no device secret-store adapter: list/detail remain redacted, while
+credential-bearing comparisons and mutations still fail closed. Their support
+requires the shared initialization/vault boundary, not a plaintext fallback.
+No destructive conversion or Agent target write occurs during version restore.
+
+The history page loads a bounded page of version documents and details on
+demand, verifying the selected payload hashes while retaining full manifest and
+file-inventory validation. Bundle publication reuses the existing atomic
+coordinator and vault transaction. The existing coordinator reads the library's
+retained history and republishes the changed server's retained snapshots;
+mutation cost therefore still grows with retained history, not only the new snapshot.
+The `O(S)` mutation target remains an implementation gap, not a claimed gate.
+Rollback uses the existing publication journal; rollback source compatibility
+is unchanged because no new bundle format is introduced.
+
+The history mutation coordinator, CLI action dispatcher and React modal remain longer than 50 lines
+to keep their single transaction/action state machine and associated rendered
+states together. The CLI dispatcher keeps one usage/output boundary for the
+seven commands, covered by the public runCli workflow. Functional history tests cover the public workflow, failure
+rollback, native target preservation and reopen; isolated GUI acceptance covers
+history actions, cancellation, both themes and persistence after restart.
+Empty-description text uses its own empty-state key;
+health UI translates stable issue codes and field context rather than backend
+diagnostic strings. Core/CLI health diagnostics are English and never contain
+literal environment values.
+
 ### `NFR-MCPVER-001`: Bounded work
 
 - Version list APIs MUST be paginated and load snapshot payloads on demand.

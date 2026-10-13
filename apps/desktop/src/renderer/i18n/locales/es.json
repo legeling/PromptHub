@@ -3728,6 +3728,23 @@
   },
   "mcp": {
     "noDescription": "Sin descripción",
+    "history": {
+      "title": "Historial de versiones",
+      "help": "Restaurar crea una versión nueva. Las configuraciones de los Agents no cambian hasta una sincronización explícita.",
+      "create": "Crear versión",
+      "current": "Actual",
+      "empty": "Sin versiones",
+      "note": "Nota de versión",
+      "saveNote": "Guardar nota",
+      "compare": "Comparar con la versión actual",
+      "restore": "Restaurar versión",
+      "delete": "Eliminar versión",
+      "restoreConfirm": "¿Restaurar v{{version}} como versión nueva? Las configuraciones de los Agents no cambiarán.",
+      "deleteConfirm": "¿Eliminar la versión histórica v{{version}}?",
+      "restoredFrom": "Restaurada desde v{{version}}",
+      "definition": "Definición",
+      "noChanges": "Sin cambios de configuración"
+    },
     "healthIssues": {
       "MISSING_COMMAND": "Falta el comando del servidor MCP stdio",
       "COMMAND_NOT_FOUND": "Comando no encontrado: {{command}}",

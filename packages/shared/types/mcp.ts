@@ -346,6 +346,35 @@ export interface McpTargetStatusEntry {
 
 export type McpHealthStatus = "ok" | "warning" | "error";
 
+export const MCP_VERSION_PAGE_SIZE = 20;
+export interface McpVersionSummary {
+  version: number;
+  isCurrent: boolean;
+  createdAt: string;
+  note?: string;
+  restoredFromVersion?: number;
+  semanticDigest: string;
+}
+export interface McpVersionDetail extends McpVersionSummary {
+  server: McpServerConfig;
+}
+export interface McpVersionPage {
+  currentVersion: number;
+  total: number;
+  offset: number;
+  limit: number;
+  items: McpVersionSummary[];
+}
+export interface McpVersionListOptions {
+  offset?: number;
+  limit?: number;
+}
+export interface McpVersionComparison {
+  fromVersion: number;
+  toVersion: number;
+  changes: { field: string; before?: unknown; after?: unknown }[];
+}
+
 export interface McpHealthIssue {
   code:
     | "MISSING_COMMAND"
