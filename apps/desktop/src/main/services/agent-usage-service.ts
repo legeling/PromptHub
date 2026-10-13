@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { parse as parseToml } from "smol-toml";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import type {
   AgentUsageMetric,
@@ -804,7 +805,7 @@ export function createAgentUsageService(
     configRoot: string,
   ): Promise<string | null> {
     try {
-      const raw = await readFile(path.join(configRoot, "config.toml"));
+      const raw = await readFile(path.join(configRoot, getAgentPrimaryModelConfigPath("codex")));
       const parsed: unknown = parseToml(raw);
       if (!isRecord(parsed)) return null;
       const provider = parsed.model_provider;
@@ -832,7 +833,7 @@ export function createAgentUsageService(
   // subscription, so the official usage endpoint must not be called.
   async function isClaudeCustomGateway(configRoot: string): Promise<boolean> {
     try {
-      const raw = await readFile(path.join(configRoot, "settings.json"));
+      const raw = await readFile(path.join(configRoot, getAgentPrimaryModelConfigPath("claude")));
       const parsed: unknown = JSON.parse(raw);
       if (!isRecord(parsed) || !isRecord(parsed.env)) return false;
       const env = parsed.env;

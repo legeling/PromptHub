@@ -4,6 +4,7 @@ export * from "./resources";
 export * from "./platforms";
 export * from "./skill-distribution-targets";
 export * from "./agent-platform-capabilities";
+export * from "@prompthub/shared/constants/agent-definitions";
 export * from "./skill-categories";
 export * from "./skill-registry";
 export * from "./skill-package";

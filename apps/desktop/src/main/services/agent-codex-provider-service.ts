@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { lookup as dnsLookup } from "node:dns/promises";
 import net from "node:net";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import { parse as parseToml } from "smol-toml";
 
@@ -89,7 +91,6 @@ const MAX_PROVIDER_ID_LENGTH = 64;
 const MAX_PROVIDER_NAME_LENGTH = 80;
 const MAX_PROFILE_MODEL_LENGTH = 512;
 const TEST_TIMEOUT_MS = 10_000;
-const CONFIG_FILE_NAME = "config.toml";
 
 // ---------------------------------------------------------------------------
 // Small record helpers (mirror agent-model-config conventions)
@@ -245,6 +246,9 @@ export function createAgentCodexProviderService(
     ((hostname: string) => dnsLookup(hostname, { all: true, verbatim: true }));
 
   function resolveCodexRoot(agentId: string): string {
+    if (!isAgentDepthCapabilityAvailable(agentId, "providerModel")) {
+      throw new AgentCodexProviderError("unsupported-agent");
+    }
     if (typeof agentId !== "string" || !agentId.trim()) {
       throw new AgentCodexProviderError("unsupported-agent");
     }
@@ -327,7 +331,7 @@ export function createAgentCodexProviderService(
     agentId: string,
   ): Promise<AgentCodexProviderList> {
     const root = resolveCodexRoot(agentId);
-    const { data } = await readConfig(path.join(root, CONFIG_FILE_NAME));
+    const { data } = await readConfig(path.join(root, getAgentPrimaryModelConfigPath("codex")));
     return buildProviderList(agentId, data);
   }
 
@@ -336,7 +340,7 @@ export function createAgentCodexProviderService(
   ): Promise<AgentCodexProviderMigrationInspection> {
     const root = resolveCodexRoot(agentId);
     const { original, data } = await readConfig(
-      path.join(root, CONFIG_FILE_NAME),
+      path.join(root, getAgentPrimaryModelConfigPath("codex")),
     );
     const activeProvider = getString(data, "model_provider") || "openai";
     const defaultModel = getString(data, "model");
@@ -448,7 +452,7 @@ export function createAgentCodexProviderService(
           ? "clear"
           : "preserve";
 
-    const targetPath = path.join(root, CONFIG_FILE_NAME);
+    const targetPath = path.join(root, getAgentPrimaryModelConfigPath("codex"));
     const { original, data } = await readConfig(targetPath);
     const providersTable = getRecord(data, "model_providers") ?? {};
     const existingEntry = getRecord(providersTable, providerId);
@@ -574,7 +578,7 @@ export function createAgentCodexProviderService(
     if (typeof providerId !== "string" || !providerId.trim()) {
       throw new AgentCodexProviderError("invalid-provider-id");
     }
-    const targetPath = path.join(root, CONFIG_FILE_NAME);
+    const targetPath = path.join(root, getAgentPrimaryModelConfigPath("codex"));
     const { original, data } = await readConfig(targetPath);
     const providersTable = getRecord(data, "model_providers") ?? {};
     if (!getRecord(providersTable, providerId)) {
@@ -648,7 +652,7 @@ export function createAgentCodexProviderService(
     if (typeof providerId !== "string" || !providerId.trim()) {
       throw new AgentCodexProviderError("invalid-provider-id");
     }
-    const targetPath = path.join(root, CONFIG_FILE_NAME);
+    const targetPath = path.join(root, getAgentPrimaryModelConfigPath("codex"));
     const { original, data } = await readConfig(targetPath);
     if (
       providerId !== "openai" &&
@@ -735,7 +739,7 @@ export function createAgentCodexProviderService(
     if (typeof providerId !== "string" || !providerId.trim()) {
       throw new AgentCodexProviderError("invalid-provider-id");
     }
-    const targetPath = path.join(root, CONFIG_FILE_NAME);
+    const targetPath = path.join(root, getAgentPrimaryModelConfigPath("codex"));
     const { data } = await readConfig(targetPath);
     const entry = getRecord(getRecord(data, "model_providers"), providerId);
     if (!entry) {

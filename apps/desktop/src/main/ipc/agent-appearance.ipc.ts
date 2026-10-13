@@ -3,6 +3,7 @@ import path from "node:path";
 import { app, dialog, ipcMain } from "electron";
 
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 import type {
   AgentPetStoreQuery,
   ApplyAgentThemeInput,
@@ -25,6 +26,9 @@ interface AgentAppearanceIpcOptions {
 function requireCodexAgent(agentId: unknown): void {
   if (agentId !== "codex") {
     throw new Error("Agent appearance is currently only supported for Codex");
+  }
+  if (!isAgentDepthCapabilityAvailable(agentId, "appearance")) {
+    throw new Error("AGENT_APPEARANCE_UNSUPPORTED");
   }
 }
 
@@ -132,6 +136,7 @@ export function registerAgentAppearanceIPC(
   const createService = options.createService ?? createDefaultService;
   let petStoreService: AgentPetStoreService | null = null;
   const getPetStoreService = () => {
+    requireCodexAgent("codex");
     if (!petStoreService) {
       const appearanceService = createService();
       petStoreService = options.createPetStoreService

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
+import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
 
 import type { AgentProviderAdapterContext } from "@prompthub/shared";
 
@@ -82,11 +83,24 @@ export function resolveAgentProviderContext(
     throw new Error("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
   }
   const context = getAgentConfigContext(normalizedAgentId);
+  const definition = getAgentDefinitionById(normalizedAgentId);
+  const redirect = definition?.modelConfig?.defaultRootRelativePath;
+  const osKey =
+    process.platform === "darwin" || process.platform === "win32"
+      ? process.platform
+      : "linux";
+  const declaredRootSuffix = definition?.platform.rootDir[osKey]
+    .replace(/\\/g, "/")
+    .replace(/^(~|%USERPROFILE%)\//, "");
+  const matchesDeclaredRoot =
+    declaredRootSuffix &&
+    context.rootPath
+      .replace(/\\/g, "/")
+      .replace(/\/+$/, "")
+      .endsWith(`/${declaredRootSuffix}`);
   const rootPath =
-    normalizedAgentId === "antigravity" &&
-    path.basename(context.rootPath) === "config" &&
-    path.basename(path.dirname(context.rootPath)) === ".gemini"
-      ? path.join(path.dirname(context.rootPath), "antigravity-cli")
+    redirect && matchesDeclaredRoot
+      ? path.resolve(context.rootPath, redirect)
       : context.rootPath;
   return {
     agentId: normalizedAgentId,

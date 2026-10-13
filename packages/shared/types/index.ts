@@ -13,6 +13,7 @@ export * from "./plugin";
 export * from "./cloud";
 export * from "./app-command";
 export * from "./agent";
+export * from "./agent-platform";
 export * from "./agent-harness";
 export * from "./agent-definition";
 export * from "./provider-preset";

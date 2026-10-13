@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
 
 import type {
   AgentModelConfiguration,
@@ -97,6 +98,33 @@ function modelConfiguration(
 }
 
 describe("Agent model Provider Profile adapter", () => {
+  it("uses the Agent definition for a rollback target without observed source metadata", async () => {
+    const rootPath = await temporaryRoot();
+    const definition = getAgentDefinitionById("claude");
+    if (!definition?.modelConfig) throw new Error("Missing Claude model fixture");
+    const config = definition.modelConfig;
+    const originalPaths = config.relativePaths;
+    const targetPath = "rollback-settings.json";
+    config.relativePaths = [targetPath];
+    try {
+      await fs.writeFile(path.join(rootPath, targetPath), "{}");
+      const context = { agentId: "claude", platformId: "claude", rootPath };
+      const adapter = createAgentModelProviderAdapter("claude", {
+        backupRoot: path.join(rootPath, "backups"),
+        inspect: vi.fn().mockResolvedValue(modelConfiguration({ status: "missing", model: null, sourceRelativePath: null })),
+      });
+      const before = await adapter.inspect(context);
+      await expect(adapter.rollback(context, {
+        platformId: "claude", adapterVersion: before.adapterVersion,
+        profileId: "profile-1", nativeDigestBefore: before.nativeDigest,
+        nativeDigestAfter: before.nativeDigest, backupRef: null, appliedAt: 1,
+      })).resolves.toMatchObject({ restored: true });
+      await expect(fs.stat(path.join(rootPath, targetPath))).rejects.toThrow();
+    } finally {
+      config.relativePaths = originalPaths;
+    }
+  });
+
   it("inspects and imports a redacted Claude model profile", async () => {
     const rootPath = await temporaryRoot();
     await fs.writeFile(

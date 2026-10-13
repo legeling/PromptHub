@@ -154,6 +154,61 @@ async function setup(usageService?: AgentUsageService) {
 }
 
 describe("Agent config file IPC", () => {
+  it("reads the model-root redirect from the Agent definition and preserves custom roots", async () => {
+    const { handlers, IPC_CHANNELS } = await setup();
+    const { getAgentDefinitionById } = await import("@prompthub/shared/constants/agent-definitions");
+    const definition = getAgentDefinitionById("antigravity");
+    if (!definition?.modelConfig) throw new Error("Missing Antigravity model fixture");
+    const config = definition.modelConfig;
+    const redirect = config.defaultRootRelativePath;
+    config.defaultRootRelativePath = "../test-model-root";
+    try {
+      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
+      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({ agentId: "antigravity", rootPath: "/Users/test/.gemini/test-model-root" });
+      getPlatformRootDirMock.mockReturnValue("/Users/test/.gemini/config/");
+      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
+      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({ agentId: "antigravity", rootPath: "/Users/test/.gemini/test-model-root" });
+      getPlatformRootDirMock.mockReturnValue("/Users/test/custom-agent");
+      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
+      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({ agentId: "antigravity", rootPath: "/Users/test/custom-agent" });
+    } finally {
+      config.defaultRootRelativePath = redirect;
+    }
+  });
+
+  it("rejects every Pi model/provider action when its product switch is disabled", async () => {
+    const { handlers, IPC_CHANNELS } = await setup();
+    const { getAgentDefinitionById } = await import("@prompthub/shared/constants/agent-definitions");
+    const definition = getAgentDefinitionById("pi");
+    if (!definition) throw new Error("Missing Pi fixture");
+    const capability = definition.capabilities.providerModel;
+    const enabled = capability.enabled;
+    capability.enabled = false;
+    try {
+      const channels = [
+        IPC_CHANNELS.AGENT_PI_PROVIDER_ADD,
+        IPC_CHANNELS.AGENT_PI_PROVIDER_IMPORT_CURRENT,
+        IPC_CHANNELS.AGENT_PI_PROVIDER_UPDATE,
+        IPC_CHANNELS.AGENT_PI_PROVIDER_REMOVE,
+        IPC_CHANNELS.AGENT_PI_MODEL_ADD,
+        IPC_CHANNELS.AGENT_PI_MODEL_UPDATE,
+        IPC_CHANNELS.AGENT_PI_MODEL_REMOVE,
+        IPC_CHANNELS.AGENT_PI_MODEL_TEST,
+        IPC_CHANNELS.AGENT_PI_CREDENTIAL_SET,
+      ];
+      for (const channel of channels) {
+        await expect(handlers[channel](null, { agentId: "pi" })).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+      }
+      expect(getPlatformRootDirMock).not.toHaveBeenCalled();
+      expect(updatePiCustomProviderMock).not.toHaveBeenCalled();
+      expect(updatePiCustomModelMock).not.toHaveBeenCalled();
+      expect(importCurrentPiProviderMock).not.toHaveBeenCalled();
+      expect(testPiModelMock).not.toHaveBeenCalled();
+    } finally {
+      capability.enabled = enabled;
+    }
+  });
+
   beforeEach(() => {
     readFileMock.mockReset();
     writeFileMock.mockReset();

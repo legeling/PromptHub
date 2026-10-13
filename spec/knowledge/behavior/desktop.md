@@ -94,6 +94,72 @@
 - native model adapter 只能向 renderer 返回 model、provider、脱敏 endpoint、可用模型与 credential status；API key、token 和独立 secret store 不得进入 IPC。写入只更新模型选择字段，并使用 2 MiB 有界读取、symlink/路径 containment 校验、私有备份、并发修改检测、原子替换、语义重读和失败回滚。
 - 暂不支持的平台底层适配代码仅保留，不注册到供应商运行时；不得绕过 capability registry 恢复配置读写。
 
+Agent 产品维护配置（2026-10-13）：每个内置 Agent 在
+`packages/shared/constants/agent-definitions/<agent-id>.ts` 中维护一份纯数据
+`AgentPlatformDefinition`，集中身份、跨平台路径、CLI 描述和深度能力声明；
+`index.ts` 只做静态汇总与按 ID 查询。深度能力的 `status` / `evidence`
+保留现有适配成熟度，`enabled` 单独控制产品开放。关闭已实现能力不删除适配器，
+开启 `planned` / `unsupported` 也不会注册或伪造支持。原
+`SKILL_PLATFORMS` 与 capability registry 均从这些定义派生，现有消费者和
+适配器继续复用；路径级资产能力继续由声明路径计算，不维护第二份路径表。
+模型入口文件的格式、候选路径优先级与默认根偏移由同一声明的 `modelConfig`
+维护；Provider 回滚目标和 JSON/TOML/YAML 读写共用这些路径，不再维护模型
+路径映射表。Antigravity 仅在根匹配声明的默认根后缀时使用 CLI 模型根偏移，
+独立自定义根保持原值。Pi 的模型、供应商、凭据与测试入口也必须通过
+`providerModel` 开关。会话服务的读取/删除/索引入口和 Codex 外观服务及 IPC
+在执行文件、命令、对话框或网络操作之前校验相同能力真源；关闭会话时不暴露
+索引源与删除能力，开启未实现状态不放行操作。
+公共 Agent runtime 只解析 Codex 的配置根，不以 `providerModel` 开关决定
+整个 runtime 是否可初始化；关闭 Codex 不影响其他 Agent 的供应商、会话与
+独立外观能力。Codex 账号保存/导入/激活及原生供应商迁移读取由各自执行
+所有者检查供应商开关，账号历史读取与删除仍可用。
+完整供应商适配器（包括暂未注册的平台实现）、旧 Codex 迁移服务与额度服务
+的模型配置读取也复用 `modelConfig`，不维护独立文件名或候选数组。
+OpenCode 已有完整适配器与通用模型读取存在候选范围差异，现统一为既有
+原生优先级 `opencode.jsonc` → `opencode.json` → `config.json`；前两项
+缺失时可读取原本已被完整适配器支持的第三项，不引入新文件格式或备用层。
+现有文件、凭据及备份结构不变，回退源码即可撤销；不自动迁移或删除文件。
+这是编译期产品配置，不提供热加载，不修改 SQLite 用户设置、供应商档案、
+原生文件或用户侧启停语义；无数据迁移，撤销仅回退本次源码重组。
+固定 37 条声明只做线性初始化与常量时间 ID 查询，无新增磁盘扫描或网络请求。
+
+本次配置重组验证：重组前后 37 条完整平台定义与有效深度能力逐项一致；
+Shared 常用测试入口全部通过，新增 4 项配置契约用例；13 个桌面定向文件
+163 项、3 个 Core 文件 24 项通过。开关测试替换单个 TS 声明，执行真实能力
+查询与既有 Provider 注册清单，覆盖关闭已实现能力、开启未实现能力和启用
+partial adapter；真实 Provider IPC 集成覆盖 SQLite、原生文件、重开读回与
+失败回滚，Electron 运输层仍为替身。Shared/Core 类型检查、Desktop 源码及
+测试类型检查、45 个本次 TypeScript 文件的 ESLint 与差异检查通过；
+未执行真实账号、GUI、发行包或全量发布门禁。
+
+本次遗漏修复验证（2026-10-13）：21 个桌面定向文件共 214 项通过，Shared
+测试、Shared 类型检查、Desktop 源码及测试类型检查、定向 ESLint 与差异检查
+通过。新增回归覆盖关闭后的会话读取/删除/索引拒绝、已有 SQLite 索引不可
+绕过开关、全部 Pi 模型/供应商入口、外观入口在对话框和副作用前拒绝，以及
+模型声明路径的真实写入/重开读回、Provider 默认回滚路径、既有路径优先级
+与自定义根保持。执行开关闭环用例将关闭、数据保全和重新启用后的读写保留
+在同一用例中，以明确时序和真实结果；不为控制用例行数拆散该闭环。
+Electron 运输层与外观引擎使用测试替身；未执行真实账号、GUI、发行包或
+全量发布门禁。既有用户文件、数据布局与持久化 schema 均未更改。
+公共 runtime 的关闭 Codex 回归保留真实初始化、Claude 档案创建/激活、
+原生文件读回、会话访问与 Codex 拒绝操作的完整时序；较长单用例用于证明
+同一关闭状态下的跨能力结果，不拆成互相独立的模拟成功测试。
+
+二次遗漏修复验证（2026-10-13）：30 个桌面测试文件共 360 项通过，包含
+关闭 Codex 的真实 runtime 构造、Claude 首次激活字段确认/文件读回与会话
+访问，以及禁用 Codex 账号变更和保留历史清理。完整 Claude/Codex/OpenCode
+适配器回归覆盖改变声明后的原生读写、验证与回滚；既有未注册平台适配器、
+Codex 迁移、额度、会话索引与 4 项注册 IPC/重开/失败恢复集成回归通过。
+Shared 测试、Shared 类型检查、Desktop 源码和测试联合类型检查、定向
+ESLint 与差异检查通过。复审未发现本次范围内的执行开关绕过、重复模型
+文件名/候选表或新增策略层；辅助凭据、模型目录和备份包路径仍由原所有者
+维护，不属于模型主配置入口。Electron 运输、密钥加解密与外部网络使用
+测试替身，未执行 GUI、真实账号、发行包或全量发布门禁。
+
+配置契约与开关回归可从仓库根目录执行
+`pnpm --filter @prompthub/shared test` 和
+`pnpm --dir apps/desktop exec vitest run tests/unit/services/agent-definition-switches.test.ts tests/unit/services/agent-platform-capabilities.test.ts`。
+
 初期范围验证（2026-10-10）：18 个桌面定向测试文件共 253 项经分批修正与复测通过，另有 10 项深链接测试、4 项真实 SQLite/文件/注册 IPC 集成通过；文案变更后单独复测置灰组件用例。Core 类型检查、Desktop 源码及测试类型检查、定向 ESLint 通过。外部额度响应与 Electron 消息运输层使用测试替身；未执行真实账号请求、GUI、发行包或全量发布门禁。支持收敛使用常量时间 capability 查询，平台列表仅按现有 registry 线性过滤，不新增扫描、网络或持久化开销。
 
 核心回归可从仓库根目录重跑：

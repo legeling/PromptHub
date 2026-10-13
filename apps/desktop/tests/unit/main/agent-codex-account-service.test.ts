@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
 
 import {
   createAgentCodexAccountService,
@@ -68,6 +69,32 @@ async function harness(
 }
 
 describe("Agent Codex account service", () => {
+  it("refuses disabled account mutations but preserves historical listing and cleanup", async () => {
+    const { root, authPath, service } = await harness();
+    await fs.writeFile(authPath, auth("current"));
+    const historical = await service.importAccount({ label: "Historical", authJson: auth("historical") });
+    const vaultPath = path.join(root, "private", "codex-accounts.json");
+    const originalVault = await fs.readFile(vaultPath, "utf8");
+    const originalAuth = await fs.readFile(authPath, "utf8");
+    const definition = getAgentDefinitionById("codex");
+    if (!definition) throw new Error("Missing Codex fixture");
+    const enabled = definition.capabilities.providerModel.enabled;
+    definition.capabilities.providerModel.enabled = false;
+    try {
+      await expect(service.saveCurrent("Disabled")).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+      await expect(service.importAccount({ label: "Disabled", authJson: auth("disabled") })).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+      await expect(service.activate(historical.id)).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+      expect(await fs.readFile(vaultPath, "utf8")).toBe(originalVault);
+      expect(await fs.readFile(authPath, "utf8")).toBe(originalAuth);
+      expect((await service.list()).map(({ id }) => id)).toEqual([historical.id]);
+      await service.delete(historical.id);
+      expect(await service.list()).toEqual([]);
+      expect(await fs.readFile(authPath, "utf8")).toBe(originalAuth);
+    } finally {
+      definition.capabilities.providerModel.enabled = enabled;
+    }
+  });
+
   it("saves and imports encrypted snapshots without exposing authentication JSON", async () => {
     const { root, authPath, service } = await harness();
     await fs.writeFile(authPath, auth("acct-current"), { mode: 0o600 });

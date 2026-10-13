@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { parse as parseJsonc, type ParseError } from "jsonc-parser";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import type {
   AgentSessionDetail,
@@ -70,6 +71,12 @@ import {
   removeSessionTargets,
   supportsNativeSessionDelete,
 } from "./agent-session-storage";
+
+function requireSessionCapability(agentId: string): void {
+  if (!isAgentDepthCapabilityAvailable(agentId, "sessions")) {
+    throw new Error("AGENT_SESSION_UNSUPPORTED");
+  }
+}
 
 interface AgentSessionServiceOptions {
   homeDir: string;
@@ -966,6 +973,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
 
   const service = {
     getIndexSource(agentId: string): AgentSessionIndexSourceDescriptor | null {
+      if (!isAgentDepthCapabilityAvailable(agentId, "sessions")) return null;
       if (agentId === "claude") {
         return {
           platformId: agentId,
@@ -989,6 +997,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
       agentId: string,
       input: AgentSessionIndexScanOptions,
     ): Promise<AgentSessionIndexScanResult> {
+      requireSessionCapability(agentId);
       if (agentId === "claude") {
         const files = await scanClaudeFiles(
           claudeProjectsRoot,
@@ -1012,6 +1021,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
       agentId: string,
       input: ListOptions,
     ): Promise<AgentSessionListResult> {
+      requireSessionCapability(agentId);
       assertSessionListLimit(input.limit);
       const offset = input.offset ?? 0;
       assertSessionListOffset(offset, input.limit);
@@ -1227,10 +1237,14 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
     },
 
     canDelete(agentId: string): boolean {
-      return supportsNativeSessionDelete(agentId);
+      return (
+        isAgentDepthCapabilityAvailable(agentId, "sessions") &&
+        supportsNativeSessionDelete(agentId)
+      );
     },
 
     async delete(agentId: string, sessionId: string): Promise<void> {
+      requireSessionCapability(agentId);
       assertSessionId(sessionId);
       if (agentId === "codex") {
         await codexAdapter.delete(sessionId);
@@ -1314,6 +1328,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
       sessionId: string,
       input: AgentSessionDetailPageInput = {},
     ): Promise<AgentSessionDetail> {
+      requireSessionCapability(agentId);
       assertSessionId(sessionId);
       if (agentId === "claude") {
         const file = (await scanClaudeFiles(claudeProjectsRoot)).find(

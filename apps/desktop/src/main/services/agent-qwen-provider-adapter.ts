@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import {
   applyEdits,
@@ -164,7 +165,7 @@ function requireContext(context: AgentProviderAdapterContext): QwenPaths {
   }
   const rootPath = path.resolve(context.rootPath);
   return {
-    settingsPath: path.join(rootPath, "settings.json"),
+    settingsPath: path.join(rootPath, getAgentPrimaryModelConfigPath("qwen")),
     envPath: path.join(rootPath, ".env"),
     bundlePath: path.join(rootPath, "provider-bundle.json"),
   };
@@ -282,7 +283,7 @@ function comparableState(
       envKey: active.envKey,
       authOwnership: active.authOwnership,
       credentialStatus: active.credentialStatus,
-      sourceRelativePath: "settings.json + .env",
+      sourceRelativePath: `${getAgentPrimaryModelConfigPath("qwen")} + .env`,
     },
   };
 }

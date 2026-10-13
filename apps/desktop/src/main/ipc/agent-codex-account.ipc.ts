@@ -5,7 +5,8 @@ import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 
 import type { AgentCodexAccountService } from "../services/agent-codex-account-service";
 
-const PUBLIC_ERROR = /^AGENT_CODEX_ACCOUNT_[A-Z0-9_]+$/;
+const PUBLIC_ERROR =
+  /^(AGENT_CODEX_ACCOUNT_[A-Z0-9_]+|AGENT_PROVIDER_ADAPTER_UNSUPPORTED)$/;
 
 function registerSafeHandler(
   channel: string,

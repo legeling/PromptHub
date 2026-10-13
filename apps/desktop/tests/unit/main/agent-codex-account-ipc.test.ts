@@ -68,6 +68,8 @@ describe("Agent Codex account IPC", () => {
 
   it("passes public account errors and redacts unexpected failures", async () => {
     const { handlers, IPC_CHANNELS, service } = await setup();
+    service.activate.mockRejectedValueOnce(new Error("AGENT_PROVIDER_ADAPTER_UNSUPPORTED"));
+    await expect(handlers[IPC_CHANNELS.AGENT_CODEX_ACCOUNT_ACTIVATE](null, "disabled")).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
     service.activate.mockRejectedValueOnce(
       new Error("AGENT_CODEX_ACCOUNT_NOT_FOUND"),
     );

@@ -8,6 +8,7 @@
     "./types": "./types/index.ts",
     "./types/*": "./types/*.ts",
     "./constants": "./constants/index.ts",
+    "./constants/agent-definitions": "./constants/agent-definitions/index.ts",
     "./constants/*": "./constants/*.ts",
     "./utils/*": "./utils/*.ts"
   },

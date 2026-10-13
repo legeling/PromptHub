@@ -8,6 +8,8 @@ import {
 } from "jsonc-parser";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { parseDocument } from "yaml";
+import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
+import { getAgentModelConfigPaths, getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import type {
   AgentCredentialStatus,
@@ -41,25 +43,9 @@ interface UpdateOptions {
 
 type JsonRecord = Record<string, unknown>;
 
-const JSON_ADAPTER_PATHS: Record<string, string[]> = {
-  antigravity: ["settings.json"],
-  autoclaw: ["setting.json"],
-  claude: ["settings.json"],
-  copilot: ["settings.json"],
-  gemini: ["settings.json"],
-  pi: ["settings.json"],
-  qwen: ["settings.json"],
-  opencode: ["opencode.jsonc", "opencode.json"],
-  openclaw: ["openclaw.json"],
-  qclaw: ["openclaw.json"],
-  qoder: ["settings.json"],
-  kiro: ["settings/cli.json"],
-};
 const OH_MY_PI_MODEL_ADAPTER = "oh-my-pi-yaml-v1";
-const OH_MY_PI_CONFIG_PATHS = ["config.yml", "config.yaml"] as const;
 const OH_MY_PI_MODELS_PATH = "models.yml";
 const HERMES_MODEL_ADAPTER = "hermes-yaml-v1";
-const HERMES_CONFIG_PATH = "config.yaml";
 const COPAW_MODEL_ADAPTER = "copaw-active-agent-v1";
 const MAX_MODEL_LENGTH = 512;
 const SAFE_CHILD_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -137,13 +123,14 @@ async function resolveJsonConfigPath(
   agentId: string,
   rootPath: string,
 ): Promise<{ absolutePath: string; relativePath: string } | null> {
-  const candidates = JSON_ADAPTER_PATHS[agentId];
-  if (!candidates) return null;
+  const modelConfig = getAgentDefinitionById(agentId)?.modelConfig;
+  if (!modelConfig || modelConfig.format !== "json") return null;
+  const candidates = getAgentModelConfigPaths(agentId);
   for (const relativePath of candidates) {
     const absolutePath = path.join(rootPath, relativePath);
     if (await fileExists(absolutePath)) return { absolutePath, relativePath };
   }
-  const relativePath = candidates[0];
+  const relativePath = getAgentPrimaryModelConfigPath(agentId);
   return { absolutePath: path.join(rootPath, relativePath), relativePath };
 }
 
@@ -187,11 +174,12 @@ function serializeYamlDocument(
 async function resolveOhMyPiConfigPath(
   rootPath: string,
 ): Promise<{ absolutePath: string; relativePath: string }> {
-  for (const relativePath of OH_MY_PI_CONFIG_PATHS) {
+  const candidates = getAgentModelConfigPaths("oh-my-pi");
+  for (const relativePath of candidates) {
     const absolutePath = path.join(rootPath, relativePath);
     if (await fileExists(absolutePath)) return { absolutePath, relativePath };
   }
-  const relativePath = OH_MY_PI_CONFIG_PATHS[0];
+  const relativePath = getAgentPrimaryModelConfigPath("oh-my-pi");
   return { absolutePath: path.join(rootPath, relativePath), relativePath };
 }
 
@@ -641,7 +629,7 @@ function inspectCodex(data: JsonRecord): AgentModelConfiguration {
     endpoint: sanitizeEndpoint(getString(providerConfig, "base_url")),
     availableModels,
     credentialStatus: "platform-managed",
-    sourceRelativePath: "config.toml",
+    sourceRelativePath: getAgentPrimaryModelConfigPath("codex"),
     canSetModel: true,
     formattingMayChange: true,
   });
@@ -672,7 +660,7 @@ function inspectKimi(data: JsonRecord): AgentModelConfiguration {
       ["api_key"],
       managedCredential,
     ),
-    sourceRelativePath: "config.toml",
+    sourceRelativePath: getAgentPrimaryModelConfigPath("kimi"),
     canSetModel: true,
     formattingMayChange: true,
   });
@@ -704,7 +692,7 @@ function inspectHermes(data: JsonRecord): AgentModelConfiguration {
     credentialStatus: getString(modelConfig, "api_key")
       ? "configured"
       : "platform-managed",
-    sourceRelativePath: HERMES_CONFIG_PATH,
+    sourceRelativePath: getAgentPrimaryModelConfigPath("hermes"),
     canSetModel: true,
     formattingMayChange: true,
   });
@@ -740,7 +728,10 @@ function copawWorkspaceFromConfig(
 async function resolveCopawModelTarget(
   rootPath: string,
 ): Promise<CopawModelTarget> {
-  const configPath = path.join(rootPath, "config.json");
+  const configPath = path.join(
+    rootPath,
+    getAgentPrimaryModelConfigPath("copaw"),
+  );
   const config = parseJsonRecord(await readTextConfig(configPath));
   const { workspacePath } = copawWorkspaceFromConfig(rootPath, config);
   const [realRoot, realWorkspace] = await Promise.all([
@@ -784,11 +775,12 @@ export async function inspectAgentModelConfig(
   context: AgentModelContext,
 ): Promise<AgentModelConfiguration> {
   if (context.agentId === "copaw") {
-    const configPath = path.join(context.rootPath, "config.json");
+    const relativePath = getAgentPrimaryModelConfigPath(context.agentId);
+    const configPath = path.join(context.rootPath, relativePath);
     if (!(await fileExists(configPath))) {
       return emptyResult("copaw", "missing", {
         adapter: COPAW_MODEL_ADAPTER,
-        sourceRelativePath: "config.json",
+        sourceRelativePath: relativePath,
       });
     }
     try {
@@ -807,18 +799,19 @@ export async function inspectAgentModelConfig(
     } catch {
       return emptyResult("copaw", "invalid", {
         adapter: COPAW_MODEL_ADAPTER,
-        sourceRelativePath: "config.json",
+        sourceRelativePath: relativePath,
         errorCode: "AGENT_MODEL_CONFIG_INVALID",
       });
     }
   }
 
   if (context.agentId === "hermes") {
-    const configPath = path.join(context.rootPath, HERMES_CONFIG_PATH);
+    const relativePath = getAgentPrimaryModelConfigPath(context.agentId);
+    const configPath = path.join(context.rootPath, relativePath);
     if (!(await fileExists(configPath))) {
       return emptyResult("hermes", "missing", {
         adapter: HERMES_MODEL_ADAPTER,
-        sourceRelativePath: HERMES_CONFIG_PATH,
+        sourceRelativePath: relativePath,
         canSetModel: true,
         formattingMayChange: true,
       });
@@ -828,7 +821,7 @@ export async function inspectAgentModelConfig(
     } catch {
       return emptyResult("hermes", "invalid", {
         adapter: HERMES_MODEL_ADAPTER,
-        sourceRelativePath: HERMES_CONFIG_PATH,
+        sourceRelativePath: relativePath,
         errorCode: "AGENT_MODEL_CONFIG_INVALID",
         formattingMayChange: true,
       });
@@ -838,11 +831,12 @@ export async function inspectAgentModelConfig(
   if (context.agentId === "codex" || context.agentId === "kimi") {
     const agentId = context.agentId;
     const adapter = agentId === "codex" ? "codex-toml-v1" : "kimi-code-toml-v1";
-    const configPath = path.join(context.rootPath, "config.toml");
+    const relativePath = getAgentPrimaryModelConfigPath(agentId);
+    const configPath = path.join(context.rootPath, relativePath);
     if (!(await fileExists(configPath))) {
       return emptyResult(agentId, "missing", {
         adapter,
-        sourceRelativePath: "config.toml",
+        sourceRelativePath: relativePath,
         canSetModel: true,
         formattingMayChange: true,
       });
@@ -855,7 +849,7 @@ export async function inspectAgentModelConfig(
     } catch {
       return emptyResult(agentId, "invalid", {
         adapter,
-        sourceRelativePath: "config.toml",
+        sourceRelativePath: relativePath,
         canSetModel: false,
         formattingMayChange: true,
         errorCode: "AGENT_MODEL_CONFIG_INVALID",
@@ -1071,7 +1065,10 @@ async function updateHermesModel(
   model: string,
   options: UpdateOptions,
 ): Promise<UpdateAgentModelResult> {
-  const targetPath = path.join(context.rootPath, HERMES_CONFIG_PATH);
+  const targetPath = path.join(
+    context.rootPath,
+    getAgentPrimaryModelConfigPath("hermes"),
+  );
   const exists = await fileExists(targetPath);
   const original = exists ? await readTextConfig(targetPath) : null;
   const raw = original ?? "{}\n";
@@ -1201,7 +1198,10 @@ export async function updateAgentModelConfig(
   }
 
   if (context.agentId === "codex" || context.agentId === "kimi") {
-    const targetPath = path.join(context.rootPath, "config.toml");
+    const targetPath = path.join(
+      context.rootPath,
+      getAgentPrimaryModelConfigPath(context.agentId),
+    );
     let data: JsonRecord = {};
     let original: string | null = null;
     if (await fileExists(targetPath)) {

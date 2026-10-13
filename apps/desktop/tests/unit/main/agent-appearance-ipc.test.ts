@@ -65,6 +65,33 @@ async function setup() {
 }
 
 describe("Agent appearance IPC", () => {
+  it("blocks disabled appearance before opening dialogs or using the pet store", async () => {
+    const { handlers, IPC_CHANNELS } = await setup();
+    const { getAgentDefinitionById } = await import("@prompthub/shared/constants/agent-definitions");
+    const definition = getAgentDefinitionById("codex");
+    if (!definition) throw new Error("Missing Codex fixture");
+    const capability = definition.capabilities.appearance;
+    const enabled = capability.enabled;
+    capability.enabled = false;
+    try {
+      for (const channel of [
+        IPC_CHANNELS.AGENT_APPEARANCE_GET,
+        IPC_CHANNELS.AGENT_APPEARANCE_IMPORT_THEME,
+        IPC_CHANNELS.AGENT_APPEARANCE_IMPORT_PET,
+      ]) {
+        await expect(handlers[channel](null, "codex")).rejects.toThrow("AGENT_APPEARANCE_UNSUPPORTED");
+      }
+      await expect(handlers[IPC_CHANNELS.AGENT_APPEARANCE_PET_STORE_LIST](null, {})).rejects.toThrow("AGENT_APPEARANCE_UNSUPPORTED");
+      expect(showOpenDialogMock).not.toHaveBeenCalled();
+      expect(getOverviewMock).not.toHaveBeenCalled();
+      expect(importThemeMock).not.toHaveBeenCalled();
+      expect(importPetMock).not.toHaveBeenCalled();
+      expect(listPetStoreMock).not.toHaveBeenCalled();
+    } finally {
+      capability.enabled = enabled;
+    }
+  });
+
   beforeEach(() => {
     showOpenDialogMock.mockReset();
     getOverviewMock.mockReset();

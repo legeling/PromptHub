@@ -2,6 +2,7 @@ import path from "node:path";
 import { access } from "node:fs/promises";
 import { app, ipcMain, safeStorage, shell } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 import type {
   AgentPiCustomModelInput,
   AgentPiCustomModelUpdateInput,
@@ -51,6 +52,9 @@ function requirePiAgentId(value: unknown): string {
   const agentId = Reflect.get(value, "agentId");
   if (agentId !== "pi") {
     throw new Error("Agent Pi writes only apply to the pi platform");
+  }
+  if (!isAgentDepthCapabilityAvailable(agentId, "providerModel")) {
+    throw new Error("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
   }
   return agentId;
 }
@@ -373,7 +377,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
   ipcMain.handle(
     IPC_CHANNELS.AGENT_PI_PROVIDER_ADD,
     async (_, input: unknown) => {
-      const context = getAgentConfigContext(requirePiAgentId(input));
+      const context = resolveAgentProviderContext(requirePiAgentId(input));
       return addPiCustomProvider(
         context.rootPath,
         requirePiProviderInput(input),
@@ -385,7 +389,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
   ipcMain.handle(
     IPC_CHANNELS.AGENT_PI_PROVIDER_IMPORT_CURRENT,
     async (_, input: unknown) => {
-      const context = getAgentConfigContext(requirePiAgentId(input));
+      const context = resolveAgentProviderContext(requirePiAgentId(input));
       return importCurrentPiProvider(context.rootPath, {
         backupRoot: piBackupRoot(),
       });
@@ -396,7 +400,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
     IPC_CHANNELS.AGENT_PI_PROVIDER_UPDATE,
     async (_, input: unknown) => {
       const payload = requirePiProviderUpdate(input);
-      const context = getAgentConfigContext("pi");
+      const context = resolveAgentProviderContext("pi");
       return updatePiCustomProvider(context.rootPath, payload, {
         backupRoot: piBackupRoot(),
       });
@@ -407,7 +411,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
     IPC_CHANNELS.AGENT_PI_PROVIDER_REMOVE,
     async (_, input: unknown) => {
       const payload = requirePiProviderTarget(input);
-      const context = getAgentConfigContext(payload.agentId);
+      const context = resolveAgentProviderContext(payload.agentId);
       return removePiCustomProvider(context.rootPath, payload.providerId, {
         backupRoot: piBackupRoot(),
       });
@@ -416,7 +420,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
 
   ipcMain.handle(IPC_CHANNELS.AGENT_PI_MODEL_ADD, async (_, input: unknown) => {
     const payload = requirePiModelTarget(input, true);
-    const context = getAgentConfigContext(payload.agentId);
+    const context = resolveAgentProviderContext(payload.agentId);
     return addPiCustomModel(
       context.rootPath,
       payload.providerId,
@@ -429,7 +433,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
     IPC_CHANNELS.AGENT_PI_MODEL_UPDATE,
     async (_, input: unknown) => {
       const payload = requirePiModelUpdate(input);
-      const context = getAgentConfigContext(payload.agentId);
+      const context = resolveAgentProviderContext(payload.agentId);
       return updatePiCustomModel(
         context.rootPath,
         payload.providerId,
@@ -443,7 +447,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
     IPC_CHANNELS.AGENT_PI_MODEL_REMOVE,
     async (_, input: unknown) => {
       const payload = requirePiModelTarget(input, false);
-      const context = getAgentConfigContext(payload.agentId);
+      const context = resolveAgentProviderContext(payload.agentId);
       return removePiCustomModel(
         context.rootPath,
         payload.providerId,
@@ -457,7 +461,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
     IPC_CHANNELS.AGENT_PI_MODEL_TEST,
     async (_, input: unknown) => {
       const payload = requirePiModelTarget(input, false);
-      const context = getAgentConfigContext(payload.agentId);
+      const context = resolveAgentProviderContext(payload.agentId);
       return testPiModel(
         context.rootPath,
         { providerId: payload.providerId, modelId: payload.modelId },
@@ -470,7 +474,7 @@ export function registerAgentIPC(options: RegisterAgentIPCOptions = {}): void {
     IPC_CHANNELS.AGENT_PI_CREDENTIAL_SET,
     async (_, input: unknown) => {
       const payload = requirePiCredentialInput(input);
-      const context = getAgentConfigContext(payload.agentId);
+      const context = resolveAgentProviderContext(payload.agentId);
       return setPiCredential(
         context.rootPath,
         payload.providerId,

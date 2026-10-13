@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
@@ -105,7 +106,6 @@ interface KimiBackupBundle {
 }
 
 const ADAPTER_VERSION = "kimi-provider-profile-v1";
-const CONFIG_FILE_NAME = "config.toml";
 const BUNDLE_FILE_NAME = "provider-config.toml";
 const MAX_NAME_LENGTH = 80;
 const MAX_MODEL_LENGTH = 512;
@@ -183,7 +183,7 @@ function requireContext(context: AgentProviderAdapterContext): string {
   ) {
     throw new Error("AGENT_KIMI_PROVIDER_CONTEXT_INVALID");
   }
-  return path.join(path.resolve(context.rootPath), CONFIG_FILE_NAME);
+  return path.join(path.resolve(context.rootPath), getAgentPrimaryModelConfigPath("kimi"));
 }
 
 function digest(raw: string | null): string {
@@ -275,7 +275,7 @@ function comparableState(
       maxContextSize: active.maxContextSize,
       authOwnership: active.authOwnership,
       credentialStatus: active.credentialStatus,
-      sourceRelativePath: CONFIG_FILE_NAME,
+      sourceRelativePath: getAgentPrimaryModelConfigPath("kimi"),
     },
   };
 }

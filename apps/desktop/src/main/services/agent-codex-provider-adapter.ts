@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import { parse as parseToml } from "smol-toml";
 
@@ -119,7 +120,6 @@ interface ParsedCodexModelMapping {
 }
 
 const ADAPTER_VERSION = "codex-provider-profile-v2";
-const CONFIG_FILE_NAME = "config.toml";
 const PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9-_]*$/;
 const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const RESERVED_CUSTOM_PROVIDER_IDS = new Set(["openai", "ollama", "lmstudio"]);
@@ -180,7 +180,7 @@ function requireContext(context: AgentProviderAdapterContext): string {
     throw new Error("AGENT_CODEX_PROVIDER_CONTEXT_INVALID");
   }
   const root = path.resolve(context.rootPath);
-  return path.resolve(root, CONFIG_FILE_NAME);
+  return path.resolve(root, getAgentPrimaryModelConfigPath("codex"));
 }
 
 function nativeDigest(raw: string | null): string {
@@ -232,7 +232,7 @@ function comparableState(
           : envKey
             ? "environment"
             : "missing",
-    sourceRelativePath: CONFIG_FILE_NAME,
+    sourceRelativePath: getAgentPrimaryModelConfigPath("codex"),
   };
   return {
     platformId: "codex",

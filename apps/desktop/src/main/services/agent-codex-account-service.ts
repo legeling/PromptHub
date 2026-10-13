@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import type {
   AgentCodexAccountActivationResult,
@@ -12,6 +13,12 @@ const MAX_ACCOUNTS = 32;
 const MAX_AUTH_BYTES = 256 * 1024;
 const MAX_LABEL_LENGTH = 80;
 const mutationTails = new Map<string, Promise<void>>();
+
+function requireCodexProviderCapability(): void {
+  if (!isAgentDepthCapabilityAvailable("codex", "providerModel")) {
+    throw new Error("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+  }
+}
 
 export interface AgentCodexAccountServiceEncryption {
   isEncryptionAvailable(): boolean;
@@ -187,6 +194,7 @@ export function createAgentCodexAccountService(
     },
 
     async saveCurrent(label) {
+      requireCodexProviderCapability();
       return enqueueMutation(options.vaultPath, async () => {
         const parsed = await readCurrent();
         if (!parsed) {
@@ -197,12 +205,14 @@ export function createAgentCodexAccountService(
     },
 
     async importAccount(request) {
+      requireCodexProviderCapability();
       return enqueueMutation(options.vaultPath, () =>
         importWithinMutation(request),
       );
     },
 
     async activate(id) {
+      requireCodexProviderCapability();
       return enqueueMutation(options.vaultPath, async () => {
         const accountId = requireId(id);
         const vault = await loadVault();

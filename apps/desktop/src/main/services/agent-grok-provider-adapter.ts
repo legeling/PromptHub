@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
@@ -95,7 +96,6 @@ interface DesiredGrokProvider {
 }
 
 const ADAPTER_VERSION = "grok-provider-profile-v1";
-const CONFIG_FILE_NAME = "config.toml";
 const MAX_NAME_LENGTH = 80;
 const MAX_MODEL_LENGTH = 512;
 const MAX_CONTEXT_WINDOW = 10_000_000;
@@ -164,7 +164,7 @@ function requireContext(context: AgentProviderAdapterContext): string {
   ) {
     throw new Error("AGENT_GROK_PROVIDER_CONTEXT_INVALID");
   }
-  return path.join(path.resolve(context.rootPath), CONFIG_FILE_NAME);
+  return path.join(path.resolve(context.rootPath), getAgentPrimaryModelConfigPath("grok"));
 }
 
 function digest(raw: string | null): string {
@@ -243,7 +243,7 @@ function comparableState(
       envKey: active.envKey,
       authOwnership: active.authOwnership,
       credentialStatus: active.credentialStatus,
-      sourceRelativePath: CONFIG_FILE_NAME,
+      sourceRelativePath: getAgentPrimaryModelConfigPath("grok"),
     },
   };
 }

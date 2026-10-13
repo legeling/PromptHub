@@ -13,6 +13,13 @@
 
 ## Stable Asset Rules
 
+- 模型主配置的格式、相对路径优先级与默认根偏移由各 Agent 定义的
+  `modelConfig` 维护。该字段只收口既有模型入口，不更改平台资产根、原生格式、
+  辅助凭据/模型目录或用户文件；无持久化迁移，源码回退即可撤销收口。
+  所有完整 Provider adapter、模型读取和相关额度读取共用该声明。OpenCode
+  的既有原生候选顺序为 `opencode.jsonc`、`opencode.json`、`config.json`，
+  备份路径验证同样读取这一声明，不另存候选清单。
+
 2026-09-28：Agent 历史根回退、配置别名与跨产品降级按
 [当前契约要求](../../changes/active/agent-management-workbench/specs/agent-management/spec.md#fr-agent-138-one-current-contract-per-agent-capability) 收敛，实施待完成。
 下文上游产品自己的格式/作用域优先级属于参考证据，不自动授权 PromptHub 实现降级。
@@ -21,12 +28,12 @@ Antigravity 桌面与 CLI 的全局 Skill 目录分别为 `.gemini/config/skills
 [官方 Skills 文档](https://antigravity.google/docs/skills)（本日核对）及 FR-AGENT-021 修正。
 
 - 本文档记录的是长期稳定的平台资产清单，不是单次变更 proposal。
-- 当 `packages/shared/constants/platforms.ts` 中的平台根目录、默认规则文件或配置文件发生稳定变化时，应同步更新本文档。
+- 当 `packages/shared/constants/agent-definitions/<agent-id>.ts` 中的平台根目录、默认规则文件或配置文件发生稳定变化时，应同步更新本文档；`platforms.ts` 仅保留派生注册表与路径查询入口。
 - 当 `packages/shared/constants/rules.ts` 中的全局规则支持集合发生稳定变化时，应同步更新本文档中的 `Rules Support Snapshot`。
 - 对没有公开官方文档、正文不可抓取、或当前只能通过产品 UI/登录后页面确认的平台，必须明确标注为 `PromptHub inferred` 或 `Evidence limited`。
 - 对于“功能存在但本轮未拿到明确本地路径”的资产，可以记录为“feature documented, local path not confirmed in current pass”，不要伪装成已确认路径。
 - 内置平台 id 必须唯一；平台图标不得用相同的通用 fallback 冒充不同品牌。能够确认来源时，优先使用官方 mark 或 favicon，并在本节记录来源。
-- `packages/shared/constants/agent-platform-capabilities.ts` 是平台能力状态的 machine-readable 投影：深度 adapter 必须逐个平台显式声明，路径/资产/launch 能力只能从 `packages/shared/constants/platforms.ts` 派生，不得另建 id allowlist 或复制路径事实。
+- `packages/shared/constants/agent-definitions/<agent-id>.ts` 是内置平台身份、路径和深度能力的唯一产品声明；`agent-platform-capabilities.ts` 只投影有效产品状态，`platforms.ts` 只投影平台列表。深度 adapter 的 `enabled` 与 `status` / `evidence` 分离，关闭产品能力不覆盖已有适配程度；路径/资产/launch 能力由同一份声明路径派生，不得另建 id allowlist 或复制路径事实。
 - 平台能力状态只允许 `supported`、`partial`、`planned`、`unsupported`，并必须携带证据代码。已声明路径只证明可定位资产，不能单独证明配置协议、会话格式、额度端点或维护命令已经受支持。
 - 自定义 Agent 可以从自身根目录和派生路径获得路径级能力，但不得因为目录名相似而继承内置 Agent 的 Provider、Session、Usage 或 Appearance adapter。
 
@@ -68,8 +75,8 @@ Kimi 与 Auggie 不共享 Sparkles/Sparkle 通用图标；即使品牌资源加�
 
 ## Internal CLI Probe Snapshot
 
-`packages/shared/constants/platforms.ts` is the only executable-descriptor
-source of truth. PromptHub retains an internal read-only version probe
+`packages/shared/constants/agent-definitions/<agent-id>.ts` owns executable
+descriptors; `platforms.ts` exposes the derived registry. PromptHub retains an internal read-only version probe
 for the following evidence-backed built-ins:
 
 | Platform         | Executable | Version arguments | Capability |

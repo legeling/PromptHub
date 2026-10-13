@@ -7,6 +7,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AgentSessionIndexDB } from "@prompthub/db";
+import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
 import Database from "../../../src/main/database/sqlite";
 import { SCHEMA } from "../../../src/main/database/schema";
 import { createAgentSessionIndexService } from "../../../src/main/services/agent-session-index-service";
@@ -210,6 +211,27 @@ describe("Agent session index service", () => {
     expect(JSON.stringify(stored)).not.toContain(
       "Review the session index token sk-secret",
     );
+  });
+
+  it("does not bypass a disabled session switch through persisted index rows", async () => {
+    const transcript = await writeClaudeSession(homeDir, "workspace", SESSION_A, claudeLine(SESSION_A, "Keep indexed history"));
+    service.setEnabled("claude", true);
+    await service.refresh("claude");
+    expect((await service.list("claude", { limit: 10 })).total).toBe(1);
+    const definition = getAgentDefinitionById("claude");
+    if (!definition) throw new Error("Missing Claude fixture");
+    const capability = definition.capabilities.sessions;
+    const enabled = capability.enabled;
+    capability.enabled = false;
+    try {
+      expect(service.getState("claude")).toEqual({ supported: false, enabled: false, source: null });
+      await expect(service.list("claude", { limit: 10 })).rejects.toThrow("AGENT_SESSION_UNSUPPORTED");
+      await expect(service.refresh("claude")).rejects.toThrow("AGENT_SESSION_INDEX_UNSUPPORTED");
+      expect(await fs.readFile(transcript, "utf8")).toContain("Keep indexed history");
+    } finally {
+      capability.enabled = enabled;
+    }
+    expect((await service.list("claude", { limit: 10 })).total).toBe(1);
   });
 
   it("removes deleted native sessions from the optional local index", async () => {

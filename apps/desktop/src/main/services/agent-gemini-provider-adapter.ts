@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import {
   applyEdits,
@@ -166,7 +167,7 @@ function requireContext(context: AgentProviderAdapterContext): GeminiPaths {
   const rootPath = path.resolve(context.rootPath);
   return {
     rootPath,
-    settingsPath: path.join(rootPath, "settings.json"),
+    settingsPath: path.join(rootPath, getAgentPrimaryModelConfigPath("gemini")),
     envPath: path.join(rootPath, ".env"),
     bundlePath: path.join(rootPath, "provider-bundle.json"),
   };
@@ -225,7 +226,7 @@ function comparableState(
         managed && env.has("GEMINI_API_KEY")
           ? "configured"
           : "platform-managed",
-      sourceRelativePath: "settings.json + .env",
+      sourceRelativePath: `${getAgentPrimaryModelConfigPath("gemini")} + .env`,
     },
   };
 }

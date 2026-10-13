@@ -24,7 +24,10 @@ import {
   createAgentModelProviderAdapter,
 } from "./agent-model-provider-adapter";
 import { createAgentOpenCodeProviderAdapter } from "./agent-opencode-provider-adapter";
-import { resolveAgentProviderContext } from "./agent-platform-context";
+import {
+  getAgentConfigContext,
+  resolveAgentProviderContext,
+} from "./agent-platform-context";
 import { createAgentProviderActivationRepository } from "./agent-provider-activation-repository";
 import { AgentProviderProfileService } from "./agent-provider-profile-service";
 import { resolveAgentSessionIndexSource } from "./agent-session-index-operations";
@@ -70,7 +73,7 @@ export function createAgentProviderRuntime({
     userDataPath,
     encryption,
   });
-  const codexRoot = resolveAgentProviderContext("codex").rootPath;
+  const codexRoot = getAgentConfigContext("codex").rootPath;
   const codexAccountService = createAgentCodexAccountService({
     authPath: path.join(codexRoot, "auth.json"),
     vaultPath: path.join(userDataPath, "agent-codex-accounts.json"),

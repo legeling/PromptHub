@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import type { Dirent, Stats } from "node:fs";
 import path from "node:path";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import type {
   AgentAppearanceActionResult,
@@ -9,6 +10,12 @@ import type {
   AgentPetSummary,
   UpdateAgentPetInput,
 } from "@prompthub/shared/types";
+
+function requireAppearanceCapability(): void {
+  if (!isAgentDepthCapabilityAvailable("codex", "appearance")) {
+    throw new Error("AGENT_APPEARANCE_UNSUPPORTED");
+  }
+}
 
 const DEFAULT_MAX_PET_IMAGE_BYTES = 20 * 1024 * 1024;
 const SAFE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -195,6 +202,7 @@ export class AgentAppearanceService {
   }
 
   async getOverview(): Promise<AgentAppearanceOverview> {
+    requireAppearanceCapability();
     await this.seedBundledThemes();
     const [themeResult, petResult, state] = await Promise.all([
       this.listThemes(),
@@ -223,6 +231,7 @@ export class AgentAppearanceService {
   }
 
   async importTheme(sourcePath: string): Promise<AgentDesktopThemeSummary> {
+    requireAppearanceCapability();
     const sourceStat = await fs.lstat(sourcePath);
     if (sourceStat.isSymbolicLink()) {
       throw new Error("Theme directory must not be a symlink");
@@ -278,6 +287,7 @@ export class AgentAppearanceService {
   }
 
   async deleteTheme(themeId: string): Promise<void> {
+    requireAppearanceCapability();
     const state = await this.readState();
     if (state.activeThemeId === themeId) {
       throw new Error("Restore the active theme before deleting it");
@@ -288,6 +298,7 @@ export class AgentAppearanceService {
   }
 
   async exportTheme(themeId: string, destinationDir: string): Promise<string> {
+    requireAppearanceCapability();
     const theme = await this.requireTheme(themeId);
     await fs.mkdir(destinationDir, { recursive: true });
     const targetPath = path.join(destinationDir, theme.id);
@@ -321,6 +332,7 @@ export class AgentAppearanceService {
   }
 
   async getThemePreview(themeId: string): Promise<string | null> {
+    requireAppearanceCapability();
     const theme = await this.requireTheme(themeId);
     const bundle = await this.options.engine.readThemePackage(
       theme.directoryPath,
@@ -332,6 +344,7 @@ export class AgentAppearanceService {
     themeId: string,
     restartExisting = false,
   ): Promise<AgentAppearanceActionResult> {
+    requireAppearanceCapability();
     const theme = await this.requireTheme(themeId);
     const bundle = await this.options.engine.readThemePackage(
       theme.directoryPath,
@@ -350,12 +363,14 @@ export class AgentAppearanceService {
   }
 
   async restoreTheme(): Promise<AgentAppearanceActionResult> {
+    requireAppearanceCapability();
     await this.options.engine.restoreTheme();
     await this.writeState({ activeThemeId: null });
     return { success: true, activeThemeId: null };
   }
 
   async importPet(sourceDir: string): Promise<AgentPetSummary> {
+    requireAppearanceCapability();
     const sourceStat = await fs.lstat(sourceDir);
     if (sourceStat.isSymbolicLink()) {
       throw new Error("Pet directory must not be a symlink");
@@ -392,6 +407,7 @@ export class AgentAppearanceService {
   }
 
   async exportPet(petId: string, destinationDir: string): Promise<string> {
+    requireAppearanceCapability();
     assertSafeId(petId, "Pet");
     const parsed = await this.requirePet(petId);
     const targetDir = path.join(destinationDir, petId);
@@ -420,6 +436,7 @@ export class AgentAppearanceService {
   async updatePetMetadata(
     input: UpdateAgentPetInput,
   ): Promise<AgentPetSummary> {
+    requireAppearanceCapability();
     if (input.agentId !== "codex") {
       throw new Error("Appearance is only supported for Codex");
     }
@@ -441,6 +458,7 @@ export class AgentAppearanceService {
   }
 
   async deletePet(petId: string): Promise<void> {
+    requireAppearanceCapability();
     assertSafeId(petId, "Pet");
     const parsed = await this.requirePet(petId);
     ensureContained(this.petDir, parsed.summary.directoryPath, "Pet directory");
@@ -448,6 +466,7 @@ export class AgentAppearanceService {
   }
 
   async getPetPreview(petId: string): Promise<string> {
+    requireAppearanceCapability();
     assertSafeId(petId, "Pet");
     const parsed = await this.requirePet(petId);
     const bytes = await fs.readFile(parsed.spritesheetPath);

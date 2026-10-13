@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import {
   reconcileAgentProviderState,
@@ -43,26 +44,6 @@ export const AGENT_MODEL_PROVIDER_PLATFORM_IDS = SKILL_PLATFORMS.filter(
 const SUPPORTED_PLATFORM_IDS = new Set<string>(
   AGENT_MODEL_PROVIDER_PLATFORM_IDS,
 );
-const DEFAULT_CONFIG_PATHS: Record<string, string> = {
-  antigravity: "settings.json",
-  autoclaw: "setting.json",
-  claude: "settings.json",
-  copilot: "settings.json",
-  codex: "config.toml",
-  copaw: "config.json",
-  gemini: "settings.json",
-  grok: "config.toml",
-  hermes: "config.yaml",
-  kiro: "settings/cli.json",
-  kimi: "config.toml",
-  opencode: "opencode.jsonc",
-  pi: "settings.json",
-  openclaw: "openclaw.json",
-  qclaw: "openclaw.json",
-  qoder: "settings.json",
-  qwen: "settings.json",
-  "oh-my-pi": "config.yml",
-};
 
 function requireContext(
   platformId: string,
@@ -158,12 +139,10 @@ function desiredField(
 function resolvedTargetPath(
   context: AgentProviderAdapterContext,
   sourceRelativePath: string | null,
-  backupRef: string | null,
 ): string {
   const relativePath =
     sourceRelativePath ||
-    DEFAULT_CONFIG_PATHS[context.platformId] ||
-    (backupRef ? path.basename(backupRef) : undefined);
+    getAgentPrimaryModelConfigPath(context.platformId);
   if (
     !relativePath ||
     path.isAbsolute(relativePath) ||
@@ -350,7 +329,6 @@ export function createAgentModelProviderAdapter(
         const targetPath = resolvedTargetPath(
           context,
           current.sourceRelativePath,
-          receipt.backupRef,
         );
         if (receipt.backupRef) {
           assertBackupPath(options.backupRoot, receipt.backupRef);

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import {
   applyEdits,
@@ -98,7 +99,6 @@ interface DesiredClaudeProvider {
 }
 
 const ADAPTER_VERSION = "claude-provider-profile-v2";
-const CONFIG_FILE_NAME = "settings.json";
 const DEFAULT_ENDPOINT = "https://api.anthropic.com";
 const MAX_NAME_LENGTH = 80;
 const MAX_MODEL_LENGTH = 512;
@@ -168,7 +168,7 @@ function requireContext(context: AgentProviderAdapterContext): string {
     throw new Error("AGENT_CLAUDE_PROVIDER_CONTEXT_INVALID");
   }
   const root = path.resolve(context.rootPath);
-  return path.resolve(root, CONFIG_FILE_NAME);
+  return path.resolve(root, getAgentPrimaryModelConfigPath("claude"));
 }
 
 function digest(raw: string | null): string {
@@ -233,7 +233,7 @@ function comparableState(
       subagentModel: getString(env, MODEL_ROUTE_ENV_KEYS.subagent),
       credentialKind: credential.kind,
       credentialStatus: credential.status,
-      sourceRelativePath: CONFIG_FILE_NAME,
+      sourceRelativePath: getAgentPrimaryModelConfigPath("claude"),
     },
   };
 }

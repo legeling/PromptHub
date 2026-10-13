@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
+import { getAgentModelConfigPaths, getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
 import {
   reconcileAgentProviderState,
@@ -100,11 +101,6 @@ interface OpenCodeBackupBundle {
 }
 
 const ADAPTER_VERSION = "opencode-provider-profile-v1";
-const CONFIG_CANDIDATES = [
-  "opencode.jsonc",
-  "opencode.json",
-  "config.json",
-] as const;
 const PROVIDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const MAX_NAME_LENGTH = 80;
 const MAX_MODEL_LENGTH = 512;
@@ -160,13 +156,13 @@ async function resolvePaths(
   authPath?: string,
 ): Promise<OpenCodePaths> {
   const base = requireContext(context, authPath);
-  for (const relativePath of CONFIG_CANDIDATES) {
+  for (const relativePath of getAgentModelConfigPaths("opencode")) {
     const configPath = path.join(base.rootPath, relativePath);
     if (await fileExists(configPath)) {
       return { ...base, configPath, configRelativePath: relativePath };
     }
   }
-  const configRelativePath = CONFIG_CANDIDATES[0];
+  const configRelativePath = getAgentPrimaryModelConfigPath("opencode");
   return {
     ...base,
     configPath: path.join(base.rootPath, configRelativePath),
@@ -479,9 +475,8 @@ function parseBackup(raw: string): OpenCodeBackupBundle {
   if (
     !isJsonRecord(value) ||
     value.version !== 1 ||
-    !CONFIG_CANDIDATES.includes(
-      value.configRelativePath as (typeof CONFIG_CANDIDATES)[number],
-    ) ||
+    typeof value.configRelativePath !== "string" ||
+    !getAgentModelConfigPaths("opencode").includes(value.configRelativePath) ||
     (value.config !== null && typeof value.config !== "string") ||
     (value.auth !== null && typeof value.auth !== "string")
   ) {
