@@ -146,3 +146,52 @@ The JSON-only standalone CLI initialization/migration, device vault access and O
 remain incomplete, so #234 is in_progress and must not use Closes. SQLite
 foundation ownership conversion, full #203 sidecar/retention scope, entry import
 conflict workflows and Windows/Linux release acceptance remain separate gates.
+
+## MCP correction #235 — 2026-10-14
+
+The MCP history dialog reuses the existing Modal/confirmation components and
+theme tokens. Its local keyboard handler cycles plain Tab/Shift+Tab through
+enabled controls in DOM order, including initial container focus, without a
+global listener or changes to other dialogs. Modifier shortcuts remain native.
+Confirmation runs before the mutation busy state so cancellation can return
+focus to the enabled trigger; the parent handler does not intercept the separate
+confirmation portal.
+When a mutation disables the active control and Chromium moves focus to body,
+the local busy-state effect focuses the history dialog container; it leaves
+focus in other dialogs or controls untouched.
+
+`mcp-version-history-focus.test.tsx` covers forward/reverse wrapping, exclusion
+of disabled controls, modifier passthrough, confirmation focus and cancellation
+without restoring data, and confirmed restore dispatch with retained dialog
+focus. Its single scenario exceeds 50 lines because the fixture
+and the complete keyboard/confirmation sequence share one rendered dialog;
+splitting it would obscure the same-instance focus lifecycle. The original
+untrapped dialog failed the forward-focus assertion (exit 1). Isolated Electron
+also reproduced focus returning to body when the confirmation trigger was
+disabled before opening the confirmation.
+The repaired cancellation returned focus to the trigger in Electron, but a
+confirmed restore reproduced body focus after creating v6; the local busy-state
+focus restoration addresses that observed path as well.
+
+The independent HEAD-plus-owned-changes snapshot passes the focus regression
+and existing confirmation host tests (3 tests in 2 files), Desktop source/test
+typechecks, scoped lint and the main/preload/renderer build. Re-run commands:
+
+- `pnpm --dir apps/desktop exec vitest run --project unit --minWorkers=1 --maxWorkers=1 mcp-version-history-focus confirmation-host`
+- `pnpm --dir apps/desktop typecheck` and `pnpm --dir apps/desktop typecheck:tests`
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/ui/Modal.tsx src/renderer/components/mcp/McpVersionHistoryModal.tsx`
+- `pnpm --dir apps/desktop build`
+
+The component uses injected IPC results and a store reload stub; persistence is
+not inferred from those mocks. The independent Electron build passes forward/
+reverse Tab, disabled-control exclusion, confirmation focus, Escape cancellation
+with trigger focus and unchanged v6, confirmed v1 restoration creating v7, and
+retained dialog focus/Tab cycling afterward. The isolated Codex target file still
+contains only the original unrelated model/entry. The keyboard handler scans
+only the current page's controls linearly and performs no history or filesystem
+I/O. This is Desktop transient UI state only: no persistence, CLI or Web contract
+change. Other Modal consumers retain their default behavior.
+
+Owned GUI/browser sessions are closed, port 19485 is free, and isolated profiles,
+snapshots and logs were moved to recoverable Trash. Full packaged/cross-platform
+release acceptance and real MCP protocol connections were not run.

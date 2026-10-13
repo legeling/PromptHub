@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useId, useRef, useState } from "react";
+import type { KeyboardEventHandler } from "react";
 import { XIcon } from "lucide-react";
 import { clsx } from "clsx";
 import { createPortal } from "react-dom";
@@ -15,6 +16,7 @@ interface ModalProps {
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 }
 
 /**
@@ -47,6 +49,7 @@ export function Modal({
   showCloseButton = true,
   closeOnBackdrop = true,
   closeOnEscape = true,
+  onKeyDown,
 }: ModalProps) {
   const { t } = useTranslation();
   const titleId = useId();
@@ -187,6 +190,7 @@ export function Modal({
       <div
         ref={modalRef}
         role="dialog"
+        onKeyDown={onKeyDown}
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={title && subtitle ? subtitleId : undefined}

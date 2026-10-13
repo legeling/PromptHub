@@ -373,6 +373,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 ### 13. MCP Store Source And Update Boundaries
 
+- MCP 版本弹窗的普通 Tab / Shift+Tab 只在当前可用控件间循环；确认框独立管理焦点，取消后回到原操作按钮。确认前不禁用触发按钮，不改变其他弹窗的默认行为（#235）。
 - 已保存 MCP 缺少 description 时显示独立的空描述状态，不显示“先选择或保存”提示（#231）。
 - MCP 健康检查 UI 按稳定 issue code 和字段上下文翻译；Core/CLI 返回英文诊断，不把环境变量或凭据值拼入提示（#232）。健康检查仍是配置静态检查，不代表协议连接成功。
 - Codex MCP 卸载保留无关配置和用户注释；最后一项托管条目删除后必须移除完整的 PromptHub 开始/结束标记，重复分发/卸载不得累积孤立标记（#233）。

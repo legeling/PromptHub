@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   McpVersionComparison,
@@ -9,6 +10,34 @@ import { MCP_VERSION_PAGE_SIZE } from "@prompthub/shared/types/mcp";
 import { Modal } from "../ui/Modal";
 import { requestConfirmation } from "../ui/confirmation";
 import { useMcpStore } from "../../stores/mcp.store";
+
+function trapHistoryFocus(event: KeyboardEvent<HTMLDivElement>): void {
+  if (event.key !== "Tab" || event.ctrlKey || event.altKey || event.metaKey)
+    return;
+  const dialog = event.currentTarget;
+  const controls = Array.from(
+    dialog.querySelectorAll<HTMLButtonElement | HTMLTextAreaElement>(
+      "button, textarea",
+    ),
+  ).filter(
+    (control) => !control.disabled && !control.hidden && control.tabIndex >= 0,
+  );
+  const first = controls[0],
+    last = controls.at(-1);
+  if (!first || !last) {
+    event.preventDefault();
+    return;
+  }
+  const active = dialog.ownerDocument.activeElement;
+  if (
+    active === dialog ||
+    (event.shiftKey && active === first) ||
+    (!event.shiftKey && active === last)
+  ) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  }
+}
 
 export function McpVersionHistoryModal({
   serverId,
@@ -28,6 +57,17 @@ export function McpVersionHistoryModal({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    const document = content.ownerDocument;
+    // Disabling the active action during a mutation moves Chromium focus to body.
+    if (document.activeElement === document.body)
+      content
+        .closest<HTMLElement>('[role="dialog"]')
+        ?.focus({ preventScroll: true });
+  }, [busy]);
   useEffect(() => {
     let active = true;
     setBusy(true);
@@ -82,15 +122,15 @@ export function McpVersionHistoryModal({
       setNote(value.note ?? "");
       setComparison(null);
     });
-  const confirmed = (action: "restore" | "delete") =>
-    execute(async () => {
-      if (!detail) return;
-      const accepted = await requestConfirmation({
-        title: t(`mcp.history.${action}`),
-        message: t(`mcp.history.${action}Confirm`, { version: detail.version }),
-        variant: action === "delete" ? "destructive" : "default",
-      });
-      if (!accepted) return;
+  const confirmed = async (action: "restore" | "delete"): Promise<void> => {
+    if (!detail) return;
+    const accepted = await requestConfirmation({
+      title: t(`mcp.history.${action}`),
+      message: t(`mcp.history.${action}Confirm`, { version: detail.version }),
+      variant: action === "delete" ? "destructive" : "default",
+    });
+    if (!accepted) return;
+    await execute(async () => {
       if (action === "restore")
         await window.api.mcp.restoreVersion(serverId, detail.version);
       else await window.api.mcp.deleteVersion(serverId, detail.version);
@@ -98,6 +138,7 @@ export function McpVersionHistoryModal({
       setOffset(0);
       setRevision((v) => v + 1);
     });
+  };
   return (
     <Modal
       isOpen
@@ -106,8 +147,13 @@ export function McpVersionHistoryModal({
       }}
       title={t("mcp.history.title")}
       size="2xl"
+      onKeyDown={trapHistoryFocus}
     >
-      <div className="space-y-4 p-5" data-testid="mcp-version-history">
+      <div
+        ref={contentRef}
+        className="space-y-4 p-5"
+        data-testid="mcp-version-history"
+      >
         <p className="text-sm text-muted-foreground">{t("mcp.history.help")}</p>
         {error && (
           <p role="alert" className="text-sm text-destructive">
