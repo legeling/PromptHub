@@ -95,3 +95,14 @@ an isolated copy fails that assertion (exit 1). Core
 `mcp-health-language.test.ts` asserts codes and English diagnostics; the Core
 MCP/resource batch passes 102 tests. Isolated English Electron GUI shows the
 missing-command error. Health remains static validation, not a protocol handshake.
+
+## MCP correction #233 — 2026-10-13
+
+Shared Codex TOML removal preserves unrelated sections and comments and removes
+empty paired managed markers. `packages/core/tests/mcp-toml-cleanup.test.ts`
+performs three apply/remove cycles and checks exact retained content and no
+managed marker. Restoring the original removal in an isolated copy fails on
+the orphan opening marker (exit 1); the repaired cleanup/backup batch passes
+27 tests. Isolated Electron distribution/uninstall and process restart preserve
+the unrelated Codex entry and leave neither managed marker. Desktop and CLI
+consume the shared remover; Web's existing Agent MCP surface is read-only.

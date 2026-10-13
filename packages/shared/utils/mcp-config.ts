@@ -1228,6 +1228,11 @@ export function removeCodexMcpTomlServers(
   let skipping = false;
 
   for (const line of lines) {
+    if (line === MANAGED_BLOCK_START || line === MANAGED_BLOCK_END) {
+      if (line === MANAGED_BLOCK_END) skipping = false;
+      kept.push(line);
+      continue;
+    }
     const section = parseCodexMcpTomlSection(line);
     if (section) {
       skipping = names.has(section.serverName);
@@ -1238,12 +1243,21 @@ export function removeCodexMcpTomlServers(
       // A new table header ends the skipped section.
       skipping = false;
     }
-    if (!skipping) {
+    if (!skipping || /^\s*#/.test(line)) {
       kept.push(line);
     }
   }
 
-  return kept.join("\n").replace(/\n{3,}/g, "\n\n");
+  return kept
+    .join("\n")
+    .replace(
+      new RegExp(
+        `${escapeRegExp(MANAGED_BLOCK_START)}\\n\\s*${escapeRegExp(MANAGED_BLOCK_END)}\\n?`,
+        "g",
+      ),
+      "",
+    )
+    .replace(/\n{3,}/g, "\n\n");
 }
 
 /**

@@ -375,6 +375,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 - 已保存 MCP 缺少 description 时显示独立的空描述状态，不显示“先选择或保存”提示（#231）。
 - MCP 健康检查 UI 按稳定 issue code 和字段上下文翻译；Core/CLI 返回英文诊断，不把环境变量或凭据值拼入提示（#232）。健康检查仍是配置静态检查，不代表协议连接成功。
+- Codex MCP 卸载保留无关配置和用户注释；最后一项托管条目删除后必须移除完整的 PromptHub 开始/结束标记，重复分发/卸载不得累积孤立标记（#233）。
 - My MCP 的当前定义和版本以 `data/mcp/<server-id>/` 下的 canonical bundle
   为唯一真源；SQLite、renderer 状态以及 Agent/project 原生 MCP 文件都是派生投影。
   设备 binding 位于 `config/devices/mcp-bindings.json`。非空 literal `env`/header
