@@ -15,8 +15,11 @@ import {
   readSkillResourceBundle,
   type SkillPackagePayloadSource,
 } from "./skill-resource-schema";
-import { getCacheDir, getDataDir, getUserDataPath } from "./runtime-paths";
+import { getDataDir, getUserDataPath } from "./runtime-paths";
 import { canonicalSkillSourceMutations } from "./canonical-skill-sources";
+import { getCanonicalSkillWorkspacePath } from "./skill-local-repo-ownership";
+import { createSkillPackageIgnoreMatcher } from "@prompthub/shared/utils/skill-package-policy";
+export { getCanonicalSkillWorkspacePath } from "./skill-local-repo-ownership";
 
 const OPERATION_KEY = "skill-library";
 const MAX_PACKAGE_FILES = 4_000;
@@ -31,14 +34,6 @@ function bundlePath(skillId: string): string {
   );
 }
 
-export function getCanonicalSkillWorkspacePath(skillId: string): string {
-  return path.join(
-    getCacheDir(),
-    "skill-workspaces",
-    encodeCanonicalResourceDirectory(skillId),
-  );
-}
-
 function collectPackageFiles(
   directoryPath: string,
 ): SkillPackagePayloadSource[] {
@@ -47,6 +42,10 @@ function collectPackageFiles(
   if (!rootStats.isDirectory() || rootStats.isSymbolicLink())
     throw new Error("Canonical Skill package root is unsafe");
   const files: SkillPackagePayloadSource[] = [];
+  const ignoreFile = path.join(root, ".prompthubignore");
+  const shouldIgnore = createSkillPackageIgnoreMatcher(
+    fs.existsSync(ignoreFile) ? fs.readFileSync(ignoreFile, "utf8") : "",
+  );
   const pending: Array<{ absolutePath: string; relativePath: string }> = [
     { absolutePath: root, relativePath: "" },
   ];
@@ -64,6 +63,7 @@ function collectPackageFiles(
       const relativePath = current.relativePath
         ? `${current.relativePath}/${entry.name}`
         : entry.name;
+      if (shouldIgnore(relativePath)) continue;
       if (entry.isSymbolicLink())
         throw new Error("Canonical Skill package contains a symbolic link");
       if (entry.isDirectory()) {
@@ -94,14 +94,16 @@ export function publishCanonicalSkill(input: {
     ? readSkillResourceBundle(targetPath)
     : null;
   const sourcePath = input.packageSourcePath ?? input.skill.local_repo_path;
-  const missingWorkspace = sourcePath === getCanonicalSkillWorkspacePath(input.skill.id) &&
+  const missingWorkspace =
+    sourcePath === getCanonicalSkillWorkspacePath(input.skill.id) &&
     !fs.existsSync(sourcePath);
-  const packageFiles = sourcePath && !missingWorkspace
-    ? collectPackageFiles(sourcePath)
-    : (current?.packageFiles.map((file) => ({
-        path: file.path,
-        sourcePath: file.absolutePath,
-      })) ?? []);
+  const packageFiles =
+    sourcePath && !missingWorkspace
+      ? collectPackageFiles(sourcePath)
+      : (current?.packageFiles.map((file) => ({
+          path: file.path,
+          sourcePath: file.absolutePath,
+        })) ?? []);
   publishCanonicalEntries({
     rootPath: getUserDataPath(),
     operationKey: OPERATION_KEY,

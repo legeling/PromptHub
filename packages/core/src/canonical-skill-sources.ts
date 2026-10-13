@@ -9,6 +9,7 @@ import {
 } from "./canonical-entry-publication";
 import { assertStoragePathComponentsSafe } from "./runtime-storage-context";
 import { deriveLocalResourceDeviceId } from "./storage-root-identity";
+import { isExternalSkillRepoPath } from "./skill-local-repo-ownership";
 
 function sourcePath(root: string, skillId: string): string {
   return path.join(
@@ -33,6 +34,13 @@ export function readCanonicalSkillSource(
   root: string,
   skillId: string,
 ): string | undefined {
+  return readCanonicalSkillBinding(root, skillId)?.sourceUrl;
+}
+
+export function readCanonicalSkillBinding(
+  root: string,
+  skillId: string,
+): { sourceUrl: string; localRepoPath?: string } | undefined {
   const target = sourcePath(root, skillId);
   assertStoragePathComponentsSafe(root, target);
   if (!fs.existsSync(target)) return undefined;
@@ -53,18 +61,24 @@ export function readCanonicalSkillSource(
     !("deviceId" in value) ||
     typeof value.deviceId !== "string" ||
     !("sourceUrl" in value) ||
-    !isLocalSource(value.sourceUrl)
+    !isLocalSource(value.sourceUrl) ||
+    ("localRepoPath" in value && !isLocalSource(value.localRepoPath))
   )
     throw new Error("Canonical Skill source binding is invalid");
   return value.deviceId === deriveLocalResourceDeviceId(root)
-    ? value.sourceUrl
+    ? {
+        sourceUrl: value.sourceUrl,
+        ...("localRepoPath" in value && isLocalSource(value.localRepoPath)
+          ? { localRepoPath: value.localRepoPath }
+          : {}),
+      }
     : undefined;
 }
 
 /** The device binding and portable bundle are entries of the same publication. */
 export function canonicalSkillSourceMutations(
   root: string,
-  skill: Pick<Skill, "id" | "source_url">,
+  skill: Pick<Skill, "id" | "source_url" | "local_repo_path">,
 ): CanonicalEntryMutation[] {
   const targetPath = sourcePath(root, skill.id);
   assertStoragePathComponentsSafe(root, targetPath);
@@ -76,6 +90,9 @@ export function canonicalSkillSourceMutations(
     deviceId: deriveLocalResourceDeviceId(root),
     skillId: skill.id,
     sourceUrl: skill.source_url,
+    ...(isExternalSkillRepoPath(skill.id, skill.local_repo_path)
+      ? { localRepoPath: skill.local_repo_path }
+      : {}),
   };
   return [
     {

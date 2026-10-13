@@ -127,7 +127,9 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - PromptHub Cloud 的桌面账号与 Skill Store 入口必须受同一个 renderer capability 控制；生产 endpoint 与发布证据未完成时默认关闭。关闭后设置导航、商店来源、程序化选择、持久化恢复和后台刷新都不得访问 Cloud，旧选中状态回退到官方商店。
 - Cloud release 的 `store-package-sha256-v1` 只用于远程交付 intent 的版本期望；桌面本地 package 仍必须计算并持久化 `skill-package-sha256-v1`，不得把两种 fingerprint 直接比较或互相标记。
 - Cloud 多文件 package 写入失败时必须恢复已写入文件并清理新建文件；安装失败不得留下半成品 Skill，更新失败不得提前刷新来源基线。
-- 扫描复制导入只有在完整 package 已写入 PromptHub 托管 repo 且 `local_repo_path` 已持久化后才能计为成功。复制、返回路径或路径持久化失败必须删除临时 Skill 记录；补偿删除失败必须报告原始失败与回滚失败，不得吞错或保留假成功状态。
+- 扫描导入统一使用 package lifecycle，不先调用 content-only create 再复制或更新路径。只有完整 package、来源基线与库记录提交后才计为成功；失败与补偿由生命周期所有者报告，renderer 不执行第二次回滚。Copy 与 Link 均先暂存完整有效目录验证，来源元数据取实际入口而非陈旧扫描结果；用户标签与来源标签分开。
+- Link 的 `local_repo_path` 保持外部目录。设备来源绑定的可选 `localRepoPath` 只记录外部目录，缺省表示托管副本；与 portable bundle 一次发布/删除，本机启动对账恢复该路径，跨设备不套用。现有缺省绑定不改变语义，无 SQLite schema 变化；历史已丢失的 Link 身份不能猜测恢复，需要重新选择目录。回退前保留 data/config 备份；旧程序不支持新 Link 记录，不得继续写入该 profile。外部包仍遵守同一 ignore/路径/容量校验，不删除外部来源。
+- Link 元数据编辑从实际外部包暂存完整 inventory，仅原子替换外部 `SKILL.md`，在同一 finalize 发布元数据、包和历史；失败恢复原入口，已提交错误不再回滚。外部辅助文件不被替换，用户标签仍不进入来源 frontmatter。入口改动检测防止覆盖陈旧编辑；无 schema 或新目录布局。`commitLinkedSkillEdit` 顺序保留文件核验、发布及补偿，允许超过 50 行以一起审查提交边界。
 
 ### 2.1.1 Library CRUD command boundary
 
@@ -144,6 +146,7 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 ### 2.1.2 Functional acceptance
 
 - #227：`skill-first-launch.test.ts` 从全新 profile 执行 renderer migration IPC，返回前即可从真实 Skill preload 创建，并验证重复迁移、失败重试及关闭重开。
+- #228：`skill-scanned-import.test.ts` 验证 Copy/Link 完整嵌套文本/二进制、用户标签、来源基线、重开、外部文件和元数据编辑、提交失败后的入口恢复/重试及删除保全，并复用 Plugin 子 Skill renderer 组合用例。
 
 - `apps/desktop/tests/integration/skill-nested-git-source-update.test.ts` 对应 #218：使用报告中的深层 GitHub tree URL 与旁支 Skill，通过实际目录选择、renderer store、preload/IPC、Git checkout、SQLite 和完整包文件验证导入、检查、仅附件/二进制变化的更新与关闭重开；旧托管 checkout 路径恢复必须让数据库和 renderer 都使用修复后的根目录。仓库根目录仍须拒绝；远程入口丢失不得改变本地包、来源基线或版本。替换 Git/GitHub 网络传输和 Electron 运输，不替换业务服务；不代表真实 Windows GUI 或网络验收。此修复属于 Desktop IPC，CLI/Web 不消费该桌面同步和本地快照 IPC，既有 Web bridge 明确不支持本机 repo 操作。
 - `apps/desktop/tests/integration/skill-public-workflow.test.ts` 从生产 preload API 和完整 IPC 注册入口执行真实服务、磁盘 SQLite、首次 canonical 迁移与关闭重开。正常流程覆盖手工创建、元数据和嵌套文件编辑、版本、完整目录导入、二进制、copy/symlink 分发、改名、来源更新、卸载和删除；之后从同一 IPC 边界验证非法输入、路径穿越、缺失入口和陈旧来源，检查错误类型与持久化结果。Electron 消息运输及隔离 home 属于测试环境边界，不替换业务服务。
@@ -162,7 +165,7 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - 只检查内容意图和上下文，不根据来源域名、Git/Gitea/目录等渠道、source URL 是否存在、DNS、商店审计或脚本文件名判断风险。AI 输入不携带来源信任元数据，不执行被审查内容，不回显凭据值。
 - 报告仅供阅读，任何风险等级都不批准或阻止业务写入；旧操作请求的 safetyScan、safetyScanMode、approvedPackageFingerprint 为不生效的兼容字段。安装/更新不保存扫描结论或写入信任列表。
 - 路径穿越、不安全 archive、无效 package 结构、容量超限和写入/回滚错误仍按各自业务契约处理。内容扫描预算不得缩减可备份、版本化或安装的 package 内容。
-- 标准生命周期在完整暂存和结构校验后创建持久化 Skill 记录。兼容扫描导入的临时记录仍必须验证补偿删除成功，失败返回回滚诊断。
+- 标准生命周期在完整暂存和结构校验后创建持久化 Skill 记录。扫描导入也使用同一生命周期，不创建内容式临时记录；失败与补偿由生命周期所有者报告。
 - Desktop 进程启动时必须在接受新的 Skill package 请求前恢复上一进程留下的全部
   lifecycle journal 与 pending 记录，不受运行时清理所用年龄租约限制；进程运行期间
   的维护清理仍必须保留租约，避免把正在执行的安装或更新当作中断操作回滚。

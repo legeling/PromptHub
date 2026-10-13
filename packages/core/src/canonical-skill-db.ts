@@ -14,7 +14,7 @@ import {
   publishCanonicalSkill,
 } from "./canonical-skill-library";
 import { getRuntimeStorageContext, getUserDataPath } from "./runtime-paths";
-import { readCanonicalSkillSource } from "./canonical-skill-sources";
+import { readCanonicalSkillBinding } from "./canonical-skill-sources";
 import {
   CanonicalPostCommitError,
   isCanonicalCommitOutcomeError,
@@ -70,7 +70,9 @@ export class CanonicalSkillDB extends BaseSkillDB {
       packageSourcePath,
     });
     try {
-      const workspacePath = hydrateCanonicalSkillWorkspace(id);
+      const workspacePath =
+        readCanonicalSkillBinding(getUserDataPath(), id)?.localRepoPath ??
+        hydrateCanonicalSkillWorkspace(id);
       if (workspacePath) {
         this.db
           .prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")
@@ -230,8 +232,10 @@ export class CanonicalSkillDB extends BaseSkillDB {
     if (!this.canonical() || reconciledSkillDatabases.has(this.db)) return;
     try {
       for (const skill of super.getAll()) {
-        const workspacePath = hydrateCanonicalSkillWorkspace(skill.id);
-        const sourceUrl = readCanonicalSkillSource(getUserDataPath(), skill.id);
+        const binding = readCanonicalSkillBinding(getUserDataPath(), skill.id);
+        const workspacePath =
+          binding?.localRepoPath ?? hydrateCanonicalSkillWorkspace(skill.id);
+        const sourceUrl = binding?.sourceUrl;
         if (sourceUrl && sourceUrl !== skill.source_url) {
           this.db
             .prepare("UPDATE skills SET source_url = ? WHERE id = ?")

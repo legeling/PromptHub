@@ -378,7 +378,14 @@ export class SkillPackageLifecycleService {
       );
       const finalized = this.dependencies.db.finalizePackageInstall(
         created.id,
-        { ...finalData, local_repo_path: replacement.repoPath },
+        {
+          ...finalData,
+          local_repo_path:
+            request.source.kind === "local-directory" &&
+            request.source.importMode === "symlink"
+              ? request.source.directory
+              : replacement.repoPath,
+        },
         "Initial store install",
         files,
       );
@@ -424,14 +431,18 @@ export class SkillPackageLifecycleService {
     sourceId: string,
     staged: StagedSkillPackage,
   ): CreateSkillParams {
-    return buildStoreInstallSkillData({
-      registrySkill: request.registrySkill,
-      content: staged.content,
-      contentHash: staged.contentHash,
-      directoryFingerprint: staged.directoryFingerprint,
-      sourceId,
-      now: this.dependencies.now(),
-    });
+    return {
+      ...buildStoreInstallSkillData({
+        registrySkill: request.registrySkill,
+        content: staged.content,
+        contentHash: staged.contentHash,
+        directoryFingerprint: staged.directoryFingerprint,
+        sourceId,
+        now: this.dependencies.now(),
+      }),
+      tags: request.userTags ?? [],
+      is_builtin: request.markAsBuiltin ?? true,
+    };
   }
 
   private async startReplacement(

@@ -4,9 +4,9 @@ import type {
   ScannedSkill,
   Skill,
   SkillSafetyReport,
+  SkillPackageOperationRequest,
 } from "@prompthub/shared/types";
 import { filterVisibleSkills } from "../../services/skill-filter";
-import { computeSkillContentHash } from "../../services/skill-store-update";
 import {
   normalizeSkill,
   normalizeSkills,
@@ -26,7 +26,6 @@ import type {
   SkillStoreGet,
   SkillStoreSet,
 } from "./skill-store-types";
-import { buildSourceBaselineFields } from "./skill-source-update-baseline";
 
 const DEPLOYED_STATUS_CACHE_TTL_MS = 30_000;
 
@@ -243,10 +242,8 @@ function getScannedPlatformName(scanned: ScannedSkill): string | undefined {
 
 function getImportedSourcePath(
   scanned: ScannedSkill,
-  importMode: "copy" | "symlink",
 ): string {
   if (
-    importMode === "copy" &&
     scanned.installMode === "symlink" &&
     !scanned.isPromptHubManagedLink &&
     scanned.symlinkTargetPath?.trim()
@@ -256,88 +253,39 @@ function getImportedSourcePath(
   return scanned.localPath;
 }
 
-async function buildScannedSkillPayload(
+function buildScannedSkillRequest(
   scanned: ScannedSkill,
   tags: string[],
   importMode: "copy" | "symlink",
-) {
-  const importedAt = Date.now();
-  const contentHash = await computeSkillContentHash(scanned.instructions);
-  const sourcePath = getImportedSourcePath(scanned, importMode);
+): SkillPackageOperationRequest {
+  const sourcePath = getImportedSourcePath(scanned);
   return {
-    name: scanned.name,
-    description: scanned.description,
-    instructions: scanned.instructions,
+    operation: "install",
     content: scanned.instructions,
-    protocol_type: "skill" as const,
-    version: scanned.version,
-    author: scanned.author,
-    tags,
-    original_tags: scanned.tags,
-    is_favorite: false,
-    source_id: buildSkillSourceId({
-      sourceType: "installed-source",
-      sourceUrl: sourcePath,
-    }),
-    source_url: sourcePath,
-    source_label: getScannedPlatformName(scanned),
-    local_repo_path: scanned.localPath,
-    directory_fingerprint: scanned.directory_fingerprint,
-    installed_content_hash: contentHash,
-    installed_version: scanned.version,
-    installed_at: importedAt,
-    ...buildSourceBaselineFields({
-      contentHash,
-      directoryFingerprint: scanned.directory_fingerprint,
-      checkedAt: importedAt,
-    }),
-  };
-}
-
-async function saveCopiedSkillFiles(
-  skill: Skill,
-  scanned: ScannedSkill,
-  importMode: "copy" | "symlink",
-): Promise<void> {
-  if (!scanned.localPath || importMode !== "copy") return;
-  try {
-    const localRepoPath = await window.api.skill.saveToRepo(
-      skill.id,
-      scanned.localPath,
+    markAsBuiltin: false,
+    userTags: tags,
+    source: {
+      kind: "local-directory",
+      directory: sourcePath,
       importMode,
-    );
-    if (!localRepoPath) {
-      throw new Error("Managed Skill package copy returned no repository path");
-    }
-    const updated = await window.api.skill.update(skill.id, {
-      local_repo_path: localRepoPath,
-    });
-    if (!updated) throw new Error("Managed Skill path was not persisted");
-  } catch (error) {
-    console.error("Failed to persist scanned Skill package:", error);
-    return rollbackScannedSkillImport(skill, error);
-  }
-}
-
-async function rollbackScannedSkillImport(
-  skill: Skill,
-  cause: unknown,
-): Promise<never> {
-  const failure =
-    getErrorMessage(cause) || "Managed package persistence failed";
-  try {
-    const removed = await window.api.skill.delete(skill.id, {
-      removeCopyInstallations: true,
-    });
-    if (!removed) throw new Error("Skill row was not removed");
-  } catch (rollbackError) {
-    console.error("Failed to roll back scanned Skill import:", rollbackError);
-    throw new Error(
-      `${failure}; rollback failed: ${getErrorMessage(rollbackError)}`,
-      { cause: rollbackError },
-    );
-  }
-  throw cause instanceof Error ? cause : new Error(failure, { cause });
+    },
+    registrySkill: {
+      slug: scanned.name,
+      name: scanned.name,
+      content: scanned.instructions,
+      description: scanned.description ?? "",
+      author: scanned.author ?? "",
+      version: scanned.version ?? "source",
+      tags: scanned.tags ?? [],
+      category: "general",
+      source_id: buildSkillSourceId({
+        sourceType: "installed-source",
+        sourceUrl: sourcePath,
+      }),
+      source_url: sourcePath,
+      source_label: getScannedPlatformName(scanned),
+    },
+  };
 }
 
 async function importScannedSkill(
@@ -345,12 +293,16 @@ async function importScannedSkill(
   tags: string[],
   importMode: "copy" | "symlink",
 ): Promise<Skill | null> {
-  const created = await window.api.skill.create(
-    await buildScannedSkillPayload(scanned, tags, importMode),
+  const result = await window.api.skill.runPackageOperation(
+    buildScannedSkillRequest(scanned, tags, importMode),
   );
-  if (!created) return null;
-  await saveCopiedSkillFiles(created, scanned, importMode);
-  return normalizeSkill(created);
+  if (result.status !== "completed")
+    throw new Error(
+      "failure" in result
+        ? result.failure.summary
+        : `Skill package import ${result.status}`,
+    );
+  return normalizeSkill(result.skill);
 }
 
 function recordScannedImportFailure(

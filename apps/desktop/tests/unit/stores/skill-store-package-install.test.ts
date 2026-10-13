@@ -104,289 +104,120 @@ describe("skill store", () => {
     });
   });
 
-  it("imports scanned local skills in link mode without copying into a managed repo", async () => {
-    const linkedPath = "/Users/demo/skills/local-writer";
-    const create = vi.fn().mockResolvedValue(
-      createSkillFixture({
+  it.each(["copy", "symlink"] as const)(
+    "routes scanned %s imports through the package owner with user/source tags separated",
+    async (mode) => {
+      const sourcePath = "/Users/demo/skills/local-writer";
+      const imported = createSkillFixture({
         id: "skill-local-writer",
         name: "local-writer",
-        source_url: linkedPath,
-        local_repo_path: linkedPath,
-      }),
-    );
-    const update = vi.fn().mockImplementation(async (_id, data) =>
-      createSkillFixture({
-        id: "skill-content-url-writer",
-        name: "content-url-writer",
-        ...data,
-      }),
-    );
-    const saveToRepo = vi.fn().mockResolvedValue("/managed/local-writer/repo");
-    const getAll = vi.fn().mockResolvedValue([
-      createSkillFixture({
-        id: "skill-local-writer",
-        name: "local-writer",
-        source_url: linkedPath,
-        local_repo_path: linkedPath,
-      }),
-    ]);
-
-    (window as any).api.skill.create = create;
-    (window as any).api.skill.update = update;
-    (window as any).api.skill.saveToRepo = saveToRepo;
-    (window as any).api.skill.getAll = getAll;
-
-    const result = await useSkillStore.getState().importScannedSkills(
-      [
-        {
-          name: "local-writer",
-          description: "Local writer",
-          author: "Local",
-          tags: ["writing"],
-          instructions: "# Local Writer",
-          filePath: `${linkedPath}/SKILL.md`,
-          localPath: linkedPath,
-          platforms: ["Claude"],
-          directory_fingerprint: "fingerprint-linked",
-        },
-      ],
-      {},
-      "symlink",
-    );
-
-    expect(result.importedCount).toBe(1);
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "local-writer",
-        source_id: buildSkillSourceId({
-          sourceType: "installed-source",
-          sourceUrl: linkedPath,
+        source_url: sourcePath,
+        local_repo_path:
+          mode === "symlink" ? sourcePath : "/managed/local-writer/repo",
+      });
+      const runPackageOperation = mockCompletedPackageOperation(imported);
+      const create = vi.fn();
+      const saveToRepo = vi.fn();
+      window.api.skill.create = create;
+      window.api.skill.saveToRepo = saveToRepo;
+      window.api.skill.getAll = vi.fn().mockResolvedValue([imported]);
+      const result = await useSkillStore
+        .getState()
+        .importScannedSkills(
+          [createScannedLocalSkill("local-writer", sourcePath)],
+          { [sourcePath]: ["user-tag"] },
+          mode,
+        );
+      expect(result.importedCount).toBe(1);
+      expect(runPackageOperation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: "install",
+          markAsBuiltin: false,
+          userTags: ["user-tag"],
+          source: {
+            kind: "local-directory",
+            directory: sourcePath,
+            importMode: mode,
+          },
+          registrySkill: expect.objectContaining({
+            source_id: buildSkillSourceId({
+              sourceType: "installed-source",
+              sourceUrl: sourcePath,
+            }),
+            source_url: sourcePath,
+            tags: ["writing"],
+          }),
         }),
-        source_url: linkedPath,
-        local_repo_path: linkedPath,
-        directory_fingerprint: "fingerprint-linked",
-        installed_content_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
-        installed_directory_fingerprint: "fingerprint-linked",
-        fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
-        source_binding_state: "bound",
-        source_last_error: null,
-        installed_at: expect.any(Number),
-      }),
-    );
-    expect(saveToRepo).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-    expect(getAll).toHaveBeenCalled();
-  });
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(saveToRepo).not.toHaveBeenCalled();
+      expect(result.importedSkills).toEqual([
+        expect.objectContaining({ id: imported.id }),
+      ]);
+    },
+  );
 
-  it("binds a copied Agent symlink import to its concrete local source target", async () => {
-    const shortcutPath = "/Users/demo/.claude/skills/local-writer";
-    const sourceTargetPath = "/Users/demo/shared-skills/local-writer";
-    const created = createSkillFixture({
-      id: "skill-local-writer",
-      name: "local-writer",
-      source_url: sourceTargetPath,
-      local_repo_path: shortcutPath,
-    });
-    const create = vi.fn().mockResolvedValue(created);
-    const saveToRepo = vi.fn().mockResolvedValue("/managed/local-writer/repo");
-    const update = vi.fn().mockResolvedValue({
-      ...created,
-      local_repo_path: "/managed/local-writer/repo",
-    });
-    (window as any).api.skill.create = create;
-    (window as any).api.skill.saveToRepo = saveToRepo;
-    (window as any).api.skill.update = update;
-    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
-
-    const result = await useSkillStore.getState().importScannedSkills(
+  it("binds an external Agent shortcut import to its concrete source target", async () => {
+    const shortcut = "/Users/demo/.claude/skills/local-writer";
+    const target = "/Users/demo/shared-skills/local-writer";
+    const runPackageOperation =
+      mockCompletedPackageOperation(createSkillFixture());
+    window.api.skill.getAll = vi.fn().mockResolvedValue([]);
+    await useSkillStore.getState().importScannedSkills(
       [
         {
-          ...createScannedLocalSkill("local-writer", shortcutPath),
+          ...createScannedLocalSkill("local-writer", shortcut),
           installMode: "symlink",
-          symlinkTargetPath: sourceTargetPath,
+          symlinkTargetPath: target,
           isPromptHubManagedLink: false,
         },
       ],
       {},
       "copy",
     );
-
-    expect(result.importedCount).toBe(1);
-    expect(create).toHaveBeenCalledWith(
+    expect(runPackageOperation).toHaveBeenCalledWith(
       expect.objectContaining({
-        source_id: buildSkillSourceId({
-          sourceType: "installed-source",
-          sourceUrl: sourceTargetPath,
-        }),
-        source_url: sourceTargetPath,
-        local_repo_path: shortcutPath,
+        source: {
+          kind: "local-directory",
+          directory: target,
+          importMode: "copy",
+        },
+        registrySkill: expect.objectContaining({ source_url: target }),
       }),
     );
-    expect(saveToRepo).toHaveBeenCalledWith(created.id, shortcutPath, "copy");
   });
 
-  it("rolls back a scanned copy import when managed package persistence fails", async () => {
-    const sourcePath = "/Users/demo/skills/copy-writer";
-    const created = createSkillFixture({
-      id: "skill-copy-writer",
-      name: "copy-writer",
-      source_url: sourcePath,
-      local_repo_path: sourcePath,
-    });
-    const create = vi.fn().mockResolvedValue(created);
-    const remove = vi.fn().mockResolvedValue(true);
-    const saveToRepo = vi.fn().mockRejectedValue(new Error("disk full"));
-    (window as any).api.skill.create = create;
-    (window as any).api.skill.delete = remove;
-    (window as any).api.skill.saveToRepo = saveToRepo;
-    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
-
-    const result = await useSkillStore
-      .getState()
-      .importScannedSkills(
-        [createScannedLocalSkill("copy-writer", sourcePath)],
-        {},
-        "copy",
-      );
-
-    expect(result).toMatchObject({
-      importedCount: 0,
-      failed: [{ name: "copy-writer", reason: "disk full" }],
-    });
-    expect(remove).toHaveBeenCalledWith(created.id, {
-      removeCopyInstallations: true,
-    });
-  });
-
-  it("reports an incomplete rollback after scanned copy persistence fails", async () => {
-    const sourcePath = "/Users/demo/skills/rollback-writer";
-    const created = createSkillFixture({
-      id: "skill-rollback-writer",
-      name: "rollback-writer",
-    });
-    (window as any).api.skill.create = vi.fn().mockResolvedValue(created);
-    (window as any).api.skill.saveToRepo = vi
-      .fn()
-      .mockRejectedValue(new Error("disk full"));
-    (window as any).api.skill.delete = vi
-      .fn()
-      .mockRejectedValue(new Error("database locked"));
-    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
-
-    const result = await useSkillStore
-      .getState()
-      .importScannedSkills(
-        [createScannedLocalSkill("rollback-writer", sourcePath)],
-        {},
-        "copy",
-      );
-
-    expect(result.importedCount).toBe(0);
-    expect(result.failed[0]).toMatchObject({ name: "rollback-writer" });
-    expect(result.failed[0]?.reason).toContain("disk full");
-    expect(result.failed[0]?.reason).toContain(
-      "rollback failed: database locked",
-    );
-  });
-
-  it("rolls back scanned copies with missing package or metadata persistence", async () => {
-    const firstPath = "/Users/demo/skills/missing-repo";
-    const secondPath = "/Users/demo/skills/missing-metadata";
-    const create = vi
-      .fn()
-      .mockResolvedValueOnce(
-        createSkillFixture({ id: "skill-missing-repo", name: "missing-repo" }),
-      )
-      .mockResolvedValueOnce(
-        createSkillFixture({
-          id: "skill-missing-metadata",
-          name: "missing-metadata",
-        }),
-      );
-    const remove = vi.fn().mockResolvedValue(true);
-    (window as any).api.skill.create = create;
-    (window as any).api.skill.delete = remove;
-    (window as any).api.skill.saveToRepo = vi
-      .fn()
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce("/managed/missing-metadata/repo");
-    (window as any).api.skill.update = vi.fn().mockResolvedValue(null);
-    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
-
-    const result = await useSkillStore
-      .getState()
-      .importScannedSkills(
-        [
-          createScannedLocalSkill("missing-repo", firstPath),
-          createScannedLocalSkill("missing-metadata", secondPath),
-        ],
-        {},
-        "copy",
-      );
-
-    expect(result.importedCount).toBe(0);
-    expect(result.failed.map((item) => item.reason)).toEqual([
-      "Managed Skill package copy returned no repository path",
-      "Managed Skill path was not persisted",
-    ]);
-    expect(remove).toHaveBeenCalledTimes(2);
-  });
-
-  it("treats a false deletion result as an incomplete import rollback", async () => {
-    const sourcePath = "/Users/demo/skills/false-rollback";
-    const created = createSkillFixture({
-      id: "skill-false-rollback",
-      name: "false-rollback",
-    });
-    (window as any).api.skill.create = vi.fn().mockResolvedValue(created);
-    (window as any).api.skill.saveToRepo = vi
-      .fn()
-      .mockRejectedValue("copy failed");
-    (window as any).api.skill.delete = vi.fn().mockResolvedValue(false);
-    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
-
-    const result = await useSkillStore
-      .getState()
-      .importScannedSkills(
-        [createScannedLocalSkill("false-rollback", sourcePath)],
-        {},
-        "copy",
-      );
-
-    expect(result.importedCount).toBe(0);
-    expect(result.failed[0]?.reason).toContain("copy failed");
-    expect(result.failed[0]?.reason).toContain(
-      "rollback failed: Skill row was not removed",
-    );
-  });
-
-  it("uses a stable diagnostic when scanned copy persistence rejects without a message", async () => {
-    const sourcePath = "/Users/demo/skills/empty-error";
-    const created = createSkillFixture({
-      id: "skill-empty-error",
-      name: "empty-error",
-    });
-    (window as any).api.skill.create = vi.fn().mockResolvedValue(created);
-    (window as any).api.skill.saveToRepo = vi.fn().mockRejectedValue("");
-    (window as any).api.skill.delete = vi.fn().mockResolvedValue(true);
-    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
-
-    const result = await useSkillStore
-      .getState()
-      .importScannedSkills(
-        [createScannedLocalSkill("empty-error", sourcePath)],
-        {},
-        "copy",
-      );
-
-    expect(result.failed).toEqual([
-      {
-        name: "empty-error",
-        reason: "Managed package persistence failed",
-      },
-    ]);
-  });
-
+  it.each([
+    ["failed", "disk full"],
+    ["failed", "Skill package contains no root SKILL.md"],
+    ["failed", "disk full; rollback failed: database locked"],
+    ["conflict", "Skill source already exists"],
+    ["source-unavailable", "Source directory disappeared"],
+  ])(
+    "reports %s from the package owner without performing a second rollback",
+    async (status, summary) => {
+      window.api.skill.runPackageOperation = vi.fn().mockResolvedValue({
+        status,
+        operation: "install",
+        failure: { summary },
+      });
+      const remove = vi.fn();
+      window.api.skill.delete = remove;
+      window.api.skill.getAll = vi.fn().mockResolvedValue([]);
+      const result = await useSkillStore
+        .getState()
+        .importScannedSkills(
+          [createScannedLocalSkill("failed-writer", "/Users/demo/skills/fail")],
+          {},
+          "copy",
+        );
+      expect(result).toMatchObject({
+        importedCount: 0,
+        failed: [{ name: "failed-writer", reason: summary }],
+      });
+      expect(remove).not.toHaveBeenCalled();
+    },
+  );
   it("installs a custom Git store skill by cloning the package instead of writing only SKILL.md", async () => {
     const create = vi.fn().mockResolvedValue(
       createSkillFixture({

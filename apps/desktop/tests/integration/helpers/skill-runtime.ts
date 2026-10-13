@@ -213,6 +213,9 @@ export function fileInventory(root: string): Record<string, string> {
   function visit(directory: string): void {
     if (!fs.existsSync(directory)) return;
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      // Workspace hydration metadata is not a distributable package member.
+      if (directory === root && entry.name === ".canonical-bundle-hash")
+        continue;
       const entryPath = path.join(directory, entry.name);
       if (entry.isDirectory()) visit(entryPath);
       else if (entry.isFile())

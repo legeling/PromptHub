@@ -18,8 +18,13 @@ import {
 } from "../runtime-paths";
 import { encodeCanonicalResourceDirectory } from "../canonical-resource-path";
 import { readSkillResourceBundle } from "../skill-resource-schema";
-import { readSkillFileSnapshots } from "./file-snapshot";
+import {
+  readSkillFileSnapshots,
+  writeSkillFileSnapshots,
+} from "./file-snapshot";
 import { parseSkillMd, serializeSkillMd } from "./skill-frontmatter";
+import { isExternalSkillRepoPath } from "../skill-local-repo-ownership";
+import { commitLinkedSkillEdit } from "./linked-entrypoint-edit";
 
 export interface PreparedLibrarySkillEdit {
   previous: Skill;
@@ -175,8 +180,16 @@ export async function prepareLibrarySkillEdit(
     "version",
   ].some((key) => Object.hasOwn(data, key));
   const stage = changesPackage ? await createStage() : null;
+  const linkedDirectory = isExternalSkillRepoPath(id, previous.local_repo_path)
+    ? previous.local_repo_path
+    : undefined;
   try {
-    if (stage)
+    if (stage && linkedDirectory)
+      await writeSkillFileSnapshots(
+        stage,
+        await readSkillFileSnapshots(linkedDirectory),
+      );
+    else if (stage)
       for (const file of current.packageFiles) {
         const target = path.join(stage, ...file.path.split("/"));
         await fs.mkdir(path.dirname(target), { recursive: true });
@@ -199,6 +212,7 @@ export async function prepareLibrarySkillEdit(
               instructions: oldContent,
             }),
           )),
+          ...(linkedDirectory ? { local_repo_path: linkedDirectory } : {}),
         }
       : data;
     return {
@@ -210,6 +224,22 @@ export async function prepareLibrarySkillEdit(
           current.bundleManifest.revision
         )
           throw new Error("Skill changed during editing; reload and retry");
+        if (stage && linkedDirectory) {
+          if (
+            typeof update.content !== "string" ||
+            oldContent === undefined ||
+            !beforeFiles
+          )
+            throw new Error("Linked Skill edit preparation is incomplete");
+          return commitLinkedSkillEdit(db, id, {
+            directory: linkedDirectory,
+            expectedContent: oldContent,
+            content: update.content,
+            data: update,
+            previous,
+            files: beforeFiles,
+          });
+        }
         const result = stage
           ? (db.finalizePackageUpdate(
               id,

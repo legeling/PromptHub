@@ -527,15 +527,17 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
         relativePath,
         content,
       );
-      if (relativePath.toLowerCase() === "skill.md") {
-        const nextFingerprint = await computeRepoDirectoryFingerprint(repoPath);
-        db.update(skillId, {
-          content,
-          instructions: content,
-          directory_fingerprint: nextFingerprint,
-          fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
-        });
-      }
+      const nextFingerprint = await computeRepoDirectoryFingerprint(repoPath);
+      db.update(skillId, {
+        ...(relativePath.toLowerCase() === "skill.md"
+          ? {
+              content,
+              instructions: content,
+            }
+          : {}),
+        directory_fingerprint: nextFingerprint,
+        fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
+      });
       return result;
     },
   );

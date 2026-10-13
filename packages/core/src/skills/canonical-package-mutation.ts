@@ -17,6 +17,7 @@ import {
 } from "../runtime-paths";
 import { encodeCanonicalResourceDirectory } from "../canonical-resource-path";
 import { readSkillResourceBundle } from "../skill-resource-schema";
+import { isExternalSkillRepoPath } from "../skill-local-repo-ownership";
 import {
   readSkillFileSnapshots,
   writeSkillFileSnapshots,
@@ -80,6 +81,7 @@ export async function mutateCanonicalSkillPackage(
     return false;
   const skill = db.getById(skillId);
   if (!skill) throw new Error("Skill not found");
+  if (isExternalSkillRepoPath(skillId, skill.local_repo_path)) return false;
   if (mutation.kind !== "replace") {
     validateSkillSnapshotPath(mutation.relativePath);
     if (mutation.kind === "rename") {

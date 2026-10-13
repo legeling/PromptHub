@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScannedSkill, Skill } from "@prompthub/shared/types";
+import type {
+  ScannedSkill,
+  Skill,
+  SkillPackageOperationRequest,
+} from "@prompthub/shared/types";
 import { SKILL_PACKAGE_FINGERPRINT_ALGORITHM } from "@prompthub/shared/utils/skill-source-update";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
@@ -77,18 +81,41 @@ describe("imported Skill source lifecycle", () => {
         },
       },
     });
-    const runPackageOperation = vi.fn(async () => ({
-      status: "completed",
-      operation: "update",
-      skill: {
-        ...storedSkill!,
-        content: "# Claude Writer\n\nUpdated source content\n",
-        instructions: "# Claude Writer\n\nUpdated source content\n",
-        local_repo_path: managedPath,
-        directory_fingerprint: "b".repeat(64),
-        installed_directory_fingerprint: "b".repeat(64),
+    const runPackageOperation = vi.fn(
+      async (request: SkillPackageOperationRequest) => {
+        if (request.operation === "install") {
+          storedSkill = createSkillFixture({
+            id: "skill-claude-writer",
+            name: scanned.name,
+            source_url: sourcePath,
+            local_repo_path: managedPath,
+            source_id: request.registrySkill.source_id,
+            installed_directory_fingerprint: scanned.directory_fingerprint,
+            directory_fingerprint: scanned.directory_fingerprint,
+            fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
+            source_binding_state: "bound",
+            installed_content_hash: "original-hash",
+          });
+          return {
+            status: "completed",
+            operation: "install",
+            skill: storedSkill,
+          };
+        }
+        return {
+          status: "completed",
+          operation: "update",
+          skill: {
+            ...storedSkill!,
+            content: "# Claude Writer\n\nUpdated source content\n",
+            instructions: "# Claude Writer\n\nUpdated source content\n",
+            local_repo_path: managedPath,
+            directory_fingerprint: "b".repeat(64),
+            installed_directory_fingerprint: "b".repeat(64),
+          },
+        };
       },
-    }));
+    );
     api.skill.runPackageOperation = runPackageOperation;
 
     const imported = await useSkillStore

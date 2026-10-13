@@ -152,6 +152,11 @@ function validateOperationSource(source: SkillPackageOperationSource): void {
       return;
     case "local-directory":
       requireNonEmptyString(source.directory, "source.directory");
+      if (
+        source.importMode !== undefined &&
+        !["copy", "symlink"].includes(source.importMode)
+      )
+        throw new Error("source.importMode must be copy or symlink");
       return;
     case "files":
       requireNonEmptyString(source.sourceUrl, "source.sourceUrl");
@@ -235,6 +240,15 @@ export function validateSkillPackageOperationRequest(
     throw new Error("source must be an object");
   }
   validateOperationSource(request.source);
+  validateStringList(request.userTags, "userTags", true);
+  if (
+    request.operation === "update" &&
+    request.source.kind === "local-directory" &&
+    request.source.importMode === "symlink"
+  )
+    throw new Error(
+      "Link mode is only available for a new local package import",
+    );
   if (
     request.markAsBuiltin !== undefined &&
     typeof request.markAsBuiltin !== "boolean"
@@ -275,7 +289,7 @@ function getSourceIdentity(source: SkillPackageOperationSource): string {
     case "files":
       return sanitizeSkillPackageSourceUrl(source.sourceUrl);
     case "local-directory":
-      return source.directory;
+      return `${source.directory}|${source.importMode ?? "copy"}`;
   }
 }
 

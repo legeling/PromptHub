@@ -508,7 +508,11 @@ export type SkillPackageOperationSource =
     }
   | { kind: "remote-zip"; zipUrl: string }
   | { kind: "content"; sourceUrl: string; content: string }
-  | { kind: "local-directory"; directory: string }
+  | {
+      kind: "local-directory";
+      directory: string;
+      importMode?: "copy" | "symlink";
+    }
   | {
       kind: "files";
       sourceUrl: string;
@@ -524,6 +528,8 @@ export interface SkillPackageOperationRequest {
   source: SkillPackageOperationSource;
   content: string;
   markAsBuiltin?: boolean;
+  /** User-owned tags for a new package import, separate from source frontmatter. */
+  userTags?: string[];
   note?: string;
   /** @deprecated Ignored: use the explicit standalone scan API. */
   safetyScan?: {
