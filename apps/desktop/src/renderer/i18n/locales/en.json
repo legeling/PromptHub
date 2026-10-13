@@ -3768,6 +3768,16 @@
   },
   "mcp": {
     "noDescription": "No description provided",
+    "healthIssues": {
+      "MISSING_COMMAND": "stdio MCP server is missing a command",
+      "COMMAND_NOT_FOUND": "Command not found: {{command}}",
+      "INVALID_URL": "Invalid remote MCP URL",
+      "MISSING_ENV": "Missing environment variable: {{field}}",
+      "INVALID_ENV_VALUE": "Invalid environment value: {{field}}",
+      "UNRESOLVED_ENV_REFERENCE": "Environment reference may be unavailable: {{field}}",
+      "PLACEHOLDER_VALUE": "Replace the placeholder in {{field}}",
+      "MISSING_CWD": "Working directory does not exist: {{cwd}}"
+    },
     "title": "MCP",
     "subtitle": "Local MCP configuration library",
     "myMcp": "My MCP",

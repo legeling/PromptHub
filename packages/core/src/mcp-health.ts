@@ -73,7 +73,7 @@ function validateKnownEnvValue(name: string, value: string): string | null {
   };
   const validator = validators[name];
   if (!validator || validator.pattern.test(trimmed)) return null;
-  return `${name} 格式看起来不正确，应填写 ${validator.example}`;
+  return `${name} has an invalid format; expected ${validator.example}`;
 }
 
 export function createMcpHealthResult(
@@ -86,14 +86,14 @@ export function createMcpHealthResult(
         code: "MISSING_COMMAND",
         severity: "error",
         field: "command",
-        message: "stdio MCP 服务缺少 command",
+        message: "stdio MCP server is missing a command",
       });
     } else if (!commandExists(server.command)) {
       issues.push({
         code: "COMMAND_NOT_FOUND",
         severity: "error",
         field: "command",
-        message: `找不到命令: ${server.command}`,
+        message: `Command not found: ${server.command}`,
       });
     }
     if (server.cwd && !fs.existsSync(server.cwd)) {
@@ -101,7 +101,7 @@ export function createMcpHealthResult(
         code: "MISSING_CWD",
         severity: "warning",
         field: "cwd",
-        message: `工作目录不存在: ${server.cwd}`,
+        message: `Working directory does not exist: ${server.cwd}`,
       });
     }
   } else {
@@ -113,7 +113,7 @@ export function createMcpHealthResult(
         code: "INVALID_URL",
         severity: "error",
         field: "url",
-        message: "远程 MCP 服务 URL 无效",
+        message: "Remote MCP server URL is invalid",
       });
     }
   }
@@ -151,7 +151,7 @@ export function createMcpHealthResult(
           code: "MISSING_ENV",
           severity: "error",
           field: requirement.name,
-          message: `缺少环境变量: ${requirement.name}`,
+          message: `Missing environment variable: ${requirement.name}`,
         });
         continue;
       }
@@ -160,7 +160,7 @@ export function createMcpHealthResult(
           code: "UNRESOLVED_ENV_REFERENCE",
           severity: "warning",
           field: requirement.name,
-          message: `当前进程未设置环境变量引用: ${requirement.name}`,
+          message: `Environment reference is unavailable in this process: ${requirement.name}`,
         });
       }
       continue;
@@ -173,7 +173,7 @@ export function createMcpHealthResult(
         code: "MISSING_ENV",
         severity: "error",
         field: requirement.name,
-        message: `缺少环境变量: ${requirement.name}`,
+        message: `Missing environment variable: ${requirement.name}`,
       });
       continue;
     }
@@ -203,7 +203,7 @@ export function createMcpHealthResult(
       code: "PLACEHOLDER_VALUE",
       severity: "error",
       field: placeholder.source,
-      message: `仍有占位值需要替换: ${placeholder.value}`,
+      message: `Replace the placeholder in ${placeholder.source}`,
     });
   }
 

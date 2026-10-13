@@ -3728,6 +3728,16 @@
   },
   "mcp": {
     "noDescription": "尚無描述",
+    "healthIssues": {
+      "MISSING_COMMAND": "stdio MCP 服務缺少命令",
+      "COMMAND_NOT_FOUND": "找不到命令：{{command}}",
+      "INVALID_URL": "遠端 MCP URL 無效",
+      "MISSING_ENV": "缺少環境變數：{{field}}",
+      "INVALID_ENV_VALUE": "環境變數值格式無效：{{field}}",
+      "UNRESOLVED_ENV_REFERENCE": "環境變數引用可能無法使用：{{field}}",
+      "PLACEHOLDER_VALUE": "請替換 {{field}} 中的預留值",
+      "MISSING_CWD": "工作目錄不存在：{{cwd}}"
+    },
     "title": "MCP",
     "subtitle": "本機 MCP 設定庫",
     "myMcp": "我的 MCP",

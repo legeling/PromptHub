@@ -3766,6 +3766,16 @@
   },
   "mcp": {
     "noDescription": "暂无描述",
+    "healthIssues": {
+      "MISSING_COMMAND": "stdio MCP 服务缺少命令",
+      "COMMAND_NOT_FOUND": "找不到命令：{{command}}",
+      "INVALID_URL": "远程 MCP URL 无效",
+      "MISSING_ENV": "缺少环境变量：{{field}}",
+      "INVALID_ENV_VALUE": "环境变量值格式无效：{{field}}",
+      "UNRESOLVED_ENV_REFERENCE": "环境变量引用可能不可用：{{field}}",
+      "PLACEHOLDER_VALUE": "请替换 {{field}} 中的占位值",
+      "MISSING_CWD": "工作目录不存在：{{cwd}}"
+    },
     "title": "MCP",
     "subtitle": "本地 MCP 配置库",
     "myMcp": "我的 MCP",

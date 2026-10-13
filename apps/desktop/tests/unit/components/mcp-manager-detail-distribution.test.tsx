@@ -507,7 +507,7 @@ describe("McpManager", () => {
       ).toBeGreaterThan(0);
       expect(within(detailPage).getByText("Health check")).toBeInTheDocument();
       expect(
-        within(detailPage).getByText("Still has placeholder"),
+        within(detailPage).getByText("Replace the placeholder in args"),
       ).toBeInTheDocument();
       expect(within(detailPage).getByText("Codex CLI")).toBeInTheDocument();
       expect(within(detailPage).getByText("Claude Code")).toBeInTheDocument();

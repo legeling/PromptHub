@@ -3728,6 +3728,16 @@
   },
   "mcp": {
     "noDescription": "Keine Beschreibung",
+    "healthIssues": {
+      "MISSING_COMMAND": "Befehl für stdio-MCP-Server fehlt",
+      "COMMAND_NOT_FOUND": "Befehl nicht gefunden: {{command}}",
+      "INVALID_URL": "Ungültige entfernte MCP-URL",
+      "MISSING_ENV": "Umgebungsvariable fehlt: {{field}}",
+      "INVALID_ENV_VALUE": "Ungültiger Umgebungswert: {{field}}",
+      "UNRESOLVED_ENV_REFERENCE": "Umgebungsreferenz möglicherweise nicht verfügbar: {{field}}",
+      "PLACEHOLDER_VALUE": "Platzhalter in {{field}} ersetzen",
+      "MISSING_CWD": "Arbeitsverzeichnis fehlt: {{cwd}}"
+    },
     "title": "MCP",
     "subtitle": "Lokale MCP-Konfigurationsbibliothek",
     "myMcp": "Meine MCP",

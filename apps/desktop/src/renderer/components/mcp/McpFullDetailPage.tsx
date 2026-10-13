@@ -662,7 +662,14 @@ export function McpFullDetailPage({
                               className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600"
                               aria-hidden="true"
                             />
-                            <span>{issue.message}</span>
+                            <span>
+                              {t(`mcp.healthIssues.${issue.code}`, {
+                                field: issue.field ?? "",
+                                command: server.command ?? "",
+                                cwd: server.cwd ?? "",
+                                defaultValue: issue.message,
+                              })}
+                            </span>
                           </div>
                         ))}
                       </div>

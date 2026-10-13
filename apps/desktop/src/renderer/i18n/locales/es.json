@@ -3728,6 +3728,16 @@
   },
   "mcp": {
     "noDescription": "Sin descripción",
+    "healthIssues": {
+      "MISSING_COMMAND": "Falta el comando del servidor MCP stdio",
+      "COMMAND_NOT_FOUND": "Comando no encontrado: {{command}}",
+      "INVALID_URL": "URL MCP remota no válida",
+      "MISSING_ENV": "Falta la variable de entorno: {{field}}",
+      "INVALID_ENV_VALUE": "Valor de entorno no válido: {{field}}",
+      "UNRESOLVED_ENV_REFERENCE": "La referencia de entorno puede no estar disponible: {{field}}",
+      "PLACEHOLDER_VALUE": "Sustituye el marcador en {{field}}",
+      "MISSING_CWD": "No existe el directorio de trabajo: {{cwd}}"
+    },
     "title": "MCP",
     "subtitle": "Biblioteca local de configuración MCP",
     "myMcp": "Mis MCP",

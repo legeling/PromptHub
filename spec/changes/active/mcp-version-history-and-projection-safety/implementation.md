@@ -84,3 +84,14 @@ restoring the original hint makes this test fail on the empty-state assertion
 (exit 1); the repaired MCP component batch passes 204 tests in 26 files.
 The isolated English Electron detail view displays the repaired text before
 and after process restart. No CLI/Web entrypoint uses this Desktop detail UI.
+
+## MCP correction #232 — 2026-10-13
+
+Desktop health results translate stable issue codes with command/field/cwd
+context in all seven locales. Core/CLI diagnostics are English and omit literal
+environment/placeholder values. `mcp-health-feedback.test.tsx` asserts localized
+text instead of the legacy message; restoring direct diagnostic rendering in
+an isolated copy fails that assertion (exit 1). Core
+`mcp-health-language.test.ts` asserts codes and English diagnostics; the Core
+MCP/resource batch passes 102 tests. Isolated English Electron GUI shows the
+missing-command error. Health remains static validation, not a protocol handshake.

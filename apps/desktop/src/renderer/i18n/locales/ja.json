@@ -3728,6 +3728,16 @@
   },
   "mcp": {
     "noDescription": "説明はありません",
+    "healthIssues": {
+      "MISSING_COMMAND": "stdio MCP のコマンドがありません",
+      "COMMAND_NOT_FOUND": "コマンドが見つかりません: {{command}}",
+      "INVALID_URL": "リモート MCP URL が無効です",
+      "MISSING_ENV": "環境変数がありません: {{field}}",
+      "INVALID_ENV_VALUE": "環境変数の値が無効です: {{field}}",
+      "UNRESOLVED_ENV_REFERENCE": "環境変数の参照を利用できない可能性があります: {{field}}",
+      "PLACEHOLDER_VALUE": "{{field}} のプレースホルダーを置き換えてください",
+      "MISSING_CWD": "作業ディレクトリがありません: {{cwd}}"
+    },
     "title": "MCP",
     "subtitle": "Local MCP configuration library",
     "myMcp": "My MCP",
