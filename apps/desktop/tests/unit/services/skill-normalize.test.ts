@@ -3,6 +3,37 @@ import { describe, expect, it } from "vitest";
 import { normalizeSkill, normalizeStringArray } from "../../../src/renderer/services/skill-normalize";
 
 describe("skill-normalize", () => {
+  it.each(["ai", "preflight"] as const)(
+    "preserves %s scan provenance and findings in renderer normalization",
+    (scanMethod) => {
+      const safetyReport = {
+        level: "safe" as const,
+        summary: "Source assessment",
+        findings: [],
+        recommendedAction: "allow" as const,
+        scannedAt: 100,
+        checkedFileCount: 3,
+        scanMethod,
+        score: 95,
+      };
+      const skill = normalizeSkill({
+        id: "scan-provenance",
+        name: "scan-provenance",
+        protocol_type: "skill",
+        instructions: "Test instructions",
+        tags: [],
+        currentVersion: 1,
+        is_favorite: false,
+        created_at: 100,
+        updated_at: 100,
+        safetyReport,
+      });
+      expect(skill.safetyReport).toEqual(safetyReport);
+      expect(normalizeSkill(skill).safetyReport).toEqual(safetyReport);
+      expect(safetyReport.scanMethod).toBe(scanMethod);
+    },
+  );
+
   it("accepts legacy string arrays from old skill data", () => {
     expect(normalizeStringArray('["ops","docs"]')).toEqual(["ops", "docs"]);
     expect(normalizeStringArray("ops, docs\nplatform")).toEqual([

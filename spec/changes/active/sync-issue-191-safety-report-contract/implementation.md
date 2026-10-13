@@ -12,6 +12,15 @@
 - Current `ai` and `preflight` provenance is preserved, legacy `static` maps to
   `preflight`, and unknown string methods remove only the auxiliary report.
 - Non-method report validation remains strict in the Web Zod contract.
+- Removed the Desktop renderer normalizer's forced `ai` assignment; current
+  `ai` and `preflight` reports retain provenance and findings across repeated
+  normalization. No installation approval policy changed.
+- Report method labels and descriptions now derive from the preserved current
+  provenance. Added deterministic/preflight wording in all seven Desktop locales;
+  AI wording and installation approval policy remain unchanged.
+- AI-specific scoring dimension explanations are shown only for AI reports.
+  Preflight retains its stored findings, risk level, scan metadata and optional
+  score without claiming that an AI model reviewed its content.
 
 ## Verification
 
@@ -24,6 +33,17 @@
 - Shared, Web, and Desktop typechecks plus targeted Web/Desktop ESLint: passed.
 - Restored-authorization integration and bounded time/memory measurement remain
   follow-up release gates.
+- Renderer provenance regression (2026-10-13): 4 normalizer tests passed,
+  covering current `ai`/`preflight`, repeated normalization and existing
+  metadata behavior. Desktop backup-format (14) and snapshot-compatibility (3)
+  regressions also passed. Desktop source/test typechecks and targeted ESLint
+  passed; no GUI or release-gate acceptance is implied.
+- Provenance display regression (2026-10-13): 10 tests passed. Current `ai` and
+  `preflight`, plus legacy `static`, traverse the real backup codec, the Skill
+  restore DB primitive, a disk SQLite close/reopen, renderer normalization and
+  the actual report modal DOM. Labels and descriptions match current provenance,
+  and all seven locales have their own preflight entries. No native GUI or full
+  portable-restore/release acceptance is implied.
 
 ## Analyze
 

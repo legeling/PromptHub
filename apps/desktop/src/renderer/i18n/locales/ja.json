@@ -3354,6 +3354,8 @@
     "safetyFilesChecked": "{{count}} ファイルをチェック済み",
     "safetyScanMethod": "スキャン方式",
     "safetyScanMethodAI": "AI アシスト",
+    "safetyScanMethodPreflight": "決定的なコンテンツチェック",
+    "safetyScanMethodPreflightDesc": "AI モデルを使用しない決定的なコンテンツチェックです。AI による安全性評価やインストールの承認ではありません。",
     "safetyScanMethodAIDesc": "AI スキャンはモデル文脈を使って SKILL.md と関連リポジトリファイルを確認するため、インストール判断の主要な根拠になります。",
     "safetyScore": "安全スコア",
     "safetyScoreDesc": "スコアは 0〜100（高いほど安全）。リスクレベルと検出件数に基づく：blocked 0–10、高リスク 20–40、警告 50–70、安全 80–100。",

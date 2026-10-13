@@ -115,12 +115,7 @@ function normalizeSourceBindingState(
 }
 
 export function normalizeSkill(skill: Skill): Skill {
-  const safetyReport = skill.safetyReport
-    ? {
-        ...skill.safetyReport,
-        scanMethod: "ai" as const,
-      }
-    : undefined;
+  const safetyReport = skill.safetyReport;
 
   return {
     ...skill,

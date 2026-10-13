@@ -3384,6 +3384,8 @@
     "safetyFilesChecked": "{{count}} file(s) checked",
     "safetyScanMethod": "Method",
     "safetyScanMethodAI": "AI-assisted",
+    "safetyScanMethodPreflight": "Deterministic content checks",
+    "safetyScanMethodPreflightDesc": "Deterministic content checks without an AI model. This is not an AI safety assessment or installation approval.",
     "safetyScanMethodAIDesc": "AI scan reviews the SKILL.md and relevant repo files with model context, so it is the primary signal for installation decisions.",
     "safetyScore": "Score",
     "safetyScoreDesc": "Score 0–100 (higher = safer). Based on risk level and number of findings: blocked 0–10, high-risk 20–40, caution 50–70, safe 80–100.",

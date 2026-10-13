@@ -97,6 +97,15 @@ preflight`. Legacy `static` values normalize to `preflight`; an unknown
   string provenance drops only that auxiliary safety report, while malformed
   report fields still reject the snapshot. Import must not rewrite a current
   `preflight` report as an AI result.
+  Desktop renderer normalization also preserves the current method and report
+  fields on initial load and repeated normalization; it is not a legacy import
+  compatibility boundary and must not label a preflight result as AI.
+  The displayed method label and description select the same current provenance:
+  `preflight` is deterministic content analysis without an AI model, and `ai`
+  retains the AI-assisted label. Imported descriptive reports are not installation
+  authorization. All seven Desktop locales define both current methods.
+  AI-specific scoring dimension explanations appear only for AI reports;
+  preflight still shows its risk level, findings, scan details and any stored score.
 
 ### 2. Desktop And Web Relationship
 

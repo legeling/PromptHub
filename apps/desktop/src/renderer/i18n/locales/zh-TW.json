@@ -3354,6 +3354,8 @@
     "safetyFilesChecked": "共檢查 {{count}} 個檔案",
     "safetyScanMethod": "掃描方式",
     "safetyScanMethodAI": "AI 輔助",
+    "safetyScanMethodPreflight": "確定性內容檢查",
+    "safetyScanMethodPreflightDesc": "未使用 AI 模型的確定性內容檢查。這不代表 AI 安全評估或安裝授權。",
     "safetyScanMethodAIDesc": "AI 掃描會結合模型上下文審閱 SKILL.md 與相關倉庫檔案，因此它才是安裝決策的主要依據。",
     "safetyScore": "安全評分",
     "safetyScoreDesc": "評分範圍 0–100，越高越安全。根據風險等級與問題數量計算：已攔截 0–10，高風險 20–40，需留意 50–70，安全 80–100。",

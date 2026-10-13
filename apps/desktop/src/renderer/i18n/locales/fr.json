@@ -3355,6 +3355,8 @@
     "safetyFilesChecked": "{{count}} fichier(s) vérifié(s)",
     "safetyScanMethod": "Méthode",
     "safetyScanMethodAI": "Assisté par IA",
+    "safetyScanMethodPreflight": "Vérification déterministe du contenu",
+    "safetyScanMethodPreflightDesc": "Vérification déterministe du contenu sans modèle d’IA. Il ne s’agit ni d’une évaluation de sécurité par IA ni d’une autorisation d’installation.",
     "safetyScanMethodAIDesc": "L'analyse IA examine le SKILL.md et les fichiers du dépôt avec le contexte du modèle. C'est donc le signal principal pour décider d'une installation.",
     "safetyScore": "Score",
     "safetyScoreDesc": "Score de 0 à 100 (plus élevé = plus sûr). Basé sur le niveau de risque et le nombre de problèmes : bloqué 0–10, haut risque 20–40, attention 50–70, sûr 80–100.",

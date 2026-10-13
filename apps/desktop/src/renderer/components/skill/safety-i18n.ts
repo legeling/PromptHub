@@ -86,10 +86,22 @@ export function getSkillSafetyFindingTitle(
   return localized || finding.title;
 }
 
+export function getSkillSafetyMethodLabel(
+  t: TFunction,
+  report: SkillSafetyReport,
+): string {
+  return report.scanMethod === "preflight"
+    ? t("skill.safetyScanMethodPreflight")
+    : t("skill.safetyScanMethodAI", "AI-assisted");
+}
+
 export function getSkillSafetyMethodDescription(
   t: TFunction,
-  _report: SkillSafetyReport,
+  report: SkillSafetyReport,
 ): string {
+  if (report.scanMethod === "preflight") {
+    return t("skill.safetyScanMethodPreflightDesc");
+  }
   return t(
     "skill.safetyScanMethodAIDesc",
     "AI scan reviews the SKILL.md and relevant repo files with model context, so it is the primary signal for installation decisions.",

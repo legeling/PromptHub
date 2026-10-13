@@ -14,6 +14,7 @@ import { groupSkillSafetyFindings } from "./detail-utils";
 import {
   getSkillSafetyFindingTitle,
   getSkillSafetyMethodDescription,
+  getSkillSafetyMethodLabel,
   getSkillSafetySummary,
 } from "./safety-i18n";
 
@@ -89,7 +90,7 @@ export function SkillSafetyReportModal({
       {report ? (
         <div className="space-y-5">
           <SafetyReportHeader report={report} />
-          <SafetyDimensions report={report} />
+          {report.scanMethod === "ai" ? <SafetyDimensions report={report} /> : null}
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground border-t border-border pt-3">
             <span>
               {t("skill.safetyFilesChecked", "{{count}} file(s) checked", {
@@ -98,7 +99,7 @@ export function SkillSafetyReportModal({
             </span>
             <span>
               {t("skill.safetyScanMethod", "Method")}:{" "}
-              {t("skill.safetyScanMethodAI", "AI-assisted")}
+              {getSkillSafetyMethodLabel(t, report)}
             </span>
             <span>
               {t("skill.safetyScanTime", "Scanned")}:{" "}

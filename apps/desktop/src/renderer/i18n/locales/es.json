@@ -3354,6 +3354,8 @@
     "safetyFilesChecked": "{{count}} archivo(s) verificado(s)",
     "safetyScanMethod": "Método",
     "safetyScanMethodAI": "Asistido por IA",
+    "safetyScanMethodPreflight": "Comprobación determinista del contenido",
+    "safetyScanMethodPreflightDesc": "Comprobación determinista del contenido sin un modelo de IA. No es una evaluación de seguridad por IA ni una autorización de instalación.",
     "safetyScanMethodAIDesc": "El análisis con IA revisa el SKILL.md y los archivos relevantes del repositorio con contexto del modelo, por lo que es la señal principal para decidir una instalación.",
     "safetyScore": "Puntuación",
     "safetyScoreDesc": "Puntuación 0–100 (mayor = más seguro). Basado en el nivel de riesgo y el número de hallazgos: bloqueado 0–10, alto riesgo 20–40, precaución 50–70, seguro 80–100.",

@@ -3354,6 +3354,8 @@
     "safetyFilesChecked": "{{count}} Datei(en) geprüft",
     "safetyScanMethod": "Methode",
     "safetyScanMethodAI": "KI-gestützt",
+    "safetyScanMethodPreflight": "Deterministische Inhaltsprüfung",
+    "safetyScanMethodPreflightDesc": "Deterministische Inhaltsprüfung ohne KI-Modell. Dies ist keine KI-Sicherheitsbewertung oder Installationsfreigabe.",
     "safetyScanMethodAIDesc": "Der KI-Scan prüft SKILL.md und relevante Repository-Dateien mit Modellkontext und ist daher das wichtigste Signal für Installationsentscheidungen.",
     "safetyScore": "Bewertung",
     "safetyScoreDesc": "Bewertung 0–100 (höher = sicherer). Basierend auf Risikostufe und Anzahl der Findings: blockiert 0–10, hohes Risiko 20–40, Warnung 50–70, sicher 80–100.",
