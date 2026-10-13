@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VariableInputModal } from "../../../src/renderer/components/prompt/VariableInputModal";
+import { copyTextToClipboard } from "../../../src/renderer/components/prompt/prompt-copy-utils";
 import { renderWithI18n } from "../../helpers/i18n";
 
 const { showToast } = vi.hoisted(() => ({
@@ -64,7 +65,7 @@ describe("VariableInputModal", () => {
   });
 
   it("copies filled user prompt without prepending the system prompt", async () => {
-    const onCopy = vi.fn();
+    const onCopy = vi.fn(copyTextToClipboard);
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue(undefined);
@@ -94,7 +95,7 @@ describe("VariableInputModal", () => {
   });
 
   it("previews and copies default-value variables by variable name", async () => {
-    const onCopy = vi.fn();
+    const onCopy = vi.fn(copyTextToClipboard);
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue(undefined);
@@ -136,7 +137,7 @@ describe("VariableInputModal", () => {
   });
 
   it("uses the variable name when a copy variable field is empty", async () => {
-    const onCopy = vi.fn();
+    const onCopy = vi.fn(copyTextToClipboard);
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue(undefined);
@@ -288,7 +289,7 @@ describe("VariableInputModal", () => {
   });
 
   it("waits for clipboard success before showing copied feedback", async () => {
-    const onCopy = vi.fn();
+    const onCopy = vi.fn(copyTextToClipboard);
     const clipboardWrite = createDeferred<void>();
     vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(
       clipboardWrite.promise,
@@ -311,7 +312,7 @@ describe("VariableInputModal", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Copy Result/u }));
 
-    expect(onCopy).not.toHaveBeenCalled();
+    expect(onCopy).toHaveBeenCalledWith("Write about async clipboard");
     expect(screen.getByRole("button", { name: /Copy Result/u })).toBeInTheDocument();
 
     clipboardWrite.resolve();
@@ -322,8 +323,8 @@ describe("VariableInputModal", () => {
     });
   });
 
-  it("does not show copied feedback or invoke callbacks when clipboard write fails", async () => {
-    const onCopy = vi.fn();
+  it("does not show copied feedback when the caller's clipboard write fails", async () => {
+    const onCopy = vi.fn(copyTextToClipboard);
     vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
       new Error("clipboard denied"),
     );
@@ -351,7 +352,7 @@ describe("VariableInputModal", () => {
       );
     });
 
-    expect(onCopy).not.toHaveBeenCalled();
+    expect(onCopy).toHaveBeenCalledWith("Write about failure path");
     expect(screen.getByRole("button", { name: /Copy Result/u })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Copied/u })).not.toBeInTheDocument();
   });

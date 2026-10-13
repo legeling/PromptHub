@@ -7,8 +7,8 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 46 |
-| Recorded complete (original path) | 1 |
+| Active | 45 |
+| Recorded complete (original path) | 2 |
 | Archived | 235 |
 | Legacy | 1 |
 
@@ -26,7 +26,6 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `desktop-editor-media-visibility` | active | `spec/changes/active/desktop-editor-media-visibility/` |
 | `desktop-error-copy-humanization` | active | `spec/changes/active/desktop-error-copy-humanization/` |
 | `desktop-image-generation-workbench` | active | `spec/changes/active/desktop-image-generation-workbench/` |
-| `desktop-issue-192-copy-action-parity` | active | `spec/changes/active/desktop-issue-192-copy-action-parity/` |
 | `desktop-list-empty-state-guidance` | active | `spec/changes/active/desktop-list-empty-state-guidance/` |
 | `desktop-prompt-batch-ux-hardening` | active | `spec/changes/active/desktop-prompt-batch-ux-hardening/` |
 | `desktop-prompt-editor-section-collapse` | active | `spec/changes/active/desktop-prompt-editor-section-collapse/` |
@@ -71,6 +70,7 @@ rules are superseded by [current documentation policy](../rules/document-routing
 
 | Change | Recorded status | Path |
 | --- | --- | --- |
+| `desktop-issue-192-copy-action-parity` | completed | `spec/changes/active/desktop-issue-192-copy-action-parity/` |
 | `rules-issue-193-missing-project-reconciliation` | completed | `spec/changes/active/rules-issue-193-missing-project-reconciliation/` |
 
 ## Archived

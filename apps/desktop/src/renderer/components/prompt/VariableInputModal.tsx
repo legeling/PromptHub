@@ -43,7 +43,7 @@ interface VariableInputModalProps {
   systemPrompt?: string;
   userPrompt: string;
   mode?: ModalMode;
-  onCopy?: (filledPrompt: string) => void;
+  onCopy?: (filledPrompt: string) => void | Promise<void>;
   onAiTest?: (
     filledSystemPrompt: string | undefined,
     filledUserPrompt: string,
@@ -326,18 +326,15 @@ export function VariableInputModal({
     const copySession = modalSessionRef.current;
 
     try {
-      await copyTextToClipboard(result);
-    } catch {
-      return;
-    }
-
-    if (!canApplyAsyncResult(copySession)) {
-      return;
-    }
-
-    try {
-      await onCopy?.(result);
-    } catch {
+      // The workspace collects queue items before one final clipboard write.
+      // A supplied callback owns copying; this modal must not publish an item.
+      if (onCopy) await onCopy(result);
+      else await copyTextToClipboard(result);
+    } catch (error) {
+      console.error('Failed to copy filled prompt', error);
+      if (canApplyAsyncResult(copySession)) {
+        showToast(t('prompt.copyFailed'), 'error');
+      }
       return;
     }
 

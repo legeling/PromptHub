@@ -19,12 +19,13 @@
 
 ## Verification And Convergence
 
-- [ ] `T-COPY192-005`: Run focused tests with coverage for the copy flow,
+- [x] `T-COPY192-005`: Run focused tests with coverage for the copy flow,
       action bar, and changed context branches.
-- [ ] `T-COPY192-006`: Run Desktop typecheck, targeted lint, changed-surface
-      harness, `pnpm spec:test`, `pnpm spec:index:check`, and
+- [x] `T-COPY192-006`: Run Desktop source-and-test typecheck, targeted lint,
+      inspect changed-surface harness selection, run affected checks,
+      `pnpm spec:test`, `pnpm spec:index:check`, and
       `git diff --check`.
-- [ ] `T-COPY192-007`: Operate both entry points in the running Desktop app and
+- [x] `T-COPY192-007`: Operate both entry points in the running Desktop app and
       record clipboard, variables, copied state, toast, and layout observations.
 - [x] `T-COPY192-008`: Update stable Prompt behavior, implementation record,
       local issue status, and release assignment; archive after converge.

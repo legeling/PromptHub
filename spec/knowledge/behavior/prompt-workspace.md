@@ -87,6 +87,11 @@
 - Variable prompts, language selection, copied feedback, and usage attribution
   follow the same flow. Usage remains attributed to the source Prompt even
   when the copied body comes from one or more mapped target Prompts.
+- Variable input delegates filled text to the workspace when a copy callback
+  is supplied. It does not write intermediate queue items to the clipboard;
+  the workspace writes the completed output once. Cancellation leaves the
+  previous clipboard and source usage unchanged. Without a callback, the
+  standalone variable dialog owns its single clipboard write.
 - The public `prompt.copy` entry treats variable names and values literally.
   Dollar sequences such as `$&` and `$$` must survive unchanged; using a
   variable does not change the stored template and still records source usage.
