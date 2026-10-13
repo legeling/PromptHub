@@ -134,3 +134,37 @@ pnpm verify:release:quick --list --format json
 - 本地 Git/文件包夹具在临时目录中构建，保留实际分支、目录层级、文件清单和字节。远端在线验收独立记录，不能由本地 fixture 推断。
 - CLI 的 [global setup](../../../apps/cli/tests/global-setup.ts) 创建已关闭的 SQLite 模板，由 [CLI harness](../../../apps/cli/tests/helpers/cli-harness.ts) 复制到独立数据目录。初始化、迁移和并发测试须绕过模板。完整 CLI suite 默认预算 75 秒，本地诊断可通过 `PROMPTHUB_CLI_TEST_MAX_MS` 临时调整。
 - Self-Hosted Web 的 [global setup](../../../apps/web/tests/global-setup.ts) 创建已迁移并关闭的模板，测试目录复制使用；新库、损坏、锁与恢复场景自行构造前置状态。
+
+## Pull Request 安全扫描
+
+[ThreatCrush workflow](../../../.github/workflows/threatcrush-scan.yml) 扫描完整 checkout，
+默认仅报告发现，不因已有或新增漏洞发现阻断构建。工具安装、扫描或报告解析失败
+必须失败并显示 NOT RUN；只有报告确认有效的 SARIF 才可更新 Security tab。
+PR #206 按已确认的先合并、后修复顺序纳入；这不代表扫描或发布验收通过。
+
+- 保持 `pull_request` 事件、action SHA 固定、checkout 不持久化凭据，以及扫描器
+  `0.11.9` 的 tarball SHA-512 校验。使用根 packageManager 指定的 pnpm，关闭安装脚本，
+  工具依赖与产物只进入 runner 临时目录，不改项目依赖或全局安装环境。tarball 校验
+  不等于传递依赖完整锁定；扫描器依赖仍按其发布 manifest 解析。
+- Git 变更文件以 `--name-only -z` 运输，SARIF URI 只在报告边界解码一次；空格、
+  Unicode、换行与百分号文件名不能误归到历史 backlog。无文件位置的发现单独报告，
+  不声称为历史问题。报告不显示扫描内容片段，文件名和 rule ID 转义 Markdown。
+- [Node 报告入口](../../../scripts/threatcrush-report.mjs) 取代内嵌 Python；
+  [回归测试](../../../scripts/threatcrush-report.test.mjs) 进入 `pnpm test:ci-config`
+  与根级 governance harness，覆盖真实 Git 文件清单、报告 CLI 的退出码/摘要/有效性
+  输出、损坏或缺失报告及扫描失败。扫描器本体、GitHub token 权限、Security tab
+  上传与 PR 评论不是本地报告测试的验收范围。没有远端 job 成功证据时不能称为已验收。
+
+聚焦命令：`pnpm exec node --test scripts/threatcrush-report.test.mjs`；门禁命令：
+`pnpm verify:release:quick --surface governance --concurrency 1`。
+
+验证（2026-10-13）：隔离提交候选的 `pnpm test:ci-config` 35/35 通过，其中报告回归
+23 项。首次 quick governance 的 CI 配置检查因无位置用例的否定断言误匹配“not
+attributed to the pre-existing backlog”失败；改为核对不存在历史分组后复测通过。
+同批 spec 与文件大小检查已通过，未重复运行未受影响的检查。Node 语法、workflow
+YAML/action SHA、Shell/评论 JavaScript 解析和相关格式检查通过。
+
+隔离源码变异撤销 URI 解码、将 NUL 分隔改为按空白拆分，并将失败退出码改为成功，
+命中 13 项业务断言失败（23 项中 10 通过、13 失败，退出码 1）；未改写工作区源码。
+扫描器固定 tarball 的 SHA-512 与当前下载字节一致，未在本机安装或执行该工具；
+实际 GitHub scan job、Security tab 和 PR 评论仍待远端运行验收。
