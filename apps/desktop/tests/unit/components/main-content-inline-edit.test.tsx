@@ -216,6 +216,34 @@ describe("MainContent inline edit component contract", () => {
     expect(showToast).toHaveBeenCalledWith("Saved successfully", "success");
   });
 
+  it("renames a system-only Prompt from inline editing (#225)", async () => {
+    const promptState = createPromptState(createPrompt({ userPrompt: "" }));
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    await renderWithI18n(<MainContent />, { language: "en" });
+    fireEvent.doubleClick(screen.getByRole("heading", { name: "Original Title", level: 2 }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
+      target: { value: "Renamed system-only" },
+    });
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+      title: "Renamed system-only",
+    }));
+  });
+
+  it("rejects clearing both Prompt fields in inline editing (#225)", async () => {
+    const promptState = createPromptState(createPrompt());
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    await renderWithI18n(<MainContent />, { language: "en" });
+    fireEvent.doubleClick(screen.getByRole("heading", { name: "Original Title", level: 2 }));
+    for (const name of ["System Prompt", "User Prompt"]) {
+      fireEvent.change(screen.getByRole("textbox", { name }), { target: { value: " \n " } });
+    }
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByText("Fill in at least one system or user prompt.")).toBeVisible();
+    expect(promptState.updatePrompt).not.toHaveBeenCalled();
+  });
+
   it("saves a changed title when Enter is pressed in the detail title field", async () => {
     const promptState = createPromptState(createPrompt());
 

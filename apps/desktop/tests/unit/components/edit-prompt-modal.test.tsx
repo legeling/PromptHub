@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Prompt } from "@prompthub/shared/types";
 import { EditPromptModal } from "../../../src/renderer/components/prompt/EditPromptModal";
@@ -93,6 +93,48 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("EditPromptModal", () => {
+  it("saves a system-only prompt and blocks clearing its last content (#225)", async () => {
+    await renderEditPromptModal();
+    fireEvent.change(screen.getByRole("textbox", { name: "User Prompt" }), {
+      target: { value: "" },
+    });
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeEnabled();
+    fireEvent.click(save);
+    expect(updatePromptMock).toHaveBeenCalledWith(basePrompt.id, expect.objectContaining({
+      systemPrompt: basePrompt.systemPrompt, userPrompt: "",
+    }));
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "System Prompt (Optional)" }), {
+      target: { value: " \n\t " },
+    });
+    expect(save).toBeDisabled();
+    expect(screen.getByText("Fill in at least one system or user prompt.")).toBeVisible();
+    fireEvent.click(save);
+    expect(updatePromptMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rewrites a system-only draft without requiring user text (#225)", async () => {
+    await renderEditPromptModal();
+    act(() => useSettingsStore.setState({
+      aiModels: [{ id: "rewrite", type: "chat", name: "Rewrite", provider: "openai", apiProtocol: "openai", apiKey: "test-key", apiUrl: "https://example.invalid/v1", model: "test-model", isDefault: true }],
+    }));
+    vi.mocked(window.api.ai.request).mockResolvedValue({
+      ok: true, status: 200, statusText: "OK",
+      body: JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content: JSON.stringify({ summary: "System draft ready", systemPrompt: "Return concise JSON.", userPrompt: "" }) }, finish_reason: "stop" }] }),
+      headers: { "content-type": "application/json" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "User Prompt" }), { target: { value: "" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "AI Rewrite" }), { target: { value: "Make the policy concise." } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate rewrite" }));
+    expect(await screen.findByText("System draft ready")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+    expect(screen.getByRole("textbox", { name: "System Prompt (Optional)" })).toHaveValue("Return concise JSON.");
+    expect(screen.getByRole("textbox", { name: "User Prompt" })).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(updatePromptMock).toHaveBeenCalledWith(basePrompt.id, expect.objectContaining({ systemPrompt: "Return concise JSON.", userPrompt: "" }));
+  });
+
   it("keeps source and notes mounted and persisted across collapse (v0.6.2 #76)", async () => {
     await renderEditPromptModal();
     fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));

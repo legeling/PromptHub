@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Prompt, UpdatePromptDTO } from "@prompthub/shared/types";
+import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
 import { useTranslation } from "react-i18next";
 import { usePromptStore } from "../../stores/prompt.store";
 import { useToast } from "../ui/Toast";
@@ -168,11 +169,23 @@ export function usePromptDetailInlineEditor(
     );
   }, [currentValues, detailInlineDraft]);
 
+  const hasDetailInlineContent =
+    !!selectedPrompt &&
+    hasPromptContent({
+      systemPrompt:
+        systemPromptField === "systemPrompt"
+          ? detailInlineDraft.systemPrompt
+          : selectedPrompt.systemPrompt,
+      userPrompt:
+        userPromptField === "userPrompt"
+          ? detailInlineDraft.userPrompt
+          : selectedPrompt.userPrompt,
+    });
   const canSaveDetailInlineEdit =
     !!selectedPrompt &&
     !isDetailInlineSaving &&
     detailInlineDraft.title.trim().length > 0 &&
-    detailInlineDraft.userPrompt.trim().length > 0 &&
+    hasDetailInlineContent &&
     hasChanges;
 
   const saveDetailInlineEdit = useCallback(async () => {
@@ -237,6 +250,7 @@ export function usePromptDetailInlineEditor(
     canSaveDetailInlineEdit,
     detailDescriptionInputRef,
     detailInlineDraft,
+    hasDetailInlineContent,
     detailSystemPromptTextareaRef,
     detailTitleInputRef,
     detailUserPromptTextareaRef,

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { SKILL_SNAPSHOT_CAPABILITY_HEADER } from "@prompthub/shared/utils/skill-file-snapshot";
+import { PromptContentValidationError } from "@prompthub/shared/utils/prompt-content";
 import { cors } from "hono/cors";
 import { bootstrapStatus, issueCaptcha, login, logout, me, refresh, register, requireAuth } from "./auth";
 import { heartbeat } from "./devices";
@@ -166,6 +167,9 @@ app.notFound(async (c) => {
 });
 
 app.onError((error, c) => {
+  if (error instanceof PromptContentValidationError) {
+    return failure(c, 422, ErrorCode.VALIDATION_ERROR, error.message);
+  }
   if (error instanceof HttpError) {
     return failure(c, error.status, error.code, error.message);
   }

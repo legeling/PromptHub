@@ -1,4 +1,5 @@
 import { directFolderSchema } from './folder-schemas.js';
+import { PromptContentValidationError } from '@prompthub/shared/utils/prompt-content';
 import { restorePromptGraph, GraphRestoreError } from '../services/prompt-graph-restore.js';
 import { getServerDatabase } from '../database.js';
 import { validatePromptWorkspaceSnapshotPaths } from '../services/prompt-workspace.js';
@@ -103,7 +104,7 @@ const createPromptSchema = z.object({
   promptType: z.enum(['text', 'image', 'video']).optional(),
   systemPrompt: z.string().max(100000).optional(),
   systemPromptEn: z.string().max(100000).optional(),
-  userPrompt: z.string().min(1, 'userPrompt is required').max(100000, 'userPrompt is too long'),
+  userPrompt: z.string().max(100000, 'userPrompt is too long'),
   userPromptEn: z.string().max(100000).optional(),
   variables: promptVariablesSchema.optional(),
   tags: promptTagsSchema.optional(),
@@ -123,7 +124,7 @@ const directPromptSchema = z.object({
   promptType: z.enum(['text', 'image', 'video']).optional(),
   systemPrompt: z.string().max(100000).nullable().optional(),
   systemPromptEn: z.string().max(100000).nullable().optional(),
-  userPrompt: z.string().min(1, 'userPrompt is required').max(100000, 'userPrompt is too long'),
+  userPrompt: z.string().max(100000, 'userPrompt is too long'),
   userPromptEn: z.string().max(100000).nullable().optional(),
   variables: promptVariablesSchema,
   tags: promptTagsSchema,
@@ -160,7 +161,7 @@ const directVersionSchema = z.object({
   version: z.number().int().nonnegative(),
   systemPrompt: z.string().max(100000).nullable().optional(),
   systemPromptEn: z.string().max(100000).nullable().optional(),
-  userPrompt: z.string().min(1).max(100000),
+  userPrompt: z.string().max(100000),
   userPromptEn: z.string().max(100000).nullable().optional(),
   variables: promptVariablesSchema,
   note: z.string().max(500).nullable().optional(),
@@ -655,6 +656,9 @@ prompts.post('/meta/tags/delete', async (c) => {
 });
 
 function toPromptErrorResponse(c: Context, routeError: unknown): Response {
+  if (routeError instanceof PromptContentValidationError) {
+    return error(c, 422, ErrorCode.VALIDATION_ERROR, routeError.message);
+  }
   if (routeError instanceof PromptServiceError) {
     return error(c, routeError.status, routeError.code, routeError.message);
   }

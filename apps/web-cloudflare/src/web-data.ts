@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { assertPromptContent } from "@prompthub/shared/utils/prompt-content";
 import type { CreateFolderDTO, Folder, Settings, UpdateFolderDTO } from "@prompthub/shared/types";
 import type { CreatePromptDTO, Prompt, PromptVersion, SearchQuery, UpdatePromptDTO } from "@prompthub/shared/types/prompt";
 import type { SyncSnapshot } from "@prompthub/shared/types/sync";
@@ -221,6 +222,7 @@ export async function createPrompt(c: AppContext): Promise<Response> {
   if (typeof body.title !== "string" || !body.title.trim() || typeof body.userPrompt !== "string") {
     return failure(c, 400, ErrorCode.BAD_REQUEST, "title and userPrompt are required");
   }
+  assertPromptContent(body);
   const visibility = body.visibility || "private";
   const visibilityError = assertCanCreateVisibility(c, visibility);
   if (visibilityError) return visibilityError;
@@ -347,6 +349,9 @@ export async function updatePrompt(c: AppContext): Promise<Response> {
     videos: patch.videos === undefined ? current.videos : patch.videos,
     updatedAt: nowIso(),
   };
+  if (patch.systemPrompt !== undefined || patch.userPrompt !== undefined) {
+    assertPromptContent(updated);
+  }
   if (promptHasContentPatch(patch)) {
     appendPromptVersion(snapshot, updated);
   }

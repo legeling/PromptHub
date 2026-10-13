@@ -174,10 +174,17 @@ function PromptDetailAiResponse() {
 }
 
 export function PromptDetailFields() {
+  const { t } = useTranslation();
+  const detail = usePromptWorkspaceDetailContext();
   return (
     <>
       <PromptDetailLanguageToggle />
       <PromptDetailSystemField />
+      {detail.isDetailInlineEditing && !detail.hasDetailInlineContent && (
+        <p role="status" className="mb-2 text-sm text-destructive">
+          {t("prompt.contentRequired")}
+        </p>
+      )}
       <PromptDetailUserField />
       <PromptDetailComparePanel />
       <PromptDetailAiResponse />

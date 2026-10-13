@@ -62,6 +62,33 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("CreatePromptModal", () => {
+  it("creates a system-only prompt and visibly rejects whitespace-only content (#225)", async () => {
+    resetStores();
+    const onCreate = vi.fn();
+    await renderWithI18n(
+      <ToastProvider>
+        <CreatePromptModal isOpen onClose={vi.fn()} onCreate={onCreate} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /Title/ }), {
+      target: { value: "System policy" },
+    });
+    const create = screen.getByRole("button", { name: "Create" });
+    expect(create).toBeDisabled();
+    expect(screen.getByText("Fill in at least one system or user prompt.")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+    const system = screen.getByRole("textbox", { name: "System Prompt (Optional)" });
+    fireEvent.change(system, { target: { value: " \n\t " } });
+    expect(create).toBeDisabled();
+    fireEvent.change(system, { target: { value: "Return JSON only." } });
+    expect(create).toBeEnabled();
+    fireEvent.click(create);
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      title: "System policy", systemPrompt: "Return JSON only.", userPrompt: "",
+    }));
+  });
+
   it("exposes core prompt fields and type selection state", async () => {
     await renderCreatePromptModal();
 

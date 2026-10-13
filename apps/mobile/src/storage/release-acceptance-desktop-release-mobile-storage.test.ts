@@ -85,6 +85,58 @@ const prompt = {
 };
 
 describe("release acceptance: Mobile public repository and disk storage", () => {
+  it("persists system-only Prompt content and metadata edits across reopen (#225)", async () => {
+    let repository = await reopenRepository();
+    const systemOnly = { ...prompt, userPrompt: "" };
+    await repository.create(systemOnly);
+    await repository.update(prompt.id, { title: "Renamed system policy" });
+    repository = await reopenRepository();
+    expect(await repository.getById(prompt.id)).toMatchObject({
+      title: "Renamed system policy",
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: "",
+    });
+    expect(await repository.list()).toEqual([
+      expect.objectContaining({
+        title: "Renamed system policy",
+        userPrompt: "",
+      }),
+    ]);
+  });
+
+  it("rejects blank Mobile writes before changing persisted rows (#225)", async () => {
+    let repository = await reopenRepository();
+    for (const blank of ["", " \n\t\u3000"]) {
+      await expect(
+        repository.create({
+          ...prompt,
+          systemPrompt: blank,
+          userPrompt: blank,
+        }),
+      ).rejects.toThrow("At least one");
+    }
+    expect(await repository.list()).toEqual([]);
+    await repository.create({ ...prompt, userPrompt: "" });
+    const before = await repository.getById(prompt.id);
+    await expect(
+      repository.update(prompt.id, {
+        title: "Must not save",
+        systemPrompt: " \n ",
+      }),
+    ).rejects.toThrow("At least one");
+    expect(await repository.getById(prompt.id)).toEqual(before);
+    repository = await reopenRepository();
+    expect(await repository.getById(prompt.id)).toEqual(before);
+    await repository.update(prompt.id, {
+      systemPrompt: "",
+      userPrompt: "User content",
+    });
+    expect(await repository.getById(prompt.id)).toMatchObject({
+      systemPrompt: "",
+      userPrompt: "User content",
+    });
+  });
+
   it("persists create, edit and delete across reopen with matching list, detail and filtered results", async () => {
     let repository = await reopenRepository();
     await repository.create(prompt);

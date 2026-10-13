@@ -1,4 +1,5 @@
 import { PromptDB } from "../database";
+import { assertPromptContent } from "@prompthub/shared/utils/prompt-content";
 import type {
   CreatePromptDTO,
   Prompt,
@@ -77,13 +78,7 @@ export function resolvePromptCreateArgs(args: string[]): CreatePromptDTO {
       EXIT_CODES.USAGE,
     );
   }
-  if (!userPrompt?.trim()) {
-    throw new CliError(
-      "USAGE_ERROR",
-      "prompt create 需要 --user-prompt 或 --user-prompt-file",
-      EXIT_CODES.USAGE,
-    );
-  }
+  assertPromptContent({ systemPrompt, userPrompt });
 
   return {
     visibility,
@@ -100,7 +95,7 @@ export function resolvePromptCreateArgs(args: string[]): CreatePromptDTO {
     variables,
     systemPrompt,
     systemPromptEn,
-    userPrompt,
+    userPrompt: userPrompt ?? "",
     userPromptEn,
   };
 }

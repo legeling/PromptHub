@@ -305,6 +305,7 @@
     "systemPromptOptional": "System Prompt (Optional)",
     "systemPromptPlaceholder": "Set the AI's role and behavior...",
     "userPromptLabel": "User Prompt",
+    "contentRequired": "Fill in at least one system or user prompt.",
     "inlineEditSystemPromptAria": "Double-click to edit system prompt",
     "inlineEditUserPromptAria": "Double-click to edit user prompt",
     "userPromptPlaceholder": "Enter your Prompt content, use {{variableName}} or {{variableName:example}} to define variables...",

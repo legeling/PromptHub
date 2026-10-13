@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { usePromptStore } from "../../stores/prompt.store";
+import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
 import { useFolderStore } from "../../stores/folder.store";
 import {
   IMAGE_DOWNLOAD_MAX_MB,
@@ -387,7 +388,7 @@ export function EditPromptModal({
   }, [prompt, initialData, isOpen]);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !userPrompt.trim()) return;
+    if (!title.trim() || !hasPromptContent(formState)) return;
 
     try {
       const promptData = buildPromptPayload(formState, {
@@ -440,7 +441,7 @@ export function EditPromptModal({
       return;
     }
 
-    if (!userPrompt.trim()) {
+    if (!hasPromptContent(formState)) {
       showToast(t("prompt.aiRewriteNeedsContent"), "error");
       return;
     }
@@ -1057,7 +1058,7 @@ export function EditPromptModal({
             variant="primary"
             size="sm"
             onClick={handleSubmit}
-            disabled={!title.trim() || !userPrompt.trim()}
+            disabled={!title.trim() || !hasPromptContent(formState)}
           >
             <SaveIcon className="w-4 h-4" aria-hidden="true" />
             {prompt ? t("prompt.save") : t("prompt.create")}
@@ -1386,6 +1387,11 @@ export function EditPromptModal({
           value={systemPrompt}
         />
 
+        {!hasPromptContent(formState) && (
+          <p role="status" className="text-sm text-destructive">
+            {t("prompt.contentRequired")}
+          </p>
+        )}
         <PromptEditorField
           englishId={userPromptEnInputId}
           englishLabel={t("prompt.userPromptEn")}
@@ -1400,7 +1406,6 @@ export function EditPromptModal({
           onFullscreen={() => enterNativeFullscreen("user")}
           placeholder={t("prompt.userPromptPlaceholder")}
           renderPreview={renderMarkdownPreview}
-          required
           showEnglishVersion={showEnglishVersion}
           t={t}
           value={userPrompt}

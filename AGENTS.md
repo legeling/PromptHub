@@ -120,7 +120,7 @@ Before any commit, split commit, history rewrite, or push operation:
 2. Run `git status --short` and separate current work from user or parallel-agent changes.
 3. Confirm the commit is one independently reversible logical unit with a clear purpose and actual verification evidence.
 4. For every non-trivial commit, include a body with the relevant topic, change, or issue reference when one exists and the actual verification status. A Conventional Commit title by itself is not sufficient.
-5. Use `Refs #<issue>` before release. Use `Closes #<issue>` only when the containing version is already published and the issue should be closed.
+5. Every issue-related commit must explicitly reference its issue. A complete, verified fix must include `Closes #<issue>`; incomplete or reference-only work uses `Refs #<issue>`. Follow `spec/rules/issue-management-rules.md`; automatic closure does not require publication and does not authorize a push.
 
 ## 1. Project Overview
 
@@ -293,8 +293,10 @@ procedures, not a second set of project rules.
 
 GitHub issue state is separate from local delivery: `github-open.md` and
 `github-closed.md` are remote snapshots; `local-github-status.md` is the local
-overlay. Local completion is `local_done` or `release_pending`. Close a remote
-issue only after its containing version is published, then refresh snapshots.
+overlay. Local completion is `local_done` or `release_pending`. Issue-related
+commits and automatic closure follow the issue rules, independently of release
+state. Refresh snapshots only after confirming the remote state; closure never
+proves publication.
 See [issue-management-rules.md](spec/rules/issue-management-rules.md).
 
 ### 6.3 Data and Storage Change Gate
@@ -494,7 +496,7 @@ Detailed submission, traceability, document ID, issue reference, and PR rules li
 | **Atomic commits**       | Each commit should represent one logical change. Don't mix features with bug fixes. |
 | **Required body**        | Every non-trivial commit body must record its primary change/issue and actual verification status. |
 | **Traceable docs**       | Non-trivial commits explain purpose and verification; link the existing topic, plan, or issue when present. |
-| **Issue references**     | Use `Refs #123` before release; use `Closes #123` only when the published release should close the issue. |
+| **Issue references**     | Every issue-related commit must link the issue; complete verified fixes require `Closes #123`, while incomplete/reference-only work uses `Refs #123`. See the issue rules. |
 | **All tests must pass**  | Relevant lint / typecheck / test / build commands must pass, or blockers must be recorded before committing. |
 
 ## 12. Known Caveats & Gotchas

@@ -1,4 +1,5 @@
 import type { Prompt } from "@prompthub/shared/types";
+import { assertPromptContent } from "@prompthub/shared/utils/prompt-content";
 
 export type MobilePromptSummary = Pick<
   Prompt,
@@ -84,6 +85,7 @@ class SQLitePromptRepository {
   }
 
   async create(prompt: Omit<MobilePromptSummary, "updatedAt">): Promise<void> {
+    assertPromptContent(prompt);
     const now = Date.now();
     await (await this.getDb()).run(
       `INSERT INTO prompts (
@@ -110,6 +112,12 @@ class SQLitePromptRepository {
     const existing = await this.getById(id);
     if (!existing) throw new Error(`Prompt not found: ${id}`);
     const updated = { ...existing, ...updates };
+    if (
+      updates.systemPrompt !== undefined ||
+      updates.userPrompt !== undefined
+    ) {
+      assertPromptContent(updated);
+    }
     await (await this.getDb()).run(
       `UPDATE prompts SET title = ?, description = ?, system_prompt = ?,
         user_prompt = ?, tags = ?, is_favorite = ?, updated_at = ? WHERE id = ?`,

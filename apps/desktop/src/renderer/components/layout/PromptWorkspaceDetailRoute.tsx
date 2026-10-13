@@ -36,6 +36,7 @@ function getDetailInlineProps(
   PromptWorkspaceDetailPaneProps,
   | "cancelDetailInlineEdit"
   | "canSaveDetailInlineEdit"
+  | "hasDetailInlineContent"
   | "detailDescriptionInputRef"
   | "detailInlineDraft"
   | "detailSystemPromptTextareaRef"
@@ -52,6 +53,7 @@ function getDetailInlineProps(
   return {
     cancelDetailInlineEdit: inlineEditor.cancelDetailInlineEdit,
     canSaveDetailInlineEdit: inlineEditor.canSaveDetailInlineEdit,
+    hasDetailInlineContent: inlineEditor.hasDetailInlineContent,
     detailDescriptionInputRef: inlineEditor.detailDescriptionInputRef,
     detailInlineDraft: inlineEditor.detailInlineDraft,
     detailSystemPromptTextareaRef: inlineEditor.detailSystemPromptTextareaRef,

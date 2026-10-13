@@ -26,6 +26,13 @@
 
 ## Prompt Workflow
 
+- #225 的内容合同由 [Prompt 工作区规范](prompt-workspace.md#1-prompt-content-boundary)
+  定义：系统 / 用户正文至少一个有非空白内容；表单与 repository 共享判断，
+  纯系统 Prompt 保留空字符串用户正文。部分更新合并后校验，不修改 schema，
+  不迁移或删除历史空正文。27 项存储 / repository / locale 回归和类型检查通过；
+  [跨端验收记录](prompt-workspace.md#225-local-verification-2026-10-13) 区分真实
+  磁盘存储与尚未执行的原生 GUI 验收。
+
 - Prompt list search and filters operate on visible persisted records.
 - Prompt detail reloads from SQLite whenever its route regains focus.
 - Prompt deletion is permanent and requires explicit native or browser

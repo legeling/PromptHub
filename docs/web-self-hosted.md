@@ -17,6 +17,11 @@ This app provides browser-safe workspace capabilities:
 - skill records, versions, safety review, import/export, and remote import
 - rules, media, settings, immutable desktop backup, and legacy sync compatibility
 
+Prompt creation and content edits require non-whitespace text in at least one
+of `systemPrompt` or `userPrompt`. A system-only Prompt keeps `userPrompt: ""`;
+the API still requires a string for that field on creation. Partial updates use
+the stored value for any omitted content field and cannot clear the last body.
+
 MCP and Plugin data remains part of desktop backup and legacy synchronization payloads, but
 the browser does not manage or apply those Desktop-owned resources. The web
 workspace also does not expose local skill package files, agent scans,

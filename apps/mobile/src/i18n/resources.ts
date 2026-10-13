@@ -30,7 +30,7 @@ const promptWorkflowEn = {
   updatedAt: "Updated at",
   userPrompt: "User Prompt",
   userPromptPlaceholder: "Review the following code...",
-  validationRequired: "Title and User Prompt are required.",
+  validationRequired: "Enter a title and at least one system or user prompt.",
   validationTitle: "Required fields",
   notFound: "Prompt not found.",
 } as const;
@@ -64,7 +64,7 @@ const promptWorkflowZh = {
   titlePlaceholder: "例如：代码审查助手",
   updatedAt: "更新时间",
   userPromptPlaceholder: "请审查以下代码...",
-  validationRequired: "标题和 User Prompt 为必填项。",
+  validationRequired: "请填写标题，并至少填写系统提示词或用户提示词之一。",
   validationTitle: "请填写必填项",
   notFound: "Prompt 不存在。",
   detailTitle: "Prompt",
@@ -104,7 +104,7 @@ const promptWorkflowZhTw = {
   systemPromptPlaceholder: "你是一位專業助手...",
   titlePlaceholder: "例如：程式碼審查助手",
   userPromptPlaceholder: "請審查以下程式碼...",
-  validationRequired: "標題和 User Prompt 為必填欄位。",
+  validationRequired: "請填寫標題，並至少填寫系統提示詞或使用者提示詞其中之一。",
   validationTitle: "請填寫必填欄位",
   notFound: "Prompt 不存在。",
 } as const;
@@ -141,7 +141,7 @@ const promptWorkflowJa = {
   systemPromptPlaceholder: "あなたは専門知識を持つアシスタントです...",
   titlePlaceholder: "例：コードレビューアシスタント",
   userPromptPlaceholder: "次のコードをレビューしてください...",
-  validationRequired: "タイトルと User Prompt は必須です。",
+  validationRequired: "タイトルと、システムプロンプトかユーザープロンプトのいずれかを入力してください。",
   validationTitle: "必須項目",
   notFound: "Prompt が見つかりません。",
 } as const;
@@ -178,7 +178,7 @@ const promptWorkflowEs = {
   systemPromptPlaceholder: "Eres un asistente experto...",
   titlePlaceholder: "Por ejemplo: asistente de revisión de código",
   userPromptPlaceholder: "Revisa el siguiente código...",
-  validationRequired: "El título y el User Prompt son obligatorios.",
+  validationRequired: "Introduce un título y al menos un prompt del sistema o del usuario.",
   validationTitle: "Campos obligatorios",
   notFound: "Prompt no encontrado.",
 } as const;
@@ -217,7 +217,7 @@ const promptWorkflowDe = {
   systemPromptPlaceholder: "Du bist ein fachkundiger Assistent...",
   titlePlaceholder: "Zum Beispiel: Assistent für Code-Reviews",
   userPromptPlaceholder: "Prüfe den folgenden Code...",
-  validationRequired: "Titel und User Prompt sind erforderlich.",
+  validationRequired: "Geben Sie einen Titel und mindestens einen System- oder Benutzer-Prompt ein.",
   validationTitle: "Pflichtfelder",
   notFound: "Prompt nicht gefunden.",
 } as const;
@@ -254,7 +254,7 @@ const promptWorkflowFr = {
   systemPromptPlaceholder: "Vous êtes un assistant expert...",
   titlePlaceholder: "Par exemple : assistant de revue de code",
   userPromptPlaceholder: "Examinez le code suivant...",
-  validationRequired: "Le titre et le User Prompt sont obligatoires.",
+  validationRequired: "Renseignez un titre et au moins le prompt système ou le prompt utilisateur.",
   validationTitle: "Champs obligatoires",
   notFound: "Prompt introuvable.",
 } as const;

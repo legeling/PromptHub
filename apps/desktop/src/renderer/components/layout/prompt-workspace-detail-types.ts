@@ -25,6 +25,7 @@ export interface PromptWorkspaceDetailPaneProps {
   aiThinking: string | null;
   cancelDetailInlineEdit: () => void;
   canSaveDetailInlineEdit: boolean;
+  hasDetailInlineContent: boolean;
   childPrompts: PromptSummary[];
   copied: boolean;
   detailDescriptionInputRef: RefObject<HTMLInputElement>;

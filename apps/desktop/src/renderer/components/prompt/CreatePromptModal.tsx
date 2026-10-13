@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
+import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog, CollapsibleSection } from "../ui";
 import { PromptSourceNotesFields } from "./PromptSourceNotesFields";
 import { Select } from "../ui/Select";
@@ -299,7 +300,7 @@ export function CreatePromptModal({
   ]);
 
   const handleSubmit = useCallback(() => {
-    if (!title.trim() || !userPrompt.trim()) return;
+    if (!formState.title.trim() || !hasPromptContent(formState)) return;
 
     onCreate(buildPromptPayload(formState) as Parameters<typeof onCreate>[0]);
 
@@ -590,7 +591,7 @@ export function CreatePromptModal({
               variant="primary"
               size="sm"
               onClick={handleSubmit}
-              disabled={!title.trim() || !userPrompt.trim()}
+              disabled={!title.trim() || !hasPromptContent(formState)}
             >
               <SaveIcon className="w-4 h-4" aria-hidden="true" />
               {t("prompt.create")}
@@ -953,6 +954,11 @@ export function CreatePromptModal({
 
           {/* User Prompt */}
           <div className="space-y-2">
+            {!hasPromptContent(formState) && (
+              <p role="status" className="text-sm text-destructive">
+                {t("prompt.contentRequired")}
+              </p>
+            )}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <label
@@ -960,7 +966,6 @@ export function CreatePromptModal({
                   className="block text-sm font-medium text-foreground"
                 >
                   {t("prompt.userPromptLabel")}
-                  <span className="ml-2 text-xs text-destructive">*</span>
                 </label>
                 <p className="text-xs text-muted-foreground">
                   {t("prompt.variableTipContent")}

@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
 
 import { AppScreen } from "@/components/AppScreen";
 import { AppText } from "@/components/AppText";
@@ -57,7 +58,7 @@ export function PromptEditScreen() {
   }, [id, t]);
 
   const handleSave = async () => {
-    if (!title.trim() || !userPrompt.trim()) {
+    if (!title.trim() || !hasPromptContent({ systemPrompt, userPrompt })) {
       showPlatformAlert(
         t("prompts.workflow.validationTitle"),
         t("prompts.workflow.validationRequired"),
@@ -204,7 +205,7 @@ export function PromptEditScreen() {
             variant="subtitle"
             style={[styles.label, { color: palette.text }]}
           >
-            {t("prompts.workflow.userPrompt")} *
+            {t("prompts.workflow.userPrompt")}
           </AppText>
           <TextInput
             style={[

@@ -10,8 +10,9 @@ The GitHub snapshots record remote facts:
 - `../archive/github-closed.md`: issues currently closed on GitHub.
 
 This file records PromptHub's local delivery state. A GitHub issue can remain
-open while its local status is `local_done` or `release_pending`; GitHub issues
-are closed only after the version containing the change has been published.
+open while its local status is `local_done` or `release_pending`. Commit links
+and automatic closure follow [the issue rules](../../rules/issue-management-rules.md#github-issue-状态规则);
+remote closure and publication are recorded separately.
 
 ## Status Values
 
@@ -20,9 +21,9 @@ are closed only after the version containing the change has been published.
 | `untriaged`       | The issue exists remotely but has not been classified locally.                | Leave open                           |
 | `accepted`        | The issue is valid and should be handled, but implementation has not started. | Leave open                           |
 | `in_progress`     | A local change is actively handling the issue.                                | Leave open                           |
-| `local_done`      | Code, tests, and docs are complete locally, but not released.                 | Leave open                           |
-| `release_pending` | The issue is assigned to a release that has not shipped yet.                  | Leave open                           |
-| `released`        | The target version has shipped.                                               | Close GitHub, then refresh snapshots |
+| `local_done`      | Code, tests, and docs are complete locally, but not released.                 | Follow issue closure rules           |
+| `release_pending` | The issue is assigned to a release that has not shipped yet.                  | Follow issue closure rules           |
+| `released`        | The target version has shipped.                                               | Verify closure and refresh snapshots |
 | `wontfix`         | The project will not implement this issue.                                    | Explain publicly, then close         |
 | `duplicate`       | The issue is tracked by another issue.                                        | Link the canonical issue, then close |
 
@@ -34,6 +35,7 @@ does not promote an issue to local completion. Existing verification gaps remain
 
 | Issue | GitHub state | Local status | Target release | Change                                                                         | Notes                                                                                                                                                                                                                                                                                                                                |
 | ----- | ------------ | ------------ | -------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| #225 | open | local_done | 0.6.0 (unreleased) | `spec/knowledge/behavior/prompt-workspace.md` | System-only Prompt saving and merged-content validation are implemented across Desktop, CLI, self-hosted Web, Cloudflare Worker and Mobile. 28 new regressions and 254 focused cases pass, including real persistence/reopen and rejected-edit history preservation; source/test typechecks and scoped lint pass. Full shared-worktree file-size gate is blocked by unrelated parallel mcp-config.ts growth. GUI, real-model and release acceptance remain open; unpublished. Maintainer-requested Closes #225 is recorded; remote closure awaits default-branch delivery. |
 | #221 | open | accepted | | | Body reviewed and export screenshot inspected: only generic export failure is shown, not a diagnostic cause. Windows 0.5.9 and “6.0.12” reports need exact version/error/backup-entrypoint evidence; no speculative fix or equivalence with #191/#185 claimed. |
 | #220 | open | untriaged | | | Antigravity MCP change request; verify the current official/native configuration contract before adapting it. |
 | #219 | open | in_progress | | `spec/knowledge/behavior/web.md` | Folder-derived visibility fix is present in local commit f783066e; verify the issue's full scope before recording local completion. Not released. |
@@ -104,4 +106,4 @@ does not promote an issue to local completion. Existing verification gaps remain
 - Update this file whenever a GitHub issue is triaged, attached to an active change, completed locally, assigned to a release, or publicly closed.
 - Do not edit `github-open.md` or `github-closed.md` for local delivery status; those files are regenerated from GitHub.
 - Before a release, scan for `local_done` issues and move included items to `release_pending`.
-- After a release, move shipped items to `released`, close the corresponding GitHub issues with the release version, then refresh both GitHub snapshots.
+- After a release, move shipped items to `released` and record the actual version; verify remote closure under the issue rules and refresh both GitHub snapshots. Never infer publication from closure.

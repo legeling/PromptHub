@@ -7,7 +7,7 @@
 - 未解决问题不能只留在聊天、commit message 或个人记忆里。
 - GitHub issue 的远端 open/closed 状态和本地交付状态分开记录。
 - 被替代、作废、仅保留历史价值的文档必须归档并说明替代关系。
-- 本地实现完成不等于公开 issue 可以关闭；只有目标版本发布后才按发布结果关闭 GitHub issue。
+- issue 的完整修复提交必须显式关联并具备自动关闭能力；远端关闭和版本发布是两个独立状态，关闭不等于已发布。
 
 ## 记录位置
 
@@ -23,10 +23,12 @@
 
 ## GitHub Issue 状态规则
 
-- 本地实现完成但未发布：标记 `local_done` 或 `release_pending`，不要把 GitHub issue 当作已关闭。
-- commit / PR 在发布前优先使用 `Refs #<issue>`。
-- 只有目标版本已经发布且公开说明应关闭该 issue 时，才使用 `Closes #<issue>`。
-- 发布后刷新 `spec/issues/active/github-open.md` 和 `spec/issues/archive/github-closed.md`。
+- 本地实现完成但未发布：标记 `local_done` 或 `release_pending`；远端状态必须独立核实，不能由本地状态推断。
+- 每笔与 issue 相关的 commit 必须在正文显式关联对应编号，不能只在聊天、文档或分支名中提及。
+- 完成该 issue 全部修复范围且必要验证通过的独立提交，正文必须包含 `Closes #<issue>`，不能仅写 `Refs`。这是项目默认规则，不以版本已发布或维护者再次确认作为前提。
+- 调查、阶段性实现、仅引用或未完成 issue 全部范围的提交使用 `Refs #<issue>`，并说明剩余工作，禁止提前关闭。一个提交涉及多个 issue 时逐项判断，不得批量关闭未完成的 issue。
+- 关闭关键字在提交进入 GitHub 默认分支时生效；本地 commit / amend 不会关闭远端 issue，也不授权推送。相关 PR 应保留关闭关联；远端关闭须核实，不能由本地提交信息推断。
+- 发布或确认远端关闭后刷新 `spec/issues/active/github-open.md` 和 `spec/issues/archive/github-closed.md`。
 - 拒绝或合并 issue 前，先在本地状态记录 `wontfix`、`duplicate` 或合并目标，再进行公开说明。
 
 ## 什么时候新增 issue 记录

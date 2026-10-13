@@ -1,4 +1,5 @@
 import path from "path";
+import { PromptContentValidationError } from "@prompthub/shared/utils/prompt-content";
 
 import { closeDatabase, initDatabase } from "../database";
 import { configureRuntimePaths, resetRuntimePaths } from "../runtime-paths";
@@ -247,9 +248,13 @@ async function runCliOperation(
       EXIT_CODES.USAGE,
     );
   } catch (error) {
+    const normalizedError =
+      error instanceof PromptContentValidationError
+        ? new CliError("USAGE_ERROR", error.message, EXIT_CODES.USAGE)
+        : error;
     const cliError =
-      error instanceof CliError
-        ? error
+      normalizedError instanceof CliError
+        ? normalizedError
         : error instanceof CoreMcpError
           ? mapCoreMcpError(error)
           : error instanceof CliRemoteSyncError

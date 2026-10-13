@@ -35,7 +35,7 @@ PromptHub 使用 Conventional Commits：
 - summary 使用祈使语气，简短描述“做什么”，例如 `fix: skip web auth captcha when disabled`。
 - scope 可选，但建议用于跨域仓库，例如 `fix(web): ...`、`docs(spec): ...`、`feat(desktop): ...`。
 - 非 trivial commit 必须包含正文；只有 Conventional Commit 标题不算完整提交。
-- 正文必须记录提交目的、已有主题、change 或 issue 关联（存在时）、实际验证命令和结果；影响范围或残余风险存在时也必须记录。
+- 正文必须记录提交目的、已有主题或 change（存在时）、实际验证命令和结果；涉及 issue 时必须显式关联对应编号。完整修复使用关闭关键字，具体边界见 [issue 规则](issue-management-rules.md#github-issue-状态规则)。影响范围或残余风险存在时也必须记录。
 - 不要在 commit message 中写密钥、真实部署地址、私有路径或个人账号信息。
 
 最低 body 格式：
@@ -55,7 +55,7 @@ Verification:
 
 纯机械、单文件且不改变行为边界的 trivial commit 可以省略正文，但仍必须满足原子提交、工作区隔离和实际验证要求。任何关联 issue、active change、用户流程、公共契约、持久化、同步、安全或发布状态的提交都不属于 trivial commit。
 
-只有在目标版本已经发布、且确实要关闭 GitHub issue 时，才使用 `Closes #<issue-number>`。本地实现完成但尚未发布时使用 `Refs #<issue-number>`，并在 `spec/issues/active/local-github-status.md` 标记本地状态。
+issue 关联、关闭关键字及完成边界由 [issue 规则](issue-management-rules.md#github-issue-状态规则) 统一定义。提交前检查关闭关键字是否与实际修复范围、验证结果相符；本地交付状态仍记录在 `spec/issues/active/local-github-status.md`，不能冒充远端关闭或发布。
 
 ## 3. 关联与提交前检查
 
@@ -66,6 +66,6 @@ Verification:
 ## 6. PR / 发布关联
 
 - PR 描述应说明动机、影响范围、验证方式、残留风险和相关主题或计划（存在时）。
-- PR 不应把 “local_done / release_pending” 的 GitHub issue 提前关闭。
-- 版本发布后，才根据发布内容关闭对应 GitHub issue，并刷新 `spec/issues/active/github-open.md` 与 `spec/issues/archive/github-closed.md`。
+- PR 的 issue 关联与关闭能力遵循 [issue 规则](issue-management-rules.md#github-issue-状态规则)，不得关闭修复范围或必要验证尚未完成的 issue。
+- 远端关闭经确认后刷新 `spec/issues/active/github-open.md` 与 `spec/issues/archive/github-closed.md`；发布后更新实际版本及本地发布状态，不能把关闭视为已发布。
 - 发布型 commit 或 PR 应额外引用 `spec/releases/` 中的版本记录。

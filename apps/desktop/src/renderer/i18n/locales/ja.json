@@ -304,6 +304,7 @@
     "systemPromptOptional": "System Prompt（任意）",
     "systemPromptPlaceholder": "AI の役割と動作を設定...",
     "userPromptLabel": "User Prompt",
+    "contentRequired": "システムプロンプトかユーザープロンプトのいずれかを入力してください。",
     "inlineEditSystemPromptAria": "システムプロンプトをダブルクリックして編集",
     "inlineEditUserPromptAria": "ユーザープロンプトをダブルクリックして編集",
     "userPromptPlaceholder": "Prompt の内容を入力、{{変数名}} または {{変数名:例}} で変数を定義...",

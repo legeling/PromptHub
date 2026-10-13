@@ -305,6 +305,7 @@
     "systemPromptOptional": "System Prompt (opcional)",
     "systemPromptPlaceholder": "Configura el rol y comportamiento de la IA...",
     "userPromptLabel": "User Prompt",
+    "contentRequired": "Introduce al menos un prompt del sistema o del usuario.",
     "inlineEditSystemPromptAria": "Haz doble clic para editar el prompt del sistema",
     "inlineEditUserPromptAria": "Haz doble clic para editar el prompt del usuario",
     "userPromptPlaceholder": "Escribe tu Prompt, usa {{nombreVariable}} o {{nombreVariable:ejemplo}} para definir variables...",

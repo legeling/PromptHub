@@ -1,5 +1,6 @@
 import Database from "./adapter";
 import { v4 as uuidv4 } from "uuid";
+import { assertPromptContent } from "@prompthub/shared/utils/prompt-content";
 import type {
   Prompt,
   PromptSummary,
@@ -102,6 +103,7 @@ export class PromptDB {
    */
   create(data: CreatePromptDTO): Prompt {
     assertPromptTextHasNoNullBytes(data);
+    assertPromptContent(data);
     return this.db.transaction(() => this.createWithInitialVersion(data))();
   }
 
@@ -228,6 +230,18 @@ export class PromptDB {
     assertPromptTextHasNoNullBytes(data);
     const existingPrompt = this.getById(id);
     if (!existingPrompt) return null;
+    if (data.systemPrompt !== undefined || data.userPrompt !== undefined) {
+      assertPromptContent({
+        systemPrompt:
+          data.systemPrompt !== undefined
+            ? data.systemPrompt
+            : existingPrompt.systemPrompt,
+        userPrompt:
+          data.userPrompt !== undefined
+            ? data.userPrompt
+            : existingPrompt.userPrompt,
+      });
+    }
 
     const now = Date.now();
     const updates: string[] = ["updated_at = ?"];

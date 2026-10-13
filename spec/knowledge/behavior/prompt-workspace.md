@@ -8,6 +8,23 @@
 
 ### 1. Prompt Content Boundary
 
+- #225：创建 Prompt 及修改正文时，`systemPrompt`、`userPrompt` 至少一个
+  必须包含非空白文本；标题的现有必填规则不变。两者各自保存，纯系统提示词的
+  `userPrompt` 使用空字符串，不补入占位内容。英文版本不替代主内容的校验。
+- 内容判断由 shared 纯函数定义，DB 在普通创建和正文更新写入前执行同一校验；
+  部分更新先合并已有字段，元数据更新不要求重新提交正文。桌面按钮、提示、Web
+  / Cloudflare Worker、移动端 repository / 表单和 CLI 遵循同一合同。历史快照 /
+  备份恢复保留原始字段，不追溯删除空正文记录。
+- SQLite 仍拥有结构化记录及版本，文件布局、字段类型和 IPC/HTTP DTO 不变；
+  `userPrompt` 仍是字符串，允许 `""`，不引入 schema 迁移或双写。拒绝正文更新
+  不得改变当前记录、版本链或文件。回退应用不丢失数据，但旧版表单可能无法编辑
+  纯系统提示词。桌面新建、编辑、详情行内编辑、CLI、自部署 Web、Cloudflare
+  Worker 与移动端表单 / repository 的实现和聚焦回归已完成。真实 GUI、模型调用
+  和发布验收另行进行。
+- 校验的时间成本为 O(两段正文长度)，不新增数据库查询、网络请求或持久化状态。
+  连续保存/失败保全/重开的集成用例允许超过 50 行：同一用例保留完整前后状态，
+  避免拆成依赖执行顺序的测试；覆盖入口与替换边界在下方验收记录列出。
+
 - Prompt 内容必须有稳定的持久化表示，允许后续索引、版本、导入导出和同步围绕其工作。
 - 数据库存储与文件系统存储的职责应明确，避免真相源混乱。
 - Prompt DB 在创建、更新、版本备注及直接恢复写入前，统一拒绝含 null byte
@@ -310,6 +327,62 @@ When prompt file layout, metadata contract, or versioning semantics change mater
 When another system feature relies on prompt storage semantics:
 
 - it should treat this spec and the linked architecture docs as the current truth source
+
+## #225 Local Verification (2026-10-13)
+
+新增 28 项 #225 回归，相关范围共 254 项通过：Core 51、Web 26、CLI 18、
+桌面 unit 121 / integration 1、移动端 27、Cloudflare Worker 10。
+核心断言覆盖纯系统 / 纯用户 / 两者有内容，
+全空及 Unicode 空白拒绝、部分更新、失败前后记录与版本链相同，以及关闭重开。
+Web 还覆盖纯系统 Prompt / version 的 direct insert 与 graph restore。
+
+- `packages/core/tests/prompt-content.test.ts`：真实 SQLite、当前 schema、创建与
+  合并更新；空内容拒绝不产生记录或版本。已有历史空正文可修改元数据。
+- `apps/web/src/routes/prompt-content.test.ts`：真实 app 初始化、鉴权、HTTP route、
+  SQLite 与磁盘重开；无监听端口或远端服务替换。
+- `apps/cli/tests/prompt-content.test.ts`：公开 `runCli`、inline / file 参数、实际
+  初始化、SQLite 与关闭重开；未执行发行版二进制。
+- `apps/desktop/tests/integration/prompt-content.test.ts`：实际 preload API、已注册
+  IPC、存储与发布、重开；只替换 Electron 运输层与 native home，不证明真实窗口。
+- 桌面 create/edit modal、MainContent 行内编辑与 `detail-inline-content.test.tsx`
+  使用 jsdom / mock store 验证表单局部合同。英文版本删除按合并后的主正文判断；
+  AI rewrite 用模拟协议响应验证纯系统草稿更新与保存，不证明真实供应商调用。
+- 移动端 storage 回归通过公开 repository 保存、拒绝全空更新并重开真实磁盘
+  SQLite；只替换 Expo 驱动为 Node SQLite，不证明原生屏幕或设备运行。
+- Worker 回归通过本地 workerd、D1 / R2、鉴权 HTTP、版本和进程重启验证；
+  全空返回 422 `VALIDATION_ERROR`，拒绝更新保留当前正文和版本；未部署远端。
+
+可从仓库根重跑本次回归：
+
+```sh
+pnpm --filter @prompthub/core exec vitest run tests/prompt-content.test.ts --minWorkers 1 --maxWorkers 1
+pnpm --filter @prompthub/web exec vitest run src/routes/prompt-content.test.ts --minWorkers 1 --maxWorkers 1
+pnpm --filter @prompthub/cli exec vitest run tests/prompt-content.test.ts --minWorkers 1 --maxWorkers 1
+pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/create-prompt-modal.test.tsx tests/unit/components/edit-prompt-modal.test.tsx tests/unit/components/main-content-inline-edit.test.tsx tests/unit/components/detail-inline-content.test.tsx tests/integration/prompt-content.test.ts --minWorkers 1 --maxWorkers 1 -t 225
+pnpm --filter @prompthub/mobile exec vitest run src/storage/release-acceptance-desktop-release-mobile-storage.test.ts src/features/prompts/data/promptRepository.test.ts src/i18n/release-acceptance-desktop-release-mobile-locales.test.ts --minWorkers 1 --maxWorkers 1
+pnpm --filter @prompthub/web-cloudflare exec vitest run src/prompt-content.test.ts src/release-acceptance-cross-surface-storage.test.ts --minWorkers 1 --maxWorkers 1
+```
+
+Shared / DB / Core / CLI / Desktop / Web / Mobile / Worker 源码类型检查、Desktop 测试类型检查、
+新增 Core 测试独立严格类型检查、触及文件 ESLint、新文件及定向格式检查通过。
+桌面 IPC 集成首次因夹具 import 顺序失败，修正后单独复测通过；Web 测试 helper
+首次返回类型错误，改为 async 后类型检查与该文件 5 项复测通过。原断言未削弱。
+
+隔离副本将 shared 内容判断改回 user-only，9 项中命中 3 项业务失败；另一次
+移除写入前的拒绝，命中 4 项空内容 / 部分更新断言失败；均退出 1。隔离执行器
+最初的 bin 链接和 alias 初始化失败不计为变异证据。临时副本与任务进程已清理，
+未改写共享源码制造失败。
+
+全仓 `pnpm lint:file-size` 未通过：并行 MCP 改动中的
+`packages/shared/utils/mcp-config.ts` 为 1528 行，超过现行 1500 行门禁；本次文件
+未超限，未修改该 MCP 工作。仅将 #225 叠加到 HEAD 的隔离提交快照中，254 项
+相关测试、八个包源码类型检查、Desktop 测试类型检查、新增 Core 测试严格类型
+检查、定向 ESLint / 格式检查及全仓文件行数门禁均通过；复用已安装依赖，未下载
+或混入其他问题的实现。Worker 使用自身 ESLint 配置，测试夹具 `useRuntime` 不
+属于 React Hook。未运行真实 GUI（未获控制授权）、真实模型 / 图片
+生成、跨平台或完整 release 门禁；提交边界仅包含 #225。提交使用 `Closes #225`，
+关联及关闭边界见 [issue 规则](../../rules/issue-management-rules.md#github-issue-状态规则)；
+本地提交未推送，远端关闭待提交进入默认分支后确认，发布验收状态不因此改变。
 
 ## Current Verification Gap (2026-10-12)
 
