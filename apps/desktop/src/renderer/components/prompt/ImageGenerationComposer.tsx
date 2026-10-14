@@ -39,8 +39,6 @@ export interface ImageGenerationComposerProps {
   onVariableChange: (name: string, value: string) => void;
   resolvedPrompt: string;
   references: GenerationReferenceImage[];
-  referencesSupported: boolean;
-  maxReferences: number;
   onAddLocalReferences: () => Promise<void>;
   onDropLocalReferences: (files: File[]) => Promise<void>;
   onAddPromptReference: (reference: GenerationReferenceImage) => void;
@@ -280,11 +278,9 @@ function ReferenceSettings(props: ImageGenerationComposerProps) {
             {label}
           </span>
           <span className="block truncate text-[10px] text-muted-foreground">
-            {props.referencesSupported
-              ? t("generation.referenceCount", {
-                  count: props.references.length,
-                })
-              : t("generation.referenceUnavailable")}
+            {t("generation.referenceCount", {
+              count: props.references.length,
+            })}
           </span>
         </span>
         <ChevronDownIcon
@@ -297,8 +293,6 @@ function ReferenceSettings(props: ImageGenerationComposerProps) {
           <ImageGenerationReferencePicker
             prompts={props.prompts}
             references={props.references}
-            supported={props.referencesSupported}
-            maxReferences={props.maxReferences}
             onAddLocalImages={props.onAddLocalReferences}
             onDropLocalImages={props.onDropLocalReferences}
             onAddPromptImage={props.onAddPromptReference}

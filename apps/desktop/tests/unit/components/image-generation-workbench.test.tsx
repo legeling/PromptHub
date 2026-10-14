@@ -8,6 +8,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImageGenerationReferencePicker } from "../../../src/renderer/components/prompt/ImageGenerationReferencePicker";
 import { ImageGenerationWorkbench } from "../../../src/renderer/components/prompt/ImageGenerationWorkbench";
+import { TopBar } from "../../../src/renderer/components/layout/TopBar";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { useUIStore } from "../../../src/renderer/stores/ui.store";
@@ -34,21 +35,6 @@ vi.mock("../../../src/renderer/services/generation-workbench-runner", () => ({
   setGenerationOutputFavorite: runner.favorite,
   retryGenerationBatch: runner.retry,
   copyGenerationOutputToPromptMedia: runner.copyToPrompt,
-  supportsGenerationReferenceImages: (model: {
-    provider?: string;
-    model?: string;
-  }) =>
-    model.provider === "google" ||
-    Boolean(model.model?.toLowerCase().startsWith("gpt-image-")),
-  getMaxGenerationReferenceImages: (model: {
-    provider?: string;
-    model?: string;
-  }) =>
-    model.provider === "google"
-      ? 2
-      : model.model?.toLowerCase().startsWith("gpt-image-")
-        ? 4
-        : 0,
   getSupportedGenerationAspectRatios: () => ["1:1", "4:5", "16:9", "9:16"],
   subscribeGenerationBatches: (listener: (batches: unknown[]) => void) => {
     runner.listeners.push(listener);
@@ -222,7 +208,7 @@ describe("ImageGenerationWorkbench", () => {
       target: { value: "image-prompt-1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Reference images" }));
-    expect(screen.getByText("0 / 2 selected")).toBeInTheDocument();
+    expect(screen.getAllByText("0 reference(s)")).toHaveLength(2);
     fireEvent.click(
       screen.getByRole("button", { name: "Choose from Prompts" }),
     );
@@ -303,8 +289,6 @@ describe("ImageGenerationWorkbench", () => {
             promptId: "deleted-prompt",
           },
         ]}
-        supported
-        maxReferences={2}
         onAddLocalImages={vi.fn()}
         onDropLocalImages={vi.fn()}
         onAddPromptImage={vi.fn()}
@@ -372,7 +356,7 @@ describe("ImageGenerationWorkbench", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reference images" }));
     fireEvent.click(screen.getByRole("button", { name: "Add local images" }));
-    expect(await screen.findByText("1 / 2 selected")).toBeInTheDocument();
+    expect(await screen.findAllByText("1 reference(s)")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Edit image" })).toBeVisible();
     expect(window.electron!.saveImage).toHaveBeenCalledWith([
       "/tmp/reference.png",
@@ -381,7 +365,7 @@ describe("ImageGenerationWorkbench", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Remove managed-reference.png" }),
     );
-    expect(screen.getByText("0 / 2 selected")).toBeInTheDocument();
+    expect(screen.getAllByText("0 reference(s)")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Generate" })).toBeVisible();
   });
 
@@ -408,7 +392,7 @@ describe("ImageGenerationWorkbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reference images" }));
     fireEvent.click(screen.getByRole("button", { name: "Add local images" }));
 
-    expect(await screen.findByText("1 / 2 selected")).toBeInTheDocument();
+    expect(await screen.findAllByText("1 reference(s)")).toHaveLength(2);
     expect(window.electron!.saveImage).toHaveBeenCalledWith([
       "/tmp/reference.webp",
     ]);
@@ -452,7 +436,7 @@ describe("ImageGenerationWorkbench", () => {
     fireEvent.drop(dropzone, {
       dataTransfer: { files: [dropped] },
     });
-    expect(await screen.findByText("1 / 2 selected")).toBeInTheDocument();
+    expect(await screen.findAllByText("1 reference(s)")).toHaveLength(2);
 
     fireEvent.click(
       screen.getByRole("button", { name: "Choose from Prompts" }),
@@ -482,7 +466,12 @@ describe("ImageGenerationWorkbench", () => {
     fireEvent.drop(dropzone, {
       dataTransfer: { files: [dropped] },
     });
-    expect(window.electron!.saveImageBuffer).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(window.electron!.saveImageBuffer).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByRole("button", { name: "Add local images" }),
+    ).toBeEnabled();
 
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "A poster" },
@@ -557,7 +546,14 @@ describe("ImageGenerationWorkbench", () => {
   });
 
   it("reflows the gallery beside an on-demand inspector without covering it", async () => {
-    await renderWithI18n(<ImageGenerationWorkbench />);
+    useUIStore.setState({ appModule: "prompt", viewMode: "prompt" });
+    usePromptStore.setState({ viewMode: "generation", searchQuery: "" });
+    await renderWithI18n(
+      <>
+        <TopBar onOpenSettings={vi.fn()} />
+        <ImageGenerationWorkbench />
+      </>,
+    );
 
     const gallery = screen.getByTestId("generation-gallery");
     const config = screen.getByTestId("generation-config-panel");
@@ -596,6 +592,11 @@ describe("ImageGenerationWorkbench", () => {
     expect(within(compactNewBatch).getByText("New batch")).toHaveClass(
       "sr-only",
     );
+    fireEvent.click(screen.getByRole("button", { name: "Collapse" }));
+    expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(false);
+    expect(
+      screen.queryByTestId("generation-config-panel"),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Details" }));
     expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(false);
@@ -610,7 +611,14 @@ describe("ImageGenerationWorkbench", () => {
   });
 
   it("keeps New and History mutually exclusive with the Prompts secondary sidebar", async () => {
-    await renderWithI18n(<ImageGenerationWorkbench />);
+    useUIStore.setState({ appModule: "prompt", viewMode: "prompt" });
+    usePromptStore.setState({ viewMode: "generation", searchQuery: "" });
+    await renderWithI18n(
+      <>
+        <TopBar onOpenSettings={vi.fn()} />
+        <ImageGenerationWorkbench />
+      </>,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Close details" }));
     fireEvent.click(screen.getByRole("button", { name: "Expand" }));
@@ -743,14 +751,14 @@ describe("ImageGenerationWorkbench", () => {
 
     fireEvent.click(referenceImages);
     expect(referenceImages).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("0 / 2 selected")).toBeInTheDocument();
+    expect(screen.getAllByText("0 reference(s)")).toHaveLength(2);
     expect(screen.getByTestId("generation-reference-dropzone")).toHaveClass(
       "min-h-28",
       "border-dashed",
     );
   });
 
-  it("keeps unsupported reference settings compact and hides unusable actions", async () => {
+  it("uploads and submits every reference for an arbitrary custom image model", async () => {
     usePromptStore.setState({
       prompts: [
         {
@@ -763,7 +771,8 @@ describe("ImageGenerationWorkbench", () => {
       aiModels: [
         {
           ...useSettingsStore.getState().aiModels[0],
-          model: "dall-e-3",
+          provider: "custom",
+          model: "studio-image-model",
         },
       ],
     });
@@ -771,17 +780,29 @@ describe("ImageGenerationWorkbench", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reference images" }));
 
-    expect(
-      screen.getByText(/does not support reference images/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Add local images" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("0 / 0 selected")).not.toBeInTheDocument();
-    expect(screen.getByTestId("generation-reference-unavailable")).toHaveClass(
-      "min-h-24",
-      "border-dashed",
+    const fileNames = ["a.png", "b.png", "c.png", "d.png", "e.png"];
+    vi.mocked(window.electron!.selectImage!).mockResolvedValue(fileNames);
+    vi.mocked(window.electron!.saveImage!).mockResolvedValue(fileNames);
+    fireEvent.click(screen.getByRole("button", { name: "Add local images" }));
+    await waitFor(() =>
+      expect(screen.getAllByRole("listitem")).toHaveLength(fileNames.length),
     );
+    expect(window.electron!.saveImage).toHaveBeenCalledWith(fileNames);
+    expect(
+      screen.getByRole("button", { name: "Add local images" }),
+    ).toBeEnabled();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "A poster" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Edit image" }));
+    await waitFor(() => expect(runner.start).toHaveBeenCalled());
+    expect(runner.start.mock.calls[0][0].referenceImages).toEqual(
+      fileNames.map((fileName) => ({ source: "local", fileName })),
+    );
+    expect(runner.start.mock.calls[0][1]).toMatchObject({
+      model: "studio-image-model",
+      provider: "custom",
+    });
   });
 
   it("keeps gallery filters, sort, and density inside one workbench menu", async () => {
@@ -949,6 +970,13 @@ describe("ImageGenerationWorkbench", () => {
   it("keeps review actions behind More and right-click on the focused stage", async () => {
     const updatePrompt = vi.fn().mockResolvedValue(undefined);
     usePromptStore.setState({ updatePrompt });
+    const imageModel = useSettingsStore.getState().aiModels[0];
+    useSettingsStore.setState({
+      aiModels: [
+        { ...imageModel, provider: "custom", model: "studio-image-model" },
+        { ...imageModel, id: "other-image-model" },
+      ],
+    });
     const anchorClick = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {});
@@ -1039,11 +1067,12 @@ describe("ImageGenerationWorkbench", () => {
     expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(false);
     expect(screen.getByTestId("generation-config-panel")).toBeVisible();
     expect(screen.getByRole("button", { name: "Edit image" })).toBeVisible();
+    expect(screen.getByLabelText("Model")).toHaveValue(imageModel.id);
     expect(screen.getByRole("textbox")).toHaveValue(
       "Minimal white concrete house",
     );
     fireEvent.click(screen.getByRole("button", { name: "Reference images" }));
-    expect(screen.getByText("1 / 4 selected")).toBeVisible();
+    expect(screen.getAllByText("1 reference(s)")).toHaveLength(2);
     expect(screen.getByText("Generated output")).toBeVisible();
     anchorClick.mockRestore();
   });

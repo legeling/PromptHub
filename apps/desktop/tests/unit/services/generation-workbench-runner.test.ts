@@ -371,21 +371,23 @@ describe("generation workbench runner", () => {
     expect(window.api.generation.create).not.toHaveBeenCalled();
   });
 
-  it("rejects references for unverified OpenAI-compatible models", async () => {
-    const { startGenerationBatch } =
-      await import("../../../src/renderer/services/generation-workbench-runner");
-    const config = {
-      id: "dall-e-image",
-      type: "image" as const,
-      provider: "openai",
-      apiProtocol: "openai" as const,
-      apiKey: "key",
-      apiUrl: "https://api.openai.com/v1",
-      model: "dall-e-3",
-    };
+  it.each(["custom", "flux", "ideogram", "recraft", "replicate", "stability"])(
+    "forwards references for arbitrary image models from %s",
+    async (provider) => {
+      const { startGenerationBatch } =
+        await import("../../../src/renderer/services/generation-workbench-runner");
+      const config = {
+        id: "dall-e-image",
+        type: "image" as const,
+        provider,
+        apiProtocol: "openai" as const,
+        apiKey: "key",
+        apiUrl: "https://api.openai.com/v1",
+        model: "studio-image-model",
+      };
 
-    await expect(
-      startGenerationBatch(
+      vi.mocked(window.electron!.readImageBase64!).mockResolvedValue("cmVm");
+      await startGenerationBatch(
         {
           prompt: "A poster",
           model: {
@@ -397,26 +399,40 @@ describe("generation workbench runner", () => {
           referenceImages: [{ source: "prompt", fileName: "reference.png" }],
         },
         config,
-      ),
-    ).rejects.toThrow(/reference images/i);
-    expect(window.api.generation.create).not.toHaveBeenCalled();
-  });
+      );
+      await vi.waitFor(() => expect(generateImage).toHaveBeenCalled());
+      expect(generateImage).toHaveBeenCalledWith(
+        config,
+        "A poster",
+        expect.objectContaining({
+          referenceImages: [{ base64: "cmVm", mimeType: "image/png" }],
+        }),
+      );
+    },
+  );
 
-  it("enforces the provider reference limit before creating a batch", async () => {
-    const { startGenerationBatch } =
-      await import("../../../src/renderer/services/generation-workbench-runner");
-    const config = {
-      id: "gemini-image",
-      type: "image" as const,
-      provider: "google",
-      apiProtocol: "gemini" as const,
-      apiKey: "key",
-      apiUrl: "https://generativelanguage.googleapis.com/v1beta",
-      model: "gemini-2.5-flash-image",
-    };
+  it.each(["openai", "gemini"] as const)(
+    "forwards all ordered references without an application count limit for %s",
+    async (apiProtocol) => {
+      const { startGenerationBatch } =
+        await import("../../../src/renderer/services/generation-workbench-runner");
+      const config = {
+        id: "gemini-image",
+        type: "image" as const,
+        provider: "google",
+        apiProtocol,
+        apiKey: "key",
+        apiUrl: "https://generativelanguage.googleapis.com/v1beta",
+        model: "gemini-2.5-flash-image",
+      };
 
-    await expect(
-      startGenerationBatch(
+      const fileNames = ["a.png", "b.png", "c.png", "d.png", "e.png"];
+      for (const [index] of fileNames.entries()) {
+        vi.mocked(window.electron!.readImageBase64!).mockResolvedValueOnce(
+          `image-${index}`,
+        );
+      }
+      await startGenerationBatch(
         {
           prompt: "A poster",
           model: {
@@ -425,17 +441,26 @@ describe("generation workbench runner", () => {
             model: config.model,
           },
           targetCount: 1,
-          referenceImages: ["a.png", "b.png", "c.png"].map((fileName) => ({
+          referenceImages: fileNames.map((fileName) => ({
             source: "prompt" as const,
             fileName,
           })),
         },
         config,
-      ),
-    ).rejects.toThrow(/at most 2 reference images/i);
-    expect(window.api.generation.create).not.toHaveBeenCalled();
-    expect(window.electron!.readImageBase64).not.toHaveBeenCalled();
-  });
+      );
+      await vi.waitFor(() => expect(generateImage).toHaveBeenCalled());
+      expect(generateImage).toHaveBeenCalledWith(
+        config,
+        "A poster",
+        expect.objectContaining({
+          referenceImages: fileNames.map((_, index) => ({
+            base64: `image-${index}`,
+            mimeType: "image/png",
+          })),
+        }),
+      );
+    },
+  );
 
   it("commits remote outputs without writing temporary Prompt media", async () => {
     generateImage.mockResolvedValue({

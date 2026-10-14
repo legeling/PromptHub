@@ -7,13 +7,13 @@ import {
   HistoryIcon,
   ImageIcon,
   LoaderCircleIcon,
-  PanelLeftIcon,
   PlusIcon,
   StarIcon,
   XCircleIcon,
   XIcon,
 } from "lucide-react";
 import { resolveGenerationPrompt } from "@prompthub/core/image-generation-workbench";
+import { MEDIA_SAVE_MAX_BYTES } from "@prompthub/shared/constants/media-limits";
 import type {
   GenerationBatchManifest,
   GenerationOutputRecord,
@@ -27,14 +27,12 @@ import { useUIStore } from "../../stores/ui.store";
 import {
   cancelGenerationBatch,
   copyGenerationOutputToPromptMedia,
-  getMaxGenerationReferenceImages,
   getSupportedGenerationAspectRatios,
   loadGenerationBatches,
   retryGenerationBatch,
   setGenerationOutputFavorite,
   startGenerationBatch,
   subscribeGenerationBatches,
-  supportsGenerationReferenceImages,
 } from "../../services/generation-workbench-runner";
 import { resolveLocalGenerationImageSrc } from "../../utils/media-url";
 import { useToast } from "../ui/Toast";
@@ -61,7 +59,6 @@ interface GalleryOutputEntry {
   output: GenerationOutputRecord;
 }
 
-const MAX_REFERENCE_FILE_BYTES = 20 * 1024 * 1024;
 const REFERENCE_FILE_PATTERN = /\.(?:jpe?g|png|webp)$/iu;
 const DEFAULT_GENERATION_COUNT = 1;
 
@@ -248,6 +245,13 @@ export function ImageGenerationWorkbench() {
   const hasShownReviewRef = useRef(false);
   const inspectorRequestedRef = useRef(false);
 
+  useEffect(() => {
+    if (isWorkbenchSidebarExpanded) {
+      inspectorRequestedRef.current = false;
+      setInspectorOpen(false);
+    }
+  }, [isWorkbenchSidebarExpanded]);
+
   useEffect(
     () => subscribeGenerationBatches((next) => setBatches([...next])),
     [],
@@ -278,18 +282,12 @@ export function ImageGenerationWorkbench() {
   // list projection stays light. The list itself only needs id/title.
   // 完整内容（variables/userPrompt）按需加载，保持列表投影轻量。
   const { prompt: sourcePrompt } = usePromptDetail(selectedPromptId || null);
-  const maxReferences = selectedModel
-    ? getMaxGenerationReferenceImages(selectedModel)
-    : 0;
   const supportedRatios = useMemo(
     () =>
       selectedModel
         ? getSupportedGenerationAspectRatios(selectedModel)
         : ["1:1"],
     [selectedModel],
-  );
-  const referencesSupported = Boolean(
-    selectedModel && supportsGenerationReferenceImages(selectedModel),
   );
   useEffect(() => {
     if (!supportedRatios.includes(ratio)) {
@@ -325,7 +323,6 @@ export function ImageGenerationWorkbench() {
   const valid = Boolean(
     resolvedPrompt.trim() &&
     selectedModel &&
-    (references.length === 0 || referencesSupported) &&
     requiredVariablesReady &&
     Number.isInteger(count) &&
     count >= 1 &&
@@ -435,7 +432,6 @@ export function ImageGenerationWorkbench() {
   };
 
   const appendReferences = (incoming: GenerationReferenceImage[]) => {
-    if (!referencesSupported || maxReferences <= 0) return;
     setReferences((current) => {
       const known = new Set(current.map((item) => item.fileName));
       const unique = incoming.filter((item) => {
@@ -443,7 +439,7 @@ export function ImageGenerationWorkbench() {
         known.add(item.fileName);
         return true;
       });
-      return [...current, ...unique].slice(0, maxReferences);
+      return [...current, ...unique];
     });
   };
 
@@ -451,10 +447,9 @@ export function ImageGenerationWorkbench() {
     try {
       const paths = await window.electron?.selectImage?.();
       if (!paths?.length) return;
-      const remaining = Math.max(0, maxReferences - references.length);
-      const supportedPaths = paths
-        .filter((filePath) => REFERENCE_FILE_PATTERN.test(filePath))
-        .slice(0, remaining);
+      const supportedPaths = paths.filter((filePath) =>
+        REFERENCE_FILE_PATTERN.test(filePath),
+      );
       if (supportedPaths.length === 0) {
         throw new Error("No supported image selected");
       }
@@ -473,15 +468,12 @@ export function ImageGenerationWorkbench() {
   };
 
   const dropLocalReferences = async (files: File[]) => {
-    const remaining = Math.max(0, maxReferences - references.length);
-    const accepted = files
-      .filter(
-        (file) =>
-          file.size <= MAX_REFERENCE_FILE_BYTES &&
-          (["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-            REFERENCE_FILE_PATTERN.test(file.name)),
-      )
-      .slice(0, remaining);
+    const accepted = files.filter(
+      (file) =>
+        file.size <= MEDIA_SAVE_MAX_BYTES &&
+        (["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+          REFERENCE_FILE_PATTERN.test(file.name)),
+    );
     if (accepted.length === 0) {
       showToast(t("generation.referenceUploadFailed"), "error");
       return;
@@ -665,15 +657,6 @@ export function ImageGenerationWorkbench() {
     setInspectorOpen(true);
   };
 
-  const toggleWorkbenchSidebar = () => {
-    const expanded = !isWorkbenchSidebarExpanded;
-    if (expanded) {
-      inspectorRequestedRef.current = false;
-      setInspectorOpen(false);
-    }
-    setWorkbenchSidebarExpanded(expanded);
-  };
-
   const startNewBatch = () => {
     setDraftMode(true);
     setSelectedBatchId(null);
@@ -687,11 +670,6 @@ export function ImageGenerationWorkbench() {
     batch: GenerationBatchManifest,
     output: GenerationOutputRecord,
   ) => {
-    const editingModel =
-      selectedModel && supportsGenerationReferenceImages(selectedModel)
-        ? selectedModel
-        : models.find((model) => supportsGenerationReferenceImages(model));
-    if (editingModel) setModelId(editingModel.id);
     setSelectedPromptId("");
     setVariableValues({});
     setPrompt(batch.resolvedPrompt);
@@ -730,8 +708,6 @@ export function ImageGenerationWorkbench() {
       setVariableValues((current) => ({ ...current, [name]: value })),
     resolvedPrompt,
     references,
-    referencesSupported,
-    maxReferences,
     onAddLocalReferences: addLocalReferences,
     onDropLocalReferences: dropLocalReferences,
     onAddPromptReference: (reference: GenerationReferenceImage) =>
@@ -751,19 +727,6 @@ export function ImageGenerationWorkbench() {
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-card">
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleWorkbenchSidebar}
-            aria-label={t(
-              isWorkbenchSidebarExpanded ? "common.collapse" : "common.expand",
-            )}
-            title={t(
-              isWorkbenchSidebarExpanded ? "common.collapse" : "common.expand",
-            )}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <PanelLeftIcon className="h-4 w-4" aria-hidden="true" />
-          </button>
           <h1
             className={
               isWorkbenchSidebarExpanded

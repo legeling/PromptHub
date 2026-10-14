@@ -50,11 +50,6 @@ async function editImage(
   prompt: string,
   options: OpenAIImageOptions,
 ): Promise<ImageGenerationResponse> {
-  if (!isGptImageModel(model)) {
-    throw new Error(
-      "The selected image generation endpoint does not support reference images. Use a GPT Image model or Gemini-compatible endpoint.",
-    );
-  }
   const fields: Record<string, string> = { model, prompt };
   if (options.quality) {
     fields.quality = options.quality === "hd" ? "high" : "medium";

@@ -656,8 +656,6 @@ export function TopBar({
     ? t("settings.newVersion", { version: updateVersion })
     : t("settings.updateAvailable");
 
-  if (isGenerationWorkbench) return null;
-
   return (
     <>
       <header

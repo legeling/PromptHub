@@ -1276,14 +1276,14 @@ describe("TopBar", () => {
     expect(useUIStore.getState().isSidebarCollapsed).toBe(true);
   });
 
-  it("removes generic Prompt controls while the image workbench owns the header", async () => {
+  it("keeps Prompt search and the same sidebar control mounted across graph and generation views", async () => {
     useUIStore.setState({
       appModule: "prompt",
       viewMode: "prompt",
       isSidebarCollapsed: false,
       isWorkbenchSidebarExpanded: false,
     });
-    usePromptStore.setState({ viewMode: "generation" });
+    usePromptStore.setState({ viewMode: "graph" });
 
     await act(async () => {
       await renderWithI18n(
@@ -1292,16 +1292,27 @@ describe("TopBar", () => {
       );
     });
 
-    expect(
-      screen.queryByRole("button", { name: "Expand" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByPlaceholderText("Search Prompt..."),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "New" }),
-    ).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Collapse" });
+    const search = screen.getByRole("textbox");
+    act(() => usePromptStore.getState().setViewMode("generation"));
+    expect(screen.getByRole("button", { name: "Expand" })).toBe(toggle);
+    expect(screen.getByRole("textbox")).toBe(search);
+    expect(search).toBeVisible();
+    expect(screen.getByRole("button", { name: "New" })).toBeVisible();
+    fireEvent.click(toggle);
+    expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(true);
+    expect(screen.getByRole("button", { name: "Collapse" })).toBe(toggle);
+    fireEvent.click(toggle);
     expect(useUIStore.getState().isSidebarCollapsed).toBe(false);
     expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(false);
+    fireEvent.change(search, { target: { value: "poster" } });
+    expect(usePromptStore.getState().searchQuery).toBe("poster");
+    act(() => window.dispatchEvent(new Event("shortcut:search")));
+    expect(search).toHaveFocus();
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(search).toHaveValue("");
+    act(() => usePromptStore.getState().setViewMode("graph"));
+    expect(screen.getByRole("button", { name: "Collapse" })).toBe(toggle);
+    expect(screen.getByRole("textbox")).toBe(search);
   });
 });

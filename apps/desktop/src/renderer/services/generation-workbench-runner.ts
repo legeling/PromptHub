@@ -43,34 +43,6 @@ function isGeminiImageModel(config: AIModelConfig): boolean {
   );
 }
 
-function isGptImageModel(config: AIModelConfig): boolean {
-  const provider = config.provider?.trim().toLowerCase() ?? "";
-  const blockedProviders = new Set([
-    "flux",
-    "ideogram",
-    "recraft",
-    "replicate",
-    "stability",
-  ]);
-  return Boolean(
-    config.model?.trim().toLowerCase().startsWith("gpt-image-") &&
-    !blockedProviders.has(provider) &&
-    (provider === "openai" || config.apiProtocol === "openai"),
-  );
-}
-
-export function supportsGenerationReferenceImages(
-  config: AIModelConfig,
-): boolean {
-  return isGeminiImageModel(config) || isGptImageModel(config);
-}
-
-export function getMaxGenerationReferenceImages(config: AIModelConfig): number {
-  if (isGeminiImageModel(config)) return 2;
-  if (isGptImageModel(config)) return 4;
-  return 0;
-}
-
 export function getSupportedGenerationAspectRatios(
   config: AIModelConfig,
 ): string[] {
@@ -88,48 +60,35 @@ function inferReferenceMimeType(fileName: string): string {
 
 async function loadReferenceAttachments(
   references: GenerationReferenceImage[] | undefined,
-  config: AIModelConfig,
 ): Promise<ImageReferenceAttachment[]> {
   if (!references?.length) return [];
-  if (!supportsGenerationReferenceImages(config)) {
-    throw new Error("The selected model does not support reference images");
-  }
-  const maxReferences = getMaxGenerationReferenceImages(config);
-  if (references.length > maxReferences) {
-    throw new Error(
-      `The selected model supports at most ${maxReferences} reference images`,
-    );
-  }
-  return Promise.all(
-    references.map(async (reference) => {
-      if (reference.source === "generation") {
-        if (!reference.batchId || !reference.outputId) {
-          throw new Error(
-            "Generation reference is missing its source identity",
-          );
-        }
-        const payload = await window.api.generation.readOutputReference({
-          batchId: reference.batchId,
-          outputId: reference.outputId,
-        });
-        if (payload.fileName !== reference.fileName) {
-          throw new Error("Generation reference integrity check failed");
-        }
-        return {
-          base64: payload.base64,
-          mimeType: payload.mimeType,
-        };
+  const attachments: ImageReferenceAttachment[] = [];
+  for (const reference of references) {
+    if (reference.source === "generation") {
+      if (!reference.batchId || !reference.outputId) {
+        throw new Error("Generation reference is missing its source identity");
       }
-      const base64 = await window.electron?.readImageBase64?.(
-        reference.fileName,
-      );
-      if (!base64) throw new Error("Failed to read reference image");
-      return {
-        base64,
-        mimeType: inferReferenceMimeType(reference.fileName),
-      };
-    }),
-  );
+      const payload = await window.api.generation.readOutputReference({
+        batchId: reference.batchId,
+        outputId: reference.outputId,
+      });
+      if (payload.fileName !== reference.fileName) {
+        throw new Error("Generation reference integrity check failed");
+      }
+      attachments.push({
+        base64: payload.base64,
+        mimeType: payload.mimeType,
+      });
+      continue;
+    }
+    const base64 = await window.electron?.readImageBase64?.(reference.fileName);
+    if (!base64) throw new Error("Failed to read reference image");
+    attachments.push({
+      base64,
+      mimeType: inferReferenceMimeType(reference.fileName),
+    });
+  }
+  return attachments;
 }
 
 function resolveOpenAISize(model: string, ratio: string): string {
@@ -261,10 +220,7 @@ export async function startGenerationBatch(
   input: CreateGenerationBatchInput,
   config: AIModelConfig,
 ): Promise<GenerationBatchManifest> {
-  const references = await loadReferenceAttachments(
-    input.referenceImages,
-    config,
-  );
+  const references = await loadReferenceAttachments(input.referenceImages);
   const batch = await window.api.generation.create(input);
   publish(batch);
   void executeBatch(batch, config, references);
@@ -294,10 +250,7 @@ export async function retryGenerationBatch(
   batch: GenerationBatchManifest,
   config: AIModelConfig,
 ): Promise<GenerationBatchManifest> {
-  const references = await loadReferenceAttachments(
-    batch.referenceImages,
-    config,
-  );
+  const references = await loadReferenceAttachments(batch.referenceImages);
   cancelledBatches.delete(batch.id);
   const retried = await window.api.generation.retryFailed(batch.id);
   publish(retried);

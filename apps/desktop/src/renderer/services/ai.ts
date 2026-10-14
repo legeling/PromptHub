@@ -717,6 +717,14 @@ export async function generateImage(
     throw new Error("API URL is not configured");
   }
 
+  // Reference transport follows the configured protocol; brand-specific
+  // text-to-image adapters below do not serialize reference attachments.
+  if (mergedOptions.referenceImages?.length) {
+    return config.apiProtocol === "gemini"
+      ? generateImageGemini(apiKey, apiUrl, model, prompt, mergedOptions)
+      : generateImageOpenAI(apiKey, apiUrl, model, prompt, mergedOptions);
+  }
+
   // 根据供应商选择不同的 API 调用方式
   // Choose different API calling methods based on provider
   const providerLower = (provider || "").toLowerCase();

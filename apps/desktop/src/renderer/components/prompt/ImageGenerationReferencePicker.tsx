@@ -13,8 +13,6 @@ import {
 interface ImageGenerationReferencePickerProps {
   prompts: PromptSummary[];
   references: GenerationReferenceImage[];
-  supported: boolean;
-  maxReferences: number;
   onAddLocalImages: () => Promise<void>;
   onDropLocalImages: (files: File[]) => Promise<void>;
   onAddPromptImage: (reference: GenerationReferenceImage) => void;
@@ -41,8 +39,6 @@ function resolveReferencePreview(reference: GenerationReferenceImage): string {
 export function ImageGenerationReferencePicker({
   prompts,
   references,
-  supported,
-  maxReferences,
   onAddLocalImages,
   onDropLocalImages,
   onAddPromptImage,
@@ -55,8 +51,6 @@ export function ImageGenerationReferencePicker({
     PROMPT_MEDIA_PAGE_SIZE,
   );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const atLimit = references.length >= maxReferences;
-  const disabled = !supported || atLimit;
   const selectedFileNames = new Set(
     references.map((reference) => reference.fileName),
   );
@@ -75,72 +69,19 @@ export function ImageGenerationReferencePicker({
   );
   const visiblePromptImages = promptImages.slice(0, visiblePromptImageCount);
 
-  if (!supported) {
-    return (
-      <div
-        data-testid="generation-reference-unavailable"
-        role="status"
-        className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/15 px-4 py-4 text-center text-muted-foreground"
-      >
-        <ImagesIcon
-          className="h-5 w-5 shrink-0 opacity-60"
-          aria-hidden="true"
-        />
-        <span className="max-w-64 text-xs leading-5">
-          {t("generation.referenceUnsupported")}
-        </span>
-        {references.length > 0 && (
-          <div role="list" className="mt-1 w-full space-y-1.5 text-left">
-            {references.map((reference, index) => (
-              <div
-                key={referenceKey(reference)}
-                role="listitem"
-                aria-label={t("generation.referenceItem", {
-                  index: index + 1,
-                  name: reference.fileName,
-                })}
-                className="flex items-center gap-2 rounded-md border border-border bg-background p-1.5"
-              >
-                <img
-                  src={resolveReferencePreview(reference)}
-                  alt=""
-                  className="h-9 w-9 shrink-0 rounded object-cover"
-                />
-                <span className="min-w-0 flex-1 truncate text-[10px] text-foreground">
-                  {reference.fileName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onRemove(index)}
-                  aria-label={t("generation.removeReference", {
-                    name: reference.fileName,
-                  })}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-muted-foreground">
-          {t("generation.referenceSelectionCount", {
+          {t("generation.referenceCount", {
             count: references.length,
-            max: maxReferences,
           })}
         </span>
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setLibraryOpen((value) => !value)}
-            disabled={!supported || promptImages.length === 0}
+            disabled={promptImages.length === 0}
             aria-expanded={libraryOpen}
             className="flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -155,14 +96,12 @@ export function ImageGenerationReferencePicker({
         data-testid="generation-reference-dropzone"
         aria-label={t("generation.addLocalReferences")}
         onClick={() => void onAddLocalImages()}
-        disabled={disabled}
         onDragOver={(event) => {
           event.preventDefault();
-          if (!atLimit) event.dataTransfer.dropEffect = "copy";
+          event.dataTransfer.dropEffect = "copy";
         }}
         onDrop={(event) => {
           event.preventDefault();
-          if (atLimit) return;
           void onDropLocalImages(Array.from(event.dataTransfer.files));
         }}
         className="group flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/10 px-4 py-4 text-center transition-colors hover:border-primary/45 hover:bg-primary/[0.03] disabled:cursor-not-allowed disabled:opacity-55"
@@ -171,15 +110,11 @@ export function ImageGenerationReferencePicker({
           <UploadIcon className="h-4 w-4" aria-hidden="true" />
         </span>
         <span className="text-xs font-medium text-foreground">
-          {atLimit
-            ? t("generation.referenceLimitReached", { max: maxReferences })
-            : t("generation.dropReferenceImages")}
+          {t("generation.dropReferenceImages")}
         </span>
-        {!atLimit && (
-          <span className="text-[10px] text-muted-foreground">
-            {t("generation.addLocalReferences")}
-          </span>
-        )}
+        <span className="text-[10px] text-muted-foreground">
+          {t("generation.addLocalReferences")}
+        </span>
       </button>
 
       {references.length > 0 && (
@@ -258,7 +193,7 @@ export function ImageGenerationReferencePicker({
                   type="button"
                   key={`${image.promptId}:${image.fileName}`}
                   onClick={() => onAddPromptImage(reference)}
-                  disabled={selected || atLimit}
+                  disabled={selected}
                   aria-label={t("generation.selectPromptReference", {
                     name: image.fileName,
                     prompt: image.promptTitle,

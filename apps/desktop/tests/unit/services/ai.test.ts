@@ -915,23 +915,112 @@ describe("generateImage - Gemini routing", () => {
     );
   });
 
-  it("keeps unsupported OpenAI-compatible reference endpoints blocked", async () => {
-    await expect(
-      generateImage(
+  it.each([
+    "custom",
+    "google",
+    "flux",
+    "ideogram",
+    "recraft",
+    "replicate",
+    "stability",
+  ])(
+    "sends references using the configured OpenAI-compatible protocol for %s",
+    async (provider) => {
+      requestSpy.mockResolvedValueOnce(
+        await responseToTransport(makeOpenAIImageResponse()),
+      );
+      const result = await generateImage(
         {
           apiProtocol: "openai",
           apiKey: "key",
           apiUrl: "https://api.openai.com/v1",
-          model: "dall-e-3",
-          provider: "openai",
+          model: "studio-image-model",
+          provider,
         },
         "Edit this image",
         {
           referenceImages: [{ base64: "cmVm", mimeType: "image/png" }],
         },
+      );
+      expect(result.data).toEqual([{ url: "https://example.com/image.png" }]);
+      expect(requestSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "https://api.openai.com/v1/images/edits",
+          multipart: {
+            fields: { model: "studio-image-model", prompt: "Edit this image" },
+            files: [
+              expect.objectContaining({
+                fieldName: "image[]",
+                base64: "cmVm",
+                mimeType: "image/png",
+              }),
+            ],
+          },
+        }),
+      );
+    },
+  );
+
+  it("uses the configured Gemini protocol for arbitrary image model names and all references", async () => {
+    requestSpy.mockResolvedValueOnce(
+      await responseToTransport(makeGeminiResponse()),
+    );
+    const referenceImages = Array.from({ length: 5 }, (_, index) => ({
+      base64: `image-${index}`,
+      mimeType: "image/png",
+    }));
+    const result = await generateImage(
+      {
+        apiProtocol: "gemini",
+        apiKey: "key",
+        apiUrl: "https://api.example.com/v1beta",
+        model: "studio-image-model",
+        provider: "custom",
+      },
+      "Edit this image",
+      { referenceImages },
+    );
+    expect(result.data[0].b64_json).toBe("base64imagedata==");
+    const request = requestSpy.mock.calls[0][0];
+    expect(request.url).toBe(
+      "https://api.example.com/v1beta/models/studio-image-model:generateContent",
+    );
+    expect(JSON.parse(request.body ?? "").contents[0].parts).toEqual([
+      { text: "Edit this image" },
+      ...referenceImages.map((image) => ({
+        inlineData: { mimeType: image.mimeType, data: image.base64 },
+      })),
+    ]);
+  });
+
+  it("reports the actual endpoint error instead of blocking an unknown model locally", async () => {
+    requestSpy.mockResolvedValueOnce(
+      await responseToTransport(
+        new Response(
+          JSON.stringify({
+            error: {
+              message: "Reference request rejected by endpoint",
+              type: "invalid_request_error",
+            },
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        ),
       ),
-    ).rejects.toThrow(/does not support reference images/i);
-    expect(requestSpy).not.toHaveBeenCalled();
+    );
+    await expect(
+      generateImage(
+        {
+          apiProtocol: "openai",
+          apiKey: "key",
+          apiUrl: "https://api.example.com/v1",
+          model: "studio-image-model",
+          provider: "custom",
+        },
+        "Edit this image",
+        { referenceImages: [{ base64: "cmVm", mimeType: "image/png" }] },
+      ),
+    ).rejects.toThrow(/Reference request rejected by endpoint/);
+    expect(requestSpy).toHaveBeenCalledOnce();
   });
 
   it("throws with English error when apiKey is missing", async () => {

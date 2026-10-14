@@ -1,5 +1,43 @@
 # Desktop Image Generation Workbench Design QA
 
+## Current shell requirement (2026-10-13)
+
+`FR-IGW-016` now requires the shared TopBar, persistent Prompt search and one fixed
+sidebar toggle across Prompt views. The historical v4 review below that suppressed
+TopBar is superseded on this point; it is not current acceptance evidence.
+
+Verification: `pnpm --dir apps/desktop exec vitest run --project unit
+tests/unit/components/top-bar.test.tsx tests/unit/components/image-generation-workbench.test.tsx
+tests/unit/components/sidebar-prompt-view-mode.test.tsx --maxWorkers=1 --minWorkers=1`
+passed all 77 cases. The component boundary covers shared control identity across view
+switches, search input/shortcut/Escape, transient sidebar state and inspector mutual
+exclusion; generation services are mocked. Desktop `typecheck:tests`, targeted ESLint,
+Prettier and diff whitespace checks passed. Live Electron visual acceptance was not
+performed because GUI-control authorization was not provided for this change.
+
+## Reference-image contract update (2026-10-13)
+
+Current `FR-IGW-005` and `FR-IGW-017` remove model-name/provider allowlists and
+application reference-count caps. Upload, Prompt-media selection and continuing from
+an output retain all selected references without substituting the chosen model. Reference
+requests use the configured OpenAI-compatible/Gemini transport, including arbitrary model
+names; endpoint errors propagate normally. File byte/type/source checks still use the
+existing media boundary. Attachment reads run in order, with O(n) iterations and request
+memory proportional to the selected image bytes, without starting one IPC read per image
+simultaneously. No storage schema or migration changes.
+
+Verification: `pnpm --dir apps/desktop exec vitest run --project unit
+tests/unit/components/image-generation-workbench.test.tsx
+tests/unit/components/image-generation-workbench-i18n.test.ts
+tests/unit/services/generation-workbench-runner.test.ts tests/unit/services/ai.test.ts
+--maxWorkers=1 --minWorkers=1` passed all 99 cases. Regressions exercise arbitrary model
+and provider labels, five ordered references, upload without truncation, retaining the
+model when continuing from an output, configured-protocol serialization and endpoint
+errors. Generation persistence/native media bridges and network transport are mocked at
+their respective test boundaries. Desktop `typecheck:tests`, targeted ESLint, Prettier
+and diff whitespace checks passed. Live supplier requests and Electron GUI acceptance
+were not performed.
+
 ## Reference
 
 - Accepted concept: `assets/workbench-ui-concept-v3.png`

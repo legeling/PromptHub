@@ -12,6 +12,7 @@ reuse the current PromptHub tokens and components rather than rasterizing the mo
 | Case                          | Acceptance                                                                          |
 | ----------------------------- | ----------------------------------------------------------------------------------- |
 | Direct entry                  | Prompts remains selected in the global rail; the Prompts secondary panel is hidden. |
+| Shared top bar                | Prompt search and the single sidebar toggle stay visible in the same shell position across graph and generation modes, including while toggling the secondary panel. |
 | Existing Prompt entry         | Current Prompt ID/version, resolved content and references prefill a draft.         |
 | Top Prompt type filters       | “全部 / 文本 / 绘图” remain Prompt list filters and do not select the workbench.    |
 | Navigate away during a batch  | Generation continues; returning restores current counts and selected batch.         |
@@ -24,6 +25,11 @@ folder, Prompt filter or relationship graph exits generation view explicitly.
 The global 80 px module rail remains visible. The transient Prompts secondary panel and the
 right settings/history panel are mutually exclusive: opening either closes the other without
 changing the ordinary Prompt sidebar preference.
+
+The shared TopBar stays above both the secondary panel and workbench. The workbench's
+own header contains batch actions only, not a duplicate sidebar toggle. Opening the
+secondary panel closes the settings/history panel; closing the sidebar does not reopen
+that panel. Current authority: `FR-IGW-016` supersedes the older single-header mock.
 
 ## Wide Layout
 
@@ -62,7 +68,7 @@ visible whenever settings are open. Text does not scale with viewport width.
 | Direct entry, no source       | Prompt selector and adhoc input are available; no Prompt is created implicitly.  |
 | Prompt with variables         | Missing variables are identified inline; resolved preview updates before submit. |
 | Unsupported model parameter   | Control is disabled/hidden from capability data; no silent request downgrade.    |
-| Reference image limit reached | Additional selection is blocked with the model-specific maximum.                 |
+| Reference image selection     | Every image model allows references; all selected images remain in order with no application count cap or automatic model substitution. |
 | Count invalid                 | Only integer `1..100` is accepted; Generate remains disabled.                    |
 | New draft count               | Defaults to one image and resets to one when a new batch is created.             |
 | Valid submission              | Button press creates visible queued batch immediately and clears no source data. |
