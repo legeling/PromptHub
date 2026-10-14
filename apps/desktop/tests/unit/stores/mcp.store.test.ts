@@ -108,6 +108,7 @@ function resetMcpStoreForTest() {
     selectedMarketSourceId: "prompthub-official",
     selectedTargetId: null,
     searchQuery: "",
+    marketSearchQuery: "",
     preview: "",
     pendingPluginChildDeployServerIds: [],
     isLoading: false,
@@ -123,6 +124,49 @@ describe("mcp store remote market cache persistence", () => {
     localStorage.clear();
     resetMcpStoreForTest();
     localStorage.clear();
+  });
+
+  it("keeps catalog queries and paged results independent of library search (#217)", async () => {
+    const sourceId = "modelcontextprotocol";
+    const fetchRemoteContent = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify({ servers: [] }));
+    window.api.mcp = { ...createWindowApiMock().mcp, fetchRemoteContent };
+    const catalogEntry = {
+      sourceId,
+      templates: [cachedTemplate],
+      query: "cached",
+      loadedAt: Date.now(),
+      totalCount: 999,
+      nextCursor: "next-page",
+    };
+    useMcpStore.setState({
+      selectedMarketSourceId: sourceId,
+      marketSources: [
+        {
+          id: sourceId,
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+      ],
+      remoteMarketEntries: { [`${sourceId}:cached`]: catalogEntry },
+    });
+    useMcpStore.getState().setMarketSearchQuery("cached");
+    useMcpStore.getState().setSearchQuery("library-only query");
+    await useMcpStore.getState().loadMarketSource();
+    expect(fetchRemoteContent).not.toHaveBeenCalled();
+    expect(
+      useMcpStore.getState().remoteMarketEntries[`${sourceId}:cached`],
+    ).toBe(catalogEntry);
+    expect(useMcpStore.getState().marketSearchQuery).toBe("cached");
+    useMcpStore.getState().setMarketSearchQuery("different");
+    await useMcpStore.getState().loadMarketSource();
+    expect(fetchRemoteContent).toHaveBeenCalledWith(
+      sourceId,
+      "https://registry.modelcontextprotocol.io/v0/servers?search=different",
+    );
+    expect(useMcpStore.getState().searchQuery).toBe("library-only query");
   });
 
   it("deduplicates lightweight target inventory reads without loading markets or health", async () => {

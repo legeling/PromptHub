@@ -13,6 +13,8 @@ import type {
 } from "../../services/custom-store-source";
 import { SkillStoreSourceForm } from "../skill/SkillStoreSourceForm";
 import { McpMarketView } from "./McpMarketView";
+import type { McpMarketScrollPosition } from "./McpMarketView";
+import type { MutableRefObject } from "react";
 import { McpViewTransition } from "./mcp-manager-utils";
 
 export const MCP_CUSTOM_SOURCE_TYPE_OPTIONS = [
@@ -34,6 +36,7 @@ interface McpStoreWorkspaceProps {
   isLoadingMore: boolean;
   remoteTemplates: McpMarketTemplate[];
   searchQuery: string;
+  scrollPosition: MutableRefObject<McpMarketScrollPosition | null>;
   selectedCustomSource: CustomStoreSource | null;
   selectedSourceId: string;
   sourceBranch: string;
@@ -76,6 +79,7 @@ export function McpStoreWorkspace({
   isLoadingMore,
   remoteTemplates,
   searchQuery,
+  scrollPosition,
   selectedCustomSource,
   selectedSourceId,
   sourceBranch,
@@ -142,6 +146,7 @@ export function McpStoreWorkspace({
             sources={sources}
             selectedSourceId={selectedSourceId}
             searchQuery={searchQuery}
+            scrollPosition={scrollPosition}
             isLoading={isLoading}
             isLoadingMore={isLoadingMore}
             hasMore={hasMore}

@@ -75,10 +75,12 @@ function useMcpServerDetails(options: McpLibraryModelOptions) {
 function useMcpMarketModel(options: McpLibraryModelOptions) {
   const { mcpStore } = options.bindings;
   const { pendingDeleteCustomSourceId } = options.state;
-  const normalizedSearchQuery = mcpStore.searchQuery.trim().toLowerCase();
+  const normalizedMarketSearchQuery = mcpStore.marketSearchQuery
+    .trim()
+    .toLowerCase();
   const selectedMarketEntry =
     mcpStore.remoteMarketEntries[
-      `${mcpStore.selectedMarketSourceId}:${normalizedSearchQuery}`
+      `${mcpStore.selectedMarketSourceId}:${normalizedMarketSearchQuery}`
     ];
   const selectedMarketSourceIsRemote =
     mcpStore.selectedMarketSourceId !== MCP_OFFICIAL_MARKET_SOURCE_ID &&
@@ -104,7 +106,6 @@ function useMcpMarketModel(options: McpLibraryModelOptions) {
     [mcpStore.customStoreSources, pendingDeleteCustomSourceId],
   );
   return {
-    normalizedSearchQuery,
     selectedMarketEntry,
     selectedCustomSource,
     pendingDeleteCustomSource,

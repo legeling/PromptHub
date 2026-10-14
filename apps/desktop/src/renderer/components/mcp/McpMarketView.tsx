@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckIcon,
@@ -9,7 +16,7 @@ import {
   ServerIcon,
   StoreIcon,
 } from "lucide-react";
-import type { FormEvent, UIEvent } from "react";
+import type { FormEvent, MutableRefObject, UIEvent } from "react";
 import type {
   McpMarketSource,
   McpMarketTemplate,
@@ -25,11 +32,18 @@ import {
   OFFICIAL_MCP_SOURCE_ID,
 } from "./mcp-market-labels";
 
+export interface McpMarketScrollPosition {
+  sourceId: string;
+  searchQuery: string;
+  scrollTop: number;
+}
+
 interface McpMarketViewProps {
   error?: string | null;
   isLoading?: boolean;
   remoteTemplates?: McpMarketTemplate[];
   searchQuery?: string;
+  scrollPosition?: MutableRefObject<McpMarketScrollPosition | null>;
   templates: McpMarketTemplate[];
   sources: McpMarketSource[];
   selectedSourceId: string;
@@ -90,6 +104,7 @@ export function McpMarketView({
   isLoading = false,
   remoteTemplates = [],
   searchQuery = "",
+  scrollPosition,
   templates,
   sources,
   selectedSourceId,
@@ -147,6 +162,21 @@ export function McpMarketView({
   const visibleTemplates = isOfficialSource
     ? localVisibleTemplates
     : remoteTemplates;
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !scrollPosition) return;
+    const saved = scrollPosition.current;
+    const scrollTop =
+      saved?.sourceId === selectedSourceId && saved.searchQuery === searchQuery
+        ? saved.scrollTop
+        : 0;
+    scrollPosition.current = {
+      sourceId: selectedSourceId,
+      searchQuery,
+      scrollTop,
+    };
+    container.scrollTop = scrollTop;
+  }, [scrollPosition, searchQuery, selectedSourceId, visibleTemplates.length]);
   const storeTitle = getMcpMarketSourceLabel(selectedSource, t);
   const storeSubtitle = getMcpMarketSourceDescription(selectedSource, t);
   const totalCountLabel =
@@ -212,9 +242,13 @@ export function McpMarketView({
   );
   const handleScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
+      // Keep this ephemeral: scrolling must not serialize the catalog cache to storage.
+      if (scrollPosition?.current) {
+        scrollPosition.current.scrollTop = event.currentTarget.scrollTop;
+      }
       maybeLoadMore(event.currentTarget, true);
     },
-    [maybeLoadMore],
+    [maybeLoadMore, scrollPosition],
   );
 
   useEffect(() => {
@@ -298,7 +332,7 @@ export function McpMarketView({
       <div
         ref={scrollContainerRef}
         data-testid="mcp-store-scroll"
-        className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8"
+        className="flex-1 overflow-y-auto p-6 space-y-8"
         onScroll={handleScroll}
       >
         {shouldShowInitialLoading ? (

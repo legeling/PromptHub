@@ -207,6 +207,7 @@ function resetMcpStore() {
     selectedTargetId: null,
     filterTags: [],
     searchQuery: "",
+    marketSearchQuery: "",
     preview: "",
     isLoading: false,
     error: null,
@@ -568,7 +569,7 @@ describe("McpManager", () => {
     useMcpStore.setState({
       selectedTab: "market",
       selectedMarketSourceId: "modelcontextprotocol",
-      searchQuery: "adeu",
+      marketSearchQuery: "adeu",
     });
 
     await act(async () => {
@@ -887,6 +888,7 @@ describe("McpManager", () => {
     });
     Object.defineProperty(scroller, "scrollTop", {
       configurable: true,
+      writable: true,
       value: 450,
     });
     fireEvent.scroll(scroller);

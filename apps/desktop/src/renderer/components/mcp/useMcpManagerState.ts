@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { McpMarketScrollPosition } from "./McpMarketView";
 import type { McpTargetPreset } from "@prompthub/core";
 import type { CustomStoreSourceType } from "../../services/custom-store-source";
 import type { McpServerViewMode } from "./McpServerList";
@@ -133,12 +134,14 @@ function useMcpCustomSourceState() {
 }
 
 export function useMcpManagerState() {
+  const marketScrollPosition = useRef<McpMarketScrollPosition | null>(null);
   const libraryView = useMcpLibraryViewState();
   const selection = useMcpSelectionState();
   const deletion = useMcpDeleteState();
   const agentDialog = useMcpAgentDialogState();
   const customSource = useMcpCustomSourceState();
   return {
+    marketScrollPosition,
     ...libraryView,
     ...selection,
     ...deletion,

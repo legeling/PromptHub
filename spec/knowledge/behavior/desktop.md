@@ -379,6 +379,20 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 ### 13. MCP Store Source And Update Boundaries
 
+- MCP 商店搜索与 My MCP 搜索各自持有独立的会话内 query。安装后的既有跳转不变；
+  返回同一来源/查询时复用已有分页结果、总数和 cursor，不因资料库筛选重新查询目录。
+  商店返回位置由 MCP controller 的单个内存 ref 保存，按来源/查询识别；更换来源或
+  查询回到顶部。滚动条复用应用现有样式，不隐藏。滚动事件只更新一个数值，不触发
+  Zustand 持久化、目录序列化或额外网络调用；额外空间/每次滚动处理均为 O(1)。
+  页面重建/进程重启不承诺恢复滚动位置；不改 DB、缓存格式或安装合同，回滚仅需还原
+  本次 renderer 改动。#217 隔离 Electron 回归使用两页 96 条目录 fixture、真实
+  安装 IPC/SQLite、资料库搜索和返回；连续用户流程测试为保留因果顺序超过 50 行。
+  2026-10-14 修复前该流程确认 query 被覆盖、第二页丢失、位置归零和隐藏滚动条；
+  修复后 `mcp-market-return.spec.ts` 通过，原浏览卡片仍在视口内，改查询归零。
+  懒布局可能在安装前调整位置，因此用例记录离开前最后一次实际 scroll，而非动画
+  中间帧。10 个 store、11 个商店组件、12 个资料库组件用例、Desktop build、
+  source/test typecheck 和定向 ESLint 通过。网络目录使用 fixture，未验证在线 Registry
+  可用性或 MCP 工具执行；安装记录由真实产品路径持久化。
 - 新版 Antigravity MCP 的 `serverUrl`、认证、工具选择和禁用状态在导入、编辑、重开及原生投影中保留；Agent 导入在主进程按目标与名称读取原始配置，不能把 renderer 遮罩值保存为真实凭据（#220）。
 - MCP 版本弹窗的普通 Tab / Shift+Tab 只在当前可用控件间循环；确认框独立管理焦点，取消后回到原操作按钮。确认前不禁用触发按钮，不改变其他弹窗的默认行为（#235）。
 - 已保存 MCP 缺少 description 时显示独立的空描述状态，不显示“先选择或保存”提示（#231）。

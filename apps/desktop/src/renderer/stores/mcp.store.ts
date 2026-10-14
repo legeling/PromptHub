@@ -68,6 +68,7 @@ interface McpState {
   selectedTargetId: string | null;
   filterTags: string[];
   searchQuery: string;
+  marketSearchQuery: string;
   preview: string;
   pendingPluginChildDeployServerIds: string[];
   isLoading: boolean;
@@ -84,6 +85,7 @@ interface McpState {
   requestPluginChildMcpDeploy: (serverIds: string[]) => void;
   consumePluginChildMcpDeployRequest: () => string[];
   setSearchQuery: (query: string) => void;
+  setMarketSearchQuery: (query: string) => void;
   setSelectedTab: (tab: McpState["selectedTab"]) => void;
   setSelectedMarketSourceId: (sourceId: string) => void;
   setSelectedTargetId: (id: string | null) => void;
@@ -355,6 +357,7 @@ export const useMcpStore = create<McpState>()(
       selectedTargetId: null,
       filterTags: [],
       searchQuery: "",
+      marketSearchQuery: "",
       preview: "",
       pendingPluginChildDeployServerIds: [],
       isLoading: false,
@@ -484,6 +487,7 @@ export const useMcpStore = create<McpState>()(
         return pendingIds;
       },
       setSearchQuery: (query) => set({ searchQuery: query }),
+      setMarketSearchQuery: (query) => set({ marketSearchQuery: query }),
       setSelectedTab: (tab) => set({ selectedTab: tab }),
       setSelectedMarketSourceId: (sourceId) =>
         set({ selectedMarketSourceId: sourceId }),
@@ -636,7 +640,7 @@ export const useMcpStore = create<McpState>()(
           return;
         }
 
-        const query = state.searchQuery.trim();
+        const query = state.marketSearchQuery.trim();
         const entryKey = getMarketEntryKey(source.id, query);
         const existing = state.remoteMarketEntries[entryKey];
         if (!force && existing?.loadedAt && existing.templates.length > 0) {
@@ -670,7 +674,7 @@ export const useMcpStore = create<McpState>()(
           const latest = get();
           if (
             latest.selectedMarketSourceId !== source.id ||
-            latest.searchQuery.trim() !== query
+            latest.marketSearchQuery.trim() !== query
           ) {
             return;
           }
@@ -724,7 +728,7 @@ export const useMcpStore = create<McpState>()(
           return;
         }
 
-        const query = state.searchQuery.trim();
+        const query = state.marketSearchQuery.trim();
         const entryKey = getMarketEntryKey(source.id, query);
         const existing = state.remoteMarketEntries[entryKey];
         const cursor = existing?.nextCursor;
@@ -749,7 +753,7 @@ export const useMcpStore = create<McpState>()(
           const latest = get();
           if (
             latest.selectedMarketSourceId !== source.id ||
-            latest.searchQuery.trim() !== query
+            latest.marketSearchQuery.trim() !== query
           ) {
             return;
           }

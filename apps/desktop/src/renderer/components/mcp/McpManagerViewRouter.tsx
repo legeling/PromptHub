@@ -46,7 +46,8 @@ function getMcpStoreDataProps(model: McpManagerViewModel) {
     sources: model.marketSources,
     selectedSourceId: model.selectedMarketSourceId,
     selectedCustomSource: model.selectedCustomSource,
-    searchQuery: model.searchQuery,
+    searchQuery: model.marketSearchQuery,
+    scrollPosition: model.marketScrollPosition,
     isLoading: model.shouldShowMarketLoading,
     isLoadingMore:
       model.loadingMoreMarketSourceId === model.selectedMarketSourceId,
@@ -75,7 +76,7 @@ function getMcpStoreActionProps(model: McpManagerViewModel) {
     onEditCustomSource: model.setEditingCustomSourceId,
     onLoadMore: () => model.loadMoreMarketSource(model.selectedMarketSourceId),
     onRefresh: () => model.loadMarketSource(model.selectedMarketSourceId, true),
-    onSearchChange: model.setSearchQuery,
+    onSearchChange: model.setMarketSearchQuery,
     onInstall: model.handleInstallTemplate,
     onCheckUpdate: model.checkMarketUpdate,
     onUpdate: model.applyMarketUpdate,

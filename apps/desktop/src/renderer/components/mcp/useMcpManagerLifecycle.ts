@@ -7,9 +7,7 @@ import {
   OPEN_CREATE_MCP_MODAL_EVENT,
   registerAssetWorkflowEvent,
 } from "../app/app-command-events";
-import {
-  ALL_MCP_SOURCE_FILTER,
-} from "./mcp-manager-utils";
+import { ALL_MCP_SOURCE_FILTER } from "./mcp-manager-utils";
 
 interface McpManagerLifecycleOptions {
   bindings: McpManagerBindings;
@@ -46,7 +44,7 @@ function useMcpMarketSourceLoading(bindings: McpManagerBindings) {
   const {
     loadMarketSource,
     marketSources,
-    searchQuery,
+    marketSearchQuery,
     selectedMarketSourceId,
     selectedTab,
   } = bindings.mcpStore;
@@ -57,7 +55,7 @@ function useMcpMarketSourceLoading(bindings: McpManagerBindings) {
   }, [
     loadMarketSource,
     marketSources.length,
-    searchQuery,
+    marketSearchQuery,
     selectedMarketSourceId,
     selectedTab,
   ]);
