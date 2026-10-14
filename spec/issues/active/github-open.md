@@ -3,28 +3,21 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-13`
+- Snapshot date: `2026-10-14`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Open issues captured: `45`
+- Open issues captured: `36`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `local-github-status.md`.
-- The shared capture contains 200 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 209 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
 ## Open Issues
 
 | # | 标题 | 标签 | 创建时间 | 更新时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
-| #226 | [Bug]: antigravity中的plugin配置方式有误。 | bug, version: 最新稳定版 | 2026-10-11 | 2026-10-11 | [#226](https://github.com/legeling/PromptHub/issues/226) |
-| #225 | [Feature]: 解除 Prompt「用户提示词」非空限制，改为「系统/用户提示词至少一个非空」 | enhancement, version: 0.5.9 | 2026-10-11 | 2026-10-11 | [#225](https://github.com/legeling/PromptHub/issues/225) |
-| #224 | [Feature]: 支持千问办公（Qwen Work）Skill 目录管理 | enhancement, version: 0.5.9 | 2026-10-05 | 2026-10-05 | [#224](https://github.com/legeling/PromptHub/issues/224) |
-| #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-01 | [#221](https://github.com/legeling/PromptHub/issues/221) |
-| #220 | [Feature]: 请求支持antigravity 新版本的 MCP | enhancement, version: 版本2.16.0 (985656990) | 2026-09-24 | 2026-09-24 | [#220](https://github.com/legeling/PromptHub/issues/220) |
-| #219 | [Bug]: 自托管 Web：prompt 无法归入普通分类（分类 visibility=shared、prompt 默认 private，必报 422） | bug, version: v0.5.9 | 2026-09-18 | 2026-09-18 | [#219](https://github.com/legeling/PromptHub/issues/219) |
-| #218 | [Bug]: 手动添加github项目非根目录下的skill，导入成功后点击更新，报错 | bug, version: 0.6.0-beta.2 | 2026-09-16 | 2026-09-16 | [#218](https://github.com/legeling/PromptHub/issues/218) |
-| #217 | [Feature]: MCP Registry | enhancement, version: 0.5.9 | 2026-09-12 | 2026-09-12 | [#217](https://github.com/legeling/PromptHub/issues/217) |
+| #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-14 | [#221](https://github.com/legeling/PromptHub/issues/221) |
 | #216 | [Bug]: 更新新版之后开启APP就显示Loading一直卡着 | bug, version: 0.6.0-beta.2 (0.6.0-beta.2) | 2026-09-11 | 2026-09-11 | [#216](https://github.com/legeling/PromptHub/issues/216) |
 | #215 | [Feature]: 使用部分克隆、稀疏检出减少克隆内容 | enhancement, version: new release | 2026-09-07 | 2026-09-07 | [#215](https://github.com/legeling/PromptHub/issues/215) |
 | #212 | [Feature]: 建议将现有 Rules 模块调整为 Instructions，并新增真正的 Scoped Rules 模块 | enhancement, version: Next release | 2026-09-03 | 2026-10-12 | [#212](https://github.com/legeling/PromptHub/issues/212) |
@@ -38,8 +31,6 @@
 | #196 | [Bug]: 无法识别 ~/.claude/rules 目录中的 Rules | bug, version: 0.5.10 | 2026-08-03 | 2026-08-03 | [#196](https://github.com/legeling/PromptHub/issues/196) |
 | #195 | [Feature]: 生图提示词里面，上传的每个图片，是否可以再下载/导出？ | enhancement, version: 0.5.9 | 2026-08-01 | 2026-08-01 | [#195](https://github.com/legeling/PromptHub/issues/195) |
 | #194 | [Feature]: 增加通用 ~/.agents/skills 全局安装目录（需兼容性验证） | enhancement | 2026-07-29 | 2026-07-29 | [#194](https://github.com/legeling/PromptHub/issues/194) |
-| #193 | [Bug]: 规则文件删除后重新扫描仍保留失效记录 | bug | 2026-07-29 | 2026-07-29 | [#193](https://github.com/legeling/PromptHub/issues/193) |
-| #192 | [Bug]: 自定义输出启用后两个“复制 Prompt”入口结果不一致 | bug, version: 未知（截图中未显示） | 2026-07-29 | 2026-07-29 | [#192](https://github.com/legeling/PromptHub/issues/192) |
 | #191 | [Bug]: safetyReport.scanMethod 校验失败导致无法备份到远程 | bug, version: 未知（截图中未显示） | 2026-07-29 | 2026-07-29 | [#191](https://github.com/legeling/PromptHub/issues/191) |
 | #190 | [Bug]: GitHub部分插件项目，提供了codex和claude原生支持，但通过hub扫描原生的只有codex | bug, version: 0.5.9 | 2026-07-28 | 2026-07-28 | [#190](https://github.com/legeling/PromptHub/issues/190) |
 | #188 | [Feature]: 可以在我的skill 里面加一个标签搜索吗 | enhancement, version: 0.5.10 | 2026-07-23 | 2026-09-03 | [#188](https://github.com/legeling/PromptHub/issues/188) |

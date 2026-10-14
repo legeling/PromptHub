@@ -3,26 +3,44 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-13`
+- Snapshot date: `2026-10-14`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Closed issues captured: `155`
+- Closed issues captured: `173`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `../active/local-github-status.md`.
-- The shared capture contains 200 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 209 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
 ## Closed Issues Archive
 
 | # | 标题 | 标签 | 创建时间 | 关闭时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #235 | [Bug]: MCP 版本弹窗的 Tab 焦点能移出当前弹窗 | bug | 2026-10-13 | 2026-10-14 | [#235](https://github.com/legeling/PromptHub/issues/235) |
+| #234 | [Feature]: 补齐 My MCP 与 CLI 的正式版本管理入口 |  | 2026-10-13 | 2026-10-14 | [#234](https://github.com/legeling/PromptHub/issues/234) |
+| #233 | [Bug]: 卸载 Codex MCP 后管理区注释不成对 |  | 2026-10-13 | 2026-10-14 | [#233](https://github.com/legeling/PromptHub/issues/233) |
+| #232 | [Bug]: MCP 健康检查错误未按界面语言翻译 |  | 2026-10-13 | 2026-10-14 | [#232](https://github.com/legeling/PromptHub/issues/232) |
+| #231 | [Bug]: 已保存 MCP 的空描述显示未选择或未保存提示 |  | 2026-10-13 | 2026-10-14 | [#231](https://github.com/legeling/PromptHub/issues/231) |
+| #230 | [Bug]: Agent MCP 导入组件测试仍使用旧 createServer 契约 |  | 2026-10-13 | 2026-10-14 | [#230](https://github.com/legeling/PromptHub/issues/230) |
+| #229 | [Bug]: Skill 文件保存成功后查看器变为空白并显示 0 B | bug | 2026-10-13 | 2026-10-14 | [#229](https://github.com/legeling/PromptHub/issues/229) |
+| #228 | [Bug]: 本地和 Agent/Project/Plugin 扫描 Skill 的 Copy/Link 导入均失败 | bug | 2026-10-13 | 2026-10-14 | [#228](https://github.com/legeling/PromptHub/issues/228) |
+| #227 | [Bug]: 全新 profile 首次启动完成 renderer 迁移后仍无法创建 Skill | bug | 2026-10-13 | 2026-10-14 | [#227](https://github.com/legeling/PromptHub/issues/227) |
+| #226 | [Bug]: antigravity中的plugin配置方式有误。 | bug, version: 最新稳定版 | 2026-10-11 | 2026-10-14 | [#226](https://github.com/legeling/PromptHub/issues/226) |
+| #225 | [Feature]: 解除 Prompt「用户提示词」非空限制，改为「系统/用户提示词至少一个非空」 | enhancement, version: 0.5.9 | 2026-10-11 | 2026-10-14 | [#225](https://github.com/legeling/PromptHub/issues/225) |
+| #224 | [Feature]: 支持千问办公（Qwen Work）Skill 目录管理 | enhancement, version: 0.5.9 | 2026-10-05 | 2026-10-14 | [#224](https://github.com/legeling/PromptHub/issues/224) |
+| #220 | [Feature]: 请求支持antigravity 新版本的 MCP | enhancement, version: 版本2.16.0 (985656990) | 2026-09-24 | 2026-10-14 | [#220](https://github.com/legeling/PromptHub/issues/220) |
+| #219 | [Bug]: 自托管 Web：prompt 无法归入普通分类（分类 visibility=shared、prompt 默认 private，必报 422） | bug, version: v0.5.9 | 2026-09-18 | 2026-10-14 | [#219](https://github.com/legeling/PromptHub/issues/219) |
+| #218 | [Bug]: 手动添加github项目非根目录下的skill，导入成功后点击更新，报错 | bug, version: 0.6.0-beta.2 | 2026-09-16 | 2026-10-14 | [#218](https://github.com/legeling/PromptHub/issues/218) |
+| #217 | [Feature]: MCP Registry | enhancement, version: 0.5.9 | 2026-09-12 | 2026-10-14 | [#217](https://github.com/legeling/PromptHub/issues/217) |
 | #211 | [Bug]: git仓库和skill商店安装skill失败 | bug, version: 0.5.9 | 2026-09-01 | 2026-09-01 | [#211](https://github.com/legeling/PromptHub/issues/211) |
 | #207 | Submit IdeaHunter for the tools/resources list | wontfix | 2026-08-16 | 2026-08-20 | [#207](https://github.com/legeling/PromptHub/issues/207) |
 | #202 | [Feature]: 适配不同智能体的 MCP 请求头环境变量写法 | enhancement | 2026-08-06 | 2026-08-20 | [#202](https://github.com/legeling/PromptHub/issues/202) |
 | #201 | [Question]: Pi MCP 适配是否基于 pi-mcp-adapter，是否支持项目级配置？ | question | 2026-08-06 | 2026-08-20 | [#201](https://github.com/legeling/PromptHub/issues/201) |
 | #200 | [Feature]: 参考项目Skill，希望项目MCP也支持从【我的MCP】中导入或同步，目前只能全局同步 | enhancement, version: 0.5.9 | 2026-08-04 | 2026-08-20 | [#200](https://github.com/legeling/PromptHub/issues/200) |
 | #199 | [Feature]: 希望可以加一个手动刷新的按钮 | duplicate, enhancement, version: 0.5.8 | 2026-08-04 | 2026-08-20 | [#199](https://github.com/legeling/PromptHub/issues/199) |
+| #193 | [Bug]: 规则文件删除后重新扫描仍保留失效记录 | bug | 2026-07-29 | 2026-10-14 | [#193](https://github.com/legeling/PromptHub/issues/193) |
+| #192 | [Bug]: 自定义输出启用后两个“复制 Prompt”入口结果不一致 | bug, version: 未知（截图中未显示） | 2026-07-29 | 2026-10-14 | [#192](https://github.com/legeling/PromptHub/issues/192) |
 | #187 | [Feature]: oh-my-pi支持 | enhancement, version: oh-my-pi支持 | 2026-07-20 | 2026-08-20 | [#187](https://github.com/legeling/PromptHub/issues/187) |
 | #186 | [Feature]:智谱ZCode支持 | enhancement, version: 智谱ZCode支持 | 2026-07-12 | 2026-07-14 | [#186](https://github.com/legeling/PromptHub/issues/186) |
 | #184 | CLI 写入冲突：Desktop 打开时 CLI 无法写入数据库 |  | 2026-07-10 | 2026-07-10 | [#184](https://github.com/legeling/PromptHub/issues/184) |
