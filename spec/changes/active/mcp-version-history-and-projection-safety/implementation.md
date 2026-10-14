@@ -235,3 +235,18 @@ did not advance click-stability frames; this is not default-GPU or packaged UI
 acceptance. Owned GUI processes and the named browser session are stopped; the
 temporary verification root is retained only while the authorized migration work
 continues. #220 remains Refs-only for its unverified native/credential boundaries.
+
+## MCP import regression #230 — 2026-10-14
+
+The Agent detail component assertion uses the actual createFromSource request
+with exact target/name and asserts that createServer/importFile were not called.
+The production source-import contract is delivered in `bd4ad7f3` (#220), so the
+test correction can now be submitted independently. The combined independent
+HEAD-plus-authorized-MCP snapshot passes 204 MCP unit tests (including this
+file's 9 cases) and 9 registered IPC/history cases. Re-run from the repository:
+`pnpm --dir apps/desktop exec vitest run --project unit --minWorkers=1 --maxWorkers=1 tests/unit/components/mcp-manager-import.test.tsx`.
+The component's mocked IPC result proves request/UI selection, not persistence;
+`antigravity-mcp-agent-import.test.tsx` supplies real storage/reopen and injected
+AES-GCM boundary coverage. The isolated Electron non-secret Agent import/edit/
+process-reopen also passes. The OS-backed credential import remains explicitly
+blocked by unavailable Electron secret storage, not classified as GUI success.

@@ -930,13 +930,21 @@ describe("McpManager", () => {
         servers: [filesystemServer, externalServer],
         bindings: [],
       });
-    api.mcp.createServer.mockResolvedValue({
-      ...externalServer,
-      source: {
-        type: "import" as const,
-        id: codexTarget.id,
-        label: codexTarget.label,
-      },
+    api.mcp.createFromSource.mockResolvedValue({
+      detectedKind: "config-file",
+      source: codexTarget.path,
+      imported: [
+        {
+          ...externalServer,
+          source: {
+            type: "import",
+            id: codexTarget.id,
+            label: codexTarget.label,
+          },
+        },
+      ],
+      skipped: [],
+      warnings: [],
     });
     useMcpStore.setState({ selectedTab: "targets" });
 
@@ -964,20 +972,13 @@ describe("McpManager", () => {
     );
 
     await waitFor(() => {
-      expect(api.mcp.createServer).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "external-server",
-          displayName: "External Server",
-          command: "npx",
-          args: ["external-mcp"],
-          source: {
-            type: "import",
-            id: codexTarget.id,
-            label: codexTarget.label,
-          },
-        }),
-      );
-      expect(api.mcp.createServer).toHaveBeenCalledTimes(1);
+      expect(api.mcp.createFromSource).toHaveBeenCalledWith({
+        kind: "target",
+        preset: codexTarget,
+        serverName: "external-server",
+      });
+      expect(api.mcp.createFromSource).toHaveBeenCalledTimes(1);
+      expect(api.mcp.createServer).not.toHaveBeenCalled();
       expect(api.mcp.importFile).not.toHaveBeenCalled();
       expect(screen.getByTestId("mcp-full-detail-page")).toBeInTheDocument();
       expect(screen.getAllByText("External Server").length).toBeGreaterThan(0);
