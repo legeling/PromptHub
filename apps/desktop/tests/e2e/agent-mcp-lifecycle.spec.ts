@@ -10,6 +10,7 @@ import path from "node:path";
 
 import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
 import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
+import { readPersistedMcp } from "./helpers/mcp-persistence";
 import {
   closePromptHub,
   launchPromptHub,
@@ -163,15 +164,15 @@ test("creates, reads, updates, distributes, reconciles, removes, restarts, and d
     });
 
     const bundlePath = path.join(userDataDir, "data", "mcp", serverId);
-    expect(fs.existsSync(path.join(bundlePath, "server.json"))).toBe(true);
-    expect(fs.existsSync(path.join(bundlePath, "manifest.json"))).toBe(true);
-    const canonicalServer = JSON.parse(
-      fs.readFileSync(path.join(bundlePath, "server.json"), "utf8"),
-    );
-    expect(canonicalServer.server.envRefs).toEqual({
+    const persisted = readPersistedMcp(userDataDir, serverId);
+    expect(persisted.server?.server.envRefs).toEqual({
       AUTH_TOKEN: `\${${SECRET_REFERENCE}}`,
     });
-    expect(canonicalServer.server.env).toBeUndefined();
+    expect(persisted.server?.server.env).toBeUndefined();
+    expect(persisted.version?.version).toBe(1);
+    expect(
+      fs.existsSync(path.join(bundlePath, "versions", "000001.json")),
+    ).toBe(true);
 
     await sendAppCommand(activeApp, { type: "asset:create", asset: "mcp" });
     const duplicateDialog = page.getByRole("dialog", { name: "New MCP" });
@@ -180,7 +181,7 @@ test("creates, reads, updates, distributes, reconciles, removes, restarts, and d
     await duplicateDialog.getByLabel("Display Name").fill("Duplicate MCP");
     await duplicateDialog.getByLabel("Command").fill("node");
     await duplicateDialog.getByRole("button", { name: "Save" }).click();
-    const duplicateError = `MCP 服务名已存在: ${SERVER_NAME}`;
+    const duplicateError = `MCP server name already exists: ${SERVER_NAME}`;
     await expect
       .poll(async () =>
         (await readCapturedToasts(page))
@@ -206,14 +207,12 @@ test("creates, reads, updates, distributes, reconciles, removes, restarts, and d
       "utf8",
     );
     await page.getByRole("button", { name: "Codex", exact: true }).click();
-    const overwriteConfirmation = new Promise<string>((resolve) => {
-      page.once("dialog", async (dialog) => {
-        resolve(dialog.message());
-        await dialog.accept();
-      });
-    });
     await page.getByRole("button", { name: /Apply to 1 platform/ }).click();
-    expect(await overwriteConfirmation).toContain(SERVER_NAME);
+    const overwriteConfirmation = page.getByRole("alertdialog");
+    await expect(overwriteConfirmation).toContainText(SERVER_NAME);
+    await overwriteConfirmation
+      .getByRole("button", { name: "Confirm", exact: true })
+      .click();
     await expect(
       page.getByText("MCP applied", { exact: true }).last(),
     ).toBeVisible();
@@ -226,14 +225,7 @@ test("creates, reads, updates, distributes, reconciles, removes, restarts, and d
     expect(codexConfig).toContain('args = ["server.js", "--alpha"]');
     expect(codexConfig).toContain(`AUTH_TOKEN = "\${${SECRET_REFERENCE}}"`);
 
-    const bindingPath = path.join(
-      userDataDir,
-      "config",
-      "devices",
-      "mcp-bindings.json",
-    );
-    expect(fs.existsSync(bindingPath)).toBe(true);
-    expect(JSON.parse(fs.readFileSync(bindingPath, "utf8")).bindings).toEqual([
+    expect(readPersistedMcp(userDataDir, serverId).bindings).toEqual([
       expect.objectContaining({
         path: codexConfigPath,
         serverIds: [serverId],
@@ -367,9 +359,7 @@ test("creates, reads, updates, distributes, reconciles, removes, restarts, and d
     expect(codexConfig).toContain("[mcp_servers.unrelated]");
     expect(codexConfig).toContain('command = "keep-me"');
     expect(codexConfig).not.toContain(`[mcp_servers.${SERVER_NAME}]`);
-    expect(JSON.parse(fs.readFileSync(bindingPath, "utf8")).bindings).toEqual(
-      [],
-    );
+    expect(readPersistedMcp(userDataDir, serverId).bindings).toEqual([]);
 
     await page.getByRole("button", { name: "Delete" }).click();
     const deleteDialog = page.getByRole("alertdialog", { name: "Delete MCP" });
@@ -474,9 +464,7 @@ test("rejects malformed config and keeps HTTP credentials outside renderer and c
     const initialMcpEntries = fs.readdirSync(mcpRoot).sort();
     await configInput.fill("{not-json");
     await createDialog.getByRole("button", { name: "Import config" }).click();
-    await expect(
-      createDialog.getByText("Invalid MCP config content"),
-    ).toBeVisible();
+    await expect(createDialog.getByText(/Invalid TOML document/)).toBeVisible();
     await expect(createDialog).toBeVisible();
     expect(
       (await page.evaluate(() => window.api.mcp.getLibrary())).servers,
@@ -506,19 +494,18 @@ test("rejects malformed config and keeps HTTP credentials outside renderer and c
     await expect(page.locator("body")).not.toContainText(tenantSecret);
 
     const bundlePath = path.join(userDataDir, "data", "mcp", server.id);
-    const canonicalText = fs.readFileSync(
-      path.join(bundlePath, "server.json"),
-      "utf8",
-    );
+    const persisted = readPersistedMcp(userDataDir, server.id);
+    const canonicalText = JSON.stringify(persisted);
     expect(canonicalText).not.toContain(headerSecret);
     expect(canonicalText).not.toContain(tenantSecret);
-    const canonicalDocument = JSON.parse(canonicalText);
-    expect(canonicalDocument.server.headers).toBeUndefined();
+    expect(persisted.server?.server.headers).toBeUndefined();
     expect(
-      Object.keys(canonicalDocument.secretReferences.headers).sort(),
+      Object.keys(persisted.version?.secretReferences.headers ?? {}).sort(),
     ).toEqual(["Authorization", "X-Tenant"]);
     expect(
-      Object.values(canonicalDocument.secretReferences.headers).join("\n"),
+      Object.values(persisted.version?.secretReferences.headers ?? {}).join(
+        "\n",
+      ),
     ).not.toContain("secret");
     const versionText = fs
       .readdirSync(path.join(bundlePath, "versions"))
@@ -529,15 +516,13 @@ test("rejects malformed config and keeps HTTP credentials outside renderer and c
     expect(versionText).not.toContain(headerSecret);
     expect(versionText).not.toContain(tenantSecret);
 
-    const secretStorePath = path.join(
-      userDataDir,
-      "secrets",
-      "mcp-resource-secrets.json",
-    );
-    const secretStoreText = fs.readFileSync(secretStorePath, "utf8");
-    expect(secretStoreText).not.toContain(headerSecret);
-    expect(secretStoreText).not.toContain(tenantSecret);
-    expect(fs.statSync(secretStorePath).mode & 0o777).toBe(0o600);
+    expect(persisted.secrets).toHaveLength(2);
+    for (const secret of persisted.secrets) {
+      expect(secret).toMatchObject({
+        availability: "available",
+        ciphertext: expect.any(String),
+      });
+    }
 
     await page.getByTestId(`mcp-server-card-${server.id}`).click();
     await page.getByRole("button", { name: "Codex", exact: true }).click();

@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import { expect, test } from "@playwright/test";
 
-import { closePromptHub, launchPromptHub, setAppLanguage } from "./helpers/electron";
+import {
+  closePromptHub,
+  launchPromptHub,
+  setAppLanguage,
+} from "./helpers/electron";
 
 function createLocalSkillSource(baseDir: string, content: string): string {
   const sourceRoot = path.join(baseDir, "e2e-local-source");
@@ -36,28 +40,25 @@ test.describe("E2E: local store source", () => {
         ].join("\n"),
       );
 
-      await page.evaluate(({ sourceRootDir }) => {
-        localStorage.setItem(
-          "skill-store",
-          JSON.stringify({
-            state: {
-              storeView: "store",
-              selectedStoreSourceId: "local-e2e-source",
-              customStoreSources: [
-                {
-                  id: "local-e2e-source",
-                  name: "E2E Local Source",
-                  type: "local-dir",
-                  url: sourceRootDir,
-                  enabled: true,
-                  createdAt: Date.now(),
-                  order: 0,
-                },
-              ],
-            },
-          }),
-        );
-      }, { sourceRootDir });
+      await page.evaluate(
+        async ({ sourceRootDir }) => {
+          await window.api.settings.rendererPersistence.replaceSources(
+            "skill",
+            [
+              {
+                id: "local-e2e-source",
+                name: "E2E Local Source",
+                type: "local-dir",
+                url: sourceRootDir,
+                enabled: true,
+                createdAt: Date.now(),
+                order: 0,
+              },
+            ],
+          );
+        },
+        { sourceRootDir },
+      );
 
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
@@ -80,7 +81,8 @@ test.describe("E2E: local store source", () => {
         };
 
         const originalScanSafety = window.api.skill.scanSafety;
-        const originalReadLocalFileByPath = window.api.skill.readLocalFileByPath;
+        const originalReadLocalFileByPath =
+          window.api.skill.readLocalFileByPath;
         const originalCreate = window.api.skill.create;
 
         window.api.skill.scanSafety = async (...args) => {
@@ -116,42 +118,64 @@ test.describe("E2E: local store source", () => {
 
       await page.getByRole("button", { name: "Skills" }).click();
       await page.locator('button[title="Skill Store"]:visible').first().click();
-      await page.locator('button:has-text("E2E Local Source"):visible').first().click();
+      await page
+        .locator('button:has-text("E2E Local Source"):visible')
+        .first()
+        .click();
 
-      await expect(page.locator('h2:has-text("E2E Local Source"):visible').first()).toBeVisible();
+      await expect(
+        page.locator('h2:has-text("E2E Local Source"):visible').first(),
+      ).toBeVisible();
       await page.locator('button[title="Refresh"]:visible').first().click();
 
-      await expect(page.locator('h4:has-text("local-writer"):visible').first()).toBeVisible();
+      await expect(
+        page.locator('h4:has-text("local-writer"):visible').first(),
+      ).toBeVisible();
       await page.locator('h4:has-text("local-writer"):visible').first().click();
 
       const detailModal = page
-        .locator('div.fixed.inset-0.z-50')
+        .locator("div.fixed.inset-0.z-50")
         .filter({ has: page.locator('h2:has-text("local-writer")') })
         .last();
-      await expect(detailModal.locator('h2:has-text("local-writer")')).toBeVisible();
+      await expect(
+        detailModal.locator('h2:has-text("local-writer")'),
+      ).toBeVisible();
 
       await expect(page.getByText("Fresh source content v1")).toBeVisible();
-      const installButton = detailModal.locator('button:has-text("Import to My Skills")');
+      const installButton = detailModal.locator(
+        'button:has-text("Import to My Skills")',
+      );
       await expect(installButton).toBeVisible();
       await expect(installButton).toBeEnabled();
       await installButton.click({ force: true });
-      await expect(detailModal.locator('button:has-text("Adding...")')).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Confirm and add", exact: true })
+        .click();
+      await expect(
+        detailModal.locator('button:has-text("Adding...")'),
+      ).toHaveCount(0);
 
-      const failureToast = page.locator('span.text-sm.font-semibold.text-foreground', {
-        hasText: /Failed|Error|Import failed|Update failed/i,
-      });
+      const failureToast = page.locator(
+        "span.text-sm.font-semibold.text-foreground",
+        {
+          hasText: /Failed|Error|Import failed|Update failed/i,
+        },
+      );
       await expect(failureToast).toHaveCount(0);
       await expect
         .poll(() =>
           page.evaluate(async () => {
             const skills = await window.api.skill.getAll();
-            const installed = skills.find((skill) => skill.name === "local-writer");
+            const installed = skills.find(
+              (skill) => skill.name === "local-writer",
+            );
             return {
               id: installed?.id ?? null,
               content: installed?.content ?? null,
               installedCount: skills.length,
               installedNames: skills.map((skill) => skill.name),
-              debug: (window as Window & { __localStoreDebug?: unknown }).__localStoreDebug,
+              debug: (window as Window & { __localStoreDebug?: unknown })
+                .__localStoreDebug,
             };
           }),
         )
@@ -169,24 +193,46 @@ test.describe("E2E: local store source", () => {
       expect(installedSkill?.id).toBeTruthy();
       expect(installedSkill?.local_repo_path).toBeTruthy();
 
-      const managedSkillDir = path.dirname(String(installedSkill!.local_repo_path));
-      expect(fs.existsSync(path.join(managedSkillDir, ".prompthub", "source.json"))).toBe(true);
-      expect(fs.existsSync(path.join(managedSkillDir, ".prompthub", "variant.json"))).toBe(true);
-      expect(fs.existsSync(path.join(managedSkillDir, "repo", "SKILL.md"))).toBe(true);
+      const managedSkillDir = String(installedSkill!.local_repo_path);
+      expect(
+        fs.readFileSync(path.join(managedSkillDir, "SKILL.md"), "utf8"),
+      ).toContain("Fresh source content v1");
+      const bundlePath = path.join(
+        userDataDir,
+        "data",
+        "skills",
+        encodeURIComponent(installedSkill!.id),
+      );
+      expect(fs.existsSync(path.join(bundlePath, "manifest.json"))).toBe(true);
+      expect(
+        fs.readFileSync(path.join(bundlePath, "files", "SKILL.md"), "utf8"),
+      ).toContain("Fresh source content v1");
 
-      const quickInstallModal = page.getByText("Install to Platforms");
-      if (await quickInstallModal.isVisible().catch(() => false)) {
-        const quickInstallDialog = page
-          .locator('div.fixed.inset-0.z-50')
-          .filter({ has: page.getByText("Install to Platforms") })
-          .last();
-        await quickInstallDialog.locator("button").first().click({ force: true });
-      }
+      const quickInstallDialog = page
+        .locator("div.fixed.inset-0.z-50")
+        .filter({
+          has: page.getByRole("heading", {
+            name: "Manage platform installations",
+            exact: true,
+          }),
+        })
+        .last();
+      await expect(quickInstallDialog).toBeVisible();
+      await quickInstallDialog
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
+      await expect(quickInstallDialog).toHaveCount(0);
 
-      await expect(detailModal.locator('button:has-text("Remove")')).toBeVisible();
-      await expect(detailModal.locator('button:has-text("Import to My Skills")')).toHaveCount(0);
+      await expect(
+        detailModal.locator('button:has-text("Remove")'),
+      ).toBeVisible();
+      await expect(
+        detailModal.locator('button:has-text("Import to My Skills")'),
+      ).toHaveCount(0);
 
-      await detailModal.click({ position: { x: 8, y: 8 } });
+      await detailModal
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
       await expect(detailModal).toHaveCount(0);
 
       fs.writeFileSync(
@@ -206,25 +252,35 @@ test.describe("E2E: local store source", () => {
         "utf8",
       );
 
-      await page.locator('button:has-text("E2E Local Source"):visible').first().click();
+      await page
+        .locator('button:has-text("E2E Local Source"):visible')
+        .first()
+        .click();
       await page.locator('button[title="Refresh"]:visible').first().click();
       await page.locator('h4:has-text("local-writer"):visible').first().click();
-      const updatedDetailModal = page.locator('div.fixed.inset-0.z-50').last();
-      await expect(updatedDetailModal.locator('h2:has-text("local-writer")')).toBeVisible();
+      const updatedDetailModal = page.locator("div.fixed.inset-0.z-50").last();
+      await expect(
+        updatedDetailModal.locator('h2:has-text("local-writer")'),
+      ).toBeVisible();
       await expect(page.getByText("Fresh source content v2")).toBeVisible();
 
       await updatedDetailModal
         .getByRole("button", { name: "Check update", exact: true })
         .click({ force: true });
-      await updatedDetailModal
-        .getByRole("button", { name: "Update", exact: true })
-        .click({ force: true });
+      await expect(
+        page.getByRole("heading", { name: "Review Skill update", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Confirm update", exact: true })
+        .click();
 
       await expect
         .poll(() =>
           page.evaluate(async () => {
             const skills = await window.api.skill.getAll();
-            const installed = skills.find((skill) => skill.name === "local-writer");
+            const installed = skills.find(
+              (skill) => skill.name === "local-writer",
+            );
             return {
               content: installed?.content ?? null,
               version: installed?.version ?? null,
@@ -237,6 +293,12 @@ test.describe("E2E: local store source", () => {
             version: "1.1.0",
           }),
         );
+      expect(
+        fs.readFileSync(path.join(managedSkillDir, "SKILL.md"), "utf8"),
+      ).toContain("Fresh source content v2");
+      expect(
+        fs.readFileSync(path.join(bundlePath, "files", "SKILL.md"), "utf8"),
+      ).toContain("Fresh source content v2");
     } finally {
       await closePromptHub(app, userDataDir);
     }

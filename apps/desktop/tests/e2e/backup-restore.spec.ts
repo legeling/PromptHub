@@ -12,43 +12,11 @@ const IMAGE_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn0l1cAAAAASUVORK5CYII=";
 const VIDEO_BASE64 = Buffer.from("prompthub-backup-video").toString("base64");
 
-function findWorkspacePromptFile(workspaceDir: string, promptTitle: string): string | null {
-  const promptsDir = path.join(workspaceDir, "prompts");
-  if (!fs.existsSync(promptsDir)) {
-    return null;
-  }
-
-  const stack = [promptsDir];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (!current) {
-      continue;
-    }
-
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      const nextPath = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(nextPath);
-        continue;
-      }
-
-      if (!entry.name.endsWith(".md") || entry.name === "_folder.json") {
-        continue;
-      }
-
-      const content = fs.readFileSync(nextPath, "utf8");
-      if (content.includes(promptTitle)) {
-        return nextPath;
-      }
-    }
-  }
-
-  return null;
-}
-
 test.describe("E2E: backup restore", () => {
   test("exports and restores prompts, versions, media, and skill files through the real backup pipeline", async () => {
-    const { app, page, userDataDir } = await launchPromptHub(null);
+    const launched = await launchPromptHub(null);
+    const { userDataDir } = launched;
+    let { app, page } = launched;
 
     try {
       await setAppLanguage(page, "en");
@@ -139,7 +107,9 @@ test.describe("E2E: backup restore", () => {
       );
 
       expect(
-        exported.backup.prompts.some((prompt) => prompt.id === exported.promptId),
+        exported.backup.prompts.some(
+          (prompt) => prompt.id === exported.promptId,
+        ),
       ).toBe(true);
       expect(
         exported.backup.versions.some(
@@ -185,12 +155,21 @@ test.describe("E2E: backup restore", () => {
         }
 
         await window.api.skill.deleteAll();
-        await window.electron.saveImageBase64?.("backup-image.png", "Y29ycnVwdGVkLWltYWdl");
-        await window.electron.saveVideoBase64?.("backup-video.mp4", "Y29ycnVwdGVkLXZpZGVv");
+        await window.electron.saveImageBase64?.(
+          "backup-image.png",
+          "Y29ycnVwdGVkLWltYWdl",
+        );
+        await window.electron.saveVideoBase64?.(
+          "backup-video.mp4",
+          "Y29ycnVwdGVkLXZpZGVv",
+        );
 
         await window.__PROMPTHUB_E2E_BACKUP__.restoreFromBackup(backup);
       }, exported.backup);
 
+      // Atomic restore requires relaunch; E2E intentionally disables the OS scheduler.
+      await closePromptHub(app, userDataDir, { preserveUserDataDir: true });
+      ({ app, page } = await launchPromptHub(null, { userDataDir }));
       const restored = await page.evaluate(async () => {
         const prompts = await window.api.prompt.getAll();
         const folders = await window.api.folder.getAll();
@@ -206,15 +185,17 @@ test.describe("E2E: backup restore", () => {
           throw new Error("Restored prompt or skill is missing");
         }
 
-        const promptVersions = await window.api.version.getAll(restoredPrompt.id);
-        const skillFiles = await window.api.skill.readLocalFiles(restoredSkill.id);
+        const promptVersions = await window.api.version.getAll(
+          restoredPrompt.id,
+        );
+        const skillFiles = await window.api.skill.readLocalFiles(
+          restoredSkill.id,
+        );
         const repoPath = await window.api.skill.getRepoPath(restoredSkill.id);
-        const imageBase64 = await window.electron.readImageBase64?.(
-          "backup-image.png",
-        );
-        const videoBase64 = await window.electron.readVideoBase64?.(
-          "backup-video.mp4",
-        );
+        const imageBase64 =
+          await window.electron.readImageBase64?.("backup-image.png");
+        const videoBase64 =
+          await window.electron.readVideoBase64?.("backup-video.mp4");
 
         return {
           promptId: restoredPrompt.id,
@@ -288,9 +269,12 @@ test.describe("E2E: backup restore", () => {
         "videos",
         "backup-video.mp4",
       );
-      const promptFile = findWorkspacePromptFile(
-        path.join(userDataDir, "data"),
-        restored.promptTitle,
+      const promptFile = path.join(
+        userDataDir,
+        "data",
+        "prompts",
+        encodeURIComponent(restored.promptId),
+        "prompt.json",
       );
       const skillFilePath = path.join(
         restored.skillRepoPath,
@@ -300,10 +284,17 @@ test.describe("E2E: backup restore", () => {
 
       expect(fs.existsSync(imagePath)).toBe(true);
       expect(fs.existsSync(videoPath)).toBe(true);
-      expect(promptFile).not.toBeNull();
-      expect(fs.readFileSync(promptFile!, "utf8")).toContain("Backup Prompt");
+      expect(
+        JSON.parse(fs.readFileSync(promptFile, "utf8")).prompt,
+      ).toMatchObject({
+        id: restored.promptId,
+        title: "Backup Prompt",
+        notes: "Backup note",
+      });
       expect(fs.existsSync(skillFilePath)).toBe(true);
-      expect(fs.readFileSync(skillFilePath, "utf8")).toBe("Backed up skill note");
+      expect(fs.readFileSync(skillFilePath, "utf8")).toBe(
+        "Backed up skill note",
+      );
     } finally {
       await closePromptHub(app, userDataDir);
     }

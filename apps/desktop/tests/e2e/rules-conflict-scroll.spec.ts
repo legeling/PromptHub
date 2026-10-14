@@ -37,7 +37,6 @@ test("scrolls long rule conflicts in one comparison region", async () => {
     await page.evaluate(() => window.api.rules.scan());
 
     await page.getByRole("button", { name: "Rules" }).click();
-    await page.getByText("Scroll Conflict", { exact: true }).click();
 
     const dialog = page.getByRole("dialog", { name: /Rule conflict/i });
     const comparisonRegion = dialog.getByRole("region", {

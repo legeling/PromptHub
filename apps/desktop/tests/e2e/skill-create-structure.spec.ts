@@ -36,7 +36,10 @@ test.describe("E2E: create skill structure", () => {
       await modal.getByRole("button", { name: "Create Skill" }).click();
       await expect(modal).not.toBeVisible();
       await expect(
-        page.getByRole("heading", { name: "e2e-created-skill", exact: true }),
+        page.getByRole("heading", {
+          name: "Copy title: e2e-created-skill",
+          exact: true,
+        }),
       ).toBeVisible();
 
       await expect
@@ -89,7 +92,8 @@ test.describe("E2E: create skill structure", () => {
           (id) => window.api.skill.versionGetAll(id),
           installedSkill!.id,
         ),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
+      expect(installedSkill?.currentVersion).toBe(0);
     } finally {
       await closePromptHub(app, userDataDir);
     }

@@ -10,6 +10,7 @@ import path from "node:path";
 
 import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
 import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
+import { encodeCanonicalResourceDirectory } from "@prompthub/core/canonical-resource-path";
 import {
   closePromptHub,
   launchPromptHub,
@@ -137,7 +138,7 @@ test("imports, distributes, restarts, and deletes a local Plugin", async () => {
       name: PLUGIN_NAME,
       version: "1.0.0",
     });
-    const bundlePath = path.join(userDataDir, "data", "plugins", PLUGIN_ID);
+    const bundlePath = path.join(userDataDir, "data", "plugins", encodeCanonicalResourceDirectory(PLUGIN_ID));
     expect(fs.existsSync(path.join(bundlePath, "manifest.json"))).toBe(true);
     expect(
       fs.readFileSync(path.join(bundlePath, "files", "README.md"), "utf8"),

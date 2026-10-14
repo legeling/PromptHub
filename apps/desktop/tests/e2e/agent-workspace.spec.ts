@@ -290,13 +290,7 @@ test.describe("E2E: Agent workspace", () => {
       "",
     ].join("\n");
     fs.writeFileSync(codexConfigPath, initialCodexConfig, "utf8");
-    const themeDir = path.join(
-      userDataDir,
-      "data",
-      "agent-appearance",
-      "themes",
-      "codex",
-    );
+    const themeDir = path.join(userDataDir, "fixtures", "themes", "codex");
     fs.mkdirSync(themeDir, { recursive: true });
     const midnightThemeDir = path.join(themeDir, "midnight");
     fs.mkdirSync(midnightThemeDir, { recursive: true });
@@ -407,6 +401,15 @@ test.describe("E2E: Agent workspace", () => {
       await expect(
         page.getByRole("heading", { name: "Codex appearance" }),
       ).toBeVisible();
+      await app.evaluate(({ dialog }, folder) => {
+        Reflect.set(dialog, "showOpenDialog", async () => ({
+          canceled: false,
+          filePaths: [folder],
+        }));
+      }, midnightThemeDir);
+      await page
+        .getByRole("button", { name: "Import skin", exact: true })
+        .click();
       await expect(page.getByText("Midnight")).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath("agent-workspace-appearance.png"),
@@ -495,11 +498,9 @@ test.describe("E2E: Agent workspace", () => {
       await expect(
         page.getByRole("heading", { name: "Kimi Code" }),
       ).toBeVisible();
-      await page.getByRole("tab", { name: "Provider & Model" }).click();
       await expect(
-        page.getByRole("navigation", { name: "Providers" }),
-      ).toBeVisible();
-      await expect(page.getByLabel("Default model")).toHaveCount(0);
+        page.getByRole("tab", { name: "Provider & Model" }),
+      ).toBeDisabled();
       await page.getByRole("tab", { name: "Sessions" }).click();
       await expect(
         page.getByText("Review isolated Kimi session").first(),
@@ -526,77 +527,15 @@ test.describe("E2E: Agent workspace", () => {
       await expect(page.locator("body")).not.toContainText(
         "PRIVATE_QWEN_COMMAND_BODY",
       );
-      await page.getByRole("tab", { name: "Provider & Model" }).click();
       await expect(
-        page.getByRole("navigation", { name: "Providers" }),
-      ).toBeVisible();
-      await page.getByRole("button", { name: "Add custom provider" }).click();
-      const qwenProfile = page.getByRole("region", {
-        name: "Add provider",
-      });
-      await qwenProfile
-        .getByRole("textbox", { name: "Name" })
-        .fill("Qwen E2E gateway");
-      await qwenProfile
-        .getByRole("textbox", { name: "Provider ID" })
-        .fill("team-e2e");
-      await qwenProfile
-        .getByRole("textbox", { name: "Environment variable" })
-        .fill("QWEN_E2E_API_KEY");
-      await qwenProfile
-        .getByRole("textbox", { name: "Primary model" })
-        .fill("qwen-e2e");
-      await qwenProfile
-        .getByRole("textbox", { name: "Endpoint" })
-        .fill(providerEndpoint);
-      await qwenProfile
-        .getByLabel("Credential (write-only)")
-        .fill("qwen-e2e-secret");
-      await qwenProfile.getByRole("button", { name: "Save provider" }).click();
-      await expect(page.getByText("Credential available")).toBeVisible();
-      await expect(page.locator("body")).not.toContainText("qwen-e2e-secret");
-      await page
-        .getByRole("switch", { name: "Activate Qwen E2E gateway" })
-        .click();
-      const qwenActivation = page.getByRole("dialog", {
-        name: "Review provider activation",
-      });
-      await chooseAllProviderValues(qwenActivation);
-      await qwenActivation
-        .getByRole("button", { name: "Activate provider" })
-        .click();
-      await expect(
-        qwenActivation.getByText("Activation verified"),
-      ).toBeVisible();
-      await expect
-        .poll(() => JSON.parse(fs.readFileSync(qwenSettingsPath, "utf8")))
-        .toMatchObject({
-          $version: 4,
-          language: "en",
-          security: { auth: { selectedType: "team-e2e" } },
-          model: { name: "qwen-e2e" },
-          providerProtocol: { "team-e2e": "openai" },
-          modelProviders: {
-            "team-e2e": [
-              {
-                id: "qwen-e2e",
-                baseUrl: providerEndpoint,
-                envKey: "QWEN_E2E_API_KEY",
-              },
-            ],
-          },
-        });
-      await expect
-        .poll(() => fs.readFileSync(qwenEnvPath, "utf8"))
-        .toContain('QWEN_E2E_API_KEY="qwen-e2e-secret"');
+        page.getByRole("tab", { name: "Provider & Model" }),
+      ).toBeDisabled();
+      expect(
+        JSON.parse(fs.readFileSync(qwenSettingsPath, "utf8")),
+      ).toMatchObject({ language: "en" });
       expect(fs.readFileSync(qwenEnvPath, "utf8")).toContain(
         "UNRELATED_QWEN_SETTING=preserved",
       );
-      await expect(page.locator("body")).not.toContainText("qwen-e2e-secret");
-      await qwenActivation
-        .getByRole("button", { name: "Close", exact: true })
-        .last()
-        .click();
 
       await selectAgent(page, "OpenCode");
       await expect(

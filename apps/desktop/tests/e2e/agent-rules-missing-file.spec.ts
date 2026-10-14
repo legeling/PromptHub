@@ -26,12 +26,12 @@ test("asks before creating an Agent-declared missing rule file", async ({}, test
     path.join(os.tmpdir(), "prompthub-agent-rule-e2e-"),
   );
   const homeDir = path.join(userDataDir, "home");
-  const geminiDir = path.join(homeDir, ".gemini");
-  const rulePath = path.join(geminiDir, "GEMINI.md");
-  fs.mkdirSync(geminiDir, { recursive: true });
+  const codexDir = path.join(homeDir, ".codex");
+  const rulePath = path.join(codexDir, "AGENTS.md");
+  fs.mkdirSync(codexDir, { recursive: true });
   fs.writeFileSync(
-    path.join(geminiDir, "settings.json"),
-    JSON.stringify({ language: "en" }),
+    path.join(codexDir, "config.toml"),
+    'model = "fixture-model"\n',
     "utf8",
   );
 
@@ -44,11 +44,11 @@ test("asks before creating an Agent-declared missing rule file", async ({}, test
     await setAppLanguage(page, "en");
     await page.setViewportSize({ width: 1440, height: 900 });
     await sendAppCommand(app, { type: "agent:manage" });
-    await selectAgent(page, "Gemini");
+    await selectAgent(page, "Codex");
     await page.getByRole("tab", { name: "Rules" }).click();
 
     await expect(
-      page.getByRole("heading", { name: "Create GEMINI.md?" }),
+      page.getByRole("heading", { name: "Create AGENTS.md?" }),
     ).toBeVisible();
     await expect(page.getByText(rulePath)).toBeVisible();
     await expect(
@@ -56,11 +56,11 @@ test("asks before creating an Agent-declared missing rule file", async ({}, test
     ).toHaveCount(0);
     expect(fs.existsSync(rulePath)).toBe(false);
     await page.screenshot({
-      path: testInfo.outputPath("missing-gemini-rule.png"),
+      path: testInfo.outputPath("missing-codex-rule.png"),
       animations: "disabled",
     });
 
-    await page.getByRole("button", { name: "Create GEMINI.md" }).click();
+    await page.getByRole("button", { name: "Create AGENTS.md" }).click();
     await expect(
       page.getByRole("textbox", { name: "Rule Content" }),
     ).toBeVisible();
@@ -127,12 +127,12 @@ test("saves, restores, and reloads Agent rule history", async () => {
     operationId: "agent-rule-history-e2e",
   });
   const homeDir = path.join(userDataDir, "home");
-  const geminiDir = path.join(homeDir, ".gemini");
-  const rulePath = path.join(geminiDir, "GEMINI.md");
-  fs.mkdirSync(geminiDir, { recursive: true });
+  const codexDir = path.join(homeDir, ".codex");
+  const rulePath = path.join(codexDir, "AGENTS.md");
+  fs.mkdirSync(codexDir, { recursive: true });
   fs.writeFileSync(
-    path.join(geminiDir, "settings.json"),
-    JSON.stringify({ language: "en" }),
+    path.join(codexDir, "config.toml"),
+    'model = "fixture-model"\n',
     "utf8",
   );
   const launchOptions = {
@@ -145,9 +145,9 @@ test("saves, restores, and reloads Agent rule history", async () => {
     let page = await activeApp.firstWindow();
     await setAppLanguage(page, "en");
     await sendAppCommand(activeApp, { type: "agent:manage" });
-    await selectAgent(page, "Gemini");
+    await selectAgent(page, "Codex");
     await page.getByRole("tab", { name: "Rules" }).click();
-    await page.getByRole("button", { name: "Create GEMINI.md" }).click();
+    await page.getByRole("button", { name: "Create AGENTS.md" }).click();
 
     const firstRevision = "# First rule revision\n\nKeep exact history bytes.";
     const secondRevision = "# Second rule revision\n\nReplace the first draft.";
@@ -186,7 +186,7 @@ test("saves, restores, and reloads Agent rule history", async () => {
     activeApp = relaunched.app;
     page = relaunched.page;
     await sendAppCommand(activeApp, { type: "agent:manage" });
-    await selectAgent(page, "Gemini");
+    await selectAgent(page, "Codex");
     await page.getByRole("tab", { name: "Rules" }).click();
     editor = page.getByRole("textbox", { name: "Rule Content" });
     await expect(editor).toContainText("# First rule revision");

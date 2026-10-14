@@ -522,7 +522,7 @@ test("projects Claude cwd labels and hides internal transcript records", async (
   }
 });
 
-test("projects Gemini and Cursor native project identities", async ({}, testInfo) => {
+test("hides retired Gemini without deleting its sessions and projects Cursor native identities", async ({}, testInfo) => {
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-gemini-cursor-session-e2e-"),
   );
@@ -536,24 +536,20 @@ test("projects Gemini and Cursor native project identities", async ({}, testInfo
     await setAppLanguage(page, "en");
     await page.setViewportSize({ width: 1280, height: 820 });
     await sendAppCommand(app, { type: "agent:manage" });
-    await selectAgentSessions(page, "Gemini");
-    await expect(page.getByText("Gemini native title").first()).toBeVisible();
     await expect(
-      page.getByText("Gemini visible question").first(),
-    ).toBeVisible();
-    await expect(page.getByText("Gemini visible answer")).toBeVisible();
-    await expect(page.getByText("Gemini tool result")).toBeVisible();
-    await expect(page.getByText("Generated Gemini context")).toHaveCount(0);
-    await page.getByRole("button", { name: "Filter by project" }).click();
-    await expect(
-      page.getByRole("option", { name: "gemini-project", exact: true }),
-    ).toBeVisible();
-    await page.screenshot({
-      path: testInfo.outputPath("agent-session-gemini-projection.png"),
-      animations: "disabled",
-    });
-
-    await page.keyboard.press("Escape");
+      page.getByRole("button", { name: "Gemini", exact: true }),
+    ).toHaveCount(0);
+    const retainedSession = path.join(
+      homeDir,
+      ".gemini",
+      "tmp",
+      "project-hash",
+      "chats",
+      "gemini-session.json",
+    );
+    expect(fs.readFileSync(retainedSession, "utf8")).toContain(
+      "Gemini native title",
+    );
     await selectAgentSessions(page, "Cursor");
     await expect(
       page.getByText("Cursor visible question").first(),

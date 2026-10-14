@@ -5,6 +5,7 @@ import path from "path";
 
 import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
 import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
+import { readPersistedMcp } from "./helpers/mcp-persistence";
 
 import {
   closePromptHub,
@@ -155,10 +156,17 @@ test("imports and removes an external Pi MCP without leaking its secret or coupl
     expect(fs.readFileSync(mcpPath, "utf8")).toBe(nativeFixture);
 
     const bundlePath = path.join(userDataDir, "data", "mcp", imported.id);
-    const canonicalDocument = JSON.parse(
-      fs.readFileSync(path.join(bundlePath, "server.json"), "utf8"),
-    );
-    expect(canonicalDocument.server.env).toEqual({ ACCESS_TOKEN: "" });
+    const persisted = readPersistedMcp(userDataDir, imported.id);
+    expect(persisted.server?.server.env).toBeUndefined();
+    expect(Object.keys(persisted.version?.secretReferences.env ?? {})).toEqual([
+      "ACCESS_TOKEN",
+    ]);
+    expect(persisted.secrets).toHaveLength(1);
+    expect(persisted.secrets[0]).toMatchObject({
+      availability: "available",
+      ciphertext: expect.any(String),
+    });
+    expect(JSON.stringify(persisted)).not.toContain(EXTERNAL_SECRET);
     expect(
       fs
         .readdirSync(path.join(bundlePath, "versions"))
