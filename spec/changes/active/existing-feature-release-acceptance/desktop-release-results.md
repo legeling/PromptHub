@@ -1,5 +1,52 @@
 # 桌面体验、Mobile 与发布覆盖：分轮结果
 
+## 2026-10-14 全量 E2E 补充（44/44 通过）
+
+本节优先于下方 2026-10-09 的历史 GUI blocked 矩阵。当前授权仅覆盖隔离测试窗口；不操作日常 profile、Agent 配置、凭据或原有服务。
+
+- 收集回归：6 个 spec 的 Core barrel 导入改为具体子入口；新增正常 integration 门禁执行 Playwright `--list`，核对所有 spec 均进入集合。独立提交 `dc3e9153`。
+- 隔离：Electron 与本地 Web 服务只继承启动必需环境，HOME/XDG/APPDATA 指向临时 profile；不继承 Agent root、API key 或开发服务器配置。MCP 仅替换 OS keyring 传输到该 profile，AES-GCM、SQLite、版本文件及目标分发仍使用产品实现。原生钥匙串互操作不属于本次证据。
+- 基线：macOS 隔离源码副本、单 worker、零重试，42 项实际执行为 27 pass / 15 fail。布局用例复用已安装 Chrome 的临时会话。初始化失败的前一轮不计业务结果。
+- 旧断言校准：MCP 当前定义/绑定/加密凭据读取 SQLite，历史仍检查文件；Plugin 目录名复用规范编码；商店 fixture 写入当前 source 持久化入口，导入和更新经过审阅确认并核对完整包文件；退役 Gemini 不再作为可选 UI 平台，规则创建/历史使用受支持的 Codex，Cursor 保留原生会话投影断言。Kimi/Qwen Provider 按现有 registry 的 `enabled: false` 验证禁用入口，不更改产品能力声明；Codex/OpenCode Provider 保留真实本地 HTTP 探活、模型回复和配置激活流程。
+- 新增核心场景：Prompt 通过 UI 创建目录/内容、编辑、历史恢复、重开、取消删除和确认删除；设置通过 UI 导出 ZIP、取消导入、确认恢复并重开核对。测试中的长流程保留线性顺序与一个 `finally`，避免把同一资源生命周期拆散；纯读回及重复操作提取为小 helper。
+- 产品修复：主题在主进程设置加载完成后应用；Claude 根目录编辑使用平台已定义的 configured-root MCP 路径，不把默认 home 父级路径作为用户覆盖提交，任意 `../` 覆盖仍被拒绝。无 schema/格式迁移，回滚为对应源码提交；不修改既有用户设置。分别由真实重开场景及 adapter 合同测试/Agent UI 保存重开验证。
+- 恢复边界：portable restore 关闭当前数据库后要求重启；E2E 禁用操作系统自动 relaunch，因此测试显式关闭再启动同一隔离 profile 后读回，不能在旧进程继续访问已关闭连接。原生文件选择器仅替换返回路径，ZIP 创建/预览/应用、数据库、媒体与包文件均为真实实现。
+- 规模与资源：44 个用例顺序运行，最多一个 Electron 测试实例；fixture 为小型合成包和本地 HTTP 服务，不访问日常数据/凭据，不新增依赖。MCP 凭据 readback 使用项目 DB adapter 且立即关闭；keyring 替身的求值函数保留在同一 Electron 闭包内以避免跨进程捕获，生命周期由测试 profile 管理。
+
+### 功能流程覆盖与缺口
+
+| 领域 | 当前可执行入口 | 本轮验收边界与剩余缺口 |
+| --- | --- | --- |
+| Prompt / Folder | 新增 `prompt-lifecycle`；已有 table / backup-continuity | 创建、编辑、版本恢复、删除取消/确认、主题与重开；私密文件夹密码、完整关系图/批量操作、全部媒体流程仍缺 UI 闭环 |
+| Skills / Store | create-structure、agent-skill-lifecycle、local-store 两组、Qwen Work | 包清单、版本、导入更新、同名变体、分发重开；公网 Git/Gitea/商店账号未验 |
+| MCP | lifecycle 两组、Pi、market-return | 输入拒绝、脱敏、SQLite/历史、目标覆盖确认、外部编辑、移除与重开；真实 MCP server 启动与 OS keyring 未验 |
+| Plugins | lifecycle、Antigravity | 原生包导入、完整文件树、分发、重开与删除；公网插件市场授权未验 |
+| Rules | missing-file/history、conflict-scroll | 显式创建、编辑、恢复草稿不提前写目标、重开、冲突布局；所有平台格式组合未穷举 |
+| Agents / Providers / Sessions | workspace、settings、provider-workbench、session-search | 原生隔离配置、Provider 生命周期与加密失败、搜索项目身份；真实账号探活/额度、原生 CLI 更新未验 |
+| Backup / Sync | backup-restore、新增 backup-settings-flow、self-hosted-sync | 真实本地 ZIP 与本地 HTTP 服务；WebDAV startup 用替身，S3/WebDAV 真实远端、跨设备冲突恢复未验 |
+| Settings / Shell | app、Prompt theme/reopen、topology/layout | 导航、快捷键显隐、隐藏启动、布局；七语言完整路径、OS 登录项/通知/托盘、签名安装升级未验 |
+| AI 工作流 | 既有 integration transport/workflow | 本轮尚无从模型配置到生成保存重开的完整 GUI 用例；不得用本地 HTTP 集成称作真实供应商验收 |
+| CLI / Web / Mobile / 跨平台 | 各自独立门禁 | 此处“全量”仅指 Desktop `playwright test` 全集合，不代表上述产品或 Windows/Linux 发布验收 |
+
+### 最终验证
+
+- Desktop 全量 Playwright：29 个 spec、44/44 pass，0 fail / 0 skipped / 0 flaky；单 worker、`--retries=0`，耗时 4.4 分钟。包含 2 个新增核心闭环。此前 27/42 和 37/44 为修复过程基线，不与最终计数相加。
+- Desktop 三段生产构建通过；标准 `typecheck:tests` 通过；本轮修改文件的 ESLint 通过；adapter 单元 8/8、启动隔离单元 3/3、E2E 收集 integration 1/1 通过。未重新运行整套 unit/integration 或根 release harness；本节不声明安装包和全产品发布验收。
+- 执行来源为当前脏工作区的隔离源码副本，复用现有 pnpm 依赖，不重装。最终运行前核对 1,456 个产品源码/共享包/E2E 文件与工作区一致，SHA-256 为 `059af541d93869dd475ebf070eb3d8eafb6007ecf08189fbfbe721f6d7fd511e`。其他既有改动作为当前运行背景保留，不纳入本轮提交，也不将其正确性归属本轮。
+- `PLAYWRIGHT_CHANNEL=chrome` 仅让两个布局用例复用本机已安装的 Chrome 二进制和临时会话；Electron 场景仍使用项目 Electron。未下载浏览器、未访问日常 Chrome profile。
+- 结束核对：产品源码/E2E 指纹保持不变；无本轮 Electron、浏览器或本地 Web 残留进程。测试 profile 随 fixture 关闭清理，隔离源码副本及原始 JSON/截图/trace 移入废纸篓可恢复；不保留开发服务器，不清理用户原有产物。
+
+独立提交（均未推送）：`dc3e9153` 收集门禁、`610ec012` 隔离与资源生命周期、`eb53287b` Claude 根目录修复、`b3cb3d6c` 主题重开修复与 Prompt 闭环、`62deafbc` 现行合同回归、`ee004c17` 设置 ZIP 恢复闭环。其他既有工作区改动未纳入这些提交。
+
+实际全量入口（隔离副本 `apps/desktop` 为工作目录；JSON 报告写临时目录）：
+
+```sh
+pnpm build
+PLAYWRIGHT_CHANNEL=chrome pnpm exec playwright test --workers=1 --retries=0 --global-timeout=900000 --trace=retain-on-failure --reporter=list,json
+```
+
+后续覆盖优先级：先补 AI 从配置到生成/保存/重开的完整 GUI 场景、私密目录与媒体编辑；真实远端同步、OS keyring 和各 OS 安装升级需各自隔离环境/账号，不能用当前全绿结果替代。
+
 当前状态：现有功能测试补充已完成，产品缺陷保留有效红测。2026-10-09 主协调最终合并检查：Desktop 单测八个独立 shard 共 5,799/5,799 通过；集成首次 209 pass/7 fail，两个环境或等待误报复核通过后，216 个不同用例为 211 pass/5 fail。正式 unit 门禁仍按集成依赖 blocked，不能用独立单测诊断改写。标准测试类型、lint 和行数门禁通过；性能预算通过。完整 ZIP 联合恢复新增两个真实失败，原 D5 4/4 仅保留其已测范围。构建、GUI 与原生验收未执行，不能据此批准发布。当前矩阵优先，以下历史结果保留当时状态。
 
 ## 当前非 GUI 主证据矩阵
