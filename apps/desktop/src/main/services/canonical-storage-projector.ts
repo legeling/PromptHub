@@ -3,7 +3,12 @@ import fs from "fs";
 import path from "path";
 
 import {
-  CoreMcpLibraryService,
+  getDataDir,
+  getMcpLibraryFilePath,
+  readMcpLibraryRecoverySource,
+  copyMcpHistoricalContents,
+  exportMcpStorageSnapshot,
+  MCP_STORAGE_SNAPSHOT_FILE,
   CorePluginLibraryService,
   collectPromptCanonicalGraph,
   getGeneratedImagesDir,
@@ -24,6 +29,7 @@ import {
   AgentProviderProfileDB,
   FolderDB,
   PromptDB,
+  McpDB,
   RuleDB,
   SkillDB,
   cleanupOwnedTemporaryDatabase,
@@ -62,6 +68,8 @@ export interface CanonicalStorageProjectorOptions {
   skills?: readonly CanonicalSkillShadowInput[];
   mcpLibrary?: McpLibraryFile;
   mcpResourceBundles?: readonly string[];
+  mcpHistorySourcePath?: string;
+  includeMcpSnapshot?: boolean;
   plugins?: readonly PluginLibraryEntry[];
   pluginVersions?: ReadonlyMap<string, readonly PluginVersion[]>;
   generations?: readonly CanonicalGenerationShadowInput[];
@@ -84,6 +92,14 @@ export interface CanonicalStorageProjectionResult {
 
 function compareText(left: string, right: string): number {
   return left === right ? 0 : left < right ? -1 : 1;
+}
+function hasAdoptedMcp(database: DatabaseAdapter.Database): boolean {
+  return Boolean(
+    database.get(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      "mcp_storage_state",
+    ) && new McpDB(database).state()?.adoptedAt,
+  );
 }
 
 function assertSafeDirectory(rootPath: string): string {
@@ -394,14 +410,20 @@ async function collectCanonicalStorageInput(
     rules: options.readRules
       ? await options.readRules()
       : collectRules(options.database),
-    ...(options.mcpResourceBundles !== undefined
-      ? {
-          mcpResourceBundles: options.mcpResourceBundles,
-          mcpLibrary: options.mcpLibrary,
-        }
-      : {
-          mcpLibrary: options.mcpLibrary ?? new CoreMcpLibraryService().read(),
-        }),
+    ...(hasAdoptedMcp(options.database)
+      ? { mcpResourceBundles: [] }
+      : options.mcpResourceBundles !== undefined
+        ? {
+            mcpResourceBundles: options.mcpResourceBundles,
+            mcpLibrary: options.mcpLibrary,
+          }
+        : {
+            mcpLibrary:
+              options.mcpLibrary ??
+              readMcpLibraryRecoverySource({
+                supersededPath: getMcpLibraryFilePath(),
+              }),
+          }),
     plugins: collectPlugins(plugins, pluginVersions),
     agentProviders: profiles.map((profile) => ({
       profile,
@@ -433,6 +455,20 @@ export async function projectCanonicalStorageShadow(
       resolvePromptMediaSource:
         options.resolvePromptMediaSource ?? resolveDefaultPromptMediaSource,
     });
+    if (hasAdoptedMcp(options.database)) {
+      const destination = path.join(targetPath, "mcp");
+      fs.mkdirSync(destination, { recursive: true, mode: 0o700 });
+      copyMcpHistoricalContents(
+        options.database,
+        options.mcpHistorySourcePath ?? path.join(getDataDir(), "mcp"),
+        destination,
+      );
+      if (options.includeMcpSnapshot)
+        exportMcpStorageSnapshot(
+          path.join(destination, MCP_STORAGE_SNAPSHOT_FILE),
+          { database: options.database },
+        );
+    }
     const stagedDatabase = stageCanonicalStorageDatabase(
       targetPath,
       verificationDatabasePath,

@@ -30,9 +30,27 @@ import {
   serverToForm,
   formToDraft,
 } from "../../src/renderer/components/mcp/mcp-form-utils";
-import { getMcpTargetPresets } from "@prompthub/core";
+import {
+  getMcpTargetPresets,
+  writeCanonicalMcpLibrary,
+  getSecretsDir,
+} from "@prompthub/core";
+import { getDatabase, McpDB } from "@prompthub/db";
+import { createCanonicalMcpResourceSecretStore } from "../../src/main/services/mcp-resource-secret-store";
+import { initializeDesktopMcpStorage } from "../../src/main/services/desktop-mcp-library";
 import { deriveProjectMcpTargetPresets } from "../../src/renderer/services/mcp-target-presets";
 import { MCP_REDACTED_VALUE } from "@prompthub/shared/utils/mcp-config";
+
+const masterKeys = vi.hoisted(() => new Map<string, Buffer>());
+vi.mock("@prompthub/core/mcp-credentials", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@prompthub/core/mcp-credentials")>()),
+  createMcpMasterKeyStore: () => ({
+    read: (id: string) => masterKeys.get(id) ?? null,
+    write: (id: string, value: Buffer) => {
+      masterKeys.set(id, Buffer.from(value));
+    },
+  }),
+}));
 
 let runtime: SkillTestRuntime;
 const i18n = createInstance();
@@ -45,6 +63,7 @@ const nativeEntry = {
 const windowApiDescriptor = Object.getOwnPropertyDescriptor(window, "api");
 
 beforeEach(async () => {
+  masterKeys.clear();
   // Substitute Electron's OS encryption boundary with real AES-GCM on a throwaway key.
   const key = randomBytes(32);
   vi.spyOn(safeStorage, "isEncryptionAvailable").mockReturnValue(true);
@@ -87,6 +106,56 @@ afterEach(() => {
   if (windowApiDescriptor)
     Object.defineProperty(window, "api", windowApiDescriptor);
   else Reflect.deleteProperty(window, "api");
+});
+
+it("adopts a historical Electron-encrypted vault into SQL and retires old credentials only after verified decryption", async () => {
+  const database = getDatabase();
+  database.run("DELETE FROM mcp_storage_state");
+  const vault = path.join(getSecretsDir(), "mcp-resource-secrets.json");
+  const oldStore = createCanonicalMcpResourceSecretStore({
+    filePath: vault,
+    encryption: safeStorage,
+  });
+  writeCanonicalMcpLibrary(
+    {
+      kind: "prompthub-mcp-library",
+      version: 1,
+      updatedAt: new Date(0).toISOString(),
+      bindings: [],
+      servers: [
+        {
+          id: "legacy-credential",
+          name: "Legacy.API",
+          displayName: "Legacy API",
+          transport: "streamable-http",
+          url: "https://example.test/mcp",
+          headers: nativeEntry.headers,
+          oauth: nativeEntry.oauth,
+          enabled: true,
+          isFavorite: false,
+          source: { type: "import" },
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ],
+    },
+    { secretStore: oldStore },
+  );
+  initializeDesktopMcpStorage(database);
+  expect(new McpDB(database).server("legacy-credential")?.server.name).toBe(
+    "Legacy.API",
+  );
+  expect(createDesktopMcpLibraryService().read().servers[0].headers).toEqual(
+    nativeEntry.headers,
+  );
+  expect(
+    JSON.stringify(database.all("SELECT * FROM mcp_secrets")),
+  ).not.toContain("native-fixture");
+  expect(fs.existsSync(vault)).toBe(false);
+  await runtime.reopen();
+  expect(createDesktopMcpLibraryService().read().servers[0].oauth).toEqual(
+    nativeEntry.oauth,
+  );
 });
 
 async function source() {

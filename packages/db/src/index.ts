@@ -73,6 +73,9 @@ export type {
 } from "./database-migration-intent";
 
 // DB classes
+export { McpDB } from "./mcp";
+export { copyMcpDatabaseState, clearMcpDatabaseState } from "./mcp-transfer";
+export { MCP_SCHEMA_TABLES } from "./mcp-schema";
 export { PromptDB, buildFtsPhraseQuery } from "./prompt";
 export {
   repairPromptVersionConsistency,

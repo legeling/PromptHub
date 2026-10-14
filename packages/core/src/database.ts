@@ -28,9 +28,15 @@ import {
   assertCanonicalPromptCatalogCurrent,
 } from "./canonical-prompt-graph-db";
 import { getRuntimeStorageContext } from "./runtime-paths";
+import { initializeMcpStorage } from "./mcp-storage-migration";
+import type { McpStorageOptions } from "./mcp-storage";
 
 export function initDatabase(
   hooks?: InitDatabaseHooks,
+  mcpOptions: Pick<
+    McpStorageOptions,
+    "masterKeyStore" | "secretStore" | "injectPublicationFailure"
+  > = {},
 ): DatabaseAdapter.Database {
   assertStorageMaintenanceAvailable(getUserDataPath());
   if (
@@ -57,6 +63,7 @@ export function initDatabase(
     }
   }
   try {
+    initializeMcpStorage({ ...mcpOptions, database });
     migrateAgentSettingsV1(database, getUserDataPath());
     migrateGeminiDefaultDisabled(database);
   } catch (error) {

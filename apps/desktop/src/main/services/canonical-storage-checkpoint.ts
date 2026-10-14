@@ -8,6 +8,8 @@ import {
   createStorageInventory,
   readCanonicalStorageShadow,
   stageCanonicalStorageDatabase,
+  MCP_STORAGE_SNAPSHOT_FILE,
+  readMcpStorageSnapshotLibrary,
   type ExtractedMcpSecret,
 } from "@prompthub/core";
 import {
@@ -38,6 +40,7 @@ export interface CanonicalStorageCheckpointManifest {
   catalogSha256: string;
   promptGraphHash: string;
   resourceCatalogHash: string;
+  mcpStateSha256?: string;
   resourceCount: number;
   domainCounts: Record<string, number>;
   deviceMcpBindingsPath?: "device/mcp-bindings.json";
@@ -98,10 +101,14 @@ function writeJsonExclusive(filePath: string, value: unknown): void {
 export function createCanonicalStorageConsistencyId(
   promptGraphHash: string,
   resourceCatalogHash: string,
+  mcpStateSha256?: string,
 ): string {
   return crypto
     .createHash("sha256")
-    .update(`${promptGraphHash}:${resourceCatalogHash}`, "utf8")
+    .update(
+      `${promptGraphHash}:${resourceCatalogHash}${mcpStateSha256 === undefined ? "" : `:${mcpStateSha256}`}`,
+      "utf8",
+    )
     .digest("hex");
 }
 
@@ -115,7 +122,9 @@ function parseManifest(value: unknown): CanonicalStorageCheckpointManifest {
     !/^[a-f0-9]{64}$/u.test(manifest.consistencyId) ||
     !/^[a-f0-9]{64}$/u.test(manifest.catalogSha256) ||
     !/^[a-f0-9]{64}$/u.test(manifest.promptGraphHash) ||
-    !/^[a-f0-9]{64}$/u.test(manifest.resourceCatalogHash)
+    !/^[a-f0-9]{64}$/u.test(manifest.resourceCatalogHash) ||
+    (manifest.mcpStateSha256 !== undefined &&
+      !/^[a-f0-9]{64}$/u.test(manifest.mcpStateSha256))
   ) {
     throw new Error("Canonical storage checkpoint manifest is invalid");
   }
@@ -155,25 +164,42 @@ export function verifyCanonicalStorageCheckpoint(
   const manifest = readManifest(root);
   const canonicalPath = path.join(root, manifest.canonicalPath);
   assertCheckpointCatalog(root, manifest);
-  return verifyCanonicalStorageCheckpointContent(canonicalPath, manifest);
+  return verifyCanonicalStorageCheckpointContent(
+    canonicalPath,
+    manifest,
+    path.join(root, ...manifest.catalogPath.split("/")),
+  );
 }
 
 export function verifyCanonicalStorageCheckpointContent(
   canonicalPathValue: string,
   manifestValue: unknown,
+  catalogPath?: string,
 ): CanonicalStorageCheckpointManifest {
   const canonicalPath = path.resolve(canonicalPathValue);
   const manifest = parseManifest(manifestValue);
+  const mcpImage = path.join(canonicalPath, "mcp", MCP_STORAGE_SNAPSHOT_FILE);
+  if (fs.existsSync(mcpImage) !== (manifest.mcpStateSha256 !== undefined))
+    throw new Error("Canonical MCP snapshot is missing or undeclared");
+  if (manifest.mcpStateSha256 !== undefined) {
+    if (hashFile(mcpImage) !== manifest.mcpStateSha256)
+      throw new Error("Canonical MCP snapshot digest mismatch");
+    readMcpStorageSnapshotLibrary(mcpImage);
+  }
   readCanonicalStorageShadow(canonicalPath);
   const rebuiltPath = createOwnedTemporaryDatabasePath(
     path.dirname(canonicalPath),
     "catalog-verify",
   );
   try {
-    const rebuilt = stageCanonicalStorageDatabase(canonicalPath, rebuiltPath);
+    const rebuilt = stageCanonicalStorageDatabase(canonicalPath, rebuiltPath, {
+      mcpSourceDatabasePath:
+        manifest.mcpStateSha256 === undefined ? catalogPath : mcpImage,
+    });
     const consistencyId = createCanonicalStorageConsistencyId(
       rebuilt.promptGraphHash,
       rebuilt.resourceCatalogHash,
+      manifest.mcpStateSha256,
     );
     if (
       rebuilt.promptGraphHash !== manifest.promptGraphHash ||
@@ -236,6 +262,14 @@ function buildCheckpointManifest(
   hasDeviceBinding: boolean,
 ): CanonicalStorageCheckpointManifest {
   const staged = projection.stagedDatabase;
+  const mcpImage = path.join(
+    projection.targetPath,
+    "mcp",
+    MCP_STORAGE_SNAPSHOT_FILE,
+  );
+  const mcpStateSha256 = fs.existsSync(mcpImage)
+    ? hashFile(mcpImage)
+    : undefined;
   return {
     kind: CHECKPOINT_KIND,
     version: CHECKPOINT_VERSION,
@@ -243,6 +277,7 @@ function buildCheckpointManifest(
     consistencyId: createCanonicalStorageConsistencyId(
       staged.promptGraphHash,
       staged.resourceCatalogHash,
+      mcpStateSha256,
     ),
     canonicalPath: "canonical",
     catalogPath: "catalog/prompthub.db",
@@ -252,6 +287,7 @@ function buildCheckpointManifest(
     resourceCatalogHash: staged.resourceCatalogHash,
     resourceCount: staged.resourceCount,
     domainCounts: staged.domainCounts,
+    ...(mcpStateSha256 === undefined ? {} : { mcpStateSha256 }),
     ...(hasDeviceBinding
       ? { deviceMcpBindingsPath: "device/mcp-bindings.json" as const }
       : {}),

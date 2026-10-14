@@ -8,6 +8,8 @@ import { registerMcpIPC } from "../../src/main/ipc/mcp.ipc";
 import { mcpApi } from "../../src/preload/api/mcp";
 import { CoreMcpLibraryService } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import fs from "node:fs";
+import { getMcpLibraryFilePath } from "@prompthub/core";
 let runtime: SkillTestRuntime;
 beforeEach(async () => {
   runtime = await createSkillTestRuntime();
@@ -75,7 +77,16 @@ it("exports and restores the complete retained history through the existing asse
   });
   await mcpApi.updateServer(server.id, { args: ["changed.mjs"] });
   await mcpApi.updateVersionNote(server.id, 1, "backup baseline");
+  const retainedInput = '{"retainedPlaintext":"backup-exclusion-fixture"}';
+  fs.writeFileSync(getMcpLibraryFilePath(), retainedInput);
   const snapshot = await mcpApi.exportDataFiles();
+  expect(fs.readFileSync(getMcpLibraryFilePath(), "utf8")).toBe(retainedInput);
+  expect(
+    snapshot.some((file) => file.relativePath === "mcp-state.sqlite"),
+  ).toBe(true);
+  expect(snapshot.some((file) => file.relativePath === "library.json")).toBe(
+    false,
+  );
   expect(snapshot.map((file) => file.relativePath)).toEqual(
     expect.arrayContaining([
       `${server.id}/versions/000001.json`,

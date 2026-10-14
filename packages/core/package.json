@@ -13,6 +13,7 @@
     "test:performance": "vitest run --config vitest.performance.config.ts"
   },
   "dependencies": {
+    "@napi-rs/keyring": "2.1.1",
     "@prompthub/db": "workspace:*",
     "@prompthub/shared": "workspace:*",
     "jsonc-parser": "^3.3.1",

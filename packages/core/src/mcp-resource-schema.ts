@@ -9,6 +9,7 @@ import type {
 } from "@prompthub/shared/types/mcp";
 import { isMcpTargetKind, MCP_TARGET_KINDS } from "@prompthub/shared/types/mcp";
 import { normalizeMcpNativeOptions } from "@prompthub/shared/utils/mcp-native-options";
+import type { McpSecretReferences } from "@prompthub/shared/types/mcp-storage";
 
 import {
   readResourceBundle,
@@ -26,18 +27,16 @@ export const MCP_SERVER_VERSION_RESOURCE_KIND =
   "prompthub-mcp-server-version-resource";
 export const MCP_SERVER_RESOURCE_SCHEMA_VERSION = 1;
 export const MCP_BINDING_CONFIG_KIND = "prompthub-mcp-binding-config";
+export const MCP_SERVER_RESOURCE_MAX_VERSION = 999_999;
 
-const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+export const MCP_RESOURCE_MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = MCP_RESOURCE_MAX_DOCUMENT_BYTES;
 const TRANSPORTS = new Set(["stdio", "streamable-http", "sse"]);
 const SCOPES = new Set(["global", "workspace", "custom"]);
 const EMBEDDED_SECRET_PATTERN =
   /(?:token|secret|password|passwd|api[-_]?key|authorization)[=:]\s*[^$<{\s][^\s]*/iu;
 
-export interface McpResourceSecretReferences {
-  env: Record<string, string>;
-  headers: Record<string, string>;
-  oauth?: Record<string, string>;
-}
+export type McpResourceSecretReferences = McpSecretReferences;
 
 export interface ExtractedMcpSecret {
   ref: string;
@@ -173,7 +172,7 @@ function positiveVersion(value: unknown, label: string): number {
   if (
     !Number.isSafeInteger(value) ||
     Number(value) < 1 ||
-    Number(value) > 999_999
+    Number(value) > MCP_SERVER_RESOURCE_MAX_VERSION
   )
     throw new Error(`MCP resource ${label} is invalid`);
   return Number(value);
@@ -344,11 +343,21 @@ function extractSecrets(
     const placeholders: Record<string, string> = {};
     for (const [key, value] of Object.entries(server[field] ?? {})) {
       if (value.length === 0) {
-        placeholders[key] = value;
+        Object.defineProperty(placeholders, key, {
+          value,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
         continue;
       }
       const ref = secretRef(server.id, version, field, key);
-      references[field][key] = ref;
+      Object.defineProperty(references[field], key, {
+        value: ref,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
       secrets.push({ ref, field, key, value, version });
     }
     if (Object.keys(placeholders).length > 0) {
@@ -637,6 +646,13 @@ function parseVersionDocument(
   } as McpServerVersionResourceDocument;
 }
 
+export {
+  validateServer as validateMcpServer,
+  extractSecrets as extractMcpSecrets,
+  semanticDigest as computeMcpSemanticDigest,
+  parseVersionDocument as parseMcpVersionDocument,
+};
+
 export function readMcpServerResourceBundle(
   bundlePath: string,
   requestedVersions?: readonly number[],
@@ -748,7 +764,12 @@ export async function hydrateMcpServerResourceSecrets(
     for (const [key, ref] of Object.entries(resource.secretReferences[field])) {
       const value = await readSecret(ref);
       if (value === null) throw new Error(`missing MCP secret: ${ref}`);
-      values[key] = value;
+      Object.defineProperty(values, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     if (Object.keys(values).length > 0) hydrated[field] = values;
   }
@@ -771,7 +792,12 @@ export function hydrateMcpServerResourceSecretsSync(
     for (const [key, ref] of Object.entries(resource.secretReferences[field])) {
       const value = readSecret(ref);
       if (value === null) throw new Error(`missing MCP secret: ${ref}`);
-      values[key] = value;
+      Object.defineProperty(values, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     if (Object.keys(values).length > 0) hydrated[field] = values;
   }
@@ -794,7 +820,12 @@ export function hydrateMcpServerVersionSecretsSync(
     for (const [key, ref] of Object.entries(version.secretReferences[field])) {
       const value = readSecret(ref);
       if (value === null) throw new Error(`missing MCP secret: ${ref}`);
-      values[key] = value;
+      Object.defineProperty(values, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     if (Object.keys(values).length > 0) hydrated[field] = values;
   }

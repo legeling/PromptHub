@@ -100,6 +100,7 @@ export async function createCheckpointedPortableSnapshotZip(
         deviceId: deriveLocalResourceDeviceId(options.activeRoot),
         persistExtractedMcpSecrets: options.persistExtractedMcpSecrets,
         maintenanceOperationId,
+        includeMcpSnapshot: true,
       };
     const checkpoint = await dependencies.createCheckpoint(checkpointOptions);
     dependencies.assertConsistency(

@@ -1,8 +1,14 @@
 import path from "path";
+import { redactMcpServerConfig } from "@prompthub/shared/utils/mcp-config";
 import { handleMcpVersionCommand } from "./mcp-version-command";
 
 import { CoreMcpLibraryService } from "../mcp-library";
-import { CliError, EXIT_CODES, type CliContext } from "./types";
+import {
+  CliError,
+  EXIT_CODES,
+  type CliContext,
+  type CliDatabaseHooks,
+} from "./types";
 import { MCP_HELP } from "./help";
 import { emitSuccess } from "./io";
 import {
@@ -26,13 +32,15 @@ import {
 export async function handleMcpCommand(
   args: string[],
   context: CliContext,
+  databaseHooks: CliDatabaseHooks,
 ): Promise<void> {
   if (args.length === 0 || takeFlag(args, "--help") || takeFlag(args, "-h")) {
     context.io.stdout(MCP_HELP);
     return;
   }
 
-  const service = new CoreMcpLibraryService();
+  const database = databaseHooks.initDatabase();
+  const service = new CoreMcpLibraryService({ database });
   const action = requirePositional(args, 0, "mcp 子命令");
   if (action === "version") {
     handleMcpVersionCommand(args.slice(1), context, service);
@@ -41,7 +49,7 @@ export async function handleMcpCommand(
 
   if (action === "list") {
     ensureNoUnknownOptions(args.slice(1));
-    const library = service.read();
+    const library = service.readForTransport();
     emitSuccess(context, library.servers, mcpServerTableRows(library.servers));
     return;
   }
@@ -49,11 +57,7 @@ export async function handleMcpCommand(
   if (action === "get") {
     const identifier = requirePositional(args, 1, "mcp id 或 name");
     ensureNoUnknownOptions(args.slice(2));
-    const server = service
-      .read()
-      .servers.find(
-        (item) => item.id === identifier || item.name === identifier,
-      );
+    const server = service.getServer(identifier);
     if (!server) {
       throw new CliError(
         "NOT_FOUND",
@@ -67,17 +71,13 @@ export async function handleMcpCommand(
 
   if (action === "create") {
     const draft = resolveMcpServerDraft(args.slice(1), { requireName: true });
-    emitSuccess(context, service.createServer(draft));
+    emitSuccess(context, redactMcpServerConfig(service.createServer(draft)));
     return;
   }
 
   if (action === "update") {
     const identifier = requirePositional(args, 1, "mcp id 或 name");
-    const current = service
-      .read()
-      .servers.find(
-        (item) => item.id === identifier || item.name === identifier,
-      );
+    const current = service.getServer(identifier);
     if (!current) {
       throw new CliError(
         "NOT_FOUND",
@@ -86,18 +86,14 @@ export async function handleMcpCommand(
       );
     }
     const draft = resolveMcpServerDraft(args.slice(2), { requireName: false });
-    emitSuccess(context, service.updateServer(current.id, draft));
+    emitSuccess(context, redactMcpServerConfig(service.updateServer(current.id, draft)));
     return;
   }
 
   if (action === "delete") {
     const identifier = requirePositional(args, 1, "mcp id 或 name");
     ensureNoUnknownOptions(args.slice(2));
-    const current = service
-      .read()
-      .servers.find(
-        (item) => item.id === identifier || item.name === identifier,
-      );
+    const current = service.getServer(identifier);
     if (!current) {
       throw new CliError(
         "NOT_FOUND",
@@ -142,7 +138,7 @@ export async function handleMcpCommand(
     const identifier = optionalPositional(args, 1);
     ensureNoUnknownOptions(args.slice(identifier ? 2 : 1));
     const template = await resolveMcpTemplate(context, service, identifier);
-    emitSuccess(context, service.installMarketTemplate(template));
+    emitSuccess(context, redactMcpServerConfig(service.installMarketTemplate(template)));
     return;
   }
 
@@ -151,7 +147,7 @@ export async function handleMcpCommand(
     ensureNoUnknownOptions(args.slice(2));
     emitSuccess(
       context,
-      service.setServerEnabled(identifier, action === "enable"),
+      redactMcpServerConfig(service.setServerEnabled(identifier, action === "enable")),
     );
     return;
   }
@@ -159,7 +155,8 @@ export async function handleMcpCommand(
   if (action === "import") {
     const filePath = requirePositional(args, 1, "mcp config file");
     ensureNoUnknownOptions(args.slice(2));
-    emitSuccess(context, service.importFromFile(path.resolve(filePath)));
+    const result = service.importFromFile(path.resolve(filePath));
+    emitSuccess(context, { ...result, imported: result.imported.map(redactMcpServerConfig) });
     return;
   }
 

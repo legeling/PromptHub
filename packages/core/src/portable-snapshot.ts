@@ -22,6 +22,11 @@ export interface PortableSnapshotGeneratedFile {
   content: Uint8Array;
   scope?: string;
 }
+export interface PortableSnapshotSourceFile {
+  sourcePath: string;
+  archivePath: string;
+  scope: string;
+}
 
 export interface PortableSnapshotLimits {
   maxEntries?: number;
@@ -56,6 +61,7 @@ export interface CreatePortableSnapshotOptions {
   scopes: PortableSnapshotScope[];
   declaredScopes?: string[];
   generatedFiles?: PortableSnapshotGeneratedFile[];
+  sourceFiles?: PortableSnapshotSourceFile[];
   omissions?: string[];
   operationId?: string;
   now?: Date;
@@ -136,7 +142,9 @@ function assertPathInsideRoot(rootPath: string, targetPath: string): void {
     if (segment) current = path.join(current, segment);
     const stats = fs.lstatSync(current);
     if (stats.isSymbolicLink()) {
-      throw new Error(`Portable snapshot source contains symbolic link: ${current}`);
+      throw new Error(
+        `Portable snapshot source contains symbolic link: ${current}`,
+      );
     }
   }
 }
@@ -145,6 +153,7 @@ function planSources(
   sourceRoot: string,
   scopes: PortableSnapshotScope[],
   limits: Required<PortableSnapshotLimits>,
+  sourceFiles: readonly PortableSnapshotSourceFile[] = [],
 ): PlannedSourceFile[] {
   const root = path.resolve(sourceRoot);
   const planned: PlannedSourceFile[] = [];
@@ -173,13 +182,19 @@ function planSources(
       return;
     }
     if (!stats.isFile()) {
-      throw new Error(`Portable snapshot source is not a regular file: ${sourcePath}`);
+      throw new Error(
+        `Portable snapshot source is not a regular file: ${sourcePath}`,
+      );
     }
     if (stats.size > limits.maxFileBytes) {
-      throw new Error(`Portable snapshot file exceeds maxFileBytes: ${sourcePath}`);
+      throw new Error(
+        `Portable snapshot file exceeds maxFileBytes: ${sourcePath}`,
+      );
     }
     if (archivePaths.has(archivePath)) {
-      throw new Error(`Duplicate portable snapshot archive path: ${archivePath}`);
+      throw new Error(
+        `Duplicate portable snapshot archive path: ${archivePath}`,
+      );
     }
     archivePaths.add(archivePath);
     totalBytes += stats.size;
@@ -210,7 +225,22 @@ function planSources(
     assertPathInsideRoot(root, sourcePath);
     visit(sourcePath, archivePath, scope.id, 0);
   }
-  return planned.sort((left, right) => left.archivePath.localeCompare(right.archivePath));
+  for (const source of sourceFiles) {
+    assertScopeId(source.scope);
+    const sourcePath = path.resolve(source.sourcePath);
+    assertPathInsideRoot(root, sourcePath);
+    if (!fs.lstatSync(sourcePath).isFile())
+      throw new Error("Portable snapshot extra source is not a regular file");
+    visit(
+      sourcePath,
+      normalizeArchivePath(source.archivePath),
+      source.scope,
+      0,
+    );
+  }
+  return planned.sort((left, right) =>
+    left.archivePath.localeCompare(right.archivePath),
+  );
 }
 
 function copyAndHash(
@@ -225,7 +255,9 @@ function copyAndHash(
     before.size !== planned.sizeBytes ||
     before.mtimeMs !== planned.modifiedMs
   ) {
-    throw new Error(`Portable snapshot source changed before copy: ${planned.sourcePath}`);
+    throw new Error(
+      `Portable snapshot source changed before copy: ${planned.sourcePath}`,
+    );
   }
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true, mode: 0o700 });
   const source = fs.openSync(planned.sourcePath, "r");
@@ -261,7 +293,9 @@ function copyAndHash(
     after.size !== before.size ||
     after.mtimeMs !== before.mtimeMs
   ) {
-    throw new Error(`Portable snapshot source changed during snapshot: ${planned.sourcePath}`);
+    throw new Error(
+      `Portable snapshot source changed during snapshot: ${planned.sourcePath}`,
+    );
   }
   return {
     path: planned.archivePath,
@@ -282,11 +316,18 @@ function stableConsistencyId(entries: PortableSnapshotManifestEntry[]): string {
     .digest("hex");
 }
 
-function writeManifest(stagePath: string, manifest: PortableSnapshotManifest): void {
+function writeManifest(
+  stagePath: string,
+  manifest: PortableSnapshotManifest,
+): void {
   const manifestPath = path.join(stagePath, MANIFEST_FILE_NAME);
   const descriptor = fs.openSync(manifestPath, "wx", 0o600);
   try {
-    fs.writeFileSync(descriptor, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    fs.writeFileSync(
+      descriptor,
+      `${JSON.stringify(manifest, null, 2)}\n`,
+      "utf8",
+    );
     fs.fsyncSync(descriptor);
   } finally {
     fs.closeSync(descriptor);
@@ -299,24 +340,40 @@ export function createPortableSnapshot(
   const sourceRoot = path.resolve(options.sourceRoot);
   const destinationPath = path.resolve(options.destinationPath);
   if (fs.existsSync(destinationPath)) {
-    throw new Error(`Portable snapshot destination already exists: ${destinationPath}`);
+    throw new Error(
+      `Portable snapshot destination already exists: ${destinationPath}`,
+    );
   }
   const operationId = options.operationId ?? crypto.randomUUID();
   if (!/^[a-zA-Z0-9._-]{1,128}$/.test(operationId)) {
     throw new Error(`Invalid portable snapshot operation id: ${operationId}`);
   }
   const limits: Required<PortableSnapshotLimits> = {
-    maxEntries: positiveInteger(options.limits?.maxEntries ?? DEFAULT_MAX_ENTRIES, "maxEntries"),
-    maxBytes: positiveInteger(options.limits?.maxBytes ?? DEFAULT_MAX_BYTES, "maxBytes"),
+    maxEntries: positiveInteger(
+      options.limits?.maxEntries ?? DEFAULT_MAX_ENTRIES,
+      "maxEntries",
+    ),
+    maxBytes: positiveInteger(
+      options.limits?.maxBytes ?? DEFAULT_MAX_BYTES,
+      "maxBytes",
+    ),
     maxFileBytes: positiveInteger(
       options.limits?.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES,
       "maxFileBytes",
     ),
-    maxDepth: positiveInteger(options.limits?.maxDepth ?? DEFAULT_MAX_DEPTH, "maxDepth"),
+    maxDepth: positiveInteger(
+      options.limits?.maxDepth ?? DEFAULT_MAX_DEPTH,
+      "maxDepth",
+    ),
   };
   const generatedFiles = options.generatedFiles ?? [];
   for (const scope of options.declaredScopes ?? []) assertScopeId(scope);
-  const planned = planSources(sourceRoot, options.scopes, limits);
+  const planned = planSources(
+    sourceRoot,
+    options.scopes,
+    limits,
+    options.sourceFiles,
+  );
   const plannedPaths = new Set(planned.map((entry) => entry.archivePath));
   const generatedPaths = new Set<string>();
   for (const generated of generatedFiles) {
@@ -328,7 +385,9 @@ export function createPortableSnapshot(
       generatedPaths.has(archivePath) ||
       generated.content.byteLength > MAX_GENERATED_FILE_BYTES
     ) {
-      throw new Error(`Invalid generated portable snapshot file: ${archivePath}`);
+      throw new Error(
+        `Invalid generated portable snapshot file: ${archivePath}`,
+      );
     }
     generatedPaths.add(archivePath);
   }
@@ -345,7 +404,12 @@ export function createPortableSnapshot(
         options.afterFileCopied,
       ),
     );
-    const replanned = planSources(sourceRoot, options.scopes, limits);
+    const replanned = planSources(
+      sourceRoot,
+      options.scopes,
+      limits,
+      options.sourceFiles,
+    );
     if (
       replanned.length !== planned.length ||
       replanned.some(
@@ -365,18 +429,29 @@ export function createPortableSnapshot(
       const archivePath = normalizeArchivePath(generated.archivePath);
       const destination = path.join(stagePath, ...archivePath.split("/"));
       fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
-      fs.writeFileSync(destination, generated.content, { mode: 0o600, flag: "wx" });
+      fs.writeFileSync(destination, generated.content, {
+        mode: 0o600,
+        flag: "wx",
+      });
       entries.push({
         path: archivePath,
         scope: generated.scope ?? "configuration",
         sizeBytes: generated.content.byteLength,
-        sha256: crypto.createHash("sha256").update(generated.content).digest("hex"),
+        sha256: crypto
+          .createHash("sha256")
+          .update(generated.content)
+          .digest("hex"),
       });
     }
     entries.sort((left, right) => left.path.localeCompare(right.path));
-    if (entries.length > limits.maxEntries) throw new Error("Portable snapshot exceeds maxEntries");
-    const totalBytes = entries.reduce((total, entry) => total + entry.sizeBytes, 0);
-    if (totalBytes > limits.maxBytes) throw new Error("Portable snapshot exceeds maxBytes");
+    if (entries.length > limits.maxEntries)
+      throw new Error("Portable snapshot exceeds maxEntries");
+    const totalBytes = entries.reduce(
+      (total, entry) => total + entry.sizeBytes,
+      0,
+    );
+    if (totalBytes > limits.maxBytes)
+      throw new Error("Portable snapshot exceeds maxBytes");
     const manifest: PortableSnapshotManifest = {
       kind: "prompthub-portable-snapshot",
       formatVersion: PORTABLE_SNAPSHOT_FORMAT_VERSION,
@@ -480,7 +555,9 @@ export function readPortableSnapshot(
     throw new Error(`Invalid portable snapshot manifest: ${manifestPath}`);
   }
   if (manifestStats.size > MAX_GENERATED_FILE_BYTES) {
-    throw new Error(`Portable snapshot manifest exceeds size limit: ${manifestPath}`);
+    throw new Error(
+      `Portable snapshot manifest exceeds size limit: ${manifestPath}`,
+    );
   }
   const manifest = parseManifest(
     JSON.parse(fs.readFileSync(manifestPath, "utf8")),
@@ -508,7 +585,9 @@ export function readPortableSnapshot(
       stats.size !== entry.sizeBytes ||
       hashFile(filePath) !== entry.sha256
     ) {
-      throw new Error(`Portable snapshot entry verification failed: ${archivePath}`);
+      throw new Error(
+        `Portable snapshot entry verification failed: ${archivePath}`,
+      );
     }
   }
   if (
@@ -520,21 +599,33 @@ export function readPortableSnapshot(
     throw new Error("Portable snapshot consistency verification failed");
   }
   let visitedEntries = 0;
-  const visit = (directoryPath: string, prefix: string, depth: number): void => {
+  const visit = (
+    directoryPath: string,
+    prefix: string,
+    depth: number,
+  ): void => {
     if (depth > limits.maxDepth) {
       throw new Error("Portable snapshot exceeds depth limit");
     }
-    for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
+    for (const entry of fs.readdirSync(directoryPath, {
+      withFileTypes: true,
+    })) {
       visitedEntries += 1;
       if (visitedEntries > limits.maxEntries + 1) {
         throw new Error("Portable snapshot exceeds entry limit");
       }
-      if (entry.isSymbolicLink()) throw new Error("Portable snapshot contains symbolic link");
+      if (entry.isSymbolicLink())
+        throw new Error("Portable snapshot contains symbolic link");
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
       const targetPath = path.join(directoryPath, entry.name);
       if (entry.isDirectory()) visit(targetPath, relative, depth + 1);
-      else if (!entry.isFile() || (relative !== MANIFEST_FILE_NAME && !declared.has(relative))) {
-        throw new Error(`Portable snapshot contains undeclared entry: ${relative}`);
+      else if (
+        !entry.isFile() ||
+        (relative !== MANIFEST_FILE_NAME && !declared.has(relative))
+      ) {
+        throw new Error(
+          `Portable snapshot contains undeclared entry: ${relative}`,
+        );
       }
     }
   };

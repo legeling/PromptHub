@@ -57,20 +57,18 @@ import {
   removeMcpServersFromJson,
 } from "@prompthub/shared/utils/mcp-config";
 
+import { getConfigDir, getDataDir, getUserDataPath } from "./runtime-paths";
 import {
-  getConfigDir,
-  getDataDir,
-  getRuntimeStorageContext,
-  getUserDataPath,
-} from "./runtime-paths";
-import {
-  writeCanonicalMcpLibrary,
-  type CanonicalMcpLibraryOptions,
-} from "./canonical-mcp-library";
-import {
-  normalizeMcpLibrary,
-  readMcpLibraryFile,
-} from "./mcp-library-persistence";
+  readMcpSqliteLibrary,
+  writeMcpSqliteLibrary,
+  hydrateMcpStoredServer,
+  mcpRecords,
+  appendMcpVersion,
+  commitMcpHistory,
+  type McpStorageOptions,
+} from "./mcp-storage";
+import { initializeMcpStorage } from "./mcp-storage-migration";
+import { getDatabase, McpDB } from "@prompthub/db";
 import { assertStorageMaintenanceAvailable } from "./storage-maintenance-intent";
 import { inferMcpSource } from "./mcp-source";
 import { buildMcpEnvImportResult } from "./mcp-env-import";
@@ -89,7 +87,6 @@ import {
   shouldSkipDisabledMcpPlatform,
 } from "./mcp-target-sync-policy";
 import { commitMcpTargetProjection } from "./mcp-target-projection";
-import { readCanonicalMcpLibraryWithMigration } from "./mcp-library-canonical-migration";
 import { createMcpHealthResult } from "./mcp-health";
 import {
   mergeMcpImportedServers,
@@ -136,24 +133,6 @@ function nowMs(): number {
   return Date.now();
 }
 
-function defaultLibrary(): McpLibraryFile {
-  return {
-    kind: "prompthub-mcp-library",
-    version: 1,
-    updatedAt: nowIso(),
-    servers: [],
-    bindings: [],
-  };
-}
-
-function writeJsonFileAtomic(filePath: string, data: unknown): void {
-  assertStorageMaintenanceAvailable(getUserDataPath());
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tempPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-  fs.renameSync(tempPath, filePath);
-}
-
 function assertUniqueName(
   servers: McpServerConfig[],
   name: string,
@@ -180,6 +159,30 @@ function restoreRedactedDraftValues(
       value === MCP_REDACTED_VALUE ? (local?.[key] ?? "") : value,
     ]),
   );
+}
+
+function normalizeStoredMcpDraft(
+  draft: McpServerDraft,
+  current: McpServerConfig,
+): McpServerConfig {
+  const server = normalizeMcpServerDraft(draft);
+  if (draft.name === current.name) server.name = current.name;
+  for (const field of ["env", "headers"] as const) {
+    for (const [key, value] of Object.entries(draft[field] ?? {})) {
+      if (
+        value !== MCP_REDACTED_VALUE ||
+        current[field]?.[key] !== MCP_REDACTED_VALUE
+      )
+        continue;
+      Object.defineProperty((server[field] ??= {}), key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    }
+  }
+  return server;
 }
 
 function selectServers(
@@ -494,16 +497,20 @@ function classifySyncStatus(
 }
 
 export class CoreMcpLibraryService {
-  constructor(
-    private readonly canonicalOptions: CanonicalMcpLibraryOptions = {},
-  ) {}
+  constructor(private readonly canonicalOptions: McpStorageOptions = {}) {
+    if (
+      !new McpDB(canonicalOptions.database ?? getDatabase()).state()?.adoptedAt
+    )
+      initializeMcpStorage(canonicalOptions);
+  }
+
+  private hydrateSelected(server: McpServerConfig): McpServerConfig {
+    const row = mcpRecords(this.canonicalOptions).server(server.id);
+    if (!row) throw new Error("MCP selected server was not found");
+    return hydrateMcpStoredServer(row, this.canonicalOptions);
+  }
 
   private history(): McpVersionHistoryService {
-    if (getRuntimeStorageContext().localAuthority !== "canonical-files")
-      throw new Error(
-        "MCP version history requires an initialized PromptHub workspace",
-      );
-    if (fs.existsSync(getMcpLibraryFilePath())) this.read();
     return new McpVersionHistoryService(this.canonicalOptions);
   }
   listVersions(id: string, options?: McpVersionListOptions): McpVersionPage {
@@ -533,74 +540,23 @@ export class CoreMcpLibraryService {
   }
 
   read(): McpLibraryFile {
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      try {
-        return readCanonicalMcpLibraryWithMigration({
-          canonicalOptions: this.canonicalOptions,
-          legacyPath: getMcpLibraryFilePath(),
-          normalize: normalizeMcpLibrary,
-        });
-      } catch (error) {
-        throw new CoreMcpError(
-          "INVALID_LIBRARY",
-          error instanceof Error ? error.message : "MCP 配置库无法解析",
-        );
-      }
-    }
-    const primaryPath = getMcpLibraryFilePath();
-    try {
-      if (fs.existsSync(primaryPath)) {
-        return readMcpLibraryFile(primaryPath);
-      }
-
-      const legacyPath = getLegacyMcpLibraryFilePath();
-      if (!fs.existsSync(legacyPath)) {
-        return defaultLibrary();
-      }
-
-      const migrated = readMcpLibraryFile(legacyPath);
-      writeJsonFileAtomic(primaryPath, migrated);
-      return migrated;
-    } catch (error) {
-      throw new CoreMcpError(
-        "INVALID_LIBRARY",
-        error instanceof Error ? error.message : "MCP 配置库无法解析",
-      );
-    }
+    return readMcpSqliteLibrary(this.canonicalOptions);
   }
 
   readForTransport(): McpLibraryFile {
-    if (getRuntimeStorageContext().localAuthority !== "canonical-files") {
-      return this.read();
-    }
-    try {
-      return readCanonicalMcpLibraryWithMigration({
-        canonicalOptions: {
-          ...this.canonicalOptions,
-          secretReadMode: "redacted",
-        },
-        legacyPath: getMcpLibraryFilePath(),
-        normalize: normalizeMcpLibrary,
-        normalizeCanonical: (library) => library,
-      });
-    } catch (error) {
-      throw new CoreMcpError(
-        "INVALID_LIBRARY",
-        error instanceof Error ? error.message : "MCP 配置库无法解析",
-      );
-    }
+    return readMcpSqliteLibrary(this.canonicalOptions, true);
+  }
+  getServer(identifier: string): McpServerConfig | null {
+    const row = mcpRecords(this.canonicalOptions).server(identifier);
+    return row ? hydrateMcpStoredServer(row, this.canonicalOptions, true) : null;
   }
 
   write(library: McpLibraryFile): McpLibraryFile {
-    const next = normalizeMcpLibrary({
+    const next: McpLibraryFile = {
       ...library,
       updatedAt: nowIso(),
-    });
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      writeCanonicalMcpLibrary(next, this.canonicalOptions);
-    } else {
-      writeJsonFileAtomic(getMcpLibraryFilePath(), next);
-    }
+    };
+    writeMcpSqliteLibrary(next, this.canonicalOptions);
     return next;
   }
 
@@ -613,82 +569,99 @@ export class CoreMcpLibraryService {
   }
 
   checkServer(identifier: string): McpHealthCheckResult {
-    return createMcpHealthResult(resolveServer(this.read(), identifier));
+    return createMcpHealthResult(
+      resolveServer(this.readForTransport(), identifier),
+    );
   }
 
   checkAllServers(): McpHealthCheckResult[] {
-    return this.read().servers.map((server) => createMcpHealthResult(server));
+    return this.readForTransport().servers.map((server) =>
+      createMcpHealthResult(server),
+    );
   }
 
   createServer(draft: McpServerDraft): McpServerConfig {
-    const library = this.read();
-    const server = normalizeMcpServerDraft(draft);
-    assertUniqueName(library.servers, server.name);
-    this.write({
-      ...library,
-      servers: [server, ...library.servers],
+    return this.writeSelectedServer((records) => {
+      if (draft.id && records.server(draft.id)?.server.id === draft.id)
+        throw new Error("MCP server id already exists");
+      return normalizeMcpServerDraft(draft);
     });
-    return server;
+  }
+
+  private selectedServer(records: McpDB, identifier: string): McpServerConfig {
+    const row = records.server(identifier);
+    if (!row)
+      throw new CoreMcpError(
+        "NOT_FOUND",
+        `MCP server not found: ${identifier}`,
+      );
+    return hydrateMcpStoredServer(row, this.canonicalOptions, true);
+  }
+
+  private writeSelectedServer(
+    build: (records: McpDB) => McpServerConfig,
+  ): McpServerConfig {
+    const records = mcpRecords(this.canonicalOptions);
+    return commitMcpHistory(records, this.canonicalOptions, (mutations) => {
+      const server = build(records);
+      if (records.nameExists(server.name, server.id))
+        throw new CoreMcpError(
+          "DUPLICATE_NAME",
+          `MCP server name already exists: ${server.name}`,
+        );
+      appendMcpVersion(records, server, this.canonicalOptions, mutations);
+      return server;
+    });
   }
 
   updateServer(id: string, draft: McpServerDraft): McpServerConfig {
-    const library = this.read();
-    const current = library.servers.find((server) => server.id === id);
-    if (!current) {
-      throw new CoreMcpError("NOT_FOUND", `MCP 服务不存在: ${id}`);
-    }
-    const nextServer = normalizeMcpServerDraft({
-      ...current,
-      ...draft,
-      ...(draft.env !== undefined && {
-        env: restoreRedactedDraftValues(current.env, draft.env),
-      }),
-      ...(draft.headers !== undefined && {
-        headers: restoreRedactedDraftValues(current.headers, draft.headers),
-      }),
-      ...(draft.oauth && {
-        oauth: {
-          ...draft.oauth,
-          ...(draft.oauth.clientSecret === MCP_REDACTED_VALUE && {
-            clientSecret: current.oauth?.clientSecret ?? "",
+    return this.writeSelectedServer((records) => {
+      const current = this.selectedServer(records, id);
+      return normalizeStoredMcpDraft(
+        {
+          ...current,
+          ...draft,
+          ...(draft.env !== undefined && {
+            env: restoreRedactedDraftValues(current.env, draft.env),
           }),
+          ...(draft.headers !== undefined && {
+            headers: restoreRedactedDraftValues(current.headers, draft.headers),
+          }),
+          ...(draft.oauth && {
+            oauth: {
+              ...draft.oauth,
+              ...(draft.oauth.clientSecret === MCP_REDACTED_VALUE && {
+                clientSecret: current.oauth?.clientSecret ?? "",
+              }),
+            },
+          }),
+          id: current.id,
+          createdAt: current.createdAt,
+          updatedAt: nowMs(),
         },
-      }),
-      id,
-      createdAt: current.createdAt,
-      updatedAt: nowMs(),
+        current,
+      );
     });
-    assertUniqueName(library.servers, nextServer.name, id);
-    this.write({
-      ...library,
-      servers: library.servers.map((server) =>
-        server.id === id ? nextServer : server,
-      ),
-    });
-    return nextServer;
   }
 
   setServerEnabled(identifier: string, enabled: boolean): McpServerConfig {
-    const library = this.read();
-    const current = resolveServer(library, identifier);
-    const nextServer = normalizeMcpServerDraft({
-      ...current,
-      enabled,
-      id: current.id,
-      createdAt: current.createdAt,
-      updatedAt: nowMs(),
+    return this.writeSelectedServer((records) => {
+      const current = this.selectedServer(records, identifier);
+      return normalizeStoredMcpDraft(
+        {
+          ...current,
+          enabled,
+          id: current.id,
+          createdAt: current.createdAt,
+          updatedAt: nowMs(),
+        },
+        current,
+      );
     });
-    this.write({
-      ...library,
-      servers: library.servers.map((server) =>
-        server.id === current.id ? nextServer : server,
-      ),
-    });
-    return nextServer;
   }
 
   deleteServer(id: string): McpLibraryFile {
-    const library = this.read();
+    const library = this.readForTransport();
     const servers = library.servers.filter((server) => server.id !== id);
     if (servers.length === library.servers.length) {
       throw new CoreMcpError("NOT_FOUND", `MCP 服务不存在: ${id}`);
@@ -719,7 +692,7 @@ export class CoreMcpLibraryService {
     if (!template) {
       throw new CoreMcpError("NOT_FOUND", `MCP 模板不存在: ${templateId}`);
     }
-    const library = this.read();
+    const library = this.readForTransport();
     const installed = installMcpTemplate(template);
     const server = applyMcpMarketTemplate(
       installed,
@@ -735,7 +708,7 @@ export class CoreMcpLibraryService {
   }
 
   installMarketTemplate(template: McpMarketTemplate): McpServerConfig {
-    const library = this.read();
+    const library = this.readForTransport();
     const installed = installMcpTemplate(template);
     const server = applyMcpMarketTemplate(
       installed,
@@ -755,7 +728,7 @@ export class CoreMcpLibraryService {
     template: McpMarketTemplate,
   ): McpMarketUpdateCheck {
     return reconcileMcpMarketTemplate(
-      resolveServer(this.read(), identifier),
+      resolveServer(this.readForTransport(), identifier),
       template,
     );
   }
@@ -765,33 +738,40 @@ export class CoreMcpLibraryService {
     template: McpMarketTemplate,
     force = false,
   ): McpMarketUpdateResult {
-    const library = this.read();
-    const current = resolveServer(library, identifier);
-    const prepared = prepareMcpMarketTemplateUpdate(current, template, force);
-    if ("errorCode" in prepared) {
-      throw new CoreMcpError(prepared.errorCode, prepared.reason);
-    }
-    if (prepared.shouldPersist) {
-      this.write({
-        ...library,
-        servers: library.servers.map((item) =>
-          item.id === current.id ? prepared.result.server : item,
-        ),
-      });
-    }
-    return prepared.result;
+    const records = mcpRecords(this.canonicalOptions);
+    return commitMcpHistory(records, this.canonicalOptions, (mutations) => {
+      const current = this.selectedServer(records, identifier);
+      const prepared = prepareMcpMarketTemplateUpdate(current, template, force);
+      if ("errorCode" in prepared) {
+        throw new CoreMcpError(prepared.errorCode, prepared.reason);
+      }
+      if (prepared.shouldPersist) {
+        if (records.nameExists(prepared.result.server.name, current.id))
+          throw new CoreMcpError(
+            "DUPLICATE_NAME",
+            `MCP server name already exists: ${prepared.result.server.name}`,
+          );
+        appendMcpVersion(
+          records,
+          prepared.result.server,
+          this.canonicalOptions,
+          mutations,
+        );
+      }
+      return prepared.result;
+    });
   }
 
   preview(target: McpTargetKind, serverIds: string[]): string {
-    const library = this.read();
+    const library = this.readForTransport();
     return buildMcpConfigPreview(target, selectServers(library, serverIds));
   }
 
   apply(target: McpApplyTarget): McpApplyResult {
-    const library = this.read();
-    const servers = selectServers(library, target.serverIds).filter(
-      (server) => server.enabled,
-    );
+    const library = this.readForTransport();
+    const servers = selectServers(library, target.serverIds)
+      .map((server) => this.hydrateSelected(server))
+      .filter((server) => server.enabled);
     if (servers.length === 0) {
       throw new CoreMcpError(
         "NO_ENABLED_SERVERS",
@@ -909,7 +889,7 @@ export class CoreMcpLibraryService {
    * when it becomes empty.
    */
   removeFromTarget(target: McpApplyTarget): McpRemoveResult {
-    const library = this.read();
+    const library = this.readForTransport();
     const servers = selectServers(library, target.serverIds);
     if (!fs.existsSync(target.path)) {
       throw new CoreMcpError(
@@ -999,7 +979,7 @@ export class CoreMcpLibraryService {
       );
     }
 
-    const library = this.read();
+    const library = this.readForTransport();
     const existingContent = fs.readFileSync(target.path, "utf8");
     const content = isTomlTarget(target.target)
       ? removeCodexMcpTomlServers(existingContent, target.serverNames)
@@ -1074,7 +1054,7 @@ export class CoreMcpLibraryService {
     identifier: string,
     options?: McpTargetSyncOptions,
   ): McpTargetSyncCheck[] {
-    const library = this.read();
+    const library = this.readForTransport();
     const server = resolveServer(library, identifier);
     const bindings = library.bindings.filter((binding) =>
       binding.serverIds.includes(server.id),
@@ -1092,7 +1072,10 @@ export class CoreMcpLibraryService {
         checks.push(toSyncCheck(binding, server, "skipped-server-disabled"));
         continue;
       }
-      const current = buildEntryDigest(binding.target, server);
+      const current = buildEntryDigest(
+        binding.target,
+        this.hydrateSelected(server),
+      );
       const baseline = binding.entryDigests?.[server.id];
       if (!fs.existsSync(binding.path)) {
         checks.push(
@@ -1161,7 +1144,7 @@ export class CoreMcpLibraryService {
     identifier: string,
     options?: McpTargetSyncOptions,
   ): McpTargetSyncApplyResult {
-    const library = this.read();
+    const library = this.readForTransport();
     const server = resolveServer(library, identifier);
     const checks = this.checkServerTargetSync(identifier, options).filter(
       (check) =>
@@ -1321,7 +1304,7 @@ export class CoreMcpLibraryService {
   }
 
   importFromFile(filePath: string): McpImportResult {
-    const library = this.read();
+    const library = this.readForTransport();
     const now = nowMs();
     const sourceServers = readMcpImportServers(filePath, now);
     const result = mergeMcpImportedServers(library, sourceServers);
@@ -1347,7 +1330,7 @@ export class CoreMcpLibraryService {
       };
     }
     if (request.kind === "config") {
-      const library = this.read();
+      const library = this.readForTransport();
       const now = nowMs();
       const sourceServers = readImportServersFromContent(request.input, now);
       const result = mergeMcpImportedServers(library, sourceServers);
@@ -1373,7 +1356,7 @@ export class CoreMcpLibraryService {
       };
     }
 
-    const library = this.read();
+    const library = this.readForTransport();
     const now = nowMs();
     const existingNames = new Set(library.servers.map((server) => server.name));
     const imported: McpServerConfig[] = [];
@@ -1409,7 +1392,7 @@ export class CoreMcpLibraryService {
     envFilePath: string,
     selectedKeys?: string[],
   ): McpEnvImportResult {
-    const library = this.read();
+    const library = this.readForTransport();
     const server = resolveServer(library, identifier);
     const result = buildMcpEnvImportResult(
       server,

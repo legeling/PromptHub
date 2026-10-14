@@ -1,8 +1,9 @@
 import fs from "fs";
 
 import Database from "./adapter";
+import { MCP_STORAGE_TABLES } from "@prompthub/shared/types/mcp-storage";
 
-export const CURRENT_DATABASE_SCHEMA_VERSION = 3;
+export const CURRENT_DATABASE_SCHEMA_VERSION = 4;
 const DATABASE_BUSY_TIMEOUT_MS = 5_000;
 
 export interface DatabaseMigrationManifestEntry {
@@ -246,6 +247,30 @@ export const DATABASE_MIGRATION_MANIFEST: readonly DatabaseMigrationManifestEntr
       appVersion: "0.6.0",
       destructive: false,
       invariants: CURRENT_DATABASE_SCHEMA_INVARIANTS,
+    }),
+    Object.freeze({
+      migrationId: 4,
+      name: "mcp-sqlite-storage-v4",
+      checksum:
+        "ef4eda3ac75400615369bc25d1c466a6105bd32911f9ce1c4c7f880e30a516c6",
+      appVersion: "0.6.0",
+      destructive: false,
+      invariants: Object.freeze({
+        ...CURRENT_DATABASE_SCHEMA_INVARIANTS,
+        tables: Object.freeze([
+          ...CURRENT_DATABASE_SCHEMA_INVARIANTS.tables,
+          ...MCP_STORAGE_TABLES,
+        ]),
+        columns: Object.freeze({
+          ...CURRENT_DATABASE_SCHEMA_INVARIANTS.columns,
+          mcp_servers: Object.freeze([
+            "current_version",
+            "max_version",
+            "config_json",
+          ]),
+          mcp_versions: Object.freeze(["content_path", "content_sha256"]),
+        }),
+      }),
     }),
   ]);
 

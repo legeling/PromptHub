@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /**
  * @vitest-environment node
  */
@@ -20,16 +22,18 @@ describe("CoreMcpLibraryService", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-library-"));
     configureRuntimePaths({ userDataPath });
+    mcpStorage = createMcpTestStorage();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
 
   it("persists created servers in the PromptHub data directory", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
 
     const server = service.createServer({
       name: "Playwright",
@@ -79,20 +83,20 @@ describe("CoreMcpLibraryService", () => {
       "utf8",
     );
 
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     expect(service.read().servers.map((server) => server.name)).toEqual([
       "legacy",
     ]);
 
-    expect(fs.existsSync(getMcpLibraryFilePath())).toBe(true);
-    expect(fs.existsSync(legacyPath)).toBe(true);
+    expect(fs.existsSync(getMcpLibraryFilePath())).toBe(false);
+    expect(fs.existsSync(legacyPath)).toBe(false);
     expect(service.read().servers.map((server) => server.name)).toEqual([
       "legacy",
     ]);
   });
 
   it("prefers the data MCP library when both data and legacy config files exist", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     service.createServer({
       name: "data-server",
       displayName: "Data Server",
@@ -134,7 +138,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("preconfigures real MCP store channels without third-party static templates", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
 
     const sources = service.getMarketSources();
     const templates = service.getMarketTemplates();
@@ -159,7 +163,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("installs remote MCP store templates by value instead of requiring a built-in id", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
 
     const server = service.installMarketTemplate({
       id: "modelcontextprotocol:ai-adeu-adeu",
@@ -195,7 +199,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("tracks and applies upstream MCP template updates without losing user-owned values", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const template = {
       id: "prompthub-official:review",
       version: "1.0.0",
@@ -271,7 +275,7 @@ describe("CoreMcpLibraryService", () => {
       id: installed.id,
       name: "review",
       args: ["-y", "@prompthub/review-mcp@2.0.0"],
-      env: { REVIEW_TOKEN: "private-token", REVIEW_MODE: "" },
+      env: { REVIEW_TOKEN: "[REDACTED]", REVIEW_MODE: "" },
       isFavorite: true,
       notes: "Keep my note",
       tags: ["personal"],
@@ -288,7 +292,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("requires review for legacy or locally modified MCP market entries", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const template = {
       id: "registry:demo",
       version: "1.0.0",
@@ -331,8 +335,8 @@ describe("CoreMcpLibraryService", () => {
     );
   });
 
-  it("drops legacy Roo target bindings when reading the MCP library", () => {
-    const service = new CoreMcpLibraryService();
+  it("does not reread stale JSON binding inputs after SQLite adoption", () => {
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",
@@ -377,16 +381,11 @@ describe("CoreMcpLibraryService", () => {
       "utf8",
     );
 
-    expect(service.read().bindings).toEqual([
-      expect.objectContaining({
-        id: "codex:global:/Users/test/.codex/config.toml",
-        target: "codex",
-      }),
-    ]);
+    expect(service.read().bindings).toEqual([]);
   });
 
   it("updates and deletes library servers without mutating unrelated records", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const fetch = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -410,7 +409,7 @@ describe("CoreMcpLibraryService", () => {
         transport: "stdio",
         command: "npx",
       }),
-    ).toThrow(/已存在/);
+    ).toThrow(/already exists/);
     expect(service.read()).toEqual(beforeFailedUpdate);
 
     const updated = service.updateServer(fetch.id, {
@@ -437,7 +436,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("persists MCP favorite state through reads and updates", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -461,16 +460,17 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("leaves the library unchanged when a legacy built-in template id is no longer available", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
 
-    const beforeInstall = service.write(service.read());
+    service.write(service.read());
+    const beforeInstall = service.read();
 
     expect(() => service.installTemplate("context7")).toThrow(/模板不存在/);
     expect(service.read()).toEqual(beforeInstall);
   });
 
   it("applies JSON targets without leaving a backup and preserves unrelated keys", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -502,7 +502,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("applies OpenClaw and Grok targets through their verified native schemas", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -552,7 +552,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("round-trips Antigravity serverUrl entries without exposing secrets", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "remote",
       displayName: "Remote",
@@ -605,7 +605,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("does not write target files or bindings when applying only disabled servers", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "disabled-fetch",
       displayName: "Disabled Fetch",
@@ -629,7 +629,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("does not modify an invalid JSON target when apply validation fails", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -655,7 +655,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("rejects same-name external target conflicts unless force is set", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -707,7 +707,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("allows reapplying PromptHub-managed target entries without force", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -742,7 +742,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("does not replace an unchanged target file when reapplying the same projection", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -777,7 +777,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("restores the exact existing target when binding persistence fails", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -808,7 +808,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("removes a newly created target when binding persistence fails", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -836,7 +836,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("cleans the temporary projection file when atomic replacement fails", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -867,7 +867,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("syncs stale managed targets without returning secret-bearing content", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "mineru",
       displayName: "MinerU",
@@ -920,7 +920,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("detects target-side JSON entry fields that PromptHub does not project", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "mineru",
       displayName: "MinerU",
@@ -956,7 +956,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("skips external modifications and disabled platforms during sync", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "mineru",
       displayName: "MinerU",
@@ -1004,7 +1004,7 @@ describe("CoreMcpLibraryService", () => {
 
   it("classifies missing, parse-error, disabled, and legacy sync states", () => {
     const createAppliedServer = (name: string) => {
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(mcpStorage.options);
       const server = service.createServer({
         name,
         displayName: name,
@@ -1069,42 +1069,34 @@ describe("CoreMcpLibraryService", () => {
     );
 
     const legacySynced = createAppliedServer("legacy-synced");
-    const legacyFile = JSON.parse(
-      fs.readFileSync(getMcpLibraryFilePath(), "utf8"),
-    );
-    const legacyBinding = legacyFile.bindings.find((binding: any) =>
+    const legacyFile = legacySynced.service.read();
+    const legacyBinding = legacyFile.bindings.find((binding) =>
       binding.serverIds.includes(legacySynced.server.id),
     );
+    if (!legacyBinding) throw new Error("MCP test binding is missing");
     delete legacyBinding.entryDigests;
-    fs.writeFileSync(
-      getMcpLibraryFilePath(),
-      JSON.stringify(legacyFile),
-      "utf8",
-    );
+    legacySynced.service.write(legacyFile);
     expect(
       legacySynced.service.checkServerTargetSync(legacySynced.server.id)[0],
     ).toEqual(expect.objectContaining({ status: "synced" }));
     expect(
-      legacySynced.service.read().bindings[0].entryDigests?.[
-        legacySynced.server.id
-      ],
+      legacySynced.service
+        .read()
+        .bindings.find((binding) =>
+          binding.serverIds.includes(legacySynced.server.id),
+        )?.entryDigests?.[legacySynced.server.id],
     ).toEqual(
       expect.objectContaining({ algorithm: "mcp-target-entry-sha256-v1" }),
     );
 
     const legacyReview = createAppliedServer("legacy-review");
-    const reviewFile = JSON.parse(
-      fs.readFileSync(getMcpLibraryFilePath(), "utf8"),
-    );
-    const reviewBinding = reviewFile.bindings.find((binding: any) =>
+    const reviewFile = legacyReview.service.read();
+    const reviewBinding = reviewFile.bindings.find((binding) =>
       binding.serverIds.includes(legacyReview.server.id),
     );
+    if (!reviewBinding) throw new Error("MCP test binding is missing");
     delete reviewBinding.entryDigests;
-    fs.writeFileSync(
-      getMcpLibraryFilePath(),
-      JSON.stringify(reviewFile),
-      "utf8",
-    );
+    legacyReview.service.write(reviewFile);
     const target = JSON.parse(fs.readFileSync(legacyReview.targetPath, "utf8"));
     target.mcpServers["legacy-review"].args = ["external-edit"];
     fs.writeFileSync(

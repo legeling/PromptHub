@@ -73,6 +73,7 @@
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.0",
     "@lezer/highlight": "^1.2.3",
+    "@napi-rs/keyring": "2.1.1",
     "@smithy/node-http-handler": "4.6.1",
     "@tanstack/react-virtual": "^3.13.24",
     "d3-force": "^3.0.0",

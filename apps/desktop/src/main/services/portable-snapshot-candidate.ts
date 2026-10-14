@@ -15,6 +15,12 @@ import {
   ruleGroupForKnownId,
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
+  initializeMcpStorage,
+  importMcpStorageSnapshot,
+  readMcpStorageSnapshotLibrary,
+  assertMcpSnapshotOverview,
+  resolveRuntimeStorageContext,
+  MCP_STORAGE_SNAPSHOT_FILE,
   type CanonicalGenerationShadowInput,
   type CanonicalSkillShadowInput,
   type PortableLogicalEnvelope,
@@ -25,7 +31,13 @@ import {
   normalizePluginVersionsFile,
 } from "@prompthub/core/plugin-library/normalization";
 import { normalizeMcpLibrary } from "@prompthub/core/mcp-library-persistence";
-import { DatabaseAdapter, RuleDB, SkillDB } from "@prompthub/db";
+import {
+  DatabaseAdapter,
+  RuleDB,
+  SkillDB,
+  McpDB,
+  clearMcpDatabaseState,
+} from "@prompthub/db";
 import type { PluginVersion, RuleFileContent } from "@prompthub/shared/types";
 import { mergeMcpLibraryFromTransport } from "@prompthub/shared/utils/mcp-config";
 import {
@@ -270,8 +282,10 @@ function collectGenerations(
   );
 }
 
-function collectMcp(options: CandidateOptions) {
+function collectMcp(options: CandidateOptions, database: DatabaseAdapter) {
   const root = path.join(options.stageRoot, "data", "mcp");
+  if (new McpDB(database).state()?.adoptedAt)
+    return { mcpResourceBundles: [], mcpHistorySourcePath: root };
   const bundles = bundlePaths(root, ["library.json", "market-sources.json"]);
   // Verified bundles retain all versions and secret references without decrypting.
   if (
@@ -288,6 +302,69 @@ function collectMcp(options: CandidateOptions) {
       library,
     ),
   };
+}
+
+function prepareMcpSqliteCandidate(
+  options: CandidateOptions,
+  databasePath: string,
+): void {
+  if (!options.envelope.scope.mcp) return;
+  const context = resolveRuntimeStorageContext(options.stageRoot);
+  const historyRoot = path.join(context.dataPath, "mcp"),
+    image = path.join(historyRoot, MCP_STORAGE_SNAPSHOT_FILE);
+  const target = new DatabaseAdapter(databasePath);
+  const active = new DatabaseAdapter(
+    resolveRuntimeStorageContext(options.activeRoot).databasePath,
+    { readOnly: true },
+  );
+  try {
+    if (fs.existsSync(image)) {
+      readMcpStorageSnapshotLibrary(image);
+      if (options.envelope.payload.mcpLibrary)
+        assertMcpSnapshotOverview(image, options.envelope.payload.mcpLibrary);
+      importMcpStorageSnapshot(image, {
+        database: target,
+        historyRoot,
+        storageContext: context,
+      });
+      fs.unlinkSync(image);
+      const overview = path.join(historyRoot, "library.json");
+      if (fs.existsSync(overview)) fs.unlinkSync(overview);
+    } else {
+      const keyId = new McpDB(active).state()?.keyId;
+      target.transaction(() => clearMcpDatabaseState(target))();
+      initializeMcpStorage({
+        database: target,
+        storageContext: context,
+        deviceId: deriveLocalResourceDeviceId(options.activeRoot),
+        keyId,
+        credentialSourceDatabase: active,
+      });
+    }
+    const records = new McpDB(target),
+      knownIds = new Set(records.servers().map((row) => row.server.id));
+    records.transaction(() => {
+      records.clearBindings();
+      for (const binding of new McpDB(active).bindings()) {
+        const serverIds = binding.serverIds.filter((id) => knownIds.has(id));
+        if (serverIds.length)
+          records.putBinding({
+            ...binding,
+            serverIds,
+            entryDigests: binding.entryDigests
+              ? Object.fromEntries(
+                  Object.entries(binding.entryDigests).filter(([id]) =>
+                    knownIds.has(id),
+                  ),
+                )
+              : undefined,
+          });
+      }
+    });
+  } finally {
+    target.close();
+    active.close();
+  }
 }
 
 function retainMcpDeviceBindings(
@@ -404,20 +481,23 @@ export async function prepareCanonicalPortableCandidate(
     ".portable-canonical-checkpoint",
   );
   try {
+    prepareMcpSqliteCandidate(options, databasePath);
     const database = new DatabaseAdapter(databasePath, { readOnly: true });
     let checkpoint;
     try {
-      const mcp = collectMcp(options);
-      retainMcpDeviceBindings(
-        options,
-        new Set(
-          mcp.mcpResourceBundles
-            ? mcp.mcpResourceBundles.map(
-                (directory) => readMcpServerResourceBundle(directory).server.id,
-              )
-            : mcp.mcpLibrary.servers.map((server) => server.id),
-        ),
-      );
+      const mcp = collectMcp(options, database);
+      if (!new McpDB(database).state()?.adoptedAt)
+        retainMcpDeviceBindings(
+          options,
+          new Set(
+            mcp.mcpResourceBundles
+              ? mcp.mcpResourceBundles.map(
+                  (directory) =>
+                    readMcpServerResourceBundle(directory).server.id,
+                )
+              : mcp.mcpLibrary.servers.map((server) => server.id),
+          ),
+        );
       checkpoint = await createCanonicalStorageCheckpoint({
         database,
         targetPath: checkpointPath,

@@ -176,6 +176,19 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+it("does not rebuild unreadable SQLite over authoritative MCP history", () => {
+  const history = path.join(dataPath, "mcp", "retained", "versions");
+  fs.mkdirSync(history, { recursive: true });
+  const content = path.join(history, "000001.json");
+  fs.writeFileSync(content, "retained historical content");
+  fs.writeFileSync(databasePath, "unreadable database");
+  expect(() => reconcile({ unreadableDatabase: "rebuild" })).toThrow(
+    /MCP.*SQLite/i,
+  );
+  expect(fs.readFileSync(content, "utf8")).toBe("retained historical content");
+  expect(fs.readFileSync(databasePath, "utf8")).toBe("unreadable database");
+});
+
 it("rebuilds a stale graph, preserving histories, relationships and every registered operational table", () => {
   const preserved = preservedRows();
   staleCatalog();

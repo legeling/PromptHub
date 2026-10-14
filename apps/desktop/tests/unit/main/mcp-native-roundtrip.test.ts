@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /** @vitest-environment node */
 import fs from "node:fs";
 import os from "node:os";
@@ -15,8 +17,10 @@ let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-native-roundtrip-"));
   configureRuntimePaths({ userDataPath: root });
+  mcpStorage = createMcpTestStorage();
 });
 afterEach(() => {
+  mcpStorage.dispose();
   resetRuntimePaths();
   fs.rmSync(root, { recursive: true, force: true });
 });
@@ -44,12 +48,12 @@ args = [
 MODE = "audit"
 `,
   );
-  const service = new CoreMcpLibraryService();
+  const service = new CoreMcpLibraryService(mcpStorage.options);
   const imported = service.importFromFile(input).imported;
   expect(imported.find((s) => s.name === "docs")).toMatchObject({
     enabled: false,
   });
-  const reopened = new CoreMcpLibraryService();
+  const reopened = new CoreMcpLibraryService(mcpStorage.options);
   const docs = reopened.read().servers.find((s) => s.name === "docs");
   const local = reopened.read().servers.find((s) => s.name === "local");
   if (!docs || !local)
@@ -86,7 +90,7 @@ MODE = "audit"
 });
 
 it("preserves Claude headersHelper through import, reopen and actual target projection", () => {
-  const service = new CoreMcpLibraryService();
+  const service = new CoreMcpLibraryService(mcpStorage.options);
   const result = service.createFromSource({
     kind: "config",
     input: JSON.stringify({
@@ -99,7 +103,7 @@ it("preserves Claude headersHelper through import, reopen and actual target proj
       },
     }),
   });
-  const reopened = new CoreMcpLibraryService();
+  const reopened = new CoreMcpLibraryService(mcpStorage.options);
   const target = path.join(root, "claude.json");
   reopened.apply({
     target: "claude",
@@ -118,7 +122,7 @@ it("rejects malformed TOML instead of persisting a partial server", () => {
     file,
     '[mcp_servers.local]\ncommand = "node"\nargs = ["missing-close"',
   );
-  const service = new CoreMcpLibraryService();
+  const service = new CoreMcpLibraryService(mcpStorage.options);
   expect(() => service.importFromFile(file)).toThrow();
   expect(service.read().servers).toEqual([]);
 });

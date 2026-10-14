@@ -9,8 +9,9 @@ Disabled state, environment/authentication references, tool selection, helper co
 native timeout/required fields must survive import, persistence/reopen and target projection.
 Claude `headersHelper` is preserved without executing it during import. Native names are
 translated once at the import/projection boundary into the shared typed MCP fields.
-SQLite/canonical MCP storage and the existing credential vault remain the owners; no new
-storage layout or duplicate secret store is introduced. Optional fields require no migration;
+Native field preservation does not itself change storage ownership. The later
+2026-10-14 adoption below makes SQLite and immutable contents the current owners.
+Optional native fields require no separate migration;
 missing values retain the native defaults. Previously lost fields require recovery from the
 original configuration; same-name imports still skip duplicates, so back up and verify the
 existing records and target bindings before restoring a correct record.
@@ -192,40 +193,111 @@ without treating them as valid MCP version records.
 - **And** skips files whose identity or metadata changed after preview
 - **And** leaves unselected and unknown files untouched
 
-### `FR-MCPVER-007`: File-authoritative MCP configuration migration
+### `FR-MCPVER-007`: SQLite-owned MCP configuration adoption
 
-PromptHub MUST keep My MCP definitions and history in canonical files. SQLite
-and renderer state MUST NOT be the only copy of an MCP definition. Device-bound
-secret storage owns only non-empty literal credential values.
+Implemented 2026-10-14: MCP follows
+`FR-FOUNDATION-003`. SQLite owns current definitions, device bindings, annotations,
+version metadata and encrypted secret records. The filesystem owns immutable
+historical definition contents referenced by SQLite. The root's historical
+canonical-files flag does not select a second MCP business backend. Existing
+library JSON, bundles, bindings and Electron-encrypted vault are upgrade inputs,
+not normal read/write fallback paths.
 
 #### Scenario: Existing library contains unconfigured credential placeholders
 
 - **Given** a version-1 MCP library contains empty `env` or header values
-- **When** PromptHub migrates it to canonical MCP bundles
-- **Then** the empty placeholders remain in the canonical server and version files
-- **And** only non-empty literal credentials are extracted into the encrypted vault
+- **When** PromptHub completes the explicit MCP startup adoption
+- **Then** the empty placeholders remain in the current record and historical contents
+- **And** only non-empty literal credentials enter encrypted SQLite secret records
 - **And** reopening My MCP returns every server instead of failing the whole list
 - **And** Agent/project MCP files remain derived projections
 
 #### Scenario: Device secret storage is unavailable
 
-- **Given** canonical MCP bundles are valid but a referenced device secret is
+- **Given** current SQLite records are valid but a referenced device secret is
   missing, unreadable, or bound to another unavailable device vault
 - **When** the renderer requests the My MCP inventory
-- **Then** PromptHub returns the file-owned definitions with credential values redacted
-- **And** does not discard the server list or fall back to SQLite
+- **Then** PromptHub returns the SQLite definitions with credential values redacted
+- **And** does not discard the server list or switch storage backends
 - **And** execution and mutation paths that require the real credential still fail closed
 
 ## Non-Functional Requirements
 
-### 2026-10-13 entrypoint implementation boundary (#234)
+### 2026-10-14 MCP adoption design (#234)
+
+Scope is the MCP domain, not a claim that every other foundation domain has
+completed baseline adoption. Schema migration 4 appends MCP domain tables without
+rewriting database migration history/checksums 1–3. Current configuration uses
+typed stable columns plus one sparse config JSON field; bindings and secret/version
+references have foreign keys. Version metadata includes current/high-water numbers,
+note, restore provenance, content digest and path. History numbers are never reused.
+
+One shared startup upgrade inspects known JSON/canonical inputs, compares identities
+and content, preserves independent records/history/bindings, and rejects unresolved
+same-identity conflicts or future formats before adoption. Existing source bytes
+remain recoverable until counts, references and read/edit/reopen verify the target.
+Retired source material belongs to the existing bounded recovery registry, not
+another writable library or adjacent backup files. Historical import/restore uses
+this same conversion boundary. Schema success alone does not mark data adoption.
+
+Desktop and CLI share Node AES-256-GCM. The device master key is protected by the
+OS credential store, never a plaintext settings/key file. A small N-API keyring
+binding is required because current dependencies expose only Electron safeStorage;
+CLI must not install Electron or implement its OS-specific ciphertext format.
+Linux requires the persistent Secret Service backend, not the non-persistent
+kernel-keyring fallback. Legacy Electron ciphertext is decrypted only by a supplied
+Desktop upgrade adapter. Without that adapter/key access, definitions and version
+references are adopted with explicit unavailable secret rows; original credential
+sources are retained until a later startup can encrypt them. This is the current
+SQL contract, not a second business backend. Metadata operations remain available;
+credential-dependent operations fail closed. `availability` records whether ciphertext
+was adopted, not whether the OS key store is currently unlocked.
+Fresh CLI and old CLI JSON profiles use the same current schema and key provider.
+
+Related SQL mutations are transactional. New immutable history content is published
+under the existing file recovery boundary while the SQL write is serialized;
+unreferenced interrupted content is reconciled before normal access. Deletion commits
+metadata before file cleanup; a cleanup failure cannot reverse a durable result.
+Ordinary changes inspect only selected records and append/remove selected snapshots;
+metadata-only edits touch no history files. Startup conversion/verification is
+linear in visited entries and bytes, with bounded traversal. Current MCP tables must
+survive canonical catalog rebuild, recovery, scoped backups and restoration together
+with referenced contents. External Agent files remain explicit projections only.
+
+Acceptance includes fresh CLI, pinned 0.5.9 and 0.6.0-beta.2 fixtures, mixed-source
+conflicts, idempotent starts, old encrypted-vault conversion, unsupported/newer input,
+null-byte/path/symlink rejection, failures on both sides of publication/SQL commit,
+two-process access, consistent backup/restore, selected-snapshot I/O measurements,
+and isolated Desktop import/edit/history/project/reopen. OS-backed and injected-key
+evidence remain distinct. Verification results are recorded in `implementation.md`.
+
+The adoption and snapshot restore orchestrators exceed 50 lines to keep validation,
+file publication and the SQL transaction in one visible recovery sequence. Their
+real SQLite regressions cover conflicts, missing keys, publication failure, rollback,
+immutable collisions and reopen. Complete workflow tests likewise retain one fixture
+through export, mutation and restoration instead of hiding state across test cases.
+
+Backups carry a domain-only `mcp-state.sqlite` (format 1) and SQL-referenced history
+files; retained legacy plaintext and migration journals are excluded. Restore validates
+SQLite integrity/FKs and content hashes before publishing files and committing SQL,
+preserves active device bindings, and uses hash-suffixed paths for immutable collisions.
+No native target is implicitly modified. Database schema migration 4 is not rewritten
+after release. Before upgrading, keep a verified whole-root backup; rollback requires
+restoring that root and its OS key access together, not running older code against the
+upgraded database. Retired metadata/credentials live in the bounded recovery registry;
+plaintext credential sources are encrypted there only after key access succeeds.
+
+### Historical 2026-10-13 entrypoint boundary (#234)
+
+This subsection records the earlier partial delivery. Its storage and performance
+limitations are superseded by the implemented 2026-10-14 adoption above.
 
 Version entrypoints expose the already deployed MCP bundle/vault contract; they
 do not add a second history store or perform the pending foundation-wide
 SQLite ownership conversion. That confirmed target remains owned by
 `FR-FOUNDATION-003`. The independent CLI's uninitialized JSON-only workspace
 does not yet have the same MCP history/vault initialization; its migration
-scope is pending confirmation, rather than silently changing root authority.
+scope was authorized on 2026-10-14; this paragraph records the earlier incomplete implementation.
 Existing initialized workspaces retain their bundle schema and secret refs.
 The CLI has no device secret-store adapter: list/detail remain redacted, while
 credential-bearing comparisons and mutations still fail closed. Their support

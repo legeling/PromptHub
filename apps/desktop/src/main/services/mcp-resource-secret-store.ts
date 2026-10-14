@@ -276,3 +276,46 @@ export function createCanonicalMcpResourceSecretStore(options: {
     },
   };
 }
+
+export function createLegacyMcpResourceSecretReader(options: {
+  filePath: string;
+  encryption: McpResourceSecretEncryption;
+}): (ref: string) => string | null {
+  let snapshot: PersistedMcpResourceSecrets | null = null;
+  const decoded = new Map<string, string>();
+  return (ref) => {
+    const normalized = normalizeRef(ref);
+    const cached = decoded.get(normalized);
+    if (cached !== undefined) return cached;
+    if (snapshot === null) {
+      try {
+        const stat = fsSync.lstatSync(options.filePath);
+        if (!stat.isFile() || stat.isSymbolicLink())
+          throw new Error("MCP_RESOURCE_SECRET_STORE_INVALID");
+        snapshot = parseStore(fsSync.readFileSync(options.filePath, "utf8"));
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !("code" in error) ||
+          error.code !== "ENOENT"
+        )
+          throw error;
+        snapshot = { kind: STORE_KIND, version: 1, secrets: {} };
+      }
+    }
+    const encrypted = snapshot.secrets[normalized];
+    if (!encrypted) return null;
+    requireEncryption(options.encryption);
+    let value: string;
+    try {
+      value = options.encryption.decryptString(
+        Buffer.from(encrypted, "base64"),
+      );
+    } catch (cause) {
+      throw new Error("MCP_RESOURCE_SECRET_STORE_UNAVAILABLE", { cause });
+    }
+    assertValue(value);
+    decoded.set(normalized, value);
+    return value;
+  };
+}

@@ -1,8 +1,6 @@
 import { ipcMain } from "electron";
 import { registerMcpVersionIPC } from "./mcp-version.ipc";
-import path from "path";
 import {
-  getMcpLibraryFilePath,
   getMcpTargetPresets,
   type McpTargetPreset,
 } from "@prompthub/core";
@@ -20,10 +18,6 @@ import {
   readRegisteredMcpMarketSources,
   replaceCustomMcpMarketSources,
 } from "@prompthub/core/mcp-market-source-registry";
-import {
-  exportAgentAssetDirectorySnapshot,
-  restoreAgentAssetDirectorySnapshot,
-} from "../services/agent-asset-file-snapshot";
 import type {
   McpApplyTarget,
   McpCreateFromSourceRequest,
@@ -41,8 +35,8 @@ import type {
   McpTargetKind,
   McpTargetScope,
 } from "@prompthub/shared/types/mcp";
-import type { AgentAssetFileSnapshot } from "@prompthub/shared/types/sync";
 import { createDesktopMcpLibraryService } from "../services/desktop-mcp-library";
+import { exportMcpStorageFiles, restoreMcpStorageFiles } from "../services/mcp-storage-file-snapshot";
 
 const MCP_TARGET_SCOPES = new Set<McpTargetScope>([
   "global",
@@ -124,63 +118,6 @@ function assertNonEmptyIdentifier(
   return identifier.trim();
 }
 
-function encodeMcpLibrarySnapshot(
-  library: McpLibraryFile,
-  original: AgentAssetFileSnapshot,
-  redactValues = true,
-): AgentAssetFileSnapshot {
-  const content = Buffer.from(
-    `${JSON.stringify(
-      redactValues ? redactMcpLibraryForTransport(library) : library,
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-  return {
-    ...original,
-    contentBase64: content.toString("base64"),
-    size: content.length,
-  };
-}
-
-function redactMcpAssetFiles(
-  files: AgentAssetFileSnapshot[],
-): AgentAssetFileSnapshot[] {
-  return files.map((file) => {
-    if (file.relativePath !== "library.json") return file;
-    try {
-      const library = JSON.parse(
-        Buffer.from(file.contentBase64, "base64").toString("utf8"),
-      ) as McpLibraryFile;
-      return encodeMcpLibrarySnapshot(library, file);
-    } catch {
-      return file;
-    }
-  });
-}
-
-function mergeMcpAssetFiles(
-  files: AgentAssetFileSnapshot[],
-  local: McpLibraryFile,
-): AgentAssetFileSnapshot[] {
-  return files.map((file) => {
-    if (file.relativePath !== "library.json") return file;
-    try {
-      const incoming = JSON.parse(
-        Buffer.from(file.contentBase64, "base64").toString("utf8"),
-      ) as McpLibraryFile;
-      return encodeMcpLibrarySnapshot(
-        mergeMcpLibraryFromTransport(local, incoming),
-        file,
-        false,
-      );
-    } catch {
-      return file;
-    }
-  });
-}
-
 function redactMcpImportResult(result: McpImportResult): McpImportResult {
   return {
     ...result,
@@ -220,22 +157,16 @@ export function registerMcpIPC(
     IPC_CHANNELS.MCP_LIBRARY_REPLACE,
     async (_event, library: McpLibraryFile) =>
       redactMcpLibraryForTransport(
-        service.write(mergeMcpLibraryFromTransport(service.read(), library)),
+        service.write(mergeMcpLibraryFromTransport(service.readForTransport(), library)),
       ),
   );
   ipcMain.handle(IPC_CHANNELS.MCP_LIBRARY_EXPORT_FILES, async () =>
-    redactMcpAssetFiles(
-      exportAgentAssetDirectorySnapshot(path.dirname(getMcpLibraryFilePath())),
-    ),
+    exportMcpStorageFiles(),
   );
   ipcMain.handle(
     IPC_CHANNELS.MCP_LIBRARY_RESTORE_FILES,
     async (_event, files) => {
-      const current = service.read();
-      restoreAgentAssetDirectorySnapshot(
-        path.dirname(getMcpLibraryFilePath()),
-        mergeMcpAssetFiles(Array.isArray(files) ? files : [], current),
-      );
+      restoreMcpStorageFiles(files);
     },
   );
   ipcMain.handle(IPC_CHANNELS.MCP_MARKET_LIST, async () =>

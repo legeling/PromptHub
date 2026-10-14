@@ -58,6 +58,7 @@ function portableSourcePaths() {
     rulesPath: getRulesDir(),
     pluginsPath: path.join(getDataDir(), "plugins"),
     mcpPath: path.join(getDataDir(), "mcp"),
+    mcpDatabasePath: getDatabasePath(),
     agentsPath: path.join(getDataDir(), "agents"),
     generationsPath: getGenerationsDir(),
     objectsPath: path.join(getDataDir(), "assets", "objects"),

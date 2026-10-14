@@ -35,6 +35,7 @@
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@napi-rs/keyring": "2.1.1",
     "node-sqlite3-wasm": "^0.8.30"
   },
   "devDependencies": {

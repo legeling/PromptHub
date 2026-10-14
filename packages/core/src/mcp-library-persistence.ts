@@ -14,7 +14,7 @@ import {
   type CanonicalMcpLibraryOptions,
 } from "./canonical-mcp-library";
 
-const MAX_RECOVERY_MCP_LIBRARY_BYTES = 16 * 1024 * 1024;
+export const MAX_RECOVERY_MCP_LIBRARY_BYTES = 16 * 1024 * 1024;
 
 function normalizeEntryDigests(
   value: unknown,

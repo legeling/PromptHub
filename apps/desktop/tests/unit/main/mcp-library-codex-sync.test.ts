@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /**
  * @vitest-environment node
  */
@@ -20,15 +22,17 @@ describe("CoreMcpLibraryService", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-library-"));
     configureRuntimePaths({ userDataPath });
+    mcpStorage = createMcpTestStorage();
   });
 
   afterEach(() => {
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
 
   it("syncs one Codex server without deleting other managed servers", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const first = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",
@@ -77,7 +81,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("blocks Codex single-server sync when a managed sibling was externally modified", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const first = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",
@@ -130,7 +134,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("removes empty target bindings when a distributed server is deleted", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -153,7 +157,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("merges binding serverIds when re-applying to the same target", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const first = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -188,7 +192,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("removes a server from a JSON target without leaving a backup sidecar", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const fetchServer = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -237,7 +241,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("removes a server section from a Codex TOML target", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",
@@ -283,7 +287,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("rejects removal when the target file does not exist", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -303,7 +307,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("reports real per-target distribution status from config files", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const jsonPath = path.join(userDataPath, "status", "mcp.json");
     fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
     fs.writeFileSync(

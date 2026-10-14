@@ -224,7 +224,7 @@ async function runCliOperation(
       return EXIT_CODES.OK;
     }
     if (resource === "mcp") {
-      await handleMcpCommand(commandArgs, context);
+      await handleMcpCommand(commandArgs, context, databaseHooks);
       return EXIT_CODES.OK;
     }
     if (resource === "plugin") {

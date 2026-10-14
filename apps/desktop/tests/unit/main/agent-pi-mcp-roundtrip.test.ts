@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /** @vitest-environment node */
 import fs from "node:fs";
 import os from "node:os";
@@ -13,14 +15,16 @@ let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-mcp-roundtrip-"));
   configureRuntimePaths({ userDataPath: root });
+  mcpStorage = createMcpTestStorage();
 });
 afterEach(() => {
+  mcpStorage.dispose();
   resetRuntimePaths();
   fs.rmSync(root, { recursive: true, force: true });
 });
 
 it("imports, reopens and projects Pi stdio and HTTP into a real target without deleting unrelated configuration", () => {
-  const service = new CoreMcpLibraryService();
+  const service = new CoreMcpLibraryService(mcpStorage.options);
   const result = service.createFromSource({
     kind: "config",
     input: JSON.stringify({
@@ -38,7 +42,7 @@ it("imports, reopens and projects Pi stdio and HTTP into a real target without d
       },
     }),
   });
-  const reopened = new CoreMcpLibraryService();
+  const reopened = new CoreMcpLibraryService(mcpStorage.options);
   expect(
     reopened
       .read()
@@ -78,8 +82,14 @@ it("imports, reopens and projects Pi stdio and HTTP into a real target without d
       },
     },
   });
-  configureRuntimePaths({ userDataPath: path.join(root, "readback") });
-  const readback = new CoreMcpLibraryService().importFromFile(target).imported;
+  mcpStorage.dispose();
+  const readbackRoot = path.join(root, "readback");
+  fs.mkdirSync(readbackRoot);
+  configureRuntimePaths({ userDataPath: readbackRoot });
+  mcpStorage = createMcpTestStorage();
+  const readback = new CoreMcpLibraryService(mcpStorage.options).importFromFile(
+    target,
+  ).imported;
   expect(readback.find((server) => server.name === "local")?.transport).toBe(
     "stdio",
   );

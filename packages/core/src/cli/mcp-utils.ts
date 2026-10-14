@@ -285,7 +285,7 @@ export async function resolveMcpServerIds(
   service: CoreMcpLibraryService,
   identifiers?: string[],
 ): Promise<string[]> {
-  const servers = service.read().servers;
+  const servers = service.readForTransport().servers;
   if (!identifiers?.length) {
     return servers
       .filter((server) => server.enabled)

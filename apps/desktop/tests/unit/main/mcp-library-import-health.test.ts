@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /**
  * @vitest-environment node
  */
@@ -20,15 +22,17 @@ describe("CoreMcpLibraryService", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-library-"));
     configureRuntimePaths({ userDataPath });
+    mcpStorage = createMcpTestStorage();
   });
 
   afterEach(() => {
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
 
   it("writes and removes OpenCode MCP entries without touching unrelated user config", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "memory",
       displayName: "Memory",
@@ -104,7 +108,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("writes ZCode MCP entries under the native nested config and imports disabled entries", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "memory",
       displayName: "Memory",
@@ -163,7 +167,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("removes external target MCP entries by server name without requiring library records", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const targetPath = path.join(userDataPath, "target", "external.json");
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(
@@ -205,7 +209,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("force-overwrites same-name external Codex TOML sections without duplicating them", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",
@@ -246,7 +250,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("imports Codex TOML MCP servers", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const importPath = path.join(userDataPath, "config.toml");
     fs.writeFileSync(
       importPath,
@@ -273,7 +277,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("imports JSON mcpServers and VS Code servers configs", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const mcpServersPath = path.join(userDataPath, "mcp.json");
     const vscodePath = path.join(userDataPath, "vscode-mcp.json");
     fs.writeFileSync(
@@ -314,14 +318,16 @@ describe("CoreMcpLibraryService", () => {
       url: "https://example.com/mcp",
       transport: "streamable-http",
     });
-    expect(service.read().servers.map((server) => server.name)).toEqual([
-      "docs",
-      "fetch",
-    ]);
+    expect(
+      service
+        .read()
+        .servers.map((server) => server.name)
+        .sort(),
+    ).toEqual(["docs", "fetch"]);
   });
 
   it("creates MCP servers from command lines, URLs, GitHub repos, and local projects", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const projectPath = path.join(userDataPath, "sources", "node-mcp");
     fs.mkdirSync(projectPath, { recursive: true });
     fs.writeFileSync(
@@ -384,7 +390,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("creates MCP servers from pasted JSON config content", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
 
     const result = service.createFromSource({
       kind: "config",
@@ -417,7 +423,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("creates MCP servers from pasted Codex TOML config content", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
 
     const result = service.createFromSource({
       kind: "config",
@@ -440,7 +446,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("selectively imports only required env keys for a server", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "github",
       displayName: "GitHub",
@@ -473,7 +479,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("toggles a server enabled state by id or name", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "fetch",
       displayName: "Fetch",
@@ -494,7 +500,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("checks MCP health without starting unknown server processes", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const healthy = service.createServer({
       name: "healthy",
       displayName: "Healthy",
@@ -532,7 +538,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("warns when known MCP env values do not match expected token formats", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const slack = service.createServer({
       name: "slack",
       displayName: "Slack",
@@ -568,7 +574,7 @@ describe("CoreMcpLibraryService", () => {
     const previousValue = process.env[variableName];
     delete process.env[variableName];
     try {
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(mcpStorage.options);
       const mineru = service.createServer({
         name: "mineru",
         displayName: "MinerU",
@@ -611,7 +617,7 @@ describe("CoreMcpLibraryService", () => {
     process.env[availableName] = "available";
     delete process.env[optionalName];
     try {
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(mcpStorage.options);
       const server = service.createServer({
         name: "reference-health",
         displayName: "Reference Health",
@@ -642,7 +648,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("preserves local direct values when a redacted renderer draft is saved", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "private-api",
       displayName: "Private API",
@@ -658,7 +664,7 @@ describe("CoreMcpLibraryService", () => {
 
     expect(updated.displayName).toBe("Private API (edited)");
     expect(updated.headers).toEqual({
-      Authorization: "Bearer local-secret",
+      Authorization: "[REDACTED]",
     });
     expect(service.read().servers[0].headers).toEqual({
       Authorization: "Bearer local-secret",
@@ -666,7 +672,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("redacts apply and remove result content without redacting the target file", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "private-api",
       displayName: "Private API",
@@ -698,7 +704,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("applies Codex TOML targets without leaving a sidecar backup", () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const server = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",

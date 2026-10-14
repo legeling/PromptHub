@@ -9,6 +9,8 @@ import {
   RuleDB,
   SkillDB,
   cleanupOwnedTemporaryDatabase,
+  copyMcpDatabaseState,
+  McpDB,
   type CanonicalResourceRecord,
 } from "@prompthub/db";
 import type { GenerationBatchManifest, Prompt } from "@prompthub/shared/types";
@@ -17,6 +19,8 @@ import type {
   AgentProviderProfile,
 } from "@prompthub/shared/types/agent";
 import type { McpLibraryFile } from "@prompthub/shared/types/mcp";
+import { MCP_STORAGE_TABLES } from "@prompthub/shared/types/mcp-storage";
+import { MCP_STORAGE_SNAPSHOT_FILE } from "./mcp-storage-snapshot";
 import type {
   PluginLibraryEntry,
   PluginVersion,
@@ -150,12 +154,17 @@ export const LOCAL_DATABASE_AUTHORITY_TABLES = Object.freeze({
     "agent_conversation_metadata",
     "agent_conversation_handoffs",
   ],
+  structuredBusiness: MCP_STORAGE_TABLES,
 } as const);
 
 const CANONICAL_DOMAIN_METADATA_FILES: Readonly<
   Record<string, ReadonlySet<string>>
 > = Object.freeze({
-  mcp: new Set(["library.json", "market-sources.json"]),
+  mcp: new Set([
+    "library.json",
+    "market-sources.json",
+    MCP_STORAGE_SNAPSHOT_FILE,
+  ]),
   plugins: new Set(["library.json", "market-cache.json", "versions.json"]),
 });
 
@@ -167,7 +176,41 @@ const CANONICAL_DOMAIN_EMPTY_METADATA_DIRECTORIES: Readonly<
 
 export interface StageCanonicalStorageDatabaseOptions {
   operationalSourceDatabasePath?: string;
+  mcpSourceDatabasePath?: string;
   publishedCanonicalRootPath?: string;
+}
+
+function preserveMcpState(
+  target: DatabaseAdapter.Database,
+  sourcePath: string | undefined,
+): Record<string, number> {
+  if (!sourcePath) return {};
+  const source = new DatabaseAdapter(sourcePath, { readOnly: true });
+  try {
+    if (
+      !source.get(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        "mcp_storage_state",
+      )
+    ) {
+      const version = source.pragma("user_version") as Array<{
+        user_version: number;
+      }>;
+      if (version[0]?.user_version >= 4)
+        throw new Error(
+          "MCP authoritative tables are missing from the source database",
+        );
+      return {};
+    }
+    if (!new McpDB(source).state()?.adoptedAt) {
+      if (new McpDB(source).servers().length)
+        throw new Error("MCP authoritative adoption is incomplete");
+      return {};
+    }
+    return copyMcpDatabaseState(source, target);
+  } finally {
+    source.close();
+  }
 }
 
 function compareText(left: string, right: string): number {
@@ -415,6 +458,13 @@ function childBundlePaths(rootPath: string, domain: string): string[] {
       }
       if (!entry.isDirectory() || entry.isSymbolicLink())
         throw new Error(`canonical ${domain} entry is invalid: ${entry.name}`);
+      if (
+        domain === "mcp" &&
+        !fs.existsSync(path.join(domainPath, entry.name, "manifest.json"))
+      ) {
+        const children = fs.readdirSync(path.join(domainPath, entry.name));
+        if (children.length === 1 && children[0] === "versions") return [];
+      }
       return [path.join(domainPath, entry.name)];
     })
     .sort(compareText);
@@ -763,6 +813,11 @@ export function stageCanonicalStorageDatabase(
           options.operationalSourceDatabasePath,
           LOCAL_DATABASE_AUTHORITY_TABLES.operational,
         ),
+        ...preserveMcpState(
+          database,
+          options.mcpSourceDatabasePath ??
+            options.operationalSourceDatabasePath,
+        ),
       };
       quickCheck(database);
     } finally {
@@ -784,7 +839,12 @@ export function stageCanonicalStorageDatabase(
         promptGraphHash: promptResult.graphHash,
         resourceCatalogHash,
         resourceCount: records.length,
-        domainCounts: storage.domainCounts,
+        domainCounts: {
+          ...storage.domainCounts,
+          "mcp-servers":
+            preservedDatabaseCounts.mcp_servers ??
+            storage.domainCounts["mcp-servers"],
+        },
         preservedDatabaseCounts,
       };
     } finally {

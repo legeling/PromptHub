@@ -1,8 +1,10 @@
+import { createMcpTestStorage } from "./helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { materializeMcpServerResourceBundle } from "../src/mcp-resource-schema";
+import { McpDB } from "@prompthub/db";
 import type { CanonicalMcpSecretStore } from "../src/canonical-mcp-library";
 import { CoreMcpLibraryService } from "../src/mcp-library";
 import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
@@ -17,15 +19,17 @@ describe("MCP version history public workflow", () => {
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-history-"));
     configureRuntimePaths({ userDataPath: root });
+    mcpStorage = createMcpTestStorage();
     writeRuntimeLayoutState(root);
     writeCanonicalStorageAuthority(root, {
       consistencyId: "b".repeat(64),
       operationId: "mcp-history",
     });
-    service = new CoreMcpLibraryService();
+    service = new CoreMcpLibraryService(mcpStorage.options);
   });
   afterEach(() => {
     vi.restoreAllMocks();
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(root, { recursive: true, force: true });
   });
@@ -52,8 +56,26 @@ describe("MCP version history public workflow", () => {
       before: ["one.mjs"],
       after: ["two.mjs"],
     });
-    service = new CoreMcpLibraryService();
+    service = new CoreMcpLibraryService(mcpStorage.options);
     expect(service.listVersions(server.id).currentVersion).toBe(2);
+  });
+  it("mutates selected records without enumerating the whole library", () => {
+    const selected = service.createServer({
+      name: "selected",
+      command: "node",
+    });
+    service.createServer({ name: "unrelated", command: "node" });
+    vi.spyOn(McpDB.prototype, "servers").mockImplementation(() => {
+      throw new Error("Unexpected inventory scan during selected mutation");
+    });
+    service.updateServer(selected.id, { args: ["changed.mjs"] });
+    service.setServerEnabled(selected.id, false);
+    service.createServer({ name: "additional", command: "node" });
+    expect(service.getServer(selected.id)?.enabled).toBe(false);
+    expect(service.listVersions(selected.id).currentVersion).toBe(3);
+    expect(service.getVersion(selected.id, 2).server.args).toEqual([
+      "changed.mjs",
+    ]);
   });
   it("creates, annotates, restores and deletes history without changing targets or reusing numbers", () => {
     const server = service.createServer({
@@ -93,7 +115,7 @@ describe("MCP version history public workflow", () => {
     ).toEqual([3]);
     expect(service.listVersions(server.id).total).toBe(3);
     expect(service.createVersion(server.id).version).toBe(5);
-    service = new CoreMcpLibraryService();
+    service = new CoreMcpLibraryService(mcpStorage.options);
     expect(service.listVersions(server.id).items.map((v) => v.version)).toEqual(
       [5, 4, 3, 1],
     );
@@ -102,8 +124,9 @@ describe("MCP version history public workflow", () => {
   it("rolls back failed history publication and allows an idempotent retry", () => {
     const server = service.createServer({ name: "rollback", command: "node" });
     const failed = new CoreMcpLibraryService({
+      ...mcpStorage.options,
       injectPublicationFailure: (target) => {
-        if (target.endsWith(server.id))
+        if (target.endsWith("000002.json"))
           throw new Error("history publication fault");
       },
     });
@@ -117,7 +140,7 @@ describe("MCP version history public workflow", () => {
     expect(service.createVersion(server.id, "retry").version).toBe(2);
     expect(service.getVersion(server.id, 2).note).toBe("retry");
   });
-  it("keeps historical credentials in the existing vault and masks details and credential-only comparisons", () => {
+  it("keeps historical credentials encrypted and masks details and credential-only comparisons", () => {
     const filePath = path.join(root, "secrets", "fixture.json");
     const secretStore: CanonicalMcpSecretStore = {
       filePath,
@@ -138,7 +161,7 @@ describe("MCP version history public workflow", () => {
         fs.writeFileSync(stage, JSON.stringify(next));
       },
     };
-    service = new CoreMcpLibraryService({ secretStore });
+    service = new CoreMcpLibraryService({ ...mcpStorage.options, secretStore });
     const server = service.createServer({
       name: "vault",
       command: "node",
@@ -180,19 +203,9 @@ describe("MCP version history public workflow", () => {
   it("loads only requested history payloads for a large paginated inventory", () => {
     const server = service.createServer({ name: "paged", command: "node" });
     const versionCount = 100;
-    const versions = Array.from({ length: versionCount }, (_, i) => ({
-      version: i + 1,
-      server: { ...server, args: [`fixture-${i + 1}.mjs`] },
-      createdAt: new Date(i).toISOString(),
-    }));
     const bundle = path.join(root, "data", "mcp", server.id);
-    materializeMcpServerResourceBundle({
-      bundlePath: bundle,
-      server: versions.at(-1)!.server,
-      currentVersion: versionCount,
-      versions,
-      writePolicy: { mode: "replace" },
-    });
+    for (let version = 2; version <= versionCount; version++)
+      service.createVersion(server.id);
     const read = fs.readFileSync.bind(fs);
     const versionFiles = new Set<string>();
     vi.spyOn(fs, "readFileSync").mockImplementation((file, options) => {
@@ -203,7 +216,7 @@ describe("MCP version history public workflow", () => {
     const started = performance.now();
     const result = service.listVersions(server.id, { offset: 10, limit: 5 });
     expect(result.items.map((v) => v.version)).toEqual([90, 89, 88, 87, 86]);
-    expect(versionFiles.size).toBe(6);
+    expect(versionFiles.size).toBe(0);
     expect(versionFiles.has(path.join(bundle, "versions", "000001.json"))).toBe(
       false,
     );

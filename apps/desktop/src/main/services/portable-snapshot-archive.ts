@@ -5,9 +5,19 @@ import path from "path";
 import {
   createPortableSnapshot,
   readPortableSnapshot,
+  exportMcpStorageSnapshot,
+  MCP_STORAGE_SNAPSHOT_FILE,
+  mcpHistoryPath,
+  readMcpHistoricalDocument,
   type PortableSnapshotGeneratedFile,
   type PortableSnapshotScope,
 } from "@prompthub/core";
+import {
+  DatabaseAdapter,
+  McpDB,
+  createOwnedTemporaryDatabasePath,
+  cleanupOwnedTemporaryDatabase,
+} from "@prompthub/db";
 import { Zip, ZipDeflate } from "fflate";
 
 const STREAM_BUFFER_BYTES = 1024 * 1024;
@@ -39,6 +49,7 @@ export interface PortableZipSourcePaths {
   rulesPath: string;
   pluginsPath: string;
   mcpPath?: string;
+  mcpDatabasePath?: string;
   agentsPath?: string;
   generationsPath?: string;
   objectsPath?: string;
@@ -230,7 +241,9 @@ export async function createPortableSnapshotZip(options: {
   );
   addScope(
     scopes,
-    options.scope.mcp,
+    options.scope.mcp &&
+      !options.sourcePaths.mcpDatabasePath &&
+      !options.sourcePaths.canonicalCheckpointPath,
     "mcp",
     options.sourcePaths.mcpPath ?? "",
     "data/mcp",
@@ -306,7 +319,80 @@ export async function createPortableSnapshotZip(options: {
     "portable-snapshots",
     operationId,
   );
+  let ownedMcpSnapshot: string | null = null;
   try {
+    const checkpointMcp = options.sourcePaths.canonicalCheckpointPath
+      ? path.join(
+          options.sourcePaths.canonicalCheckpointPath,
+          "canonical",
+          "mcp",
+          MCP_STORAGE_SNAPSHOT_FILE,
+        )
+      : null;
+    let mcpSnapshot =
+      checkpointMcp && fs.existsSync(checkpointMcp) ? checkpointMcp : null;
+    if (
+      options.scope.mcp &&
+      !mcpSnapshot &&
+      options.sourcePaths.mcpDatabasePath
+    ) {
+      const parent = path.join(
+        options.sourcePaths.cachePath,
+        "portable-snapshots",
+      );
+      fs.mkdirSync(parent, { recursive: true, mode: 0o700 });
+      ownedMcpSnapshot = createOwnedTemporaryDatabasePath(
+        parent,
+        "mcp-snapshot",
+      );
+      const database = new DatabaseAdapter(
+        options.sourcePaths.mcpDatabasePath,
+        { readOnly: true },
+      );
+      try {
+        exportMcpStorageSnapshot(ownedMcpSnapshot, { database });
+      } finally {
+        database.close();
+      }
+      mcpSnapshot = ownedMcpSnapshot;
+    }
+    const mcpFiles = [];
+    if (options.scope.mcp && mcpSnapshot) {
+      const historyRoot =
+        mcpSnapshot === checkpointMcp
+          ? path.join(
+              options.sourcePaths.canonicalCheckpointPath!,
+              "canonical",
+              "mcp",
+            )
+          : options.sourcePaths.mcpPath;
+      if (!historyRoot)
+        throw new Error("MCP snapshot history source is missing");
+      const snapshotDatabase = new DatabaseAdapter(mcpSnapshot, {
+        readOnly: true,
+      });
+      try {
+        const records = new McpDB(snapshotDatabase);
+        for (const meta of records.historicalContents()) {
+          const version = records.version(meta.serverId, meta.version);
+          if (!version)
+            throw new Error("MCP snapshot version metadata is missing");
+          readMcpHistoricalDocument(version, historyRoot);
+          mcpFiles.push({
+            sourcePath: mcpHistoryPath(meta.contentPath, historyRoot),
+            archivePath: `data/mcp/${meta.contentPath}`,
+            scope: "mcp",
+          });
+        }
+      } finally {
+        snapshotDatabase.close();
+      }
+      mcpFiles.push({
+        sourcePath: mcpSnapshot,
+        archivePath: `data/mcp/${MCP_STORAGE_SNAPSHOT_FILE}`,
+        scope: "mcp",
+      });
+    }
     const snapshot = createPortableSnapshot({
       sourceRoot: options.sourcePaths.rootPath,
       destinationPath: snapshotPath,
@@ -324,6 +410,7 @@ export async function createPortableSnapshotZip(options: {
         options.scope.generations ? "generations" : null,
       ].filter((scope): scope is string => scope !== null),
       generatedFiles,
+      sourceFiles: mcpFiles,
       omissions: [
         "secrets",
         "device-bound-credentials",
@@ -343,6 +430,7 @@ export async function createPortableSnapshotZip(options: {
       consistencyId: snapshot.manifest.consistencyId,
     };
   } finally {
+    if (ownedMcpSnapshot) cleanupOwnedTemporaryDatabase(ownedMcpSnapshot);
     fs.rmSync(snapshotPath, { recursive: true, force: true });
   }
 }

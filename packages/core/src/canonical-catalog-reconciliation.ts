@@ -101,6 +101,7 @@ function operationalSource(
         "Missing canonical database has sidecar recovery material",
       );
     }
+    assertMcpSqliteRecoveryNotRequired(options.activeRoot);
     return undefined;
   }
   try {
@@ -113,7 +114,10 @@ function operationalSource(
       database.close();
     }
   } catch (cause) {
-    if (options.unreadableDatabase === "rebuild") return undefined;
+    if (options.unreadableDatabase === "rebuild") {
+      assertMcpSqliteRecoveryNotRequired(options.activeRoot);
+      return undefined;
+    }
     throw new Error(
       "Canonical database is not readable; operational state cannot be preserved",
       { cause },
@@ -122,6 +126,24 @@ function operationalSource(
   // Never turn an unsupported future schema into a freshly rebuilt older one.
   assertDatabaseCompatibility(options.databasePath);
   return options.databasePath;
+}
+
+function assertMcpSqliteRecoveryNotRequired(root: string): void {
+  const mcpRoot = path.join(root, "data", "mcp");
+  if (!fs.existsSync(mcpRoot)) return;
+  assertStoragePathComponentsSafe(root, mcpRoot);
+  for (const entry of fs.readdirSync(mcpRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const directory = path.join(mcpRoot, entry.name);
+    if (
+      fs.existsSync(path.join(directory, "versions")) &&
+      !fs.existsSync(path.join(directory, "manifest.json"))
+    ) {
+      throw new Error(
+        "MCP definitions require recovery of authoritative SQLite; catalog rebuild cannot discard them",
+      );
+    }
+  }
 }
 
 function sameHashes(

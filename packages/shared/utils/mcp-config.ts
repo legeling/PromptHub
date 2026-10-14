@@ -197,11 +197,26 @@ function splitMcpValueMaps(
 
   for (const [key, value] of Object.entries(literalSource)) {
     if (hasMcpEnvReference(value)) {
-      references[key] = normalizeMcpReferenceTemplate(value);
+      Object.defineProperty(references, key, {
+        value: normalizeMcpReferenceTemplate(value),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     } else if (value !== MCP_REDACTED_VALUE) {
-      literal[key] = value;
+      Object.defineProperty(literal, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     } else {
-      literal[key] = "";
+      Object.defineProperty(literal, key, {
+        value: "",
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
   }
 
@@ -209,7 +224,12 @@ function splitMcpValueMaps(
     parseMcpReferenceMap(referenceValue) ?? {},
   )) {
     delete literal[key];
-    references[key] = value;
+    Object.defineProperty(references, key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
 
   return {

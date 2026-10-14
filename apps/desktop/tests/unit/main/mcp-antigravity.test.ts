@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /** @vitest-environment node */
 import fs from "node:fs";
 import os from "node:os";
@@ -27,8 +29,10 @@ describe("Antigravity MCP import and projection", () => {
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-antigravity-"));
     configureRuntimePaths({ userDataPath: root });
+    mcpStorage = createMcpTestStorage();
   });
   afterEach(() => {
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(root, { recursive: true, force: true });
   });
@@ -36,7 +40,7 @@ describe("Antigravity MCP import and projection", () => {
   it.each(["file", "paste"])(
     "imports remote native config through %s, edits, reopens, applies and removes",
     async (input) => {
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(mcpStorage.options);
       const content = JSON.stringify({ mcpServers: { remote: nativeEntry } });
       const source = path.join(root, "source.json");
       fs.writeFileSync(source, content);
@@ -53,7 +57,7 @@ describe("Antigravity MCP import and projection", () => {
         ...redactMcpServerConfig(server),
         displayName: "Edited remote",
       });
-      const reopened = new CoreMcpLibraryService();
+      const reopened = new CoreMcpLibraryService(mcpStorage.options);
       expect(reopened.read().servers[0].oauth?.clientSecret).toBe(
         "synthetic-secret",
       );
@@ -90,7 +94,7 @@ describe("Antigravity MCP import and projection", () => {
   );
 
   it("redacts OAuth config previews and preserves local credentials across transport", async () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     await service.createFromSource({
       kind: "config",
       input: JSON.stringify({ mcpServers: { remote: nativeEntry } }),
@@ -112,7 +116,7 @@ describe("Antigravity MCP import and projection", () => {
   it.each(["file", "paste"])(
     "preserves distinct native entry keys through %s import and duplicate detection",
     (input) => {
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(mcpStorage.options);
       const entries = {
         "Docs.API": nativeEntry,
         "docs-api": { command: "node" },
@@ -134,15 +138,18 @@ describe("Antigravity MCP import and projection", () => {
       });
       expect(repeated.imported).toEqual([]);
       expect(repeated.skipped).toEqual(Object.keys(entries));
-      const reopened = new CoreMcpLibraryService();
-      expect(reopened.read().servers.map((server) => server.name)).toEqual(
-        Object.keys(entries),
-      );
+      const reopened = new CoreMcpLibraryService(mcpStorage.options);
+      expect(
+        reopened
+          .read()
+          .servers.map((server) => server.name)
+          .sort(),
+      ).toEqual(Object.keys(entries).sort());
     },
   );
 
   it("imports disabled native stdio entries without losing tool selection", async () => {
-    const service = new CoreMcpLibraryService();
+    const service = new CoreMcpLibraryService(mcpStorage.options);
     const result = await service.createFromSource({
       kind: "config",
       input: JSON.stringify({
@@ -167,7 +174,7 @@ describe("Antigravity MCP import and projection", () => {
   it.each([{ oauth: { clientSecret: 42 } }, { disabledTools: "delete" }])(
     "rejects malformed native options without changing the library: %j",
     async (invalid) => {
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(mcpStorage.options);
       const existing = service.createServer({ name: "keep", command: "node" });
       expect(() =>
         service.createFromSource({
@@ -179,7 +186,9 @@ describe("Antigravity MCP import and projection", () => {
           }),
         }),
       ).toThrow();
-      expect(new CoreMcpLibraryService().read().servers).toEqual([existing]);
+      expect(
+        new CoreMcpLibraryService(mcpStorage.options).read().servers,
+      ).toEqual([existing]);
     },
   );
 });

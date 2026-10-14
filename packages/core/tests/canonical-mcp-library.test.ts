@@ -1,3 +1,5 @@
+import { createMcpTestStorage } from "./helpers/mcp-storage";
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,6 +9,8 @@ import type {
   McpServerConfig,
 } from "@prompthub/shared/types/mcp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { McpDB } from "@prompthub/db";
+import { McpCredentialError } from "../src/mcp-credentials";
 
 import {
   readCanonicalMcpLibrary,
@@ -57,6 +61,7 @@ describe("canonical MCP library", () => {
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-canonical-mcp-"));
     configureRuntimePaths({ userDataPath: root });
+    mcpStorage = createMcpTestStorage();
     writeRuntimeLayoutState(root);
     writeCanonicalStorageAuthority(root, {
       consistencyId: "b".repeat(64),
@@ -100,6 +105,7 @@ describe("canonical MCP library", () => {
   });
 
   afterEach(() => {
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(root, { recursive: true, force: true });
   });
@@ -201,14 +207,17 @@ describe("canonical MCP library", () => {
     );
   });
 
-  it("keeps canonical file metadata readable for transport when the device vault is unavailable", () => {
+  it("keeps adopted SQLite metadata readable when the device key store is unavailable", () => {
     writeCanonicalMcpLibrary(library([server()]), { secretStore });
     expect(
-      new CoreMcpLibraryService({ secretStore }).readForTransport().servers[0]
-        .env,
-    ).toEqual({ TOKEN: "secret-value" });
+      new CoreMcpLibraryService({
+        ...mcpStorage.options,
+        secretStore,
+      }).readForTransport().servers[0].env,
+    ).toEqual({ TOKEN: "[REDACTED]" });
     expect(
-      new CoreMcpLibraryService().readForTransport().servers[0].env,
+      new CoreMcpLibraryService(mcpStorage.options).readForTransport()
+        .servers[0].env,
     ).toEqual({ TOKEN: "[REDACTED]" });
     const missingStore: CanonicalMcpSecretStore = {
       ...secretStore,
@@ -216,20 +225,23 @@ describe("canonical MCP library", () => {
     };
     expect(
       new CoreMcpLibraryService({
+        ...mcpStorage.options,
         secretStore: missingStore,
       }).readForTransport().servers[0].env,
     ).toEqual({ TOKEN: "[REDACTED]" });
-    const unavailableStore: CanonicalMcpSecretStore = {
-      ...secretStore,
-      read() {
-        throw new Error("MCP_RESOURCE_SECRET_STORE_INVALID");
-      },
-    };
     const service = new CoreMcpLibraryService({
-      secretStore: unavailableStore,
+      ...mcpStorage.options,
+      masterKeyStore: {
+        read() {
+          throw new McpCredentialError();
+        },
+        write() {
+          throw new McpCredentialError();
+        },
+      },
     });
 
-    expect(() => service.read()).toThrow("MCP_RESOURCE_SECRET_STORE_INVALID");
+    expect(() => service.read()).toThrow(McpCredentialError);
     expect(service.readForTransport().servers).toEqual([
       expect.objectContaining({
         id: "server-1",
@@ -239,14 +251,18 @@ describe("canonical MCP library", () => {
     ]);
 
     fs.appendFileSync(
-      path.join(root, "data", "mcp", "server-1", "server.json"),
+      path.join(root, "data", "mcp", "server-1", "versions", "000001.json"),
       " ",
     );
-    expect(() => service.readForTransport()).toThrow(/size mismatch/u);
+    expect(service.readForTransport().servers).toHaveLength(1);
+    expect(() => service.getVersion("server-1", 1)).toThrow(/integrity/u);
   });
 
-  it("routes the production MCP service through canonical authority", () => {
-    const service = new CoreMcpLibraryService({ secretStore });
+  it("routes the production MCP service through SQLite and immutable history", () => {
+    const service = new CoreMcpLibraryService({
+      ...mcpStorage.options,
+      secretStore,
+    });
     const created = service.createServer({
       name: "filesystem",
       displayName: "Filesystem",
@@ -262,7 +278,9 @@ describe("canonical MCP library", () => {
       name: "filesystem",
     });
     expect(
-      fs.existsSync(path.join(root, "data", "mcp", created.id, "server.json")),
+      fs.existsSync(
+        path.join(root, "data", "mcp", created.id, "versions", "000001.json"),
+      ),
     ).toBe(true);
     expect(fs.existsSync(path.join(root, "data", "mcp", "library.json"))).toBe(
       false,
@@ -282,30 +300,33 @@ describe("canonical MCP library", () => {
     expect(readCanonicalMcpLibrary({ secretStore }).servers).toEqual([]);
   });
 
-  it("migrates a superseded MCP library into canonical bundles without losing secrets", () => {
+  it("migrates a superseded MCP library into SQLite without losing secrets", () => {
     const legacyPath = path.join(root, "data", "mcp", "library.json");
     fs.mkdirSync(path.dirname(legacyPath), { recursive: true });
     fs.writeFileSync(legacyPath, JSON.stringify(library([server()])), "utf8");
 
-    const migrated = new CoreMcpLibraryService({ secretStore }).read();
+    const migrated = new CoreMcpLibraryService({
+      ...mcpStorage.options,
+      secretStore,
+    }).read();
 
     expect(migrated.servers).toHaveLength(1);
     expect(migrated.servers[0]).toMatchObject(server());
     expect(fs.existsSync(legacyPath)).toBe(false);
     expect(
       fs.existsSync(
-        path.join(root, "data", "mcp", "server-1", "manifest.json"),
+        path.join(root, "data", "mcp", "server-1", "versions", "000001.json"),
       ),
     ).toBe(true);
     expect(
       fs.readFileSync(
-        path.join(root, "data", "mcp", "server-1", "server.json"),
+        path.join(root, "data", "mcp", "server-1", "versions", "000001.json"),
         "utf8",
       ),
     ).not.toContain("secret-value");
     expect(
-      Object.values(JSON.parse(fs.readFileSync(secretStore.filePath, "utf8"))),
-    ).toContain("secret-value");
+      JSON.stringify(mcpStorage.database.all("SELECT * FROM mcp_secrets")),
+    ).not.toContain("secret-value");
   });
 
   it("migrates empty credential placeholders into canonical files without writing empty vault entries", () => {
@@ -329,6 +350,7 @@ describe("canonical MCP library", () => {
     };
 
     const service = new CoreMcpLibraryService({
+      ...mcpStorage.options,
       secretStore: rejectingEmptyStore,
     });
     const migrated = service.read();
@@ -337,15 +359,15 @@ describe("canonical MCP library", () => {
     expect(fs.existsSync(legacyPath)).toBe(false);
     const bundlePath = path.join(root, "data", "mcp", "server-1");
     const storedText = fs.readFileSync(
-      path.join(bundlePath, "server.json"),
+      path.join(bundlePath, "versions", "000001.json"),
       "utf8",
     );
     expect(storedText).toContain('"TOKEN": ""');
     expect(storedText).toContain('"Authorization": ""');
     expect(storedText).not.toContain("secret-value");
-    expect(
-      Object.values(JSON.parse(fs.readFileSync(secretStore.filePath, "utf8"))),
-    ).toEqual(["secret-value"]);
+    expect(mcpStorage.database.all("SELECT ref FROM mcp_secrets")).toHaveLength(
+      1,
+    );
 
     const updated = {
       ...legacyServer,
@@ -354,10 +376,13 @@ describe("canonical MCP library", () => {
     };
     service.write(library([updated]));
     expect(service.read().servers).toEqual([expect.objectContaining(updated)]);
-    const resource = readMcpServerResourceBundle(bundlePath);
-    expect(resource.versions).toHaveLength(2);
-    expect(resource.versions[0].server.env).toEqual({ TOKEN: "" });
-    expect(resource.versions[0].server.headers).toEqual({ Authorization: "" });
+    expect(service.listVersions("server-1").total).toBe(2);
+    expect(
+      new McpDB(mcpStorage.database).server("server-1")?.server.env,
+    ).toEqual({ TOKEN: "" });
+    expect(
+      new McpDB(mcpStorage.database).server("server-1")?.server.headers,
+    ).toEqual({ Authorization: "" });
   });
 
   it("reads a credential-bearing superseded library for recovery without publishing it", () => {
@@ -407,15 +432,12 @@ describe("canonical MCP library", () => {
     fs.writeFileSync(legacyPath, JSON.stringify(library([server()])), "utf8");
 
     expect(
-      new CoreMcpLibraryService({ secretStore }).read().servers,
+      new CoreMcpLibraryService({ ...mcpStorage.options, secretStore }).read()
+        .servers,
     ).toHaveLength(1);
-    const bindingDocument = JSON.parse(
-      fs.readFileSync(
-        path.join(root, "config", "devices", "mcp-bindings.json"),
-        "utf8",
-      ),
+    expect(new McpDB(mcpStorage.database).state()?.deviceId).toMatch(
+      /^device-[a-f0-9]{32}$/u,
     );
-    expect(bindingDocument.deviceId).toMatch(/^device-[a-f0-9]{32}$/u);
   });
 
   it("preserves legacy MCP bindings and re-keys them on the next write", () => {
@@ -453,8 +475,11 @@ describe("canonical MCP library", () => {
     expect(rekeyed.bindings).toEqual(configured.bindings);
   });
 
-  it("keeps canonical MCP bundles authoritative over a stale legacy library", () => {
-    const service = new CoreMcpLibraryService({ secretStore });
+  it("keeps adopted SQLite authoritative over JSON introduced after adoption", () => {
+    const service = new CoreMcpLibraryService({
+      ...mcpStorage.options,
+      secretStore,
+    });
     service.write(library([server()]));
     const legacyPath = path.join(root, "data", "mcp", "library.json");
     fs.writeFileSync(
@@ -470,7 +495,7 @@ describe("canonical MCP library", () => {
     const current = service.read();
     expect(current.servers).toHaveLength(1);
     expect(current.servers[0]).toMatchObject(server());
-    expect(fs.existsSync(legacyPath)).toBe(false);
+    expect(fs.existsSync(legacyPath)).toBe(true);
     expect(fs.existsSync(path.join(root, "data", "mcp", "stale-server"))).toBe(
       false,
     );
@@ -481,9 +506,10 @@ describe("canonical MCP library", () => {
     fs.mkdirSync(path.dirname(legacyPath), { recursive: true });
     fs.writeFileSync(legacyPath, JSON.stringify(library([])), "utf8");
 
-    expect(new CoreMcpLibraryService({ secretStore }).read().servers).toEqual(
-      [],
-    );
+    expect(
+      new CoreMcpLibraryService({ ...mcpStorage.options, secretStore }).read()
+        .servers,
+    ).toEqual([]);
     expect(fs.existsSync(legacyPath)).toBe(false);
   });
 

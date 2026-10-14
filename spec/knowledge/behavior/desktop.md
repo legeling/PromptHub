@@ -333,7 +333,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 ### 9.16 Canonical Data Recovery
 
-- canonical 文件是本地持久数据的唯一真相源，SQLite 只是可重建目录和运行期投影。桌面启动必须先校验文件图；文件有效而 SQLite 缺失、损坏或逻辑陈旧时，应原子重建 SQLite，不展示恢复弹窗。
+- Prompt/Skill/Rule/Plugin canonical 文件图按各自现行边界恢复；MCP 当前定义、绑定、注释、版本元数据和加密凭据由 SQLite 持有，历史内容由文件持有。目录重建必须保留 MCP 表；存在 MCP 历史而 SQLite 缺失或不可读时必须要求恢复有效数据库备份，禁止当作可丢弃投影重建。
 - 正常 renderer 启动不得扫描恢复候选或挂载恢复来源选择弹窗；手工候选浏览只保留在设置的数据恢复入口。启动阶段由 main process 完成布局版本迁移、校验和确定性自愈。
 - 当前版本低于持久化的 last-run version 时，必须在备份迁移、数据库打开和任何 workspace 写入前拒绝启动，且不得把版本 marker 向下改写；版本比较必须遵守 prerelease 顺序。
 - canonical Prompt 图被旧版本破坏，但当前 Markdown 工作区唯一、可严格解析且媒体可确定解析时，启动应自动把 Markdown 转换为已验证的 canonical bundle 并 journal 发布；只有重复 ID、解析失败、缺失/冲突媒体、危险路径或其它文件歧义才进入显式恢复。
@@ -378,15 +378,8 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - 已保存 MCP 缺少 description 时显示独立的空描述状态，不显示“先选择或保存”提示（#231）。
 - MCP 健康检查 UI 按稳定 issue code 和字段上下文翻译；Core/CLI 返回英文诊断，不把环境变量或凭据值拼入提示（#232）。健康检查仍是配置静态检查，不代表协议连接成功。
 - Codex MCP 卸载保留无关配置和用户注释；最后一项托管条目删除后必须移除完整的 PromptHub 开始/结束标记，重复分发/卸载不得累积孤立标记（#233）。
-- My MCP 的当前定义和版本以 `data/mcp/<server-id>/` 下的 canonical bundle
-  为唯一真源；SQLite、renderer 状态以及 Agent/project 原生 MCP 文件都是派生投影。
-  设备 binding 位于 `config/devices/mcp-bindings.json`。非空 literal `env`/header
-  只进入设备绑定加密 vault；空值表示尚未配置，保留在 bundle 文件中且不创建 vault
-  entry。
-- renderer 获取 My MCP 清单时，即使设备 vault 缺失、不可读或无法解密，也必须从
-  已验证 bundle 返回完整定义，并把不可用凭据保持为 `[REDACTED]`；不得清空列表或
-  回退 SQLite。需要真实凭据的执行、分发和修改仍必须严格失败，bundle/schema/path
-  错误也不得被密钥降级掩盖。
+- My MCP 的当前定义、设备绑定、用户注释、版本元数据和加密凭据以 SQLite MCP 表为唯一真源；`data/mcp/<server-id>/versions/` 只持有元数据引用的不可变历史内容。旧 JSON、bundle manifest、设备 binding 文件和 Electron vault 仅是显式启动升级/备份恢复输入，不是运行时 fallback。桌面和新 CLI 工作区使用同一合同。
+- 非空 literal `env`/header/OAuth secret 只进入 AES-256-GCM 加密记录，设备主密钥由 OS 凭据库保护；空值保留为未配置状态。旧凭据暂不可解密时，保全原始升级来源和引用，允许脱敏清单/注释/历史列表；需要真实值的执行、比较和分发必须失败，恢复密钥访问后继续升级。MCP 备份只包含加密 SQL 和被引用的历史文件，不包含待迁移明文来源。
 - MCP 自定义商店源的网络授权真相源位于主进程管理的数据文件中；renderer 只保留兼容展示镜像。新增、编辑、启停和删除来源必须先由主进程原子持久化成功，renderer 才能提交状态。
 - MCP 商店抓取 IPC 必须同时携带 `sourceId` 与目标 URL。主进程只允许已注册来源的相同 origin 和受限 pathname；只有用户显式注册的自定义来源可获得私网和私网 HTTP 权限，内置来源不得继承该权限，重定向仍需逐跳复验。
 - 从内置、MCP Registry、自定义来源或未来 PromptHub Official Store 安装的 MCP 必须保存稳定模板身份、版本和来源字段 fingerprint。更新检查使用安装基线、本地配置和当前模板三方对账，不得把 Agent 目标文件同步冒充为上游版本更新。

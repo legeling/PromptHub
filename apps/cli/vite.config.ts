@@ -6,6 +6,7 @@ const externalModules = new Set([
   ...builtinModules,
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
   "node-sqlite3-wasm",
+  "@napi-rs/keyring",
 ]);
 
 export default defineConfig({

@@ -4,10 +4,10 @@
 
 - Phase: implement
 - Status: in-progress
-- Completed scope: external target projection safety and `backupPath`
-  deprecation
-- Remaining scope: My MCP version history, conflict workflows, legacy-sidecar
-  cleanup, product surfaces, and convergence
+- Completed scope: external target projection safety, `backupPath` deprecation,
+  My MCP version history and shared Desktop/CLI SQLite adoption (#234).
+- Remaining scope: #203 conflict workflows, legacy-sidecar cleanup and convergence;
+  #220 Windows IDE/OAuth acceptance remains separate from local implementation.
 
 ## Implemented In This Iteration
 
@@ -34,10 +34,6 @@
 
 ## Remaining Delivery
 
-- Formal My MCP version history under PromptHub-owned data.
-- No persistent backup artifact for external Agent/project MCP projection.
-- Atomic projection, in-operation rollback, verification, and crash
-  reconciliation.
 - Entry-level import/overwrite conflict handling.
 - Previewed and confirmed cleanup for legacy PromptHub sidecars.
 
@@ -250,3 +246,82 @@ The component's mocked IPC result proves request/UI selection, not persistence;
 AES-GCM boundary coverage. The isolated Electron non-secret Agent import/edit/
 process-reopen also passes. The OS-backed credential import remains explicitly
 blocked by unavailable Electron secret storage, not classified as GUI success.
+
+## MCP SQLite adoption #234 — 2026-10-14
+
+SQLite migration 4 owns current definitions, bindings, version metadata and encrypted
+credential records; immutable version contents remain under `data/mcp`. Migration
+checksums 1–3 are unchanged. Known legacy JSON, canonical bundles and Electron vault
+inputs are adopted once, with explicit conflicts, retained unavailable credentials,
+bounded recovery archives and retry after publication failure. Current code does not
+select a second MCP backend using the canonical-files feature flag.
+
+Desktop and fresh CLI workspaces share the OS-backed AES-GCM key provider. Version
+restore appends a new current version without distributing it; notes do not rewrite
+payloads, current versions cannot be deleted, and deleted numbers are not reused.
+Selected mutations read indexed server records and append only their new contents.
+MCP SQL authority survives canonical catalog recovery; an unreadable/missing MCP DB
+is not replaced by an empty reconstruction from history alone. Domain snapshots and
+portable ZIPs preserve the seven MCP tables and referenced contents, excluding old
+plaintext inputs. Restore validates counts, FKs, digests and immutable collisions.
+Upgrade and rollback instructions are in `docs/mcp-version-history.md`.
+
+Verification used an independent HEAD-plus-owned-changes snapshot and existing
+dependencies. No unrelated dirty Agent, Plugin, Prompt or Rules changes were included.
+
+- Core migration/history/database/credentials/catalog suite: 70 passed; affected
+  final migration/history/snapshot checks: 14 passed. The selected-record getter
+  assertion and history workflow then passed all 6 cases. These overlap and are
+  not additive. A 100-version page read zero history payloads (about 2 ms locally).
+- Desktop MCP unit suite: 66 passed. Later selected-mutation checks passed 51
+  cases; their one stale duplicate-message assertion was corrected and passed
+  in a focused rerun. The final registered IPC suites passed 10 cases, including
+  legacy Electron-vault adoption, redacted edit, reopen and snapshot restoration.
+- Current MCP portable ZIP: 1 real SQLite/filesystem round-trip passed, including
+  encrypted credentials, retained notes/history, old-plaintext exclusion and cleanup.
+- CLI public `runCli` workflows: 2 passed, covering fresh and initialized roots.
+  The built CLI also passed native macOS credential import, masked output, explicit
+  custom-target projection and reopen. Two simultaneous CLI processes created
+  distinct versions 2 and 3, leaving the complete [3, 2, 1] history.
+- Web settings/Agent routes and asset/desktop-backup services: 29 passed. Web
+  remains read-only for Agent MCP; this does not claim a Web version-editing UI.
+- Core/CLI/Desktop source types, Desktop test types, Web types, scoped ESLint and
+  Desktop/CLI production builds passed. Relevant canonical checkpoint/portable
+  import/restore tests passed in the broader storage batch.
+- The repository file-line gate remains red on the pre-existing
+  `agent-usage-service.ts` preferred-limit excess (1,529 versus 1,500 lines).
+  It is outside this submission; no full release-gate pass is claimed.
+- Spec governance tests (5) and traceability (16 changes) pass. The aggregate
+  spec gate stops on the pre-existing missing `existing-feature-release-acceptance`
+  index entry; its already-dirty generated index is outside this MCP submission.
+
+Re-run entrypoints (Vitest uses one worker, `--minWorkers=1 --maxWorkers=1`):
+
+```sh
+pnpm --filter @prompthub/core exec vitest run tests/mcp-database.test.ts tests/mcp-credentials.test.ts tests/mcp-storage-migration.test.ts tests/mcp-storage-upgrade.test.ts tests/mcp-storage-snapshot.test.ts tests/mcp-version-history.test.ts tests/canonical-mcp-library.test.ts tests/canonical-catalog-reconciliation.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop exec vitest run --project integration tests/integration/mcp-version-history.test.ts tests/integration/antigravity-mcp-agent-import.test.tsx --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/main/mcp-portable-snapshot.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/cli exec vitest run tests/mcp-version-history.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/web exec vitest run --config vitest.config.ts src/routes/settings.test.ts src/routes/agents.test.ts src/services/agent-assets-sync.test.ts src/services/desktop-backup-store.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/core --filter @prompthub/cli --filter @prompthub/desktop typecheck
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --filter @prompthub/desktop --filter @prompthub/cli build
+```
+
+Isolated Electron GUI acceptance exercised version entry, note editing, manual
+creation, comparison, confirmed restore and historical deletion. Restore created
+v4 from v1 without touching the Agent file; deleting v3 kept v4 current. Saving a
+header credential created v5, and reopened forms showed only `[REDACTED]`. Explicit
+distribution wrote the real fixture credential to the isolated Cursor config,
+while the original Antigravity file and unrelated entry stayed unchanged. A full
+process restart retained v5/v4/v2/v1 (deleted v3 stayed absent), the library and
+masked credential. Native keyring tests
+used unique owned entries; isolated HOME initially lacked a default keychain, then
+resolved only the OS keychain through its standard macOS location. All Agent roots
+and application data remained isolated. No external MCP protocol/OAuth handshake,
+Windows/Linux physical acceptance or packaged release acceptance was performed.
+Those #220 boundaries and the broader #203 work remain open; #234 is local delivery,
+not publication or a claim that the remote issue has already closed.
+
+The owned Electron process and browser session are stopped, port 19486 is free,
+and unique native credential entries and temporary keychain links are removed.

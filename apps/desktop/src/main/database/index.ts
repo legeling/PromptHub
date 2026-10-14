@@ -1,5 +1,6 @@
 import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
 import { migrateGeminiDefaultDisabled } from "@prompthub/core/migrations/gemini-default-disabled-v1";
+import { initializeDesktopMcpStorage } from "../services/desktop-mcp-library";
 /**
  * Desktop-specific database initialization and recovery.
  *
@@ -197,6 +198,7 @@ export function initDatabase(): DatabaseAdapter.Database {
       );
     }
     migrateAgentSettingsV1(database, getUserDataPath());
+    initializeDesktopMcpStorage(database);
     migrateGeminiDefaultDisabled(database);
     return database;
   } catch (error) {

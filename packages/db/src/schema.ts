@@ -6,7 +6,11 @@
  * Tables only — run BEFORE migrations so CREATE TABLE IF NOT EXISTS
  * is a safe no-op for existing databases.
  */
-export const SCHEMA_TABLES = `
+import { MCP_SCHEMA_TABLES } from "./mcp-schema";
+
+export const SCHEMA_TABLES =
+  MCP_SCHEMA_TABLES +
+  `
 -- Prompts 表
 CREATE TABLE IF NOT EXISTS prompts (
   id TEXT PRIMARY KEY,

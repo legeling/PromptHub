@@ -7,6 +7,12 @@ import {
 } from "@prompthub/shared";
 
 import { readCanonicalStorageShadow } from "./canonical-storage-shadow";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  MCP_STORAGE_SNAPSHOT_FILE,
+  readMcpStorageSnapshotLibrary,
+} from "./mcp-storage-snapshot";
 import {
   parsePortableLogicalEnvelope,
   type PortableLogicalScope,
@@ -96,6 +102,7 @@ function normalizeMcpServer(value: McpServerConfig): McpServerConfig {
   const server = structuredClone(value);
   delete server.env;
   delete server.headers;
+  if (server.oauth) delete server.oauth.clientSecret;
   return server;
 }
 
@@ -195,7 +202,14 @@ export function assertPortableLogicalMatchesCanonicalStorage(
   );
   assertEquivalent(
     "MCP servers",
-    sortedById(canonical.mcpServers.map((entry) => entry.server)),
+    sortedById(
+      (fs.existsSync(path.join(canonicalPath, "mcp", MCP_STORAGE_SNAPSHOT_FILE))
+        ? readMcpStorageSnapshotLibrary(
+            path.join(canonicalPath, "mcp", MCP_STORAGE_SNAPSHOT_FILE),
+          ).servers
+        : canonical.mcpServers.map((entry) => entry.server)
+      ).map(normalizeMcpServer),
+    ),
     sortedById(payload.mcpLibrary!.servers.map(normalizeMcpServer)),
   );
   assertEquivalent(
