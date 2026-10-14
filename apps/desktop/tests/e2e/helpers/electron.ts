@@ -13,7 +13,11 @@ import type {
   Settings,
   SyncProviderKind,
 } from "@prompthub/shared/types";
-import { getElectronLaunchArgs } from "./electron-launch-options";
+import {
+  getElectronLaunchArgs,
+  getElectronLaunchEnvironment,
+} from "./electron-launch-options";
+import { isolateMcpKeyring } from "./isolated-keyring";
 
 export interface LaunchedElectronApp {
   app: ElectronApplication;
@@ -87,23 +91,26 @@ export async function launchPromptHub(
     fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-e2e-"));
   const mainEntry = getMainEntry();
   const seedPath = seedFileName ? getSeedPath(seedFileName) : undefined;
+  const env = getElectronLaunchEnvironment(userDataDir, options.env);
+  fs.mkdirSync(env.HOME, { recursive: true });
 
   const app = await electron.launch({
     args: getElectronLaunchArgs(mainEntry),
     env: {
-      ...process.env,
-      NODE_ENV: "test",
-      PROMPTHUB_E2E: "1",
-      PROMPTHUB_E2E_USER_DATA_DIR: userDataDir,
+      ...env,
       ...(seedPath ? { PROMPTHUB_E2E_SEED_PATH: seedPath } : {}),
-      ...options.env,
     },
   });
 
-  const page = await app.firstWindow();
-  await waitForRendererReady(page);
-
-  return { app, page, userDataDir };
+  try {
+    await isolateMcpKeyring(app);
+    const page = await app.firstWindow();
+    await waitForRendererReady(page);
+    return { app, page, userDataDir };
+  } catch (error) {
+    await closePromptHub(app, userDataDir);
+    throw error;
+  }
 }
 
 export async function setAppLanguage(page: Page, language: string) {

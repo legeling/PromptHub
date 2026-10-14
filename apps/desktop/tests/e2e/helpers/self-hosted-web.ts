@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 import net from "net";
 import { issueSolvedPromptHubCaptcha } from "../../../src/renderer/services/self-hosted-auth";
+import { getElectronLaunchEnvironment } from "./electron-launch-options";
 
 export interface SelfHostedTestServer {
   baseUrl: string;
@@ -42,7 +43,10 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-async function waitForHealth(baseUrl: string, timeoutMs = 20000): Promise<void> {
+async function waitForHealth(
+  baseUrl: string,
+  timeoutMs = 20000,
+): Promise<void> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {
@@ -84,7 +88,9 @@ async function bootstrapUser(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Failed to bootstrap self-hosted user: ${response.status} ${text}`);
+    throw new Error(
+      `Failed to bootstrap self-hosted user: ${response.status} ${text}`,
+    );
   }
 }
 
@@ -105,7 +111,9 @@ export async function loginSelfHosted(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Failed to log into self-hosted web: ${response.status} ${text}`);
+    throw new Error(
+      `Failed to log into self-hosted web: ${response.status} ${text}`,
+    );
   }
 
   const payload = (await response.json()) as LoginEnvelope;
@@ -123,8 +131,9 @@ export async function startSelfHostedTestServer(): Promise<SelfHostedTestServer>
 
   const child = spawn(command, ["exec", "tsx", "src/index.ts"], {
     cwd: webAppDir,
+    detached: process.platform !== "win32",
     env: {
-      ...process.env,
+      ...getElectronLaunchEnvironment(dataDir),
       PORT: String(port),
       HOST: "127.0.0.1",
       DATA_ROOT: dataDir,
@@ -136,8 +145,10 @@ export async function startSelfHostedTestServer(): Promise<SelfHostedTestServer>
   });
 
   let stderr = "";
+  const diagnosticOutputBytes = 32_768;
+  child.stdout?.resume();
   child.stderr?.on("data", (chunk) => {
-    stderr += String(chunk);
+    stderr = (stderr + String(chunk)).slice(-diagnosticOutputBytes);
   });
 
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -146,7 +157,8 @@ export async function startSelfHostedTestServer(): Promise<SelfHostedTestServer>
     await waitForHealth(baseUrl);
     await bootstrapUser(baseUrl, username, password);
   } catch (error) {
-    child.kill("SIGTERM");
+    await stopChildProcess(child);
+    fs.rmSync(dataDir, { recursive: true, force: true });
     throw new Error(
       `Failed to start self-hosted test server: ${
         error instanceof Error ? error.message : String(error)
@@ -171,8 +183,15 @@ async function stopChildProcess(child: ChildProcess): Promise<void> {
   }
 
   await new Promise<void>((resolve) => {
+    const stop = (signal: NodeJS.Signals): void => {
+      if (process.platform !== "win32" && child.pid !== undefined) {
+        process.kill(-child.pid, signal);
+      } else {
+        child.kill(signal);
+      }
+    };
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
+      stop("SIGKILL");
     }, 5000);
 
     child.once("exit", () => {
@@ -180,6 +199,6 @@ async function stopChildProcess(child: ChildProcess): Promise<void> {
       resolve();
     });
 
-    child.kill("SIGTERM");
+    stop("SIGTERM");
   });
 }
