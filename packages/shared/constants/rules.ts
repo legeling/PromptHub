@@ -14,6 +14,7 @@ const codexPlatform = requirePlatform("codex");
 const zcodePlatform = requirePlatform("zcode");
 const grokPlatform = requirePlatform("grok");
 const qwenPlatform = requirePlatform("qwen");
+const qwenWorkPlatform = requirePlatform("qwen-work");
 const kimiPlatform = requirePlatform("kimi");
 const geminiPlatform = requirePlatform("gemini");
 const opencodePlatform = requirePlatform("opencode");
@@ -58,6 +59,7 @@ export const RULE_PLATFORM_ORDER = [
   "zcode",
   "grok",
   "qwen",
+  "qwen-work",
   "kimi",
   "gemini",
   "opencode",
@@ -144,6 +146,18 @@ export const KNOWN_RULE_FILE_TEMPLATES = {
       "Global Qwen Code instructions stored in the Qwen user configuration directory.",
     name: "QWEN.md",
     description: "Global Qwen Code instructions loaded for every project.",
+    group: "assistant",
+  },
+  "qwen-work-global": {
+    id: "qwen-work-global",
+    platformId: "qwen-work",
+    platformName: qwenWorkPlatform.name,
+    platformIcon: qwenWorkPlatform.icon,
+    platformDescription:
+      "Qwen Work CN work manual in the awareness directory; other memory files remain unmanaged.",
+    name: "AGENTS.md",
+    description:
+      "Work manual applied when awareness mode is enabled in Qwen Work CN.",
     group: "assistant",
   },
   "kimi-global": {

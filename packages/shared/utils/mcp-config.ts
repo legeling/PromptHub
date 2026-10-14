@@ -40,6 +40,7 @@ export const MCP_JSON_TARGETS: McpTargetKind[] = [
   "augment",
   "amp",
   "qwen",
+  "qwen-work",
   "pi",
   "oh-my-pi",
   "zcode",
@@ -903,6 +904,12 @@ export function getMcpTargetEntryObject(
   server: McpServerConfig,
   options: { redactValues?: boolean } = {},
 ): Record<string, unknown> {
+  if (target === "qwen-work") {
+    return {
+      ...toMcpServerEntry(server, target, options),
+      type: server.transport,
+    };
+  }
   if (target === "opencode" || target === "kilo") {
     return toOpenCodeMcpEntry(server, target, options);
   }

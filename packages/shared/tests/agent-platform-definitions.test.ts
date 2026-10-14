@@ -111,7 +111,8 @@ test("keeps Qwen Work CN skills separate from Qwen Code and unverified capabilit
     "%USERPROFILE%\\.qwenworkcn\\skills",
   );
   assert.equal(platform.rootEnvironmentVariable, undefined);
-  assert.equal(platform.mcpRelativePath, undefined);
+  assert.equal(platform.mcpRelativePath, "mcp.json");
+  assert.equal(platform.globalRuleFile, "awareness/main/AGENTS.md");
   assert.equal(platform.cli, undefined);
   assert.notEqual(
     platform.rootDir.darwin,
@@ -124,6 +125,27 @@ test("keeps Qwen Work CN skills separate from Qwen Code and unverified capabilit
       (capability) => !capability.enabled,
     ),
   );
+});
+
+test("exposes Qwen Work assets without disabled implemented depth capabilities", () => {
+  const definition = getAgentDefinitionById("qwen-work");
+  assert.ok(definition);
+  const inventory = getAgentPlatformCapabilityInventory(definition.platform);
+  for (const key of ["skills", "mcp", "rules"] as const) {
+    assert.equal(inventory[key].status, "partial", key);
+  }
+  for (const key of ["providerModel", "sessions", "usage", "appearance"] as const) {
+    assert.equal(definition.capabilities[key].enabled, false, key);
+    assert.ok(
+      ["planned", "unsupported"].includes(definition.capabilities[key].status),
+      `${key} must not hide an implemented adapter behind a disabled switch`,
+    );
+    assert.equal(isAgentDepthCapabilityAvailable("qwen-work", key), false, key);
+    assert.ok(["planned", "unsupported"].includes(inventory[key].status), key);
+  }
+  assert.equal(definition.platform.pluginsRelativePath, undefined);
+  assert.equal(definition.modelConfig, undefined);
+  assert.equal(definition.platform.cli, undefined);
 });
 
 test("keeps path declarations and existing template consumers unchanged", () => {

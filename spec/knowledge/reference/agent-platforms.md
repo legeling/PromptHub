@@ -84,7 +84,7 @@ Kimi 与 Auggie 不共享 Sparkles/Sparkle 通用图标；即使品牌资源加�
 - Agent 工作台的 family 分组是 PromptHub 的展示分类，不是上游兼容性声明；`openclaw`、`copaw`、`autoclaw`、`nanoclaw`、`qclaw` 和 `hermes` 明确归入 Claw（龙虾）组，但各自仍保留独立的平台 id、根目录、能力适配器和原生文件合同。
 - DeepSeek Harness 使用独立的 `plugin-harness` 资产模型。它的能力载体是 `$DSH_HOME/profiles/<name>/package.json` 中的依赖和有序 `dsh.profile.bundles`，不得伪装成独立的 Skill、MCP 或 Rules 目录。PromptHub 只读取有界、脱敏的包元数据；安装、更新和移除必须通过官方 `dsh plugin --profile <name> ...` 命令完成。
 
-## Qwen Work CN Skill Management (#224)
+## Qwen Work CN Asset Management (#224)
 
 千问办公使用独立内置 id `qwen-work`、显示名 `Qwen Work (CN)` 和
 `~/.qwenworkcn` 根目录；Windows 为 `%USERPROFILE%\\.qwenworkcn`。
@@ -96,8 +96,51 @@ Skill inventory 来自 `<root>/skills` 的完整目录包。现有 Agent Skills 
 负责版本、描述、文件清单、copy/symlink（Windows Junction）识别、My Skills
 关联、来源更新和分发回写；不新增持久化字段、扫描服务或同步状态。扫描和包
 复制沿用现有线性文件遍历，没有新增后台进程或网络请求。
-Provider、Sessions、Usage、Appearance、MCP、Rules 和 CLI 不在本次适配范围，
+Provider、Sessions、Usage、Appearance、Plugin 和 CLI 不在本次适配范围，
 不得凭产品名称继承 Qwen Code 能力。
+
+平台路径及深度能力声明集中于 `packages/shared/constants/agent-definitions/qwen-work.ts`。
+Skills、MCP、Rules 经共享 inventory 派生为 `partial`，表示已接入文件管理而非
+原生客户端完整验收。Provider、Sessions、Usage 的声明为 `enabled: false` /
+`planned`，Appearance 为 `enabled: false` / `unsupported`；没有已声明
+`supported` 或 `partial` 却被关闭的深度适配器。有效能力必须同时满足启用与
+实现状态，不能只打开开关绕过缺失适配器。Plugin、CLI 未声明原生入口。
+
+MCP 使用独立 target `qwen-work`、`<root>/mcp.json` 的 `mcpServers` 对象。
+[官方连接器文档](https://docs.qwenwork.cn/features/connectors)确认 stdio、SSE
+和 Streamable HTTP 配置；远程 HTTP 的 `type` 必须写为 `streamable-http`，
+不能复用其它目标的 `http` 或 `streamableHttp`。本地路径依据
+[1688 UTP 集成安装器](https://github.com/next-1688/1688-utp-shopping/blob/main/scripts/install.sh)
+的 `qwenworkcn` 分支（2026-10-14 核对）；官方连接器页面未声明该文件路径，
+此依据属于集成方实现，不等同于千问办公原生验收。
+
+Rules 使用 `qwen-work-global`，只映射 `<root>/awareness/main/AGENTS.md`。
+[官方意识模式文档](https://docs.qwenwork.cn/desktop/memory)将其定义为工作手册；
+`SOUL.md`、`USER.md`、`MEMORY.md` 和短期记忆目录不纳入该规则条目。
+用户须在千问办公开启意识模式才会应用手册，PromptHub 不自动切换设置。
+内置根目录覆盖同时决定 Skill、MCP 和规则路径；不读取 Qwen Code 环境变量，
+不新增未经证实的项目级入口。
+
+两项适配复用 Core MCP 和 Rules 工作流：原生目标文件是外部部署面，托管数据
+仍由各模块现有存储合同负责，不新增数据库字段、迁移或第二套同步逻辑。
+MCP 单次合并为现有线性解析/序列化，规则只读写一个入口；不增加扫描或网络调用。
+回退源码不会删除已部署文件。需要撤销 MCP 时先通过现有目标移除入口处理；
+规则通过现有历史恢复原文，避免删除用户原生手册。
+
+回归 `tests/integration/qwen-work-mcp-rules.test.ts` 使用隔离 HOME，覆盖真实
+preload/IPC、文件落盘、MCP 三种传输导入/分发/重开/移除、坏 JSON 不覆盖，
+以及手册编辑/重开/外部冲突和相邻记忆保全。连续生命周期测试允许超过 50 行，
+以保留同一身份的状态转换证据。测试不启动 MCP 服务、不证明原生客户端加载，
+也不证明千问办公界面或 Windows/Linux 实机行为。
+
+2026-10-14 MCP/Rules 验证：定向 Desktop 单测和集成共 7 文件 / 94 项通过，
+包含新增 3 项及全部已登记全局 MCP/Rules 的落盘与重开回归；shared 平台合同
+7 项通过（含能力声明与有效开关一致性）。只含本次改动的 HEAD 隔离快照中，
+Qwen Work Skills/MCP/Rules 集成 2 文件 / 6 项通过；定向 ESLint 通过。
+复跑入口：`pnpm --filter @prompthub/desktop exec vitest run tests/integration/qwen-work-skills.test.ts tests/integration/qwen-work-mcp-rules.test.ts --minWorkers=1 --maxWorkers=1`；
+能力合同：`pnpm --filter @prompthub/desktop exec tsx --test ../../packages/shared/tests/agent-platform-definitions.test.ts`。
+Desktop 源码/测试及 Core typecheck 通过。千问办公未安装在本机，
+未执行客户端原生加载、连接器握手或 GUI 验收。
 
 图标来自千问办公官网 `https://qwenwork.cn` 声明的 48px favicon：
 `https://img.alicdn.com/imgextra/i3/O1CN01sMKDxc1tfzpFpRuzW_!!6000000005930-2-tps-48-48.png`。

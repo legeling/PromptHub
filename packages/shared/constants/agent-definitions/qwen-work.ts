@@ -11,6 +11,8 @@ export const qwenWorkAgentDefinition = {
       linux: "~/.qwenworkcn",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "mcp.json",
+    globalRuleFile: "awareness/main/AGENTS.md",
   },
   capabilities: {
     providerModel: {

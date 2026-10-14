@@ -26,6 +26,7 @@ const PRIMARY_TARGET_IDS = [
   "augment",
   "amp",
   "qwen",
+  "qwen-work",
   "pi",
   "oh-my-pi",
   "gemini",

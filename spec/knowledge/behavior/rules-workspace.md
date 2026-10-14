@@ -67,6 +67,7 @@
 - `ZCode Agent`: `~/.zcode/AGENTS.md`
 - `Grok Build`: `~/.grok/AGENTS.md`
 - `Qwen Code`: `<QWEN_HOME>/QWEN.md`，默认 `~/.qwen/QWEN.md`
+- `Qwen Work (CN)`: `~/.qwenworkcn/awareness/main/AGENTS.md`，只管理工作手册；需要用户在千问办公开启意识模式，不修改开关或 `SOUL.md`、`USER.md`、`MEMORY.md`。
 - `Kimi Code`: `<KIMI_CODE_HOME>/AGENTS.md`，默认 `~/.kimi-code/AGENTS.md`
 - `Gemini CLI`: `~/.gemini/GEMINI.md`
 - `Antigravity`: 与 Gemini 解析到同一个 `~/.gemini/GEMINI.md`，不创建重复 descriptor

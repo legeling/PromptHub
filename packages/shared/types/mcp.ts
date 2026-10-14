@@ -17,6 +17,7 @@ export const MCP_TARGET_KINDS = [
   "augment",
   "amp",
   "qwen",
+  "qwen-work",
   "opencode",
   "pi",
   "oh-my-pi",
