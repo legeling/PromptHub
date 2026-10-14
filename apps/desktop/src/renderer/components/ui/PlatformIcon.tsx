@@ -13,6 +13,7 @@ import {
   LayoutGridIcon,
   BugIcon,
   PiIcon,
+  BriefcaseBusinessIcon,
 } from "lucide-react";
 
 // Import platform icons
@@ -50,6 +51,7 @@ import reasonixIcon from "../../assets/platforms/reasonix.svg";
 import augmentIcon from "../../assets/platforms/augment.svg";
 import kimiIcon from "../../assets/platforms/kimi.png";
 import qwenIcon from "../../assets/platforms/qwen.png";
+import qwenWorkIcon from "../../assets/platforms/qwen-work.png";
 import piIcon from "../../assets/platforms/pi.svg";
 import ohMyPiIcon from "../../assets/platforms/oh-my-pi.svg";
 import chatgptLightIcon from "../../assets/platforms/chatgpt-light.png";
@@ -109,6 +111,7 @@ const PLATFORM_ICONS: Record<string, PlatformIconSource> = {
   augment: augmentIcon,
   kimi: kimiIcon,
   qwen: qwenIcon,
+  "qwen-work": qwenWorkIcon,
   pi: piIcon,
   "oh-my-pi": ohMyPiIcon,
   "cherry-studio": cherryStudioIcon,
@@ -152,6 +155,7 @@ const FALLBACK_ICONS: Record<string, React.ReactNode> = {
   qoder: <BotIcon />,
   qoderwork: <BotIcon />,
   qwen: <BotIcon />,
+  "qwen-work": <BriefcaseBusinessIcon />,
   kimi: <CommandIcon />,
   reasonix: <CodeIcon />,
   augment: <BracesIcon />,

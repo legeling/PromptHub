@@ -6,6 +6,7 @@
  */
 import * as fs from "fs/promises";
 import * as path from "path";
+import { getCanonicalSkillWorkspacesDir } from "@prompthub/core";
 import { decodeSkillFileSnapshot, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   Skill,
@@ -481,7 +482,12 @@ export async function isManagedRepoPath(
   const normalizedAbsolutePath = await normalizeExistingPath(
     await resolveManagedRepoRoot(absolutePath),
   );
-  return isPathWithin(normalizedSkillsDir, normalizedAbsolutePath);
+  if (isPathWithin(normalizedSkillsDir, normalizedAbsolutePath)) return true;
+  const normalizedWorkspacesDir = await normalizeExistingPath(
+    getCanonicalSkillWorkspacesDir(),
+  );
+  // Canonical bundles materialize one owned workspace per Skill, outside data/skills.
+  return path.dirname(normalizedAbsolutePath) === normalizedWorkspacesDir;
 }
 
 export async function copyMaterializedSkillDirectory(

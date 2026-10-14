@@ -84,6 +84,47 @@ Kimi 与 Auggie 不共享 Sparkles/Sparkle 通用图标；即使品牌资源加�
 - Agent 工作台的 family 分组是 PromptHub 的展示分类，不是上游兼容性声明；`openclaw`、`copaw`、`autoclaw`、`nanoclaw`、`qclaw` 和 `hermes` 明确归入 Claw（龙虾）组，但各自仍保留独立的平台 id、根目录、能力适配器和原生文件合同。
 - DeepSeek Harness 使用独立的 `plugin-harness` 资产模型。它的能力载体是 `$DSH_HOME/profiles/<name>/package.json` 中的依赖和有序 `dsh.profile.bundles`，不得伪装成独立的 Skill、MCP 或 Rules 目录。PromptHub 只读取有界、脱敏的包元数据；安装、更新和移除必须通过官方 `dsh plugin --profile <name> ...` 命令完成。
 
+## Qwen Work CN Skill Management (#224)
+
+千问办公使用独立内置 id `qwen-work`、显示名 `Qwen Work (CN)` 和
+`~/.qwenworkcn` 根目录；Windows 为 `%USERPROFILE%\\.qwenworkcn`。
+该合同来自 [官方 Skills 文档](https://docs.qwenwork.cn/features/skills)
+（2026-10-14 核对），不复用 Qwen Code 的 `qwen`、`QWEN_HOME` 或 `.qwen`，
+也不将海外版 `.qwenwork` 作为回退目录。
+
+Skill inventory 来自 `<root>/skills` 的完整目录包。现有 Agent Skills 入口
+负责版本、描述、文件清单、copy/symlink（Windows Junction）识别、My Skills
+关联、来源更新和分发回写；不新增持久化字段、扫描服务或同步状态。扫描和包
+复制沿用现有线性文件遍历，没有新增后台进程或网络请求。
+Provider、Sessions、Usage、Appearance、MCP、Rules 和 CLI 不在本次适配范围，
+不得凭产品名称继承 Qwen Code 能力。
+
+图标来自千问办公官网 `https://qwenwork.cn` 声明的 48px favicon：
+`https://img.alicdn.com/imgextra/i3/O1CN01sMKDxc1tfzpFpRuzW_!!6000000005930-2-tps-48-48.png`。
+无 DB/schema 迁移。回退登记源码只移除内置入口，不删除原生或托管 Skill；
+需要撤销分发时应在回退前通过现有卸载入口移除目标，保留来源包。
+
+回归入口：`tests/integration/qwen-work-skills.test.ts`（preload → IPC →
+真实 SQLite/目录及 reopen），以及 shared `agent-platform-definitions.test.ts`
+的三平台路径及能力隔离断言。长流程测试保留连续业务步骤，以便审查包内容、
+来源状态与重开后的同一身份；允许测试函数超过 50 行。
+隔离 Electron 流程为 `tests/e2e/qwen-work-skills.spec.ts`，覆盖 Agent 工作台
+发现、导入、完全退出重开、My Skills 详情及文件清单。
+修复前两条集成回归均报 `Unknown platform: qwen-work`。本机 macOS 只验证
+目录副本与 symlink；测试在 Windows 使用 Junction，但没有 Windows 实机结果
+时不得声称该原生分支已通过。千问办公自身加载或执行 Skill 不由这些测试证明。
+
+同轮回归还确认 canonical Skill workspace 链接被旧 `data/skills` 路径判断
+误标为外部来源。托管路径识别现统一包含 Core 所有的 workspace 根的直接子目录，
+并先解析 realpath；cache 根、其它 cache 目录及指向外部目录的链接仍不属于托管。
+该修正不移动文件、不改变来源身份或持久化格式，源码回退即可撤销。
+
+2026-10-14 验证：新增集成 3 项与共享 Skill 真实业务回归 17 项通过；
+仓库文件安全/图标单测 86 项通过；shared 平台合同 6 项通过；隔离 Electron
+Agent 导入/重开 1 项通过。Desktop test typecheck、Core typecheck、定向 ESLint
+及 Desktop build 通过。集成使用 Node 环境，避免 jsdom 与 Node 的跨 realm
+`Uint8Array` 使主进程字节指纹成为空清单；该测试隔离问题不代表产品更新缺陷。
+
 ## User Config Files Boundary
 
 - Agent Config Files 管理的是 canonical registry 或用户覆盖解析出的用户级 Agent 根目录，不扫描项目级配置空间。

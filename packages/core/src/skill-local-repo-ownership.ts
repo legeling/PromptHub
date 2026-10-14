@@ -2,10 +2,13 @@ import path from "node:path";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
 import { getCacheDir, getOperationsDir, getSkillsDir } from "./runtime-paths";
 
+export function getCanonicalSkillWorkspacesDir(): string {
+  return path.join(getCacheDir(), "skill-workspaces");
+}
+
 export function getCanonicalSkillWorkspacePath(skillId: string): string {
   return path.join(
-    getCacheDir(),
-    "skill-workspaces",
+    getCanonicalSkillWorkspacesDir(),
     encodeCanonicalResourceDirectory(skillId),
   );
 }

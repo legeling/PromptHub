@@ -137,6 +137,7 @@ export const DEFAULT_SKILL_PLATFORM_ORDER = [
   "cursor",
   "grok",
   "qwen",
+  "qwen-work",
   "cherry-studio",
   "doubao",
   "windsurf",

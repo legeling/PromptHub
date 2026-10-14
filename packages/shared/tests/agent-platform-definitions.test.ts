@@ -42,6 +42,7 @@ const expectedIds = [
   "zcode",
   "grok",
   "qwen",
+  "qwen-work",
   "kilo",
   "amp",
   "openclaw",
@@ -92,6 +93,37 @@ test("declares one ordered model entrypoint for each implemented provider", () =
       );
     }
   }
+});
+
+test("keeps Qwen Work CN skills separate from Qwen Code and unverified capabilities (#224)", () => {
+  const platform = getPlatformById("qwen-work");
+  assert.ok(platform);
+  assert.equal(
+    getPlatformSkillsTemplate(platform, "darwin"),
+    "~/.qwenworkcn/skills",
+  );
+  assert.equal(
+    getPlatformSkillsTemplate(platform, "linux"),
+    "~/.qwenworkcn/skills",
+  );
+  assert.equal(
+    getPlatformSkillsTemplate(platform, "win32"),
+    "%USERPROFILE%\\.qwenworkcn\\skills",
+  );
+  assert.equal(platform.rootEnvironmentVariable, undefined);
+  assert.equal(platform.mcpRelativePath, undefined);
+  assert.equal(platform.cli, undefined);
+  assert.notEqual(
+    platform.rootDir.darwin,
+    getPlatformById("qwen")?.rootDir.darwin,
+  );
+  const definition = getAgentDefinitionById("qwen-work");
+  assert.ok(definition);
+  assert.ok(
+    Object.values(definition.capabilities).every(
+      (capability) => !capability.enabled,
+    ),
+  );
 });
 
 test("keeps path declarations and existing template consumers unchanged", () => {

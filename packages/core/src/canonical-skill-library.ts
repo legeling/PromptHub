@@ -19,7 +19,10 @@ import { getDataDir, getUserDataPath } from "./runtime-paths";
 import { canonicalSkillSourceMutations } from "./canonical-skill-sources";
 import { getCanonicalSkillWorkspacePath } from "./skill-local-repo-ownership";
 import { createSkillPackageIgnoreMatcher } from "@prompthub/shared/utils/skill-package-policy";
-export { getCanonicalSkillWorkspacePath } from "./skill-local-repo-ownership";
+export {
+  getCanonicalSkillWorkspacePath,
+  getCanonicalSkillWorkspacesDir,
+} from "./skill-local-repo-ownership";
 
 const OPERATION_KEY = "skill-library";
 const MAX_PACKAGE_FILES = 4_000;

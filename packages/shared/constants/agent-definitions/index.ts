@@ -24,6 +24,7 @@ import { augmentAgentDefinition } from "@prompthub/shared/constants/agent-defini
 import { zcodeAgentDefinition } from "@prompthub/shared/constants/agent-definitions/zcode";
 import { grokAgentDefinition } from "@prompthub/shared/constants/agent-definitions/grok";
 import { qwenAgentDefinition } from "@prompthub/shared/constants/agent-definitions/qwen";
+import { qwenWorkAgentDefinition } from "@prompthub/shared/constants/agent-definitions/qwen-work";
 import { kiloAgentDefinition } from "@prompthub/shared/constants/agent-definitions/kilo";
 import { ampAgentDefinition } from "@prompthub/shared/constants/agent-definitions/amp";
 import { openclawAgentDefinition } from "@prompthub/shared/constants/agent-definitions/openclaw";
@@ -63,6 +64,7 @@ export const AGENT_DEFINITIONS: AgentPlatformDefinition[] = [
   zcodeAgentDefinition,
   grokAgentDefinition,
   qwenAgentDefinition,
+  qwenWorkAgentDefinition,
   kiloAgentDefinition,
   ampAgentDefinition,
   openclawAgentDefinition,
