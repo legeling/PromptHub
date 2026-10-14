@@ -3,10 +3,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import {
-  writeCanonicalStorageAuthority,
-  writeRuntimeLayoutState,
-} from "@prompthub/core";
+import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
+import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
 
 import {
   closePromptHub,

@@ -8,10 +8,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  writeCanonicalStorageAuthority,
-  writeRuntimeLayoutState,
-} from "@prompthub/core";
+import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
+import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
 import {
   closePromptHub,
   launchPromptHub,
