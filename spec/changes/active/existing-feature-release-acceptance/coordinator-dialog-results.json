@@ -1,0 +1,810 @@
+{
+  "recordedAt": "2026-10-10T07:35:24.724Z",
+  "head": "108f375bcd2c3e94c20d93dd619d641b6386b352",
+  "scope": "Desktop business dialogs and the Web client that embeds Desktop App",
+  "audit": {
+    "sourceFilesScanned": 627,
+    "browserDialogCallsRemaining": [],
+    "migratedBrowserConfirmCalls": 12,
+    "operations": [
+      "Prompt batch deletion",
+      "Prompt version restore",
+      "Prompt/Skill tag deletion",
+      "Agent appearance deletion",
+      "Agent MCP conflict overwrite",
+      "MCP target conflict overwrite",
+      "AI model deletion",
+      "Cloud account deletion request",
+      "Data path migration",
+      "Data path overwrite",
+      "Data path restart",
+      "Dirty Skill editor navigation"
+    ],
+    "alreadyCustom": [
+      "Skill batch tags/deploy/remove/update",
+      "MCP batch tags/deploy/delete",
+      "Plugin batch tags/distribution/delete",
+      "Rules edit/delete/history",
+      "Prompt batch tags and folder menu"
+    ],
+    "preservedPlatformBoundaries": [
+      {
+        "file": "apps/desktop/src/main/services/agent-provider-tray-handler.ts",
+        "reason": "OS tray confirmation and outcome when the main window can be hidden; 2 showMessageBox calls."
+      },
+      {
+        "file": "apps/desktop/src/main/index.ts",
+        "reason": "Startup failure before a renderer is available: showErrorBox; native file/folder selection remains OS integration."
+      },
+      {
+        "file": "apps/desktop/src/renderer/components/skill/SkillFileEditor.tsx",
+        "reason": "beforeunload protects dirty content during browser close/reload; does not use the business-confirmation API."
+      },
+      {
+        "file": "apps/mobile/src/components/platformAlerts.ts",
+        "reason": "Separate React Native application: 2 Alert.alert calls and web alert/confirm fallbacks were inventoried, not migrated."
+      }
+    ]
+  },
+  "changes": [
+    "A transient renderer confirmation owner and one host reuse ConfirmDialog in Desktop App, including embedded Web workspace.",
+    "All asynchronous decisions are awaited; cancellation and host disposal settle pending continuations.",
+    "ConfirmDialog uses localized default actions, traps focus including message controls, respects focused Cancel on Enter, isolates modal keyboard events, and blocks loading backdrop dismissal.",
+    "Prompt batch deletion rejects duplicate submissions and reports failures without a success toast.",
+    "Gallery retains batch selection until removed records disappear."
+  ],
+  "verification": {
+    "suiteCount": 23,
+    "distinctTests": 224,
+    "suites": [
+      {
+        "file": "tests/unit/components/ai-settings-prototype.test.tsx",
+        "tests": 33
+      },
+      {
+        "file": "tests/unit/components/mcp-manager-detail-distribution.test.tsx",
+        "tests": 14
+      },
+      {
+        "file": "tests/unit/components/sidebar-modules-rules.test.tsx",
+        "tests": 15
+      },
+      {
+        "file": "tests/unit/components/data-settings-providers-upgrades.test.tsx",
+        "tests": 17
+      },
+      {
+        "file": "tests/unit/components/data-settings-backup-sync.test.tsx",
+        "tests": 11
+      },
+      {
+        "file": "tests/unit/components/data-settings-paths-recovery.test.tsx",
+        "tests": 8
+      },
+      {
+        "file": "tests/unit/components/skill-batch-deploy-dialog.test.tsx",
+        "tests": 6
+      },
+      {
+        "file": "tests/unit/components/prompt-version-history-modal.test.tsx",
+        "tests": 6
+      },
+      {
+        "file": "tests/unit/components/agent-workspace-resilience.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "tests/unit/components/tag-manager-modal.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "tests/unit/components/main-content-batch-selection.test.tsx",
+        "tests": 8
+      },
+      {
+        "file": "tests/unit/components/mcp-batch-deploy-dialog.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "tests/unit/components/sidebar-prompt-view-mode.test.tsx",
+        "tests": 15
+      },
+      {
+        "file": "tests/unit/components/sidebar-rail-isolation.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "tests/unit/components/prompt-batch-action-bar.test.tsx",
+        "tests": 9
+      },
+      {
+        "file": "tests/unit/components/skill-batch-tag-dialog.test.tsx",
+        "tests": 6
+      },
+      {
+        "file": "tests/unit/components/confirmation-host.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "tests/unit/services/browser-dialog-policy.test.ts",
+        "tests": 1
+      },
+      {
+        "file": "tests/unit/components/sidebar-skills.test.tsx",
+        "tests": 21
+      },
+      {
+        "file": "tests/unit/components/confirm-dialog.test.tsx",
+        "tests": 16
+      },
+      {
+        "file": "tests/integration/release-acceptance-prompts-ai-batch.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "tests/unit/components/prompt-gallery-view.test.tsx",
+        "tests": 10
+      }
+    ],
+    "nativeGuiVerified": false,
+    "boundary": "Component tests exercise real UI actions with mocked external boundaries. Prompt batch integration exercises preload/registered IPC with temporary SQLite, readback and reopen; the deletion-failure test injects failure at the action boundary.",
+    "checks": {
+      "checks.json": [
+        {
+          "name": "unit",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "unit",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/unit/components/confirmation-host.test.tsx",
+            "tests/unit/components/confirm-dialog.test.tsx",
+            "tests/unit/components/ai-settings-prototype.test.tsx",
+            "tests/unit/components/mcp-manager-detail-distribution.test.tsx",
+            "tests/unit/components/data-settings-paths-recovery.test.tsx",
+            "tests/unit/components/sidebar-rail-isolation.test.tsx",
+            "tests/unit/components/agent-workspace-resilience.test.tsx",
+            "tests/unit/services/browser-dialog-policy.test.ts",
+            "tests/unit/components/prompt-version-history-modal.test.tsx",
+            "tests/unit/components/tag-manager-modal.test.tsx",
+            "tests/unit/components/sidebar-skills.test.tsx",
+            "tests/unit/components/sidebar-modules-rules.test.tsx",
+            "tests/unit/components/sidebar-prompt-view-mode.test.tsx",
+            "tests/unit/components/prompt-batch-action-bar.test.tsx",
+            "tests/unit/components/main-content-batch-selection.test.tsx",
+            "tests/unit/components/mcp-batch-deploy-dialog.test.tsx",
+            "tests/unit/components/skill-batch-deploy-dialog.test.tsx",
+            "tests/unit/components/skill-batch-tag-dialog.test.tsx",
+            "tests/unit/components/data-settings-backup-sync.test.tsx",
+            "tests/unit/components/data-settings-providers-upgrades.test.tsx"
+          ],
+          "pid": 2952,
+          "startedAt": "2026-10-10T07:24:50.726Z",
+          "finishedAt": "2026-10-10T07:25:15.594Z",
+          "exitCode": 1,
+          "timedOut": false,
+          "output": "rm = screen.getByRole(\"button\", { name: \"Confirm\" });\n       |                            ^\n    283|     expect(confirm.className).toContain(\"bg-red-600\");\n    284|     expect(document.body.querySelector(\".lucide-triangle-alert\")).toHa…\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯\n\n FAIL |unit|  tests/unit/components/sidebar-skills.test.tsx > Sidebar > shows Project Skills as a first-level skill navigation entry on desktop\nAssertionError: expected 'my-skills' to be 'projects' // Object.is equality\n\nExpected: \"projects\"\nReceived: \"my-skills\"\n\n ❯ tests/unit/components/sidebar-skills.test.tsx:290:48\n    288|     fireEvent.click(screen.getByRole(\"button\", { name: /Project Skills…\n    289| \n    290|     expect(useSkillStore.getState().storeView).toBe(\"projects\");\n       |                                                ^\n    291|     expect(screen.getByText(\"Project Skills\")).toBeInTheDocument();\n    292|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯\n\n FAIL |unit|  tests/unit/components/sidebar-skills.test.tsx > Sidebar > shows Agent Skills as a first-level skill navigation entry on desktop\nAssertionError: expected 'my-skills' to be 'agents' // Object.is equality\n\nExpected: \"agents\"\nReceived: \"my-skills\"\n\n ❯ tests/unit/components/sidebar-skills.test.tsx:665:48\n    663|     fireEvent.click(screen.getByRole(\"button\", { name: /Agent Skills/i…\n    664| \n    665|     expect(useSkillStore.getState().storeView).toBe(\"agents\");\n       |                                                ^\n    666|     expect(screen.getByText(\"Agent Skills\")).toBeInTheDocument();\n    667|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯\n\n FAIL |unit|  tests/unit/components/sidebar-skills.test.tsx > Sidebar > clears the selected skill when returning to my skills\nAssertionError: expected 'projects' to be 'my-skills' // Object.is equality\n\nExpected: \"my-skills\"\nReceived: \"projects\"\n\n ❯ tests/unit/components/sidebar-skills.test.tsx:725:48\n    723|     fireEvent.click(screen.getByRole(\"button\", { name: /My Skills/i })…\n    724| \n    725|     expect(useSkillStore.getState().storeView).toBe(\"my-skills\");\n       |                                                ^\n    726|     expect(useSkillStore.getState().selectedSkillId).toBeNull();\n    727|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯\n\n FAIL |unit|  tests/unit/components/sidebar-skills.test.tsx > Sidebar > collapses the expanded skill store source list from the first-level store entry\nTestingLibraryElementError: Unable to find an element by: [data-testid=\"skill-store-source-scroll\"]\n\nIgnored nodes: comments, script, style\n\u001b[36m<body>\u001b[39m\n  \u001b[36m<div>\u001b[39m\n    \u001b[36m<aside\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"relative z-20 flex shrink-0 overflow-hidden transition-all duration-smooth ease-in-out border-r border-sidebar-border app-left-rail-glass app-wallpaper-panel-strong w-[23rem]\"\u001b[39m\n    \u001b[36m>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"flex w-20 shrink-0 flex-col bg-sidebar-accent/25 border-r border-sidebar-border/60\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[36m<div\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-1 flex-col px-2 py-3\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<div\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-1 flex-col gap-2\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<button\u001b[39m\n              \u001b[33maria-label\u001b[39m=\u001b[32m\"Prompts\"\u001b[39m\n              \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-[11px] font-medium transition-colors titlebar-no-drag text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground\"\u001b[39m\n              \u001b[33mtitle\u001b[39m=\u001b[32m\"Prompts\"\u001b[39m\n              \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n            \u001b[36m>\u001b[39m\n              \u001b[36m<span\u001b[39m\n                \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n                \u001b[33mclass\u001b[39m=\u001b[32m\"flex h-9 w-9 items-center justify-center rounded-2xl bg-transparent\"\u001b[39m\n              \u001b[36m>\u001b[39m\n                \u001b[36m<svg\u001b[39m\n                  \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-command h-5 w-5\"\u001b[39m\n                  \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n                  \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n                  \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n                  \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n                  \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n                  \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n                  \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n                  \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n                  \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n                \u001b[36m>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                \u001b[36m</svg>\u001b[39m\n              \u001b[36m</span>\u001b[39m\n              \u001b[36m<span\u001b[39m\n                \u001b[33mclass\u001b[39m=\u001b[32m\"leading-none text-center text-[10px]\"\u001b[39m\n              \u001b[36m>\u001b[39m\n                \u001b[0mPrompts\u001b[0m\n              \u001b[36m</span>\u001b[39m\n            \u001b[36m</button>\u001b[39m\n            \u001b[36m<button\u001b[39m\n              \u001b[33maria-label\u001b[39m=\u001b[32m\"Agents\"\u001b[39m\n              \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-[11px] font-medium transition-colors titlebar-no-drag text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground\"\u001b[39m\n              \u001b[33mtitle\u001b[39m=\u001b[32m\"Agents\"\u001b[39m\n              \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n            \u001b[36m>\u001b[39m\n              \u001b[36m<span\u001b[39m\n                \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n                \u001b[33mclass\u001b[39m=\u001b[32m\"flex h-9 w-9 items-center justify-center rounded-2xl bg-transparent\"\u001b[39m\n              \u001b[36m>\u001b[39m\n                \u001b[36m<svg\u001b[39m\n                  \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-bot h-5 w-5\"\u001b[39m\n                  \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n                  \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n                  \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n                  \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n                  \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n                  \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n                  \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n                  \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n                  \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n                \u001b[36m>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M12 8V4H8\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<rect\u001b[39m\n                    \u001b[33mheight\u001b[39m=\u001b[32m\"12\"\u001b[39m\n                    \u001b[33mrx\u001b[39m=\u001b[32m\"2\"\u001b[39m\n                    \u001b[33mwidth\u001b[39m=\u001b[32m\"16\"\u001b[39m\n                    \u001b[33mx\u001b[39m=\u001b[32m\"4\"\u001b[39m\n                    \u001b[33my\u001b[39m=\u001b[32m\"8\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M2 14h2\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M20 14h2\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M15 13v2\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M9 13v2\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                \u001b[36m</svg>\u001b[39m\n              \u001b[36m</span>\u001b[39m\n              \u001b[36m<span\u001b[39m\n                \u001b[33mclass\u001b[39m=\u001b[32m\"leading-none text-center text-[10px]\"\u001b[39m\n              \u001b[36m>\u001b[39m\n                \u001b[0mAgents\u001b[0m\n              \u001b[36m</span>\u001b[39m\n            \u001b[36m</button>\u001b[39m\n            \u001b[36m<button\u001b[39m\n              \u001b[33maria-label\u001b[39m=\u001b[32m\"Skills\"\u001b[39m\n              \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-[11px] font-medium transition-colors titlebar-no-drag bg-primary text-white shadow-sm\"\u001b[39m\n              \u001b[33mtitle\u001b[39m=\u001b[32m\"Skills\"\u001b[39m\n              \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n            \u001b[36m>\u001b[39m\n              \u001b[36m<span\u001b[39m\n                \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n                \u001b[33mclass\u001b[39m=\u001b[32m\"flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10\"\u001b[39m\n              \u001b[36m>\u001b[39m\n                \u001b[36m<svg\u001b[39m\n                  \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-cuboid h-5 w-5\"\u001b[39m\n                  \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n                  \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n                  \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n                  \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n                  \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n                  \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n                  \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n                  \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n                  \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n                \u001b[36m>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.07a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"M10 22v-8L2.25 9.15\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                  \u001b[36m<path\u001b[39m\n                    \u001b[33md\u001b[39m=\u001b[32m\"m10 14 11.77-6.87\"\u001b[39m\n                  \u001b[36m/>\u001b[39m\n                \u001b[36m</svg>\u001b[39m\n              \u001b[36m</span>\u001b[39m\n              \u001b[36m<span\u001b[39m\n                \u001b[33mclass\u001b[39m=\u001b[32m\"leading-none text-center text-[10px]...\n ❯ Object.getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19\n ❯ tests/unit/components/sidebar-skills.test.tsx:966:19\n    964|     fireEvent.click(screen.getByRole(\"button\", { name: /Skill Store/i …\n    965| \n    966|     expect(screen.getByTestId(\"skill-store-source-scroll\")).toBeInTheD…\n       |                   ^\n    967|     expect(useSkillStore.getState().selectedStoreSourceId).toBe(\"claud…\n    968|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯\n\n FAIL |unit|  tests/unit/components/sidebar-skills.test.tsx > Sidebar > keeps skill store sources expanded after switching to another skill section\nAssertionError: expected 'store' to be 'my-skills' // Object.is equality\n\nExpected: \"my-skills\"\nReceived: \"store\"\n\n ❯ tests/unit/components/sidebar-skills.test.tsx:1001:48\n    999|     fireEvent.click(screen.getByRole(\"button\", { name: /My Skills/i })…\n    1000| \n    1001|     expect(useSkillStore.getState().storeView).toBe(\"my-skills\");\n       |                                                ^\n    1002|     expect(\n    1003|       screen.getByRole(\"button\", { name: /Claude Code Store/i }),\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯\n\n FAIL |unit|  tests/unit/components/sidebar-skills.test.tsx > Sidebar > switches to the store view when a nested store source is clicked\nAssertionError: expected 'store' to be 'my-skills' // Object.is equality\n\nExpected: \"my-skills\"\nReceived: \"store\"\n\n ❯ tests/unit/components/sidebar-skills.test.tsx:1047:48\n    1045|     ).toBeInTheDocument();\n    1046|     fireEvent.click(screen.getByRole(\"button\", { name: /My Skills/i })…\n    1047|     expect(useSkillStore.getState().storeView).toBe(\"my-skills\");\n       |                                                ^\n    1048|     fireEvent.click(screen.getByRole(\"button\", { name: /Personal Store…\n    1049| \n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯\n\n Test Files  2 failed | 18 passed (20)\n      Tests  12 failed | 193 passed (205)\n   Start at  15:24:51\n   Duration  24.18s (transform 1.19s, setup 1.37s, collect 4.16s, tests 13.45s, environment 3.14s, prepare 424ms)\n\n",
+          "outputTruncated": true
+        },
+        {
+          "name": "integration",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "integration",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/integration/release-acceptance-prompts-ai-batch.test.tsx"
+          ],
+          "pid": 3283,
+          "startedAt": "2026-10-10T07:25:15.595Z",
+          "finishedAt": "2026-10-10T07:25:24.908Z",
+          "exitCode": 1,
+          "timedOut": false,
+          "output": "/body>\u001b[39m\n   ✓ Prompt batch action with real persistence > hydrates a summary before duplicating and serializes the full Prompt for sharing 1057ms\n   ✓ Prompt batch action with real persistence > persists successful batch tags and reports a missing selected prompt as partial failure 1761ms\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL |integration|  tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > does not report success or remove records when a confirmed deletion fails\nTestingLibraryElementError: Unable to find an accessible element with the role \"button\" and name \"Delete\"\n\nHere are the accessible roles:\n\n  alertdialog:\n\n  Name \"common.delete\":\n  \u001b[36m<div\u001b[39m\n    \u001b[33maria-describedby\u001b[39m=\u001b[32m\":r1:\"\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"common.delete\"\u001b[39m\n    \u001b[33maria-modal\u001b[39m=\u001b[32m\"true\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base\"\u001b[39m\n    \u001b[33mrole\u001b[39m=\u001b[32m\"alertdialog\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n  button:\n\n  Name \"Cancel\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg border border-border app-wallpaper-surface hover:bg-accent transition-colors text-sm font-medium disabled:opacity-50\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"common.delete\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n\nIgnored nodes: comments, script, style\n\u001b[36m<body>\u001b[39m\n  \u001b[36m<div />\u001b[39m\n  \u001b[36m<div />\u001b[39m\n  \u001b[36m<div\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"fixed inset-0 z-[99999] flex items-center justify-center p-4\"\u001b[39m\n  \u001b[36m>\u001b[39m\n    \u001b[36m<div\u001b[39m\n      \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"absolute inset-0 bg-background/60 backdrop-blur-sm\"\u001b[39m\n      \u001b[33mdata-testid\u001b[39m=\u001b[32m\"confirm-dialog-backdrop\"\u001b[39m\n      \u001b[33mrole\u001b[39m=\u001b[32m\"presentation\"\u001b[39m\n    \u001b[36m/>\u001b[39m\n    \u001b[36m<div\u001b[39m\n      \u001b[33maria-describedby\u001b[39m=\u001b[32m\":r1:\"\u001b[39m\n      \u001b[33maria-label\u001b[39m=\u001b[32m\"common.delete\"\u001b[39m\n      \u001b[33maria-modal\u001b[39m=\u001b[32m\"true\"\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base\"\u001b[39m\n      \u001b[33mrole\u001b[39m=\u001b[32m\"alertdialog\"\u001b[39m\n    \u001b[36m>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"flex justify-center mb-4\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[36m<div\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<svg\u001b[39m\n            \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-triangle-alert w-6 h-6 text-red-600 dark:text-red-400\"\u001b[39m\n            \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n            \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n            \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n            \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n            \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M12 9v4\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M12 17h.01\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n          \u001b[36m</svg>\u001b[39m\n        \u001b[36m</div>\u001b[39m\n      \u001b[36m</div>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"text-sm text-muted-foreground text-center mb-6\"\u001b[39m\n        \u001b[33mid\u001b[39m=\u001b[32m\":r1:\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[0mprompt.confirmBatchDelete\u001b[0m\n      \u001b[36m</div>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"flex gap-3\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg border border-border app-wallpaper-surface hover:bg-accent transition-colors text-sm font-medium disabled:opacity-50\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[0mCancel\u001b[0m\n        \u001b[36m</button>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[0mcommon.delete\u001b[0m\n        \u001b[36m</button>\u001b[39m\n      \u001b[36m</div>\u001b[39m\n    \u001b[36m</div>\u001b[39m\n  \u001b[36m</div>\u001b[39m\n\u001b[36m</body>\u001b[39m\n ❯ Object.getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19\n ❯ tests/integration/release-acceptance-prompts-ai-batch.test.tsx:155:28\n    153|     let deletion: Promise<void>;\n    154|     act(() => { deletion = result.current.handleBatchDelete([prompt.id…\n    155|     fireEvent.click(screen.getByRole(\"button\", { name: \"Delete\" }));\n       |                            ^\n    156|     await act(async () => deletion!);\n    157|     await reopen();\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯\n\n FAIL |integration|  tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists batch favorites, concrete folder moves and deletion of multiple prompts\nTestingLibraryElementError: Unable to find an accessible element with the role \"button\" and name \"Delete\"\n\nHere are the accessible roles:\n\n  alertdialog:\n\n  Name \"common.delete\":\n  \u001b[36m<div\u001b[39m\n    \u001b[33maria-describedby\u001b[39m=\u001b[32m\":r5:\"\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"common.delete\"\u001b[39m\n    \u001b[33maria-modal\u001b[39m=\u001b[32m\"true\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base\"\u001b[39m\n    \u001b[33mrole\u001b[39m=\u001b[32m\"alertdialog\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n  button:\n\n  Name \"Cancel\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg border border-border app-wallpaper-surface hover:bg-accent transition-colors text-sm font-medium disabled:opacity-50\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"common.delete\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n\nIgnored nodes: comments, script, style\n\u001b[36m<body>\u001b[39m\n  \u001b[36m<div />\u001b[39m\n  \u001b[36m<div />\u001b[39m\n  \u001b[36m<div\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"fixed inset-0 z-[99999] flex items-center justify-center p-4\"\u001b[39m\n  \u001b[36m>\u001b[39m\n    \u001b[36m<div\u001b[39m\n      \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"absolute inset-0 bg-background/60 backdrop-blur-sm\"\u001b[39m\n      \u001b[33mdata-testid\u001b[39m=\u001b[32m\"confirm-dialog-backdrop\"\u001b[39m\n      \u001b[33mrole\u001b[39m=\u001b[32m\"presentation\"\u001b[39m\n    \u001b[36m/>\u001b[39m\n    \u001b[36m<div\u001b[39m\n      \u001b[33maria-describedby\u001b[39m=\u001b[32m\":r5:\"\u001b[39m\n      \u001b[33maria-label\u001b[39m=\u001b[32m\"common.delete\"\u001b[39m\n      \u001b[33maria-modal\u001b[39m=\u001b[32m\"true\"\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base\"\u001b[39m\n      \u001b[33mrole\u001b[39m=\u001b[32m\"alertdialog\"\u001b[39m\n    \u001b[36m>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"flex justify-center mb-4\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[36m<div\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<svg\u001b[39m\n            \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-triangle-alert w-6 h-6 text-red-600 dark:text-red-400\"\u001b[39m\n            \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n            \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n            \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n            \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n            \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M12 9v4\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M12 17h.01\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n          \u001b[36m</svg>\u001b[39m\n        \u001b[36m</div>\u001b[39m\n      \u001b[36m</div>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"text-sm text-muted-foreground text-center mb-6\"\u001b[39m\n        \u001b[33mid\u001b[39m=\u001b[32m\":r5:\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[0mprompt.confirmBatchDelete\u001b[0m\n      \u001b[36m</div>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"flex gap-3\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg border border-border app-wallpaper-surface hover:bg-accent transition-colors text-sm font-medium disabled:opacity-50\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[0mCancel\u001b[0m\n        \u001b[36m</button>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"flex-1 h-10 px-4 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[0mcommon.delete\u001b[0m\n        \u001b[36m</button>\u001b[39m\n      \u001b[36m</div>\u001b[39m\n    \u001b[36m</div>\u001b[39m\n  \u001b[36m</div>\u001b[39m\n\u001b[36m</body>\u001b[39m\n ❯ Object.getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19\n ❯ tests/integration/release-acceptance-prompts-ai-batch.test.tsx:229:28\n    227|     expect(await promptApi.getAll()).toHaveLength(2);\n    228|     act(() => { deletion = result.current.handleBatchDelete(ids); });\n    229|     fireEvent.click(screen.getByRole(\"button\", { name: \"Delete\" }));\n       |                            ^\n    230|     await act(async () => deletion!);\n    231|     expect(nativeConfirm).not.toHaveBeenCalled();\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯\n\n Test Files  1 failed (1)\n      Tests  2 failed | 3 passed (5)\n   Start at  15:25:16\n   Duration  8.70s (transform 939ms, setup 26ms, collect 1.40s, tests 7.00s, environment 155ms, prepare 22ms)\n\n",
+          "outputTruncated": true
+        },
+        {
+          "name": "types",
+          "args": [
+            "typecheck:tests"
+          ],
+          "pid": 3315,
+          "startedAt": "2026-10-10T07:25:24.909Z",
+          "finishedAt": "2026-10-10T07:25:37.922Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "lint",
+          "args": [
+            "exec",
+            "eslint",
+            "src/renderer/App.tsx",
+            "src/renderer/components/ui/ConfirmDialog.tsx",
+            "src/renderer/components/ui/ConfirmationHost.tsx",
+            "src/renderer/components/ui/confirmation.ts",
+            "src/renderer/components/agent/AgentMcpAssetPanel.tsx",
+            "src/renderer/components/agent/AgentAppearancePanel.tsx",
+            "src/renderer/components/prompt/VersionHistoryModal.tsx",
+            "src/renderer/components/prompt/TagManagerModal.tsx",
+            "src/renderer/components/mcp/useMcpTargetActions.ts",
+            "src/renderer/components/settings/CloudAccountSettings.tsx",
+            "src/renderer/components/settings/AISettingsPrototype.tsx",
+            "src/renderer/components/settings/data-settings/useDataPathController.ts",
+            "src/renderer/components/settings/data-settings/DataSettingsDialogs.tsx",
+            "src/renderer/components/skill/useConfirmLeaveDirtySkillEditor.ts",
+            "src/renderer/components/layout/usePromptWorkspaceTreeActions.ts",
+            "src/renderer/components/layout/SidebarRail.tsx",
+            "src/renderer/components/layout/SidebarSkillPanel.tsx",
+            "src/renderer/components/layout/useSidebarResourceController.tsx",
+            "src/renderer/components/agent/AgentsSidebarPanel.tsx",
+            "tests/unit/components/confirmation-host.test.tsx",
+            "tests/unit/components/confirm-dialog.test.tsx",
+            "tests/unit/components/ai-settings-prototype.test.tsx",
+            "tests/unit/components/mcp-manager-detail-distribution.test.tsx",
+            "tests/unit/components/data-settings-paths-recovery.test.tsx",
+            "tests/unit/components/sidebar-rail-isolation.test.tsx",
+            "tests/unit/components/agent-workspace-resilience.test.tsx",
+            "tests/unit/services/browser-dialog-policy.test.ts",
+            "tests/integration/release-acceptance-prompts-ai-batch.test.tsx",
+            "--max-warnings",
+            "0"
+          ],
+          "pid": 3372,
+          "startedAt": "2026-10-10T07:25:37.923Z",
+          "finishedAt": "2026-10-10T07:25:38.934Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "",
+          "outputTruncated": false
+        }
+      ],
+      "repair-checks.json": [
+        {
+          "name": "unit-repair",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "unit",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/unit/components/confirm-dialog.test.tsx",
+            "tests/unit/components/sidebar-skills.test.tsx"
+          ],
+          "pid": 3712,
+          "startedAt": "2026-10-10T07:26:53.933Z",
+          "finishedAt": "2026-10-10T07:26:57.497Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstderr | tests/unit/components/sidebar-skills.test.tsx > Sidebar > keeps rendered sidebar actions non-submit with decorative icons hidden\nWarning: An update to SidebarWithPanel inside a test was not wrapped in act(...).\n\nWhen testing, code that causes React state updates should be wrapped into act(...):\n\nact(() => {\n  /* fire events that update state */\n});\n/* assert on the output */\n\nThis ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act\n    at SidebarWithPanel (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:10:44)\n    at Sidebar (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:18:16)\n    at form\n    at I18nextProvider (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/react-i18next@15.7.4_i18next@24.2.3_typescript@5.9.3__react-dom@18.3.1_react@18.3.1__react@18.3.1_typescript@5.9.3/node_modules/react-i18next/dist/es/I18nextProvider.js:4:3)\n    at Wrapper (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/helpers/i18n.tsx:62:22)\nWarning: An update to SidebarWithPanel inside a test was not wrapped in act(...).\n\nWhen testing, code that causes React state updates should be wrapped into act(...):\n\nact(() => {\n  /* fire events that update state */\n});\n/* assert on the output */\n\nThis ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act\n    at SidebarWithPanel (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:10:44)\n    at Sidebar (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:18:16)\n    at form\n    at I18nextProvider (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/react-i18next@15.7.4_i18next@24.2.3_typescript@5.9.3__react-dom@18.3.1_react@18.3.1__react@18.3.1_typescript@5.9.3/node_modules/react-i18next/dist/es/I18nextProvider.js:4:3)\n    at Wrapper (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/helpers/i18n.tsx:62:22)\nWarning: An update to SidebarWithPanel inside a test was not wrapped in act(...).\n\nWhen testing, code that causes React state updates should be wrapped into act(...):\n\nact(() => {\n  /* fire events that update state */\n});\n/* assert on the output */\n\nThis ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act\n    at SidebarWithPanel (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:10:44)\n    at Sidebar (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:18:16)\n    at form\n    at I18nextProvider (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/react-i18next@15.7.4_i18next@24.2.3_typescript@5.9.3__react-dom@18.3.1_react@18.3.1__react@18.3.1_typescript@5.9.3/node_modules/react-i18next/dist/es/I18nextProvider.js:4:3)\n    at Wrapper (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/helpers/i18n.tsx:62:22)\nWarning: An update to SidebarWithPanel inside a test was not wrapped in act(...).\n\nWhen testing, code that causes React state updates should be wrapped into act(...):\n\nact(() => {\n  /* fire events that update state */\n});\n/* assert on the output */\n\nThis ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act\n    at SidebarWithPanel (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:10:44)\n    at Sidebar (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:18:16)\n    at form\n    at I18nextProvider (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/react-i18next@15.7.4_i18next@24.2.3_typescript@5.9.3__react-dom@18.3.1_react@18.3.1__react@18.3.1_typescript@5.9.3/node_modules/react-i18next/dist/es/I18nextProvider.js:4:3)\n    at Wrapper (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/helpers/i18n.tsx:62:22)\nWarning: An update to SidebarWithPanel inside a test was not wrapped in act(...).\n\nWhen testing, code that causes React state updates should be wrapped into act(...):\n\nact(() => {\n  /* fire events that update state */\n});\n/* assert on the output */\n\nThis ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act\n    at SidebarWithPanel (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:10:44)\n    at Sidebar (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/Sidebar.tsx:18:16)\n    at form\n    at I18nextProvider (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/react-i18next@15.7.4_i18next@24.2.3_typescript@5.9.3__react-dom@18.3.1_react@18.3.1__react@18.3.1_typescript@5.9.3/node_modules/react-i18next/dist/es/I18nextProvider.js:4:3)\n    at Wrapper (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/helpers/i18n.tsx:62:22)\n\n ✓ |unit| tests/unit/components/sidebar-skills.test.tsx (21 tests) 964ms\n ✓ |unit| tests/unit/components/confirm-dialog.test.tsx (15 tests) 126ms\n\n Test Files  2 passed (2)\n      Tests  36 passed (36)\n   Start at  15:26:54\n   Duration  3.02s (transform 728ms, setup 207ms, collect 1.12s, tests 1.09s, environment 390ms, prepare 48ms)\n\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "integration-repair",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "integration",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/integration/release-acceptance-prompts-ai-batch.test.tsx"
+          ],
+          "pid": 3823,
+          "startedAt": "2026-10-10T07:26:57.497Z",
+          "finishedAt": "2026-10-10T07:27:06.391Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > does not report success or remove records when a confirmed deletion fails\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-bsJQ5X/profile/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-bsJQ5X/profile/data/prompthub.db\n\nstderr | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > does not report success or remove records when a confirmed deletion fails\nFailed to delete selected prompts: Error: Injected deletion failure\n    at Object.deletePrompt (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/integration/release-acceptance-prompts-ai-batch.test.tsx:146:41)\n    at batchDeletePrompts (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/usePromptWorkspaceTreeActions.ts:226:38)\n    at Object.handleBatchDelete (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/layout/usePromptWorkspaceTreeActions.ts:182:9)\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > does not report success or remove records when a confirmed deletion fails\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-bsJQ5X/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > PA-03: moving selected prompts to root clears their folder after reopening\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-zoFOUS/profile/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-zoFOUS/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > PA-03: moving selected prompts to root clears their folder after reopening\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-zoFOUS/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists batch favorites, concrete folder moves and deletion of multiple prompts\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-I3GuGP/profile/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-I3GuGP/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists batch favorites, concrete folder moves and deletion of multiple prompts\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-I3GuGP/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists batch favorites, concrete folder moves and deletion of multiple prompts\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-I3GuGP/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > hydrates a summary before duplicating and serializes the full Prompt for sharing\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-8YxYE8/profile/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-8YxYE8/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > hydrates a summary before duplicating and serializes the full Prompt for sharing\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-8YxYE8/profile/data/prompthub.db\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists successful batch tags and reports a missing selected prompt as partial failure\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-25qxnx/profile/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-25qxnx/profile/data/prompthub.db\n\nstderr | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists successful batch tags and reports a missing selected prompt as partial failure\nFailed to update prompt tags Error: Prompt not found: missing-prompt\n    at Module.updatePrompt (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/database.ts:81:11)\n    at updatePrompt (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/integration/release-acceptance-prompts-ai-batch.test.tsx:317:9)\n    at applyTagsToSelection (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/prompt/QuickTagModal.tsx:89:9)\n    at handleAddTag (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/prompt/QuickTagModal.tsx:152:5)\n\nstderr | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists successful batch tags and reports a missing selected prompt as partial failure\nFailed to update prompt tags Error: Prompt not found: missing-prompt\n    at Module.updatePrompt (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/database.ts:81:11)\n    at updatePrompt (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/integration/release-acceptance-prompts-ai-batch.test.tsx:317:9)\n    at applyTagsToSelection (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/prompt/QuickTagModal.tsx:89:9)\n    at handleRemoveTag (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/prompt/QuickTagModal.tsx:158:5)\n\nstdout | tests/integration/release-acceptance-prompts-ai-batch.test.tsx > Prompt batch action with real persistence > persists successful batch tags and reports a missing selected prompt as partial failure\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-skill-functional-25qxnx/profile/data/prompthub.db\n\n ✓ |integration| tests/integration/release-acceptance-prompts-ai-batch.test.tsx (5 tests) 6836ms\n   ✓ Prompt batch action with real persistence > does not report success or remove records when a confirmed deletion fails 1013ms\n   ✓ Prompt batch action with real persistence > PA-03: moving selected prompts to root clears their folder after reopening 1263ms\n   ✓ Prompt batch action with real persistence > persists batch favorites, concrete folder moves and deletion of multiple prompts 2046ms\n   ✓ Prompt batch action with real persistence > hydrates a summary before duplicating and serializes the full Prompt for sharing 961ms\n   ✓ Prompt batch action with real persistence > persists successful batch tags and reports a missing selected prompt as partial failure 1552ms\n\n Test Files  1 passed (1)\n      Tests  5 passed (5)\n   Start at  15:26:57\n   Duration  8.45s (transform 902ms, setup 22ms, collect 1.35s, tests 6.84s, environment 141ms, prepare 21ms)\n\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "repair-types",
+          "args": [
+            "typecheck:tests"
+          ],
+          "pid": 4052,
+          "startedAt": "2026-10-10T07:27:06.392Z",
+          "finishedAt": "2026-10-10T07:27:20.976Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "repair-lint",
+          "args": [
+            "exec",
+            "eslint",
+            "tests/unit/components/confirm-dialog.test.tsx",
+            "tests/unit/components/sidebar-skills.test.tsx",
+            "tests/integration/release-acceptance-prompts-ai-batch.test.tsx",
+            "--max-warnings",
+            "0"
+          ],
+          "pid": 4132,
+          "startedAt": "2026-10-10T07:27:20.976Z",
+          "finishedAt": "2026-10-10T07:27:21.822Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "",
+          "outputTruncated": false
+        }
+      ],
+      "final-checks.json": [
+        {
+          "name": "final-confirmation",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "unit",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/unit/components/confirm-dialog.test.tsx",
+            "tests/unit/components/confirmation-host.test.tsx",
+            "tests/unit/components/prompt-delete-lifecycle.test.tsx"
+          ],
+          "pid": 4539,
+          "startedAt": "2026-10-10T07:29:32.775Z",
+          "finishedAt": "2026-10-10T07:29:35.839Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/confirm-dialog.test.tsx (16 tests) 129ms\n ✓ |unit| tests/unit/components/prompt-delete-lifecycle.test.tsx (3 tests) 409ms\n ✓ |unit| tests/unit/components/confirmation-host.test.tsx (2 tests) 70ms\n\n Test Files  3 passed (3)\n      Tests  21 passed (21)\n   Start at  15:29:33\n   Duration  2.50s (transform 456ms, setup 245ms, collect 825ms, tests 608ms, environment 516ms, prepare 67ms)\n\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "final-types",
+          "args": [
+            "typecheck:tests"
+          ],
+          "pid": 4561,
+          "startedAt": "2026-10-10T07:29:35.839Z",
+          "finishedAt": "2026-10-10T07:29:48.397Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "final-lint",
+          "args": [
+            "exec",
+            "eslint",
+            "src/renderer/components/ui/ConfirmDialog.tsx",
+            "tests/unit/components/confirm-dialog.test.tsx",
+            "--max-warnings",
+            "0"
+          ],
+          "pid": 4608,
+          "startedAt": "2026-10-10T07:29:48.397Z",
+          "finishedAt": "2026-10-10T07:29:49.146Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "",
+          "outputTruncated": false
+        },
+        {
+          "name": "build-analysis",
+          "args": [
+            "build:analyze"
+          ],
+          "cwd": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop",
+          "pid": 4615,
+          "startedAt": "2026-10-10T07:29:49.146Z",
+          "finishedAt": "2026-10-10T07:30:00.453Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "heckbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-DwhDAW7H.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-zF6UZRs4.js      1.57 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-CUp3UXfb.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-BwGY7ZKE.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-CGDdEywP.js          2.26 kB │ gzip:   0.90 kB\nout/renderer/assets/agent.store-1DCwCNTE.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-DI6kZg15.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-D9I-ylWW.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-KhoFDcQj.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-DaYUQePA.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-Bg_ENt-C.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-D-LXZloO.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-BWygDZcS.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-DX4KylEj.js                        4.48 kB │ gzip:   1.63 kB\nout/renderer/assets/SkillBatchTagDialog-BNBGIt1H.js                4.48 kB │ gzip:   1.85 kB\nout/renderer/assets/quick-add-utils-De7oxcIO.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-owdPXpb1.js                      4.95 kB │ gzip:   2.03 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-DA5NsX8c.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-Be86UHGM.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-CIho_JZF.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-BdMtuLzQ.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-rKWLgz6U.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-BlUr3CFP.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-lSL_1eFJ.js           6.66 kB │ gzip:   2.18 kB\nout/renderer/assets/CLISettings-CjjeSN35.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-CwMvpIi6.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-Cj7MtWnU.js                  8.65 kB │ gzip:   3.64 kB\nout/renderer/assets/useSkillPackageInstall-CZHWUKyt.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-DR5OeeQU.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-DYRGhzp-.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-CdZ00WW3.js                  9.10 kB │ gzip:   2.90 kB\nout/renderer/assets/SkillListView-oBZBxNcR.js                      9.53 kB │ gzip:   3.94 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-Cu_fdt8u.js         10.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SettingsPage-DiG_NC9x.js                      10.23 kB │ gzip:   3.16 kB\nout/renderer/assets/QuickAddModal-A8DzVLNH.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-DqRByqA6.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-B3ZSYI0Z.js                    11.54 kB │ gzip:   4.05 kB\nout/renderer/assets/AboutSettings-DuwaZDtT.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-BiuLZWX3.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-OVxR9Car.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-BiX1O00n.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-DCP_JZPS.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-CVK5O-tF.js           13.35 kB │ gzip:   3.91 kB\nout/renderer/assets/PromptDetailModal-Dnq28CMo.js                 13.80 kB │ gzip:   4.02 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-CkqUxJMk.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-1_GgY1cP.js                   14.08 kB │ gzip:   4.87 kB\nout/renderer/assets/index-Cr3kK9K_.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-M6wFhK4f.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptSourceNotesFields-CtCYKv_c.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/PromptKanbanView-BRxz_g6Z.js                  14.80 kB │ gzip:   4.98 kB\nout/renderer/assets/VersionHistoryModal-DnJsLnVF.js               15.62 kB │ gzip:   4.56 kB\nout/renderer/assets/DataSettingsDialogs-207CWy1c.js               17.62 kB │ gzip:   4.85 kB\nout/renderer/assets/AppearanceSettings-mO7Yqkn4.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-Dqb87XYa.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-aDLhGFXS.js           19.43 kB │ gzip:   6.71 kB\nout/renderer/assets/CloudAccountSettings-BoXaKS6m.js              20.46 kB │ gzip:   4.38 kB\nout/renderer/assets/SkillAgentsView-CpHqyFIz.js                   20.87 kB │ gzip:   5.85 kB\nout/renderer/assets/CreatePromptModal-CEuSZCvV.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-DFDsg1hH.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-CpeRr85t.js                   24.09 kB │ gzip:   7.18 kB\nout/renderer/assets/index-hCB6F_ua.js                             26.53 kB │ gzip:   8.82 kB\nout/renderer/assets/AgentAppearancePanel-B45Ssl-L.js              26.83 kB │ gzip:   6.99 kB\nout/renderer/assets/index-C99zx2BE.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-jd72OnvO.js                       28.09 kB │ gzip:   7.93 kB\nout/renderer/assets/SkillProjectsView-kzAHdwR4.js                 28.87 kB │ gzip:   7.85 kB\nout/renderer/assets/index-BV6bPWz9.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/EditPromptModal-CG1hoEoV.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-DbWV3sV1.js                     32.33 kB │ gzip:   7.27 kB\nout/renderer/assets/ai-CJJgImBL.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-flG74n9Q.js                35.82 kB │ gzip:  10.92 kB\nout/renderer/assets/RulesManager-VQUzf5vK.js                      35.98 kB │ gzip:   9.28 kB\nout/renderer/assets/AgentSessionsPanel-C-8TDwzH.js                42.57 kB │ gzip:  11.53 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-nm_a0f_O.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-ygDWZw_s.js                             44.36 kB │ gzip:  15.42 kB\nout/renderer/assets/index-DjI2cOV-.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-ChX5REr7.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-uv4ftTXM.js                      55.71 kB │ gzip:  16.53 kB\nout/renderer/assets/AgentAssetsWorkspace-D3XonKlh.js              56.29 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-WIE4yuQV.js          56.84 kB │ gzip:  14.81 kB\nout/renderer/assets/webdav-save-sync-BAr2NAzW.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-l4ueOSLy.js                  63.09 kB │ gzip:  15.54 kB\nout/renderer/assets/AISettingsPrototype-DTirKjSg.js               67.71 kB │ gzip:  14.00 kB\nout/renderer/assets/DataSettings-Dz50PNBa.js                      71.00 kB │ gzip:  15.63 kB\nout/renderer/assets/index-CtK_lIT9.js                             84.84 kB │ gzip:  32.74 kB\nout/renderer/assets/AgentProviderModelWorkbench-C1yXDB9E.js       88.96 kB │ gzip:  19.22 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-Xlm2n4k5.js              92.93 kB │ gzip:  22.53 kB\nout/renderer/assets/SkillStore-DIhFpfJw.js                       105.35 kB │ gzip:  30.37 kB\nout/renderer/assets/index-aibZQoj5.js                            113.01 kB │ gzip:  33.50 kB\nout/renderer/assets/SkillFullDetailPage-LB7d4Mf6.js              115.31 kB │ gzip:  28.63 kB\nout/renderer/assets/PluginManager-BeGn1syT.js                    119.13 kB │ gzip:  25.67 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-CjF1wwAn.js                       158.58 kB │ gzip:  36.12 kB\nout/renderer/assets/PromptGraphView-C0Zh9xpw.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-BskbL6uu.js                            214.32 kB │ gzip:  71.17 kB\nout/renderer/assets/zh-BTwuLuZa.js                               215.24 kB │ gzip:  70.84 kB\nout/renderer/assets/en-V35uq_hQ.js                               221.22 kB │ gzip:  65.80 kB\nout/renderer/assets/de-DIG_Tyq6.js                               244.91 kB │ gzip:  73.38 kB\nout/renderer/assets/es-C0xx6IYn.js                               244.93 kB │ gzip:  72.35 kB\nout/renderer/assets/fr-KketBk5S.js                               251.61 kB │ gzip:  73.86 kB\nout/renderer/assets/App-BTX9FHZe.js                              254.18 kB │ gzip:  77.94 kB\nout/renderer/assets/ja-Oevuaxru.js                               276.31 kB │ gzip:  75.78 kB\nout/renderer/assets/AppWorkspaceShell-Bmp6QGCG.js                312.42 kB │ gzip:  79.59 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-B-biFF3i.js                  372.90 kB │ gzip: 121.13 kB\n✓ built in 9.36s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 1.54s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 36ms\n",
+          "outputTruncated": true
+        },
+        {
+          "name": "bundle-budget",
+          "args": [
+            "bundle:budget"
+          ],
+          "cwd": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop",
+          "pid": 4654,
+          "startedAt": "2026-10-10T07:30:00.453Z",
+          "finishedAt": "2026-10-10T07:30:00.743Z",
+          "exitCode": 1,
+          "timedOut": false,
+          "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.71 KB gzip (budget 150.00 KB) — assets/index-aibZQoj5.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.08 KB gzip (budget 6.00 KB) — assets/SettingsPage-DiG_NC9x.js\n  ✗ settings data section: 15.27 KB gzip (budget 15.00 KB) — assets/DataSettings-Dz50PNBa.js\n  ✓ settings ai section: 13.67 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-DTirKjSg.js\n  ✓ settings skill section: 7.10 KB gzip (budget 10.00 KB) — assets/SkillSettings-DbWV3sV1.js\n  ✓ app route coordinator: 76.11 KB gzip (budget 80.00 KB) — assets/App-BTX9FHZe.js\n  ✓ app workspace shell: 77.73 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-Bmp6QGCG.js\n  ✓ agent workspace coordinator: 4.76 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-1_GgY1cP.js\n  ✓ agent provider workbench: 18.77 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-C1yXDB9E.js\n  ✓ agent assets workspace: 14.82 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-D3XonKlh.js\n  ✓ agent sessions panel: 11.26 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-C-8TDwzH.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-nm_a0f_O.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.39 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-BJ5wjxaf.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n",
+          "outputTruncated": false
+        }
+      ],
+      "completion-checks.json": [
+        {
+          "name": "gallery-selection",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "unit",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/unit/components/prompt-gallery-view.test.tsx"
+          ],
+          "pid": 5104,
+          "startedAt": "2026-10-10T07:31:44.908Z",
+          "finishedAt": "2026-10-10T07:31:46.865Z",
+          "exitCode": 1,
+          "timedOut": false,
+          "output": "tch Move\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Batch Delete\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Batch Delete\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"w-8 h-8 flex items-center justify-center rounded-lg border transition-colors border-destructive/30 text-destructive hover:bg-destructive/10\"\u001b[39m\n    \u001b[33mtitle\u001b[39m=\u001b[32m\"Batch Delete\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Clear Selection\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Clear Selection\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors\"\u001b[39m\n    \u001b[33mtitle\u001b[39m=\u001b[32m\"Clear Selection\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Batch Alpha\":\n  \u001b[36m<div\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Batch Alpha\"\u001b[39m\n    \u001b[33maria-pressed\u001b[39m=\u001b[32m\"true\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"group relative flex flex-col app-wallpaper-panel rounded-xl overflow-hidden border transition-all duration-smooth hover:shadow-lg hover:-translate-y-1 cursor-pointer h-full border-primary ring-2 ring-primary/40\"\u001b[39m\n    \u001b[33mrole\u001b[39m=\u001b[32m\"button\"\u001b[39m\n    \u001b[33mtabindex\u001b[39m=\u001b[32m\"0\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Add to Favorites\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Add to Favorites\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"p-1.5 rounded-full backdrop-blur-md bg-black/20 hover:bg-black/40 transition-colors text-white\"\u001b[39m\n    \u001b[33mtitle\u001b[39m=\u001b[32m\"Add to Favorites\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Batch Beta\":\n  \u001b[36m<div\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Batch Beta\"\u001b[39m\n    \u001b[33maria-pressed\u001b[39m=\u001b[32m\"true\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"group relative flex flex-col app-wallpaper-panel rounded-xl overflow-hidden border transition-all duration-smooth hover:shadow-lg hover:-translate-y-1 cursor-pointer h-full border-primary ring-2 ring-primary/40\"\u001b[39m\n    \u001b[33mrole\u001b[39m=\u001b[32m\"button\"\u001b[39m\n    \u001b[33mtabindex\u001b[39m=\u001b[32m\"0\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Add to Favorites\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Add to Favorites\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"p-1.5 rounded-full backdrop-blur-md bg-black/20 hover:bg-black/40 transition-colors text-white\"\u001b[39m\n    \u001b[33mtitle\u001b[39m=\u001b[32m\"Add to Favorites\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n  checkbox:\n\n  Name \"Deselect Batch Alpha\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33maria-checked\u001b[39m=\u001b[32m\"true\"\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Deselect Batch Alpha\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"absolute top-2 left-2 z-10 w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center transition-all bg-primary border-primary text-white opacity-100\"\u001b[39m\n    \u001b[33mrole\u001b[39m=\u001b[32m\"checkbox\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Deselect Batch Beta\":\n  \u001b[36m<button\u001b[39m\n    \u001b[33maria-checked\u001b[39m=\u001b[32m\"true\"\u001b[39m\n    \u001b[33maria-label\u001b[39m=\u001b[32m\"Deselect Batch Beta\"\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"absolute top-2 left-2 z-10 w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center transition-all bg-primary border-primary text-white opacity-100\"\u001b[39m\n    \u001b[33mrole\u001b[39m=\u001b[32m\"checkbox\"\u001b[39m\n    \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n  heading:\n\n  Name \"Batch Alpha\":\n  \u001b[36m<h3\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"font-semibold text-sm leading-snug break-words whitespace-pre-wrap\"\u001b[39m\n    \u001b[33mtitle\u001b[39m=\u001b[32m\"Batch Alpha\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  Name \"Batch Beta\":\n  \u001b[36m<h3\u001b[39m\n    \u001b[33mclass\u001b[39m=\u001b[32m\"font-semibold text-sm leading-snug break-words whitespace-pre-wrap\"\u001b[39m\n    \u001b[33mtitle\u001b[39m=\u001b[32m\"Batch Beta\"\u001b[39m\n  \u001b[36m/>\u001b[39m\n\n  --------------------------------------------------\n\nIgnored nodes: comments, script, style\n\u001b[36m<body>\u001b[39m\n  \u001b[36m<div>\u001b[39m\n    \u001b[36m<div\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-nowrap items-center gap-2 px-3 py-1.5\"\u001b[39m\n    \u001b[36m>\u001b[39m\n      \u001b[36m<span\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"text-xs text-primary font-medium whitespace-nowrap\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[0m2 of 2 selected\u001b[0m\n      \u001b[36m</span>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"flex items-center gap-1.5 ml-auto flex-nowrap\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33maria-label\u001b[39m=\u001b[32m\"Tags\"\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"w-8 h-8 flex items-center justify-center rounded-lg border transition-colors border-primary/30 text-primary hover:bg-primary/10\"\u001b[39m\n          \u001b[33mtitle\u001b[39m=\u001b[32m\"Tags\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<svg\u001b[39m\n            \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-tags w-4 h-4\"\u001b[39m\n            \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n            \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n            \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n            \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n            \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<circle\u001b[39m\n              \u001b[33mcx\u001b[39m=\u001b[32m\"6.5\"\u001b[39m\n              \u001b[33mcy\u001b[39m=\u001b[32m\"9.5\"\u001b[39m\n              \u001b[33mfill\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n              \u001b[33mr\u001b[39m=\u001b[32m\".5\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n          \u001b[36m</svg>\u001b[39m\n        \u001b[36m</button>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33maria-label\u001b[39m=\u001b[32m\"Batch Favorite\"\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"w-8 h-8 flex items-center justify-center rounded-lg border transition-colors border-yellow-500/30 text-yellow-600 dark:text-yellow-500 hover:bg-yellow-500/10\"\u001b[39m\n          \u001b[33mtitle\u001b[39m=\u001b[32m\"Batch Favorite\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<svg\u001b[39m\n            \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-star w-4 h-4\"\u001b[39m\n            \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n            \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n            \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n            \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n            \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n          \u001b[36m</svg>\u001b[39m\n        \u001b[36m</button>\u001b[39m\n        \u001b[36m<div\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"relative\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<button\u001b[39m\n            \u001b[33maria-expanded\u001b[39m=\u001b[32m\"false\"\u001b[39m\n            \u001b[33maria-label\u001b[39m=\u001b[32m\"Batch Move\"\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"w-8 h-8 flex items-center justify-center rounded-lg border transition-colors border-primary/30 text-primary hover:bg-primary/10\"\u001b[39m\n            \u001b[33mtitle\u001b[39m=\u001b[32m\"Batch Move\"\u001b[39m\n            \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<svg\u001b[39m\n              \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n              \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-folder w-4 h-4\"\u001b[39m\n              \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n              \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n              \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n              \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n              \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n              \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n              \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n              \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n              \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n            \u001b[36m>\u001b[39m\n              \u001b[36m<path\u001b[39m\n                \u001b[33md\u001b[39m=\u001b[32m\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"\u001b[39m\n              \u001b[36m/>\u001b[39m\n            \u001b[36m</svg>\u001b[39m\n          \u001b[36m</button>\u001b[39m\n        \u001b[36m</div>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33maria-label\u001b[39m=\u001b[32m\"Batch Delete\"\u001b[39m\n          \u001b[33mclass\u001b[39m=\u001b[32m\"w-8 h-8 flex items-center justify-center rounded-lg border transition-colors border-destructive/30 text-destructive hover:bg-destructive/10\"\u001b[39m\n          \u001b[33mtitle\u001b[39m=\u001b[32m\"Batch Delete\"\u001b[39m\n          \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n        \u001b[36m>\u001b[39m\n          \u001b[36m<svg\u001b[39m\n            \u001b[33maria-hidden\u001b[39m=\u001b[32m\"true\"\u001b[39m\n            \u001b[33mclass\u001b[39m=\u001b[32m\"lucide lucide-trash2 w-4 h-4\"\u001b[39m\n            \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n            \u001b[33mheight\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mstroke\u001b[39m=\u001b[32m\"currentColor\"\u001b[39m\n            \u001b[33mstroke-linecap\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-linejoin\u001b[39m=\u001b[32m\"round\"\u001b[39m\n            \u001b[33mstroke-width\u001b[39m=\u001b[32m\"2\"\u001b[39m\n            \u001b[33mviewBox\u001b[39m=\u001b[32m\"0 0 24 24\"\u001b[39m\n            \u001b[33mwidth\u001b[39m=\u001b[32m\"24\"\u001b[39m\n            \u001b[33mxmlns\u001b[39m=\u001b[32m\"http://www.w3.org/2000/svg\"\u001b[39m\n          \u001b[36m>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M3 6h18\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<path\u001b[39m\n              \u001b[33md\u001b[39m=\u001b[32m\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<line\u001b[39m\n              \u001b[33mx1\u001b[39m=\u001b[32m\"10\"\u001b[39m\n              \u001b[33mx2\u001b[39m=\u001b[32m\"10\"\u001b[39m\n              \u001b[33my1\u001b[39m=\u001b[32m\"11\"\u001b[39m\n              \u001b[33my2\u001b[39m=\u001b[32m\"17\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n            \u001b[36m<line\u001b[39m\n              \u001b[33mx1\u001b[39m=\u001b[32m\"14\"\u001b[39m\n              \u001b[33mx2\u001b[39m=\u001b[32m\"14\"\u001b[39m\n              \u001b[33my1\u001b[39m=\u001b[32m\"11\"\u001b[39m\n              \u001b[33my2\u001b[39m=\u001b[32m\"17\"\u001b[39m\n            \u001b[36m/>\u001b[39m\n          \u001b[36m</svg>\u001b[39m\n        \u001b[36m</button>\u001b[39m\n        \u001b[36m<button\u001b[39m\n          \u001b[33mar...\n ❯ Object.getElementError ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17\n ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19\n ❯ tests/unit/components/prompt-gallery-view.test.tsx:347:19\n    345|     expect(onBatchDelete).toHaveBeenCalledWith([\"gb-1\", \"gb-2\"]);\n    346|     expect(screen.getByText(\"2 of 2 selected\")).toBeInTheDocument();\n    347|     expect(screen.getByRole(\"checkbox\", { name: \"Select Batch Alpha\" }…\n       |                   ^\n    348| \n    349|     fireEvent.click(screen.getByRole(\"button\", { name: \"Batch Favorite…\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n Test Files  1 failed (1)\n      Tests  1 failed | 9 passed (10)\n   Start at  15:31:45\n   Duration  1.29s (transform 381ms, setup 123ms, collect 519ms, tests 304ms, environment 241ms, prepare 25ms)\n\n",
+          "outputTruncated": true
+        },
+        {
+          "name": "gallery-lint",
+          "args": [
+            "exec",
+            "eslint",
+            "src/renderer/components/prompt/PromptGalleryView.tsx",
+            "src/renderer/components/prompt/usePromptBatchSelection.ts",
+            "tests/unit/components/prompt-gallery-view.test.tsx",
+            "--max-warnings",
+            "0"
+          ],
+          "pid": 5120,
+          "startedAt": "2026-10-10T07:31:46.865Z",
+          "finishedAt": "2026-10-10T07:31:47.602Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "",
+          "outputTruncated": false
+        },
+        {
+          "name": "final-build-analysis",
+          "args": [
+            "build:analyze"
+          ],
+          "cwd": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop",
+          "pid": 5132,
+          "startedAt": "2026-10-10T07:31:47.602Z",
+          "finishedAt": "2026-10-10T07:31:58.554Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "heckbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-OJIe3xdP.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-BHJQgou3.js      1.57 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-x2GNMGdT.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-CduKZPsX.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-CoCAmrIx.js          2.26 kB │ gzip:   0.90 kB\nout/renderer/assets/agent.store-BMHmDjuo.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-DXDqO-WE.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-DKjnRtV3.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-Dpgmj1DA.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-Cnkcbl7_.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-CDbgvHEA.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-_XZflRFQ.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-Dtqg68M7.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-B_dDp-91.js                        4.48 kB │ gzip:   1.63 kB\nout/renderer/assets/SkillBatchTagDialog-BKmQ4xFa.js                4.48 kB │ gzip:   1.85 kB\nout/renderer/assets/quick-add-utils-XhMBTr-D.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-Bi1P2foL.js                      4.95 kB │ gzip:   2.02 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-C0BY0Xe1.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-CSv3Dtvq.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-BNERWnff.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-sjdpnz6C.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-BvZ1sHA1.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-BY_TCsQ8.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-D7O-cc4u.js           6.66 kB │ gzip:   2.19 kB\nout/renderer/assets/CLISettings-D_NSSMht.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-DrykHhjd.js                  7.37 kB │ gzip:   2.34 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-839gvOjN.js                  8.64 kB │ gzip:   3.64 kB\nout/renderer/assets/useSkillPackageInstall-iFld1DF3.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-dtYDhjd-.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-DaL2qHqa.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-B5_q5gKB.js                  9.10 kB │ gzip:   2.90 kB\nout/renderer/assets/SkillListView-YOr6QceW.js                      9.53 kB │ gzip:   3.94 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-BJeM8ECc.js         10.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SettingsPage-DV59c48e.js                      10.23 kB │ gzip:   3.16 kB\nout/renderer/assets/QuickAddModal-wNDEjJQu.js                     10.49 kB │ gzip:   3.67 kB\nout/renderer/assets/AgentDefinitionsPanel-Ch2dCKhD.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-zlOedw2i.js                    11.54 kB │ gzip:   4.04 kB\nout/renderer/assets/AboutSettings-CpjiLUfJ.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-DpMrA5xu.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-BmshYLpR.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-Cfm9KUeM.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-D8PqkR_R.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-DP--npAR.js           13.35 kB │ gzip:   3.92 kB\nout/renderer/assets/PromptDetailModal-RYwZzNn9.js                 13.80 kB │ gzip:   4.02 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-BDTiL8hV.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-CHJewM_D.js                   14.08 kB │ gzip:   4.87 kB\nout/renderer/assets/index-BVk80RkM.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-BECW7kEN.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptSourceNotesFields-RpsAfTsV.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/PromptKanbanView-DliESAPu.js                  14.80 kB │ gzip:   4.97 kB\nout/renderer/assets/VersionHistoryModal-CRKmvBcX.js               15.62 kB │ gzip:   4.56 kB\nout/renderer/assets/DataSettingsDialogs-CfxiFBHK.js               17.62 kB │ gzip:   4.85 kB\nout/renderer/assets/AppearanceSettings-B35vFozI.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-BxVWZfxH.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-CBYU-rEX.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-bAbKzqrw.js              20.46 kB │ gzip:   4.37 kB\nout/renderer/assets/SkillAgentsView-DStrjz09.js                   20.87 kB │ gzip:   5.85 kB\nout/renderer/assets/CreatePromptModal-Cx0iQc9z.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-CWagczQI.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-D6ZCih1h.js                   24.09 kB │ gzip:   7.18 kB\nout/renderer/assets/index-BEW5SIyE.js                             26.53 kB │ gzip:   8.83 kB\nout/renderer/assets/AgentAppearancePanel-5UOcDvZE.js              26.83 kB │ gzip:   7.00 kB\nout/renderer/assets/index-CmuJtAut.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-BvniEsiN.js                       28.09 kB │ gzip:   7.93 kB\nout/renderer/assets/SkillProjectsView-D9Rw4tOx.js                 28.87 kB │ gzip:   7.84 kB\nout/renderer/assets/index-BPfspAy6.js                             28.89 kB │ gzip:  11.49 kB\nout/renderer/assets/EditPromptModal-BXdy-LAJ.js                   31.58 kB │ gzip:   8.75 kB\nout/renderer/assets/SkillSettings-B68snr6m.js                     32.33 kB │ gzip:   7.27 kB\nout/renderer/assets/ai-DjX7TpPv.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-BCiig-GO.js                35.82 kB │ gzip:  10.92 kB\nout/renderer/assets/RulesManager-BvQqHIvi.js                      35.98 kB │ gzip:   9.28 kB\nout/renderer/assets/AgentSessionsPanel-DdhtQKGK.js                42.57 kB │ gzip:  11.53 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-Dgt387D0.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-BHz2OsST.js                             44.36 kB │ gzip:  15.41 kB\nout/renderer/assets/index-HskDmGtw.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-CsJqPIET.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-Bw2uPLN7.js                      55.71 kB │ gzip:  16.52 kB\nout/renderer/assets/AgentAssetsWorkspace-DEMHrI_v.js              56.29 kB │ gzip:  15.17 kB\nout/renderer/assets/ImageGenerationWorkbench-B_wRSyz0.js          56.84 kB │ gzip:  14.81 kB\nout/renderer/assets/webdav-save-sync-CBkyY8z8.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-PafcnO5I.js                  63.09 kB │ gzip:  15.54 kB\nout/renderer/assets/AISettingsPrototype-TDrEsLBT.js               67.71 kB │ gzip:  14.00 kB\nout/renderer/assets/DataSettings-BsKds0k0.js                      71.00 kB │ gzip:  15.63 kB\nout/renderer/assets/index-DjhL42eR.js                             84.84 kB │ gzip:  32.74 kB\nout/renderer/assets/AgentProviderModelWorkbench-Czv1bEif.js       88.96 kB │ gzip:  19.22 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-BMDoUJlZ.js              92.93 kB │ gzip:  22.53 kB\nout/renderer/assets/SkillStore-DHYSG0Ag.js                       105.35 kB │ gzip:  30.37 kB\nout/renderer/assets/index-B1pN953z.js                            113.01 kB │ gzip:  33.49 kB\nout/renderer/assets/SkillFullDetailPage-DZxe1OSD.js              115.31 kB │ gzip:  28.63 kB\nout/renderer/assets/PluginManager-CftbkFLR.js                    119.13 kB │ gzip:  25.67 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-Bw3JBChi.js                       158.58 kB │ gzip:  36.11 kB\nout/renderer/assets/PromptGraphView-vKMOLqRA.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-BskbL6uu.js                            214.32 kB │ gzip:  71.17 kB\nout/renderer/assets/zh-BTwuLuZa.js                               215.24 kB │ gzip:  70.84 kB\nout/renderer/assets/en-V35uq_hQ.js                               221.22 kB │ gzip:  65.80 kB\nout/renderer/assets/de-DIG_Tyq6.js                               244.91 kB │ gzip:  73.38 kB\nout/renderer/assets/es-C0xx6IYn.js                               244.93 kB │ gzip:  72.35 kB\nout/renderer/assets/fr-KketBk5S.js                               251.61 kB │ gzip:  73.86 kB\nout/renderer/assets/App-CcxIWV_o.js                              254.18 kB │ gzip:  77.93 kB\nout/renderer/assets/ja-Oevuaxru.js                               276.31 kB │ gzip:  75.78 kB\nout/renderer/assets/AppWorkspaceShell-TdbGAMSR.js                312.42 kB │ gzip:  79.58 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-BR2Vv4s1.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 8.88s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 1.67s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 34ms\n",
+          "outputTruncated": true
+        },
+        {
+          "name": "final-bundle-budget",
+          "args": [
+            "bundle:budget"
+          ],
+          "cwd": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop",
+          "pid": 5197,
+          "startedAt": "2026-10-10T07:31:58.554Z",
+          "finishedAt": "2026-10-10T07:31:58.877Z",
+          "exitCode": 1,
+          "timedOut": false,
+          "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8/candidate/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.71 KB gzip (budget 150.00 KB) — assets/index-B1pN953z.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.08 KB gzip (budget 6.00 KB) — assets/SettingsPage-DV59c48e.js\n  ✗ settings data section: 15.26 KB gzip (budget 15.00 KB) — assets/DataSettings-BsKds0k0.js\n  ✓ settings ai section: 13.67 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-TDrEsLBT.js\n  ✓ settings skill section: 7.10 KB gzip (budget 10.00 KB) — assets/SkillSettings-B68snr6m.js\n  ✓ app route coordinator: 76.10 KB gzip (budget 80.00 KB) — assets/App-CcxIWV_o.js\n  ✓ app workspace shell: 77.71 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-TdbGAMSR.js\n  ✓ agent workspace coordinator: 4.76 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-CHJewM_D.js\n  ✓ agent provider workbench: 18.77 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-Czv1bEif.js\n  ✓ agent assets workspace: 14.82 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-DEMHrI_v.js\n  ✓ agent sessions panel: 11.26 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-DdhtQKGK.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-Dgt387D0.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.39 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-BJ5wjxaf.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n",
+          "outputTruncated": false
+        },
+        {
+          "name": "documentation",
+          "args": [
+            "spec:test"
+          ],
+          "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+          "pid": 5250,
+          "startedAt": "2026-10-10T07:31:58.877Z",
+          "finishedAt": "2026-10-10T07:32:00.360Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (141.333375ms)\n✔ empty inventory and archived evidence remain readable (58.015375ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (2.662375ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (2.558875ms)\n✔ default traceability checks only explicitly opted-in work (60.30675ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 306.20775\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n",
+          "outputTruncated": false
+        }
+      ],
+      "gallery-final-checks.json": [
+        {
+          "name": "gallery-final",
+          "args": [
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "unit",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/unit/components/prompt-gallery-view.test.tsx"
+          ],
+          "pid": 5639,
+          "startedAt": "2026-10-10T07:33:03.583Z",
+          "finishedAt": "2026-10-10T07:33:05.740Z",
+          "exitCode": 0,
+          "timedOut": false,
+          "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/prompt-gallery-view.test.tsx (10 tests) 209ms\n\n Test Files  1 passed (1)\n      Tests  10 passed (10)\n   Start at  15:33:04\n   Duration  1.58s (transform 641ms, setup 121ms, collect 920ms, tests 209ms, environment 224ms, prepare 25ms)\n\n",
+          "outputTruncated": false
+        }
+      ]
+    }
+  },
+  "bundleBudget": {
+    "passed": false,
+    "onlyFailure": "settings data section",
+    "dataSettingsChunk": "DataSettings-BsKds0k0.js",
+    "gzipBytes": 15630,
+    "maximumGzipBytes": 15360,
+    "previousGzipBytes": 15669,
+    "appCoordinatorWithinBudget": true,
+    "appWorkspaceShellWithinBudget": true
+  },
+  "sourceHashes": [
+    {
+      "file": "apps/desktop/src/renderer/App.tsx",
+      "sha256": "f333c2863788b96618dd6ecf2cd1fb8a733bef17dab9979091398511ff8c9cd6",
+      "candidateSha256": "f333c2863788b96618dd6ecf2cd1fb8a733bef17dab9979091398511ff8c9cd6"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/ui/ConfirmDialog.tsx",
+      "sha256": "5c33ca50f1bab830a92a810911c1ff52ad8ab0feab25fcf525ae6bed213920e5",
+      "candidateSha256": "5c33ca50f1bab830a92a810911c1ff52ad8ab0feab25fcf525ae6bed213920e5"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/ui/ConfirmationHost.tsx",
+      "sha256": "0258b2ee0d2a41e40c90780472e1eb61b07b6e6bf0dabdf30db9811ceff02bf7",
+      "candidateSha256": "0258b2ee0d2a41e40c90780472e1eb61b07b6e6bf0dabdf30db9811ceff02bf7"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/ui/confirmation.ts",
+      "sha256": "ba7027abd2270cf641217c82e353096a2f2974400ecc2514871e664a32794e5e",
+      "candidateSha256": "ba7027abd2270cf641217c82e353096a2f2974400ecc2514871e664a32794e5e"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/agent/AgentMcpAssetPanel.tsx",
+      "sha256": "b4ab319c3262322feff7cafe7227146086cb2d9b77d47171b6eda1c0d370f4d4",
+      "candidateSha256": "b4ab319c3262322feff7cafe7227146086cb2d9b77d47171b6eda1c0d370f4d4"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/agent/AgentAppearancePanel.tsx",
+      "sha256": "6cf4a85f9d14219e1ef7ee98b75910ea55b53256c7b0aaa705d24f122b772db0",
+      "candidateSha256": "6cf4a85f9d14219e1ef7ee98b75910ea55b53256c7b0aaa705d24f122b772db0"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/prompt/VersionHistoryModal.tsx",
+      "sha256": "f42a32722690cbd4ea5a9315cc865ecff3bc5eaa70901b60831fd7b7570277e9",
+      "candidateSha256": "f42a32722690cbd4ea5a9315cc865ecff3bc5eaa70901b60831fd7b7570277e9"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/prompt/TagManagerModal.tsx",
+      "sha256": "7677a7902d685304909b5132a48591ec307a63b455046e321883cdc94f7a5bce",
+      "candidateSha256": "7677a7902d685304909b5132a48591ec307a63b455046e321883cdc94f7a5bce"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/mcp/useMcpTargetActions.ts",
+      "sha256": "8a28adc425020c44412f9c1c8b1da756e0ec85cc3fb75d49353a2cc386626672",
+      "candidateSha256": "8a28adc425020c44412f9c1c8b1da756e0ec85cc3fb75d49353a2cc386626672"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/settings/CloudAccountSettings.tsx",
+      "sha256": "0797a256d19d3493ac2ecc4a7583ab75788e44f89e389ef21e62e6464444a4bc",
+      "candidateSha256": "0797a256d19d3493ac2ecc4a7583ab75788e44f89e389ef21e62e6464444a4bc"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/settings/AISettingsPrototype.tsx",
+      "sha256": "76a1aba5bf37bb08066a158d4f1006f1ad8681b47684b7dc4dc16f44ae13df3f",
+      "candidateSha256": "76a1aba5bf37bb08066a158d4f1006f1ad8681b47684b7dc4dc16f44ae13df3f"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/settings/data-settings/useDataPathController.ts",
+      "sha256": "9fe51fd1d96c1bd690b3d20361b4df4a0a8ce62788c7959073f09a2e4738ea68",
+      "candidateSha256": "9fe51fd1d96c1bd690b3d20361b4df4a0a8ce62788c7959073f09a2e4738ea68"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/settings/data-settings/DataSettingsDialogs.tsx",
+      "sha256": "58749039fff82b55b0edee70ea33f9689089f9c6d854d15d1984d189bf2a8960",
+      "candidateSha256": "58749039fff82b55b0edee70ea33f9689089f9c6d854d15d1984d189bf2a8960"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/skill/useConfirmLeaveDirtySkillEditor.ts",
+      "sha256": "89b9d6cebe3d7abe54fcfe8730461708bf9fe9fc033ec0396b83bd743d759112",
+      "candidateSha256": "89b9d6cebe3d7abe54fcfe8730461708bf9fe9fc033ec0396b83bd743d759112"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/usePromptWorkspaceTreeActions.ts",
+      "sha256": "e84f39c42fff1638e39ecfd5d51e256134d2aa05ac0aa7d4f2e9101631ac1b26",
+      "candidateSha256": "e84f39c42fff1638e39ecfd5d51e256134d2aa05ac0aa7d4f2e9101631ac1b26"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/SidebarRail.tsx",
+      "sha256": "b6a86d17f65182a05f0d09c2cf08d0d41c781538188174936d1daa267878bb94",
+      "candidateSha256": "b6a86d17f65182a05f0d09c2cf08d0d41c781538188174936d1daa267878bb94"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/SidebarSkillPanel.tsx",
+      "sha256": "b4bf49e1d4a8d2e2c16421fc59f1b94b05955340faf6a5ed0a29f117d6c84da6",
+      "candidateSha256": "b4bf49e1d4a8d2e2c16421fc59f1b94b05955340faf6a5ed0a29f117d6c84da6"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/useSidebarResourceController.tsx",
+      "sha256": "c0e4493f8dc11ec16cc84c66f026a44638c0058f3d7c00bbfebfa3330ad87b8d",
+      "candidateSha256": "c0e4493f8dc11ec16cc84c66f026a44638c0058f3d7c00bbfebfa3330ad87b8d"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/agent/AgentsSidebarPanel.tsx",
+      "sha256": "0f3d2c386e9246002e44757e88059f23b190e9097b96cbb83287e6e57fc77c10",
+      "candidateSha256": "0f3d2c386e9246002e44757e88059f23b190e9097b96cbb83287e6e57fc77c10"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/prompt/PromptGalleryView.tsx",
+      "sha256": "1596f8cba7796eeac4ff8185477fcf24f5d7125d5256b3fe8bcd7b82be585449",
+      "candidateSha256": "1596f8cba7796eeac4ff8185477fcf24f5d7125d5256b3fe8bcd7b82be585449"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/prompt/usePromptBatchSelection.ts",
+      "sha256": "cb99ce5d9ff82ad04a64485df70816c418ca14e8058233c4f86622916fba66eb",
+      "candidateSha256": "cb99ce5d9ff82ad04a64485df70816c418ca14e8058233c4f86622916fba66eb"
+    }
+  ],
+  "testHashes": [
+    {
+      "file": "apps/desktop/tests/unit/components/confirmation-host.test.tsx",
+      "sha256": "518b301870aa22049418a9a4212601a888ff6260918c012dbf97718460252b18"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/confirm-dialog.test.tsx",
+      "sha256": "0953614c28c3d34713723e78e4297f1f965a5552e2198cebf2a0c56f53339858"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/ai-settings-prototype.test.tsx",
+      "sha256": "82b1fd265b89d789a60523d50bc0c03005ecbf033d20c01c8559705552485b41"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/mcp-manager-detail-distribution.test.tsx",
+      "sha256": "ec92107d9f3daad779eb95a708610dc5c667034bfb5ed46857ffd7cef4a377e0"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/data-settings-paths-recovery.test.tsx",
+      "sha256": "f1454d649e2a5b9ab2137f82a48803cbf7a87751c0b875fabfa4fdf42772e5aa"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/sidebar-rail-isolation.test.tsx",
+      "sha256": "d7528970b65fdb33e31f9c9717fab156b61149c73d2408c06134c82d174a58d3"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/agent-workspace-resilience.test.tsx",
+      "sha256": "5475a79ae707e59a21f595f0ebedf5eeaf26fe53165bd01e7528aad80132b023"
+    },
+    {
+      "file": "apps/desktop/tests/unit/services/browser-dialog-policy.test.ts",
+      "sha256": "82f012937c90da004df4aa89f24742f9e44e666db541cecd0fa67ce8666a98fd"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/prompt-gallery-view.test.tsx",
+      "sha256": "2d14f9d31ddc9d2ed9277601b7f65546d3af4fbf2e0f8f9d7f22bd3f53ba1023"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/sidebar-skills.test.tsx",
+      "sha256": "0d307ed2af92f0c715301b36a6d36f8253a6af9d0f0c8be464ab8fea79e9eabf"
+    },
+    {
+      "file": "apps/desktop/tests/integration/release-acceptance-prompts-ai-batch.test.tsx",
+      "sha256": "bc793ff5de6cda318d6d865d821d4c3c2037ca5a48808144e4fe6aeefac39118"
+    }
+  ],
+  "documentHashes": [
+    {
+      "file": "spec/knowledge/behavior/desktop.md",
+      "sha256": "bef1d07c56dba38c2a3b1c2e1abefac1ffcb87380c4f62227ca1aaeb1f64f067"
+    },
+    {
+      "file": "spec/changes/active/existing-feature-release-acceptance/plan.md",
+      "sha256": "95feaa454c6d50d15e1dcdef5a4605397189b6d557e5f33d93df6d6a8ad370b7"
+    }
+  ],
+  "resources": {
+    "processGroups": [
+      {
+        "pid": 2952,
+        "alive": false
+      },
+      {
+        "pid": 3283,
+        "alive": false
+      },
+      {
+        "pid": 3315,
+        "alive": false
+      },
+      {
+        "pid": 3372,
+        "alive": false
+      },
+      {
+        "pid": 3712,
+        "alive": false
+      },
+      {
+        "pid": 3823,
+        "alive": false
+      },
+      {
+        "pid": 4052,
+        "alive": false
+      },
+      {
+        "pid": 4132,
+        "alive": false
+      },
+      {
+        "pid": 4539,
+        "alive": false
+      },
+      {
+        "pid": 4561,
+        "alive": false
+      },
+      {
+        "pid": 4608,
+        "alive": false
+      },
+      {
+        "pid": 4615,
+        "alive": false
+      },
+      {
+        "pid": 4654,
+        "alive": false
+      },
+      {
+        "pid": 5104,
+        "alive": false
+      },
+      {
+        "pid": 5120,
+        "alive": false
+      },
+      {
+        "pid": 5132,
+        "alive": false
+      },
+      {
+        "pid": 5197,
+        "alive": false
+      },
+      {
+        "pid": 5250,
+        "alive": false
+      },
+      {
+        "pid": 5639,
+        "alive": false
+      }
+    ],
+    "temporaryRoot": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dialogs-OnnAM8",
+    "temporaryRootRemoved": true,
+    "newServicesStarted": 0,
+    "guiSessionsCreated": 0,
+    "previousTrialListenerPresent": false,
+    "previousTrialStoppedByThisTask": false
+  },
+  "delivery": {
+    "committed": false,
+    "pushed": false,
+    "userDataChanged": false,
+    "schemaChanged": false,
+    "dependenciesAdded": false
+  },
+  "limitations": [
+    "Native GUI and Mobile were not exercised.",
+    "Known DataSettings bundle budget is still exceeded.",
+    "Initial fixture failures and subsequent repairs are retained in check records; no pre-fix red execution is claimed."
+  ]
+}

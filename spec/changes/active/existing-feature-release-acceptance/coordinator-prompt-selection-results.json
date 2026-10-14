@@ -1,0 +1,639 @@
+{
+  "recordedAt": "2026-10-10T05:21:17.499Z",
+  "head": "108f375bcd2c3e94c20d93dd619d641b6386b352",
+  "scope": "Desktop renderer Prompt card browsing and batch selection",
+  "cause": "Normal detail browsing populated selectedIds; the card route used nonempty selectedIds to show its batch bar while card rows had no checkbox.",
+  "changes": [
+    "Separate transient batch intent from normal browsing in the existing Prompt store.",
+    "Reuse the visible Checkbox control in virtualized card rows with mouse/keyboard event isolation.",
+    "Keep modifier-key and drag selection; stop detail restoration from erasing remaining batch items.",
+    "Run folder reset before detail restoration to prevent initial restore from being overwritten."
+  ],
+  "storageContract": "Transient UI state only; no schema, IPC, dependency, or persistence shape change.",
+  "sourceHashes": [
+    {
+      "file": "apps/desktop/src/renderer/stores/prompt.store.ts",
+      "sha256": "4b1c906e5a9335bb55d8f8e4aa915263fdf7188e3ecb33a1ceecb17da257a697"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/PromptListCard.tsx",
+      "sha256": "3e4863fa71d8485b623ad77be1efc7495dc7d382e28e289f2e27c08812a8e8ee"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/PromptVirtualizedList.tsx",
+      "sha256": "9698012b39db76a3a4d1a9e414ff28396d2045621c62022b77e7b684903a92fe"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/PromptVirtualizedRows.tsx",
+      "sha256": "1d232fd1336783a71eb28d6c8be06ebc3dd423b63e6dbc832ff97e53d41ea913"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/PromptWorkspaceCardRoute.tsx",
+      "sha256": "f6a6631171610d6a94274a310cc2c645f801e0c5a575d703739c2d98cd00f85a"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/prompt-list-types.ts",
+      "sha256": "c78e3b8191a0a21224b2864c7d67eef74b795424522290e853e0ea17669031d5"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/usePromptWorkspaceController.ts",
+      "sha256": "4d131baddcc432ab49981394b3c6a6ac3ab29f0726e4da70b6056a579efc3dc6"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/usePromptWorkspaceDerived.tsx",
+      "sha256": "343bf1ffa63d86810d723341822a85076295da445cf0a3624a3c638a454900d3"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/usePromptWorkspaceStoreBindings.ts",
+      "sha256": "8bb2acaafad365fa6d84d34a0671b4125614eab8e0cfe4034faf9611470f89a5"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/main-content-batch-selection.test.tsx",
+      "sha256": "d2531d9fb0988a87d162fd5eaa5af4caaab4e5ecc9b3be1566635bcfde74ba63"
+    },
+    {
+      "file": "spec/knowledge/behavior/prompt-workspace.md",
+      "sha256": "6171f6ce474dbda07615ce7296f9ffaff88875eb78f9e9029038c334d1b665db"
+    },
+    {
+      "file": "spec/changes/active/existing-feature-release-acceptance/plan.md",
+      "sha256": "378e247d47f83f84dce63e25e49af180c657d55333c4f342c18656e75ee77601"
+    }
+  ],
+  "candidateMatchesSources": true,
+  "verification": {
+    "distinctTestsPassed": 86,
+    "newRegressionTests": 8,
+    "finalComponentTestsPassed": 71,
+    "unchangedStoreTestsPassed": 15,
+    "sourceTypesPassed": true,
+    "testTypesPassed": true,
+    "scopedLintPassed": true,
+    "isolatedBuildPassed": true,
+    "documentationPassed": true
+  },
+  "checks": {
+    "initial": [
+      {
+        "name": "unit",
+        "args": [
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/components/main-content-batch-selection.test.tsx",
+          "tests/unit/components/main-content-selection-restore.test.tsx",
+          "tests/unit/components/prompt-card-layout.test.tsx",
+          "tests/unit/components/main-content-inline-edit.test.tsx",
+          "tests/unit/components/main-content-context-move.test.tsx",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/components/prompt-batch-action-bar.test.tsx",
+          "tests/unit/components/prompt-gallery-view.test.tsx",
+          "tests/unit/components/prompt-table-view.test.tsx",
+          "tests/unit/stores/prompt-save-sync.test.ts",
+          "tests/unit/stores/prompt-read-consistency.test.ts"
+        ],
+        "pid": 82846,
+        "exitCode": 1,
+        "timedOut": false,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/main-content-inline-edit.test.tsx (16 tests) 1762ms\n   ✓ MainContent inline edit component contract > saves title and user prompt from the card detail inline editor 346ms\n ✓ |unit| tests/unit/components/main-content-context-move.test.tsx (6 tests) 1278ms\n ✓ |unit| tests/unit/stores/prompt-read-consistency.test.ts (10 tests) 17ms\n ✓ |unit| tests/unit/components/prompt-table-view.test.tsx (14 tests) 1162ms\n ✓ |unit| tests/unit/components/prompt-gallery-view.test.tsx (10 tests) 363ms\n ✓ |unit| tests/unit/components/main-content-selection-restore.test.tsx (3 tests) 441ms\n ❯ |unit| tests/unit/components/main-content-batch-selection.test.tsx (8 tests | 1 failed) 1292ms\n   × Prompt card browsing and batch selection > restores the last detail without entering batch selection 22ms\n     → expected null to be 'beta' // Object.is equality\n   ✓ Prompt card browsing and batch selection > selects one or more rows with checkboxes and clears the batch bar 302ms\n ✓ |unit| tests/unit/components/prompt-delete-lifecycle.test.tsx (3 tests) 758ms\n   ✓ Prompt deletion lifecycle > submits once during a pending delete and shows one success after completion 370ms\n ✓ |unit| tests/unit/components/prompt-batch-action-bar.test.tsx (9 tests) 367ms\n ✓ |unit| tests/unit/stores/prompt-save-sync.test.ts (5 tests) 7ms\n ✓ |unit| tests/unit/components/prompt-card-layout.test.tsx (2 tests) 112ms\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL |unit|  tests/unit/components/main-content-batch-selection.test.tsx > Prompt card browsing and batch selection > restores the last detail without entering batch selection\nAssertionError: expected null to be 'beta' // Object.is equality\n\n- Expected: \n\"beta\"\n\n+ Received: \nnull\n\n ❯ tests/unit/components/main-content-batch-selection.test.tsx:77:50\n     75|     await openWorkspace();\n     76| \n     77|     expect(usePromptStore.getState().selectedId).toBe(\"beta\");\n       |                                                  ^\n     78|     expect(screen.queryByRole(\"button\", { name: \"Batch Delete\" })).toB…\n     79|     expect(selection(\"Beta\")).not.toBeChecked();\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n Test Files  1 failed | 10 passed (11)\n      Tests  1 failed | 85 passed (86)\n   Start at  13:08:59\n   Duration  17.45s (transform 1.09s, setup 1.25s, collect 3.78s, tests 7.56s, environment 3.00s, prepare 426ms)\n\n"
+      },
+      {
+        "name": "typecheck",
+        "args": [
+          "typecheck"
+        ],
+        "pid": 82893,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n"
+      },
+      {
+        "name": "test-types",
+        "args": [
+          "typecheck:tests"
+        ],
+        "pid": 82949,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n"
+      },
+      {
+        "name": "lint",
+        "args": [
+          "exec",
+          "eslint",
+          "src/renderer/stores/prompt.store.ts",
+          "src/renderer/components/layout/PromptWorkspaceCardRoute.tsx",
+          "src/renderer/components/layout/PromptVirtualizedList.tsx",
+          "src/renderer/components/layout/PromptVirtualizedRows.tsx",
+          "src/renderer/components/layout/PromptListCard.tsx",
+          "src/renderer/components/layout/prompt-list-types.ts",
+          "src/renderer/components/layout/usePromptWorkspaceDerived.tsx",
+          "src/renderer/components/layout/usePromptWorkspaceStoreBindings.ts",
+          "tests/unit/components/main-content-batch-selection.test.tsx",
+          "--max-warnings",
+          "0"
+        ],
+        "pid": 83000,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": ""
+      }
+    ],
+    "repair": [
+      {
+        "name": "unit",
+        "args": [
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/components/main-content-batch-selection.test.tsx",
+          "tests/unit/components/main-content-selection-restore.test.tsx",
+          "tests/unit/components/prompt-card-layout.test.tsx",
+          "tests/unit/components/main-content-inline-edit.test.tsx",
+          "tests/unit/components/main-content-context-move.test.tsx",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/components/prompt-batch-action-bar.test.tsx",
+          "tests/unit/components/prompt-gallery-view.test.tsx",
+          "tests/unit/components/prompt-table-view.test.tsx"
+        ],
+        "pid": 83137,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/main-content-inline-edit.test.tsx (16 tests) 1809ms\n   ✓ MainContent inline edit component contract > saves title and user prompt from the card detail inline editor 315ms\n ✓ |unit| tests/unit/components/main-content-context-move.test.tsx (6 tests) 1543ms\n   ✓ MainContent context move component contract > moves a prompt from the context menu into a selected folder 344ms\n   ✓ MainContent context move component contract > shows folder icons and nested submenu items in move menu 324ms\n ✓ |unit| tests/unit/components/prompt-table-view.test.tsx (14 tests) 1275ms\n ✓ |unit| tests/unit/components/prompt-gallery-view.test.tsx (10 tests) 360ms\n ✓ |unit| tests/unit/components/main-content-selection-restore.test.tsx (3 tests) 258ms\n ✓ |unit| tests/unit/components/main-content-batch-selection.test.tsx (8 tests) 1530ms\n ✓ |unit| tests/unit/components/prompt-delete-lifecycle.test.tsx (3 tests) 706ms\n   ✓ Prompt deletion lifecycle > submits once during a pending delete and shows one success after completion 389ms\n ✓ |unit| tests/unit/components/prompt-batch-action-bar.test.tsx (9 tests) 676ms\n ✓ |unit| tests/unit/components/prompt-card-layout.test.tsx (2 tests) 110ms\n\n Test Files  9 passed (9)\n      Tests  71 passed (71)\n   Start at  13:12:01\n   Duration  17.57s (transform 1.09s, setup 1.15s, collect 3.73s, tests 8.27s, environment 2.66s, prepare 403ms)\n\n"
+      },
+      {
+        "name": "typecheck",
+        "args": [
+          "typecheck"
+        ],
+        "pid": 83180,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n"
+      },
+      {
+        "name": "test-types",
+        "args": [
+          "typecheck:tests"
+        ],
+        "pid": 83288,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n"
+      },
+      {
+        "name": "lint",
+        "args": [
+          "exec",
+          "eslint",
+          "src/renderer/stores/prompt.store.ts",
+          "src/renderer/components/layout/PromptWorkspaceCardRoute.tsx",
+          "src/renderer/components/layout/PromptVirtualizedList.tsx",
+          "src/renderer/components/layout/PromptVirtualizedRows.tsx",
+          "src/renderer/components/layout/PromptListCard.tsx",
+          "src/renderer/components/layout/prompt-list-types.ts",
+          "src/renderer/components/layout/usePromptWorkspaceDerived.tsx",
+          "src/renderer/components/layout/usePromptWorkspaceStoreBindings.ts",
+          "tests/unit/components/main-content-batch-selection.test.tsx",
+          "src/renderer/components/layout/usePromptWorkspaceController.ts",
+          "--max-warnings",
+          "0"
+        ],
+        "pid": 83381,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": ""
+      }
+    ],
+    "build": [
+      {
+        "name": "build",
+        "args": [
+          "build"
+        ],
+        "pid": 83410,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 build /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop\n> vite build\n\nvite v6.4.1 building for production...\ntransforming...\n✓ 3783 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-W0IyuPcw.css                           131.47 kB │ gzip:  21.07 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-BpYzEvR0.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-DkAQdNEN.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-CGF0aZMJ.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-6JRTbImw.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-BKT6QTDp.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-tijM1tsZ.js          2.30 kB │ gzip:   0.92 kB\nout/renderer/assets/agent.store-CYTT484Q.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-DncaDAHL.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-DOtHKSQQ.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-B9rEYEt0.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-FavCvaNy.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-Bu-WyWKW.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-It0BZmKw.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-BPhz2SYR.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-9sUXRboz.js                        4.48 kB │ gzip:   1.64 kB\nout/renderer/assets/SkillBatchTagDialog-5q89laY2.js                4.52 kB │ gzip:   1.87 kB\nout/renderer/assets/quick-add-utils-5_90wTgr.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-QYiduoeT.js                      4.95 kB │ gzip:   2.02 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-Bx3jz9At.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-pEOvczbc.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-CunOnDCZ.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-C6U_aK7M.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-CIFx3grg.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-CuWv-fuo.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-DNt7mw_X.js           6.66 kB │ gzip:   2.19 kB\nout/renderer/assets/CLISettings--_munQdk.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-mVyfIPyr.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-CkuhwEo5.js                  8.69 kB │ gzip:   3.66 kB\nout/renderer/assets/useSkillPackageInstall-BR1OIOg3.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-CZKrcQXr.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-_xmqzwhq.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-Bi2dlTs_.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-XwdZiywK.js                      9.56 kB │ gzip:   3.96 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-BP62JefD.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-BwOrcIPY.js                      10.26 kB │ gzip:   3.18 kB\nout/renderer/assets/QuickAddModal-Bw7lKCzp.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-CSd17hWR.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-TPiQ2rwU.js                    11.58 kB │ gzip:   4.06 kB\nout/renderer/assets/AboutSettings-BxlVivX2.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-BSb2mu-o.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-DIZjVdiW.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-BMLg096r.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-DzXi58HC.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-5bVPuzkQ.js           13.35 kB │ gzip:   3.92 kB\nout/renderer/assets/PromptDetailModal-7rDYqbZ5.js                 13.84 kB │ gzip:   4.03 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-Cn1oqPa3.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-BoWLdisd.js                   14.12 kB │ gzip:   4.90 kB\nout/renderer/assets/index-Cj8AL-O9.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-CwWxg0Ta.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptKanbanView-R21iyiWd.js                  14.47 kB │ gzip:   4.71 kB\nout/renderer/assets/PromptSourceNotesFields-B1hvQD8B.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/VersionHistoryModal-BpdxdY3o.js               15.63 kB │ gzip:   4.57 kB\nout/renderer/assets/DataSettingsDialogs-Bqo_7dle.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-D3jHzRUW.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-lK9X0aji.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-D57HTreT.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-DvTW9Vep.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-HCEM9cWl.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-Dz3lokxj.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-plCl-edg.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-BA5RcIaQ.js                   24.13 kB │ gzip:   7.20 kB\nout/renderer/assets/index-D-yo6thk.js                             26.53 kB │ gzip:   8.82 kB\nout/renderer/assets/AgentAppearancePanel-ro4V0Y23.js              26.76 kB │ gzip:   6.98 kB\nout/renderer/assets/index-Bu1YW1X8.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-BdZQUImp.js                       28.12 kB │ gzip:   7.95 kB\nout/renderer/assets/index-B3iyIQ0o.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/SkillProjectsView-DZGA5fcQ.js                 28.91 kB │ gzip:   7.86 kB\nout/renderer/assets/EditPromptModal-BlsD-72e.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-Rw7VvEyO.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-2JzO5WPd.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-BzJqWWMp.js                35.86 kB │ gzip:  10.94 kB\nout/renderer/assets/RulesManager-SxFrMUTs.js                      36.02 kB │ gzip:   9.30 kB\nout/renderer/assets/AgentSessionsPanel-y057dEd8.js                42.50 kB │ gzip:  11.49 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-D4Dub-Co.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-BEn3SJb5.js                             44.36 kB │ gzip:  15.41 kB\nout/renderer/assets/index-m6M3ChqM.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-DKAQWI2v.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-CyWDYBIB.js                      55.80 kB │ gzip:  16.56 kB\nout/renderer/assets/AgentAssetsWorkspace-C478Yszp.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-BWaMdo9V.js          56.88 kB │ gzip:  14.83 kB\nout/renderer/assets/webdav-save-sync-sbJ5iXyn.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-CpaR2ClG.js                  63.13 kB │ gzip:  15.56 kB\nout/renderer/assets/AISettingsPrototype-BajoPkiF.js               67.63 kB │ gzip:  13.97 kB\nout/renderer/assets/DataSettings-Bx8LnuQP.js                      71.06 kB │ gzip:  15.67 kB\nout/renderer/assets/index-oRZbPj-7.js                             84.84 kB │ gzip:  32.74 kB\nout/renderer/assets/AgentProviderModelWorkbench-DPw5jKvW.js       88.99 kB │ gzip:  19.24 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-BnvgvYDZ.js              92.97 kB │ gzip:  22.55 kB\nout/renderer/assets/SkillStore-BatVNH4y.js                       105.39 kB │ gzip:  30.38 kB\nout/renderer/assets/index-B1vHk-6T.js                            113.01 kB │ gzip:  33.50 kB\nout/renderer/assets/SkillFullDetailPage-Bxje48rk.js              115.38 kB │ gzip:  28.66 kB\nout/renderer/assets/PluginManager-IUUZGUP2.js                    119.17 kB │ gzip:  25.68 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-CIn-LjKA.js                       158.60 kB │ gzip:  36.13 kB\nout/renderer/assets/PromptGraphView-BJIt5qIY.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-QaRKcd68.js                            214.27 kB │ gzip:  71.16 kB\nout/renderer/assets/zh-BAIURGuU.js                               215.19 kB │ gzip:  70.84 kB\nout/renderer/assets/en-BUpzA32y.js                               221.17 kB │ gzip:  65.79 kB\nout/renderer/assets/de-CmU4Rzq1.js                               244.85 kB │ gzip:  73.37 kB\nout/renderer/assets/es-DBOPoIlV.js                               244.88 kB │ gzip:  72.33 kB\nout/renderer/assets/App-CwWpM4Bk.js                              250.18 kB │ gzip:  76.61 kB\nout/renderer/assets/fr-DoWTQhmp.js                               251.55 kB │ gzip:  73.85 kB\nout/renderer/assets/ja-B07sSqVf.js                               276.24 kB │ gzip:  75.76 kB\nout/renderer/assets/AppWorkspaceShell-w5__zlea.js                311.93 kB │ gzip:  79.45 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-CFllhsSF.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 9.66s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 2.99s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 50ms\n"
+      },
+      {
+        "name": "bundle-budget",
+        "args": [
+          "bundle:budget"
+        ],
+        "pid": 83463,
+        "exitCode": 1,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.72 KB gzip (budget 150.00 KB) — assets/index-B1vHk-6T.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.10 KB gzip (budget 6.00 KB) — assets/SettingsPage-BwOrcIPY.js\n  ✗ settings data section: 15.30 KB gzip (budget 15.00 KB) — assets/DataSettings-Bx8LnuQP.js\n  ✓ settings ai section: 13.64 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-BajoPkiF.js\n  ✓ settings skill section: 7.12 KB gzip (budget 10.00 KB) — assets/SkillSettings-Rw7VvEyO.js\n  ✓ app route coordinator: 74.81 KB gzip (budget 80.00 KB) — assets/App-CwWpM4Bk.js\n  ✓ app workspace shell: 77.59 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-w5__zlea.js\n  ✓ agent workspace coordinator: 4.79 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-BoWLdisd.js\n  ✓ agent provider workbench: 18.79 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-DPw5jKvW.js\n  ✓ agent assets workspace: 14.82 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-C478Yszp.js\n  ✓ agent sessions panel: 11.22 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-y057dEd8.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-D4Dub-Co.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.40 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-W0IyuPcw.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n"
+      }
+    ],
+    "comparison": [
+      {
+        "name": "build",
+        "args": [
+          "build"
+        ],
+        "pid": 83794,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 build /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop\n> vite build\n\nvite v6.4.1 building for production...\ntransforming...\n✓ 3783 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-W0IyuPcw.css                           131.47 kB │ gzip:  21.07 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-CEcRvNM9.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-Dp99Dmi3.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-D71P9t7P.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-dioQlEYQ.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-C8erH9aZ.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-Ly4C0TeV.js          2.30 kB │ gzip:   0.91 kB\nout/renderer/assets/agent.store-Df3BDzzk.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-oF086mYV.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-BnTDvLpf.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-DjXMXARo.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-DZxYvfzu.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-DkD6O26Y.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-5_NSGkZV.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-DDOq1VOZ.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-Cp7DC-5w.js                        4.48 kB │ gzip:   1.63 kB\nout/renderer/assets/SkillBatchTagDialog-C6ZPhn1T.js                4.49 kB │ gzip:   1.86 kB\nout/renderer/assets/quick-add-utils-BZTFNDqL.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-DVBTCYsd.js                      4.95 kB │ gzip:   2.03 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-622saMHu.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-DO9uwRse.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-z9KGjK2q.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-DtOr8qLZ.js                 6.13 kB │ gzip:   2.29 kB\nout/renderer/assets/WebWorkspaceSettings-CWy9oqxV.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-DpQoVK09.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-k4W-8YSW.js           6.66 kB │ gzip:   2.19 kB\nout/renderer/assets/CLISettings-qKKgB6_E.js                        7.17 kB │ gzip:   2.09 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-wNdzGCUU.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-7XhvRV6Y.js                  8.66 kB │ gzip:   3.65 kB\nout/renderer/assets/useSkillPackageInstall-COrQ41TP.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-C4gAJMP_.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-DTodSmAw.js                        8.95 kB │ gzip:   2.79 kB\nout/renderer/assets/RulesSidebarPanel-6ZsHPNif.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-CH3PwVhw.js                      9.53 kB │ gzip:   3.94 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-CA3lLQ-K.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-Bqa9zMQK.js                      10.26 kB │ gzip:   3.18 kB\nout/renderer/assets/QuickAddModal-DrSGh30R.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-HfC6elX-.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-DzscIqdg.js                    11.54 kB │ gzip:   4.05 kB\nout/renderer/assets/AboutSettings-CoSCoLl0.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-BRR19kwq.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-YMcMqAsx.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-pEUp3SqZ.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-DTM2D34R.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-nj5Etd_6.js           13.35 kB │ gzip:   3.92 kB\nout/renderer/assets/PromptDetailModal-DBFbNQ69.js                 13.81 kB │ gzip:   4.02 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-DqO2ChWl.js              14.06 kB │ gzip:   3.64 kB\nout/renderer/assets/AgentsWorkspace-CYflWS8K.js                   14.12 kB │ gzip:   4.90 kB\nout/renderer/assets/index-BCGMQ8Cm.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-a2nK_HXK.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptKanbanView-BgEkykxi.js                  14.44 kB │ gzip:   4.70 kB\nout/renderer/assets/PromptSourceNotesFields-Cf-wq0QC.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/VersionHistoryModal-Ba87zoIh.js               15.63 kB │ gzip:   4.57 kB\nout/renderer/assets/DataSettingsDialogs-BzKqwybJ.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-B3afyKie.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-BUlIFHkr.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-eSZKML9J.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-BRBZZ6Fi.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-SmUDUJhT.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-BRiSoqNG.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-CF9WYt0I.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-DKLVPwIi.js                   24.10 kB │ gzip:   7.18 kB\nout/renderer/assets/index-Gfqnh7-7.js                             26.53 kB │ gzip:   8.83 kB\nout/renderer/assets/AgentAppearancePanel-9mwpMTE9.js              26.76 kB │ gzip:   6.97 kB\nout/renderer/assets/index-CGI-8muT.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-BWkpnW7A.js                       28.09 kB │ gzip:   7.93 kB\nout/renderer/assets/SkillProjectsView-9nUkkT7S.js                 28.88 kB │ gzip:   7.84 kB\nout/renderer/assets/index-vzebAXpP.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/EditPromptModal-DUkCm-df.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-DTeoaRh7.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-BpEcNXoM.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-BH7cRjwG.js                35.83 kB │ gzip:  10.92 kB\nout/renderer/assets/RulesManager-OMDs4Xy6.js                      36.02 kB │ gzip:   9.30 kB\nout/renderer/assets/AgentSessionsPanel-jS6-uWdg.js                42.50 kB │ gzip:  11.50 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-B9Cz21qz.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-BtEZLN_u.js                             44.36 kB │ gzip:  15.42 kB\nout/renderer/assets/index-CPCEQMtA.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-H9PY8-mQ.js                   54.60 kB │ gzip:  15.72 kB\nout/renderer/assets/SkillManager-Ca1T4nxP.js                      55.77 kB │ gzip:  16.54 kB\nout/renderer/assets/AgentAssetsWorkspace-CtNTeWAe.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-Bv2-Tlrh.js          56.84 kB │ gzip:  14.81 kB\nout/renderer/assets/webdav-save-sync-DQv9oyVS.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-DJq2pd8L.js                  63.10 kB │ gzip:  15.54 kB\nout/renderer/assets/AISettingsPrototype-ElIxd6Hw.js               67.63 kB │ gzip:  13.96 kB\nout/renderer/assets/DataSettings-zcAFYDsz.js                      71.06 kB │ gzip:  15.68 kB\nout/renderer/assets/index-_Pc4wBQ4.js                             84.84 kB │ gzip:  32.74 kB\nout/renderer/assets/AgentProviderModelWorkbench-DVmnfJd2.js       88.96 kB │ gzip:  19.23 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-DN2ftepM.js              92.97 kB │ gzip:  22.55 kB\nout/renderer/assets/SkillStore-BMexeQV_.js                       105.36 kB │ gzip:  30.36 kB\nout/renderer/assets/index-aOvbcxsL.js                            113.01 kB │ gzip:  33.50 kB\nout/renderer/assets/SkillFullDetailPage-D5Un7dLR.js              115.35 kB │ gzip:  28.64 kB\nout/renderer/assets/PluginManager-B_1ec6E3.js                    119.14 kB │ gzip:  25.67 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-DJ7Q3e0a.js                       158.57 kB │ gzip:  36.11 kB\nout/renderer/assets/PromptGraphView-CmdvCJAn.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-QaRKcd68.js                            214.27 kB │ gzip:  71.16 kB\nout/renderer/assets/zh-BAIURGuU.js                               215.19 kB │ gzip:  70.84 kB\nout/renderer/assets/en-BUpzA32y.js                               221.17 kB │ gzip:  65.79 kB\nout/renderer/assets/de-CmU4Rzq1.js                               244.85 kB │ gzip:  73.37 kB\nout/renderer/assets/es-DBOPoIlV.js                               244.88 kB │ gzip:  72.33 kB\nout/renderer/assets/App-D-T4P1aA.js                              249.82 kB │ gzip:  76.53 kB\nout/renderer/assets/fr-DoWTQhmp.js                               251.55 kB │ gzip:  73.85 kB\nout/renderer/assets/ja-B07sSqVf.js                               276.24 kB │ gzip:  75.76 kB\nout/renderer/assets/AppWorkspaceShell-DgrKtG9h.js                310.85 kB │ gzip:  79.23 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-CT-vkn9b.js                  372.90 kB │ gzip: 121.13 kB\n✓ built in 8.37s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 2.95s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 61ms\n"
+      },
+      {
+        "name": "bundle-budget",
+        "args": [
+          "bundle:budget"
+        ],
+        "pid": 83832,
+        "exitCode": 1,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.71 KB gzip (budget 150.00 KB) — assets/index-aOvbcxsL.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.10 KB gzip (budget 6.00 KB) — assets/SettingsPage-Bqa9zMQK.js\n  ✗ settings data section: 15.31 KB gzip (budget 15.00 KB) — assets/DataSettings-zcAFYDsz.js\n  ✓ settings ai section: 13.64 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-ElIxd6Hw.js\n  ✓ settings skill section: 7.12 KB gzip (budget 10.00 KB) — assets/SkillSettings-DTeoaRh7.js\n  ✓ app route coordinator: 74.74 KB gzip (budget 80.00 KB) — assets/App-D-T4P1aA.js\n  ✓ app workspace shell: 77.37 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-DgrKtG9h.js\n  ✓ agent workspace coordinator: 4.78 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-CYflWS8K.js\n  ✓ agent provider workbench: 18.78 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-DVmnfJd2.js\n  ✓ agent assets workspace: 14.82 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-CtNTeWAe.js\n  ✓ agent sessions panel: 11.23 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-jS6-uWdg.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-B9Cz21qz.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.40 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-W0IyuPcw.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n"
+      }
+    ],
+    "analysis": [
+      {
+        "name": "analyze",
+        "args": [
+          "build:analyze"
+        ],
+        "pid": 83968,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 build:analyze /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy/candidate/apps/desktop\n> BUILD_ANALYZE=1 vite build\n\nvite v6.4.1 building for production...\ntransforming...\n✓ 3783 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-W0IyuPcw.css                           131.47 kB │ gzip:  21.07 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-BpYzEvR0.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-DkAQdNEN.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-CGF0aZMJ.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-6JRTbImw.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-BKT6QTDp.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-tijM1tsZ.js          2.30 kB │ gzip:   0.92 kB\nout/renderer/assets/agent.store-CYTT484Q.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-DncaDAHL.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-DOtHKSQQ.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-B9rEYEt0.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-FavCvaNy.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-Bu-WyWKW.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-It0BZmKw.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-BPhz2SYR.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-9sUXRboz.js                        4.48 kB │ gzip:   1.64 kB\nout/renderer/assets/SkillBatchTagDialog-5q89laY2.js                4.52 kB │ gzip:   1.87 kB\nout/renderer/assets/quick-add-utils-5_90wTgr.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-QYiduoeT.js                      4.95 kB │ gzip:   2.02 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-Bx3jz9At.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-pEOvczbc.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-CunOnDCZ.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-C6U_aK7M.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-CIFx3grg.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-CuWv-fuo.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-DNt7mw_X.js           6.66 kB │ gzip:   2.19 kB\nout/renderer/assets/CLISettings--_munQdk.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-mVyfIPyr.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-CkuhwEo5.js                  8.69 kB │ gzip:   3.66 kB\nout/renderer/assets/useSkillPackageInstall-BR1OIOg3.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-CZKrcQXr.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-_xmqzwhq.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-Bi2dlTs_.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-XwdZiywK.js                      9.56 kB │ gzip:   3.96 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-BP62JefD.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-BwOrcIPY.js                      10.26 kB │ gzip:   3.18 kB\nout/renderer/assets/QuickAddModal-Bw7lKCzp.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-CSd17hWR.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-TPiQ2rwU.js                    11.58 kB │ gzip:   4.06 kB\nout/renderer/assets/AboutSettings-BxlVivX2.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-BSb2mu-o.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-DIZjVdiW.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-BMLg096r.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-DzXi58HC.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-5bVPuzkQ.js           13.35 kB │ gzip:   3.92 kB\nout/renderer/assets/PromptDetailModal-7rDYqbZ5.js                 13.84 kB │ gzip:   4.03 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-Cn1oqPa3.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-BoWLdisd.js                   14.12 kB │ gzip:   4.90 kB\nout/renderer/assets/index-Cj8AL-O9.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-CwWxg0Ta.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptKanbanView-R21iyiWd.js                  14.47 kB │ gzip:   4.71 kB\nout/renderer/assets/PromptSourceNotesFields-B1hvQD8B.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/VersionHistoryModal-BpdxdY3o.js               15.63 kB │ gzip:   4.57 kB\nout/renderer/assets/DataSettingsDialogs-Bqo_7dle.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-D3jHzRUW.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-lK9X0aji.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-D57HTreT.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-DvTW9Vep.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-HCEM9cWl.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-Dz3lokxj.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-plCl-edg.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-BA5RcIaQ.js                   24.13 kB │ gzip:   7.20 kB\nout/renderer/assets/index-D-yo6thk.js                             26.53 kB │ gzip:   8.82 kB\nout/renderer/assets/AgentAppearancePanel-ro4V0Y23.js              26.76 kB │ gzip:   6.98 kB\nout/renderer/assets/index-Bu1YW1X8.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-BdZQUImp.js                       28.12 kB │ gzip:   7.95 kB\nout/renderer/assets/index-B3iyIQ0o.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/SkillProjectsView-DZGA5fcQ.js                 28.91 kB │ gzip:   7.86 kB\nout/renderer/assets/EditPromptModal-BlsD-72e.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-Rw7VvEyO.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-2JzO5WPd.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-BzJqWWMp.js                35.86 kB │ gzip:  10.94 kB\nout/renderer/assets/RulesManager-SxFrMUTs.js                      36.02 kB │ gzip:   9.30 kB\nout/renderer/assets/AgentSessionsPanel-y057dEd8.js                42.50 kB │ gzip:  11.49 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-D4Dub-Co.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-BEn3SJb5.js                             44.36 kB │ gzip:  15.41 kB\nout/renderer/assets/index-m6M3ChqM.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-DKAQWI2v.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-CyWDYBIB.js                      55.80 kB │ gzip:  16.56 kB\nout/renderer/assets/AgentAssetsWorkspace-C478Yszp.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-BWaMdo9V.js          56.88 kB │ gzip:  14.83 kB\nout/renderer/assets/webdav-save-sync-sbJ5iXyn.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-CpaR2ClG.js                  63.13 kB │ gzip:  15.56 kB\nout/renderer/assets/AISettingsPrototype-BajoPkiF.js               67.63 kB │ gzip:  13.97 kB\nout/renderer/assets/DataSettings-Bx8LnuQP.js                      71.06 kB │ gzip:  15.67 kB\nout/renderer/assets/index-oRZbPj-7.js                             84.84 kB │ gzip:  32.74 kB\nout/renderer/assets/AgentProviderModelWorkbench-DPw5jKvW.js       88.99 kB │ gzip:  19.24 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-BnvgvYDZ.js              92.97 kB │ gzip:  22.55 kB\nout/renderer/assets/SkillStore-BatVNH4y.js                       105.39 kB │ gzip:  30.38 kB\nout/renderer/assets/index-B1vHk-6T.js                            113.01 kB │ gzip:  33.50 kB\nout/renderer/assets/SkillFullDetailPage-Bxje48rk.js              115.38 kB │ gzip:  28.66 kB\nout/renderer/assets/PluginManager-IUUZGUP2.js                    119.17 kB │ gzip:  25.68 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-CIn-LjKA.js                       158.60 kB │ gzip:  36.13 kB\nout/renderer/assets/PromptGraphView-BJIt5qIY.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-QaRKcd68.js                            214.27 kB │ gzip:  71.16 kB\nout/renderer/assets/zh-BAIURGuU.js                               215.19 kB │ gzip:  70.84 kB\nout/renderer/assets/en-BUpzA32y.js                               221.17 kB │ gzip:  65.79 kB\nout/renderer/assets/de-CmU4Rzq1.js                               244.85 kB │ gzip:  73.37 kB\nout/renderer/assets/es-DBOPoIlV.js                               244.88 kB │ gzip:  72.33 kB\nout/renderer/assets/App-CwWpM4Bk.js                              250.18 kB │ gzip:  76.61 kB\nout/renderer/assets/fr-DoWTQhmp.js                               251.55 kB │ gzip:  73.85 kB\nout/renderer/assets/ja-B07sSqVf.js                               276.24 kB │ gzip:  75.76 kB\nout/renderer/assets/AppWorkspaceShell-w5__zlea.js                311.93 kB │ gzip:  79.45 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-CFllhsSF.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 18.67s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 3.86s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 67ms\n"
+      }
+    ],
+    "documentation": [
+      {
+        "name": "docs",
+        "args": [
+          "spec:test"
+        ],
+        "pid": 84076,
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (246.534958ms)\n✔ empty inventory and archived evidence remain readable (106.599042ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (4.768084ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (4.218333ms)\n✔ default traceability checks only explicitly opted-in work (99.209583ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 528.284417\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n"
+      }
+    ]
+  },
+  "bundleBudget": {
+    "passed": false,
+    "onlyFailedEntry": "settings data section",
+    "maximumGzipBytes": 15360,
+    "current": {
+      "chunk": "DataSettings-Bx8LnuQP.js",
+      "gzipBytes": 15669,
+      "sha256": "b37abcadfe04d71f1f5702b08029a11f50fb7b6bf01275fd7afcf9775c127bc4"
+    },
+    "withoutThisUiChange": {
+      "chunk": "DataSettings-zcAFYDsz.js",
+      "gzipBytes": 15675,
+      "sha256": "2b936d7ef27777c0149d804e1390ed78f3906718583d96f228ffa9c6ec329db7",
+      "normalizedContentEqual": true
+    },
+    "method": "Same copied dirty workspace and dependencies; replace only the nine touched runtime sources with their previously clean HEAD versions. Normalize generated import chunk filenames for content equality. Other code remains unchanged.",
+    "analysis": {
+      "chunk": "assets/DataSettings-Bx8LnuQP.js",
+      "entries": [
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/data-settings-controller-utils.ts",
+          "uid": "825c7137-4479",
+          "parts": {
+            "renderedLength": 2334,
+            "gzipLength": 921,
+            "brotliLength": 751,
+            "metaUid": "825c7137-4478"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useBackupExportActions.ts",
+          "uid": "825c7137-4481",
+          "parts": {
+            "renderedLength": 2270,
+            "gzipLength": 717,
+            "brotliLength": 621,
+            "metaUid": "825c7137-4480"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useBackupImportFlow.ts",
+          "uid": "825c7137-4483",
+          "parts": {
+            "renderedLength": 3408,
+            "gzipLength": 912,
+            "brotliLength": 780,
+            "metaUid": "825c7137-4482"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useClearDataFlow.ts",
+          "uid": "825c7137-4485",
+          "parts": {
+            "renderedLength": 2061,
+            "gzipLength": 671,
+            "brotliLength": 554,
+            "metaUid": "825c7137-4484"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useUpgradeBackupFlow.ts",
+          "uid": "825c7137-4487",
+          "parts": {
+            "renderedLength": 4550,
+            "gzipLength": 1051,
+            "brotliLength": 893,
+            "metaUid": "825c7137-4486"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useBackupController.ts",
+          "uid": "825c7137-4489",
+          "parts": {
+            "renderedLength": 518,
+            "gzipLength": 240,
+            "brotliLength": 191,
+            "metaUid": "825c7137-4488"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useDataPathController.ts",
+          "uid": "825c7137-4491",
+          "parts": {
+            "renderedLength": 5987,
+            "gzipLength": 1564,
+            "brotliLength": 1346,
+            "metaUid": "825c7137-4490"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useAutoSyncPresentation.ts",
+          "uid": "825c7137-4493",
+          "parts": {
+            "renderedLength": 1559,
+            "gzipLength": 495,
+            "brotliLength": 420,
+            "metaUid": "825c7137-4492"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useDataSettingsRuntime.ts",
+          "uid": "825c7137-4495",
+          "parts": {
+            "renderedLength": 3134,
+            "gzipLength": 949,
+            "brotliLength": 796,
+            "metaUid": "825c7137-4494"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useDataSyncController.ts",
+          "uid": "825c7137-4497",
+          "parts": {
+            "renderedLength": 11559,
+            "gzipLength": 2043,
+            "brotliLength": 1803,
+            "metaUid": "825c7137-4496"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useRecoveryController.ts",
+          "uid": "825c7137-4499",
+          "parts": {
+            "renderedLength": 6038,
+            "gzipLength": 1510,
+            "brotliLength": 1282,
+            "metaUid": "825c7137-4498"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/useDataSettingsController.ts",
+          "uid": "825c7137-4501",
+          "parts": {
+            "renderedLength": 1819,
+            "gzipLength": 712,
+            "brotliLength": 611,
+            "metaUid": "825c7137-4500"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/DataSettingsSection.tsx",
+          "uid": "825c7137-4503",
+          "parts": {
+            "renderedLength": 588,
+            "gzipLength": 317,
+            "brotliLength": 262,
+            "metaUid": "825c7137-4502"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/LocalDataPanel.tsx",
+          "uid": "825c7137-4505",
+          "parts": {
+            "renderedLength": 7596,
+            "gzipLength": 1686,
+            "brotliLength": 1433,
+            "metaUid": "825c7137-4504"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/RecoveryPanel.tsx",
+          "uid": "825c7137-4507",
+          "parts": {
+            "renderedLength": 7092,
+            "gzipLength": 1647,
+            "brotliLength": 1369,
+            "metaUid": "825c7137-4506"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/SelfHostedSyncPanel.tsx",
+          "uid": "825c7137-4509",
+          "parts": {
+            "renderedLength": 13506,
+            "gzipLength": 1994,
+            "brotliLength": 1705,
+            "metaUid": "825c7137-4508"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/SyncProviderSelector.tsx",
+          "uid": "825c7137-4511",
+          "parts": {
+            "renderedLength": 1186,
+            "gzipLength": 493,
+            "brotliLength": 409,
+            "metaUid": "825c7137-4510"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/WebDAVSyncPanel.tsx",
+          "uid": "825c7137-4513",
+          "parts": {
+            "renderedLength": 17192,
+            "gzipLength": 2352,
+            "brotliLength": 1960,
+            "metaUid": "825c7137-4512"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/S3SyncPanel.tsx",
+          "uid": "825c7137-4515",
+          "parts": {
+            "renderedLength": 20290,
+            "gzipLength": 2452,
+            "brotliLength": 2091,
+            "metaUid": "825c7137-4514"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/AutoSyncHistoryPanel.tsx",
+          "uid": "825c7137-4517",
+          "parts": {
+            "renderedLength": 3585,
+            "gzipLength": 985,
+            "brotliLength": 836,
+            "metaUid": "825c7137-4516"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/BackupGuidanceCard.tsx",
+          "uid": "825c7137-4519",
+          "parts": {
+            "renderedLength": 2000,
+            "gzipLength": 680,
+            "brotliLength": 591,
+            "metaUid": "825c7137-4518"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/BackupPanel.tsx",
+          "uid": "825c7137-4521",
+          "parts": {
+            "renderedLength": 17368,
+            "gzipLength": 3438,
+            "brotliLength": 2903,
+            "metaUid": "825c7137-4520"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/data-settings/DangerPanel.tsx",
+          "uid": "825c7137-4523",
+          "parts": {
+            "renderedLength": 887,
+            "gzipLength": 419,
+            "brotliLength": 343,
+            "metaUid": "825c7137-4522"
+          }
+        },
+        {
+          "path": "assets/DataSettings-Bx8LnuQP.js/src/renderer/components/settings/DataSettings.tsx",
+          "uid": "825c7137-4525",
+          "parts": {
+            "renderedLength": 1827,
+            "gzipLength": 651,
+            "brotliLength": 544,
+            "metaUid": "825c7137-4524"
+          }
+        }
+      ]
+    }
+  },
+  "acceptanceLimits": [
+    "Component tests use real UI/store entrypoints with mocked IPC data and jsdom virtualization.",
+    "Native GUI selection and deletion were not exercised.",
+    "Existing DataSettings budget failure remains; complete release gates were not run."
+  ],
+  "resources": {
+    "temporaryRoot": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-selection-ibhEfy",
+    "processGroups": [
+      {
+        "name": "unit",
+        "pid": 82846,
+        "alive": false
+      },
+      {
+        "name": "typecheck",
+        "pid": 82893,
+        "alive": false
+      },
+      {
+        "name": "test-types",
+        "pid": 82949,
+        "alive": false
+      },
+      {
+        "name": "lint",
+        "pid": 83000,
+        "alive": false
+      },
+      {
+        "name": "unit",
+        "pid": 83137,
+        "alive": false
+      },
+      {
+        "name": "typecheck",
+        "pid": 83180,
+        "alive": false
+      },
+      {
+        "name": "test-types",
+        "pid": 83288,
+        "alive": false
+      },
+      {
+        "name": "lint",
+        "pid": 83381,
+        "alive": false
+      },
+      {
+        "name": "build",
+        "pid": 83410,
+        "alive": false
+      },
+      {
+        "name": "bundle-budget",
+        "pid": 83463,
+        "alive": false
+      },
+      {
+        "name": "build",
+        "pid": 83794,
+        "alive": false
+      },
+      {
+        "name": "bundle-budget",
+        "pid": 83832,
+        "alive": false
+      },
+      {
+        "name": "analyze",
+        "pid": 83968,
+        "alive": false
+      },
+      {
+        "name": "docs",
+        "pid": 84076,
+        "alive": false
+      }
+    ],
+    "verificationProcessesReleased": true,
+    "temporaryRootRemoved": true,
+    "retainedExistingTrial": {
+      "supervisorPid": 59664,
+      "vitePid": 59722,
+      "url": "http://127.0.0.1:5173",
+      "createdBeforeThisUiTask": true,
+      "stopCommand": "kill -TERM 59664"
+    },
+    "guiSessionsCreated": 0
+  },
+  "git": "No commit, branch, push, or PR created."
+}

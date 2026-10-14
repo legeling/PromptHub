@@ -7,7 +7,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 45 |
+| Active | 46 |
 | Recorded complete (original path) | 2 |
 | Archived | 235 |
 | Legacy | 1 |
@@ -35,6 +35,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `desktop-startup-folder-restore` | active | `spec/changes/active/desktop-startup-folder-restore/` |
 | `desktop-tag-manager-usability` | active | `spec/changes/active/desktop-tag-manager-usability/` |
 | `desktop-upgrade-snapshot-lock-recovery` | active | `spec/changes/active/desktop-upgrade-snapshot-lock-recovery/` |
+| `existing-feature-release-acceptance` | active | `spec/changes/active/existing-feature-release-acceptance/` |
 | `foundation-integrity-redesign` | in progress | `spec/changes/active/foundation-integrity-redesign/` |
 | `grok-build-platform-support` | active | `spec/changes/active/grok-build-platform-support/` |
 | `infistar-sponsor-promotion` | active | `spec/changes/active/infistar-sponsor-promotion/` |

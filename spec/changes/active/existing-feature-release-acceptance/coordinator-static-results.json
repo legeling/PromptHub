@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 1,
+  "profile": "quick",
+  "surfaces": [
+    "cli",
+    "core",
+    "database",
+    "desktop",
+    "mobile",
+    "shared",
+    "web-cloudflare",
+    "web-self-hosted"
+  ],
+  "status": "failed",
+  "startedAt": 1791518018211,
+  "endedAt": 1791518066707,
+  "durationMs": 48496,
+  "maxConcurrency": 1,
+  "results": [
+    {
+      "id": "governance-ci-config",
+      "label": "CI surface selection tests",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "test:ci-config"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518018211,
+      "endedAt": 1791518019068,
+      "durationMs": 857,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> prompthub-monorepo@0.6.0-beta.2 test:ci-config /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/detect-ci-surfaces.test.mjs scripts/react-type-boundaries.test.mjs scripts/version-alignment.test.mjs\n\n✔ maps direct app changes to their owning surface (1.071ms)\n✔ fans shared and core changes out to their consumers (0.11225ms)\n✔ fans root build changes out but leaves documentation to governance (0.06625ms)\n✔ fails safe for unknown paths and uses the shared graph for web consumers (0.0625ms)\n✔ quality workflow preserves unconditional governance and surface gates (0.393583ms)\n✔ Cloudflare Worker workflow has an independent bounded gate (0.166958ms)\n✔ pins the public-hoisted React type boundary for mixed React workspaces (0.954959ms)\n✔ keeps every shipped distribution on the release candidate version (1.069875ms)\n✔ keeps the standalone CLI runtime version aligned (0.52725ms)\nℹ tests 9\nℹ suites 0\nℹ pass 9\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 47.850458\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "governance-spec",
+      "label": "Specification governance",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "spec:test"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518019068,
+      "endedAt": 1791518019999,
+      "durationMs": 931,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (122.268458ms)\n✔ empty inventory and archived evidence remain readable (51.467167ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (2.172583ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (1.707625ms)\n✔ default traceability checks only explicitly opted-in work (49.498042ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 265.296292\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "governance-file-size",
+      "label": "Source file size limits",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "lint:file-size"
+        ]
+      },
+      "status": "failed",
+      "startedAt": 1791518019999,
+      "endedAt": 1791518020551,
+      "durationMs": 552,
+      "exitCode": 1,
+      "signal": null,
+      "outputTail": "\n> prompthub-monorepo@0.6.0-beta.2 lint:file-size /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/check-file-line-limits.mjs\n\nFile line limit exceeded:\n- apps/desktop/src/main/index.ts: 1506; preferred limit 1500\n- apps/desktop/tests/unit/components/agent-sessions-panel.test.tsx: 1552; preferred limit 1500\n ELIFECYCLE  Command failed with exit code 1.\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "shared-typecheck",
+      "label": "Shared package typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/shared",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518020552,
+      "endedAt": 1791518021399,
+      "durationMs": 847,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/shared@0.1.0 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/packages/shared\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "db-typecheck",
+      "label": "Database package typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/db",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518021399,
+      "endedAt": 1791518022324,
+      "durationMs": 925,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/db@0.1.0 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/packages/db\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "core-typecheck",
+      "label": "Core package typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/core",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518022324,
+      "endedAt": 1791518023779,
+      "durationMs": 1455,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/core@0.1.0 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "cli-lint",
+      "label": "CLI lint",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/cli",
+          "lint"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518023779,
+      "endedAt": 1791518025025,
+      "durationMs": 1246,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/cli@0.6.0-beta.2 lint /Users/lingxiaotian/Programs/personal/PromptHub/apps/cli\n> eslint . --ext ts --report-unused-disable-directives --max-warnings 0\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "cli-typecheck",
+      "label": "CLI typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/cli",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518025025,
+      "endedAt": 1791518027045,
+      "durationMs": 2020,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/cli@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/cli\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "desktop-lint",
+      "label": "Desktop lint",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "lint"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518027045,
+      "endedAt": 1791518033906,
+      "durationMs": 6861,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 lint /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> eslint . --ext ts,tsx,mts --report-unused-disable-directives --max-warnings 0\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "desktop-typecheck",
+      "label": "Desktop typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518033906,
+      "endedAt": 1791518043860,
+      "durationMs": 9954,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "desktop-test-typecheck",
+      "label": "Desktop test, fixture and E2E typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck:tests"
+        ]
+      },
+      "status": "failed",
+      "startedAt": 1791518043860,
+      "endedAt": 1791518056728,
+      "durationMs": 12868,
+      "exitCode": 2,
+      "signal": null,
+      "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\ntests/unit/stores/mcp.store.test.ts(129,5): error TS2322: Type '{ getTargetPresets: Mock<Procedure>; getTargetStatus: Mock<() => Promise<McpTargetStatusEntry[]>>; getLibrary: Mock<Procedure>; ... 24 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<McpTargetSyncApplyResult>; }' is not assignable to type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles: () => Promise<AgentAssetFileSnapshot[]>; restoreDataFiles: (files: AgentAssetFileSnapshot[]) => Promise<void>; ... 23 more ...; syncTargets: (identifier: string, options?: McpTargetSync...'.\n  Property 'replaceLibrary' is optional in type '{ getTargetPresets: Mock<Procedure>; getTargetStatus: Mock<() => Promise<McpTargetStatusEntry[]>>; getLibrary: Mock<Procedure>; ... 24 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }' but required in type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 25 more ...; syncTargets: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }'.\ntests/unit/stores/mcp.store.test.ts(178,5): error TS2322: Type '{ getTargetPresets: Mock<Procedure>; getTargetStatus: Mock<Procedure>; getLibrary?: () => Promise<McpLibraryFile>; replaceLibrary?: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 23 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<McpTargetSyncApplyResult>; }' is not assignable to type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles: () => Promise<AgentAssetFileSnapshot[]>; restoreDataFiles: (files: AgentAssetFileSnapshot[]) => Promise<void>; ... 23 more ...; syncTargets: (identifier: string, options?: McpTargetSync...'.\n  Property 'getLibrary' is optional in type '{ getTargetPresets: Mock<Procedure>; getTargetStatus: Mock<Procedure>; getLibrary?: () => Promise<McpLibraryFile>; replaceLibrary?: (library: McpLibraryFile) => Promise<...>; ... 23 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }' but required in type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 25 more ...; syncTargets: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }'.\ntests/unit/stores/mcp.store.test.ts(325,5): error TS2322: Type '{ replaceMarketSources: Mock<(sources: McpMarketSource[]) => Promise<McpMarketSource[]>>; getLibrary?: () => Promise<McpLibraryFile>; replaceLibrary?: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 24 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<McpTargetSyncAppl...' is not assignable to type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles: () => Promise<AgentAssetFileSnapshot[]>; restoreDataFiles: (files: AgentAssetFileSnapshot[]) => Promise<void>; ... 23 more ...; syncTargets: (identifier: string, options?: McpTargetSync...'.\n  Property 'getLibrary' is optional in type '{ replaceMarketSources: Mock<(sources: McpMarketSource[]) => Promise<McpMarketSource[]>>; getLibrary?: () => Promise<McpLibraryFile>; ... 25 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }' but required in type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 25 more ...; syncTargets: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }'.\ntests/unit/stores/mcp.store.test.ts(393,5): error TS2322: Type '{ getLibrary: Mock<Procedure>; listMarket: Mock<Procedure>; listMarketSources: Mock<Procedure>; replaceMarketSources: Mock<(sources: McpMarketSource[]) => Promise<...>>; ... 23 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<McpTargetSyncApplyResult>; }' is not assignable to type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles: () => Promise<AgentAssetFileSnapshot[]>; restoreDataFiles: (files: AgentAssetFileSnapshot[]) => Promise<void>; ... 23 more ...; syncTargets: (identifier: string, options?: McpTargetSync...'.\n  Property 'replaceLibrary' is optional in type '{ getLibrary: Mock<Procedure>; listMarket: Mock<Procedure>; listMarketSources: Mock<Procedure>; replaceMarketSources: Mock<(sources: McpMarketSource[]) => Promise<...>>; ... 23 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }' but required in type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 25 more ...; syncTargets: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }'.\ntests/unit/stores/mcp.store.test.ts(445,5): error TS2322: Type '{ deleteServer: Mock<Procedure>; getLibrary?: () => Promise<McpLibraryFile>; replaceLibrary?: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles?: () => Promise<AgentAssetFileSnapshot[]>; ... 23 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<McpTargetSyncAp...' is not assignable to type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles: () => Promise<AgentAssetFileSnapshot[]>; restoreDataFiles: (files: AgentAssetFileSnapshot[]) => Promise<void>; ... 23 more ...; syncTargets: (identifier: string, options?: McpTargetSync...'.\n  Property 'getLibrary' is optional in type '{ deleteServer: Mock<Procedure>; getLibrary?: () => Promise<McpLibraryFile>; replaceLibrary?: (library: McpLibraryFile) => Promise<...>; ... 24 more ...; syncTargets?: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }' but required in type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 25 more ...; syncTargets: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }'.\ntests/unit/stores/mcp.store.test.ts(498,5): error TS2322: Type '{ syncTargets: Mock<Procedure>; checkTargetSync: Mock<Procedure>; getLibrary: Mock<Procedure>; listMarket: Mock<Procedure>; ... 23 more ...; importEnv?: (identifier: string, envFilePath: string, selectedKeys?: string[]) => Promise<McpEnvImportResult>; }' is not assignable to type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; exportDataFiles: () => Promise<AgentAssetFileSnapshot[]>; restoreDataFiles: (files: AgentAssetFileSnapshot[]) => Promise<void>; ... 23 more ...; syncTargets: (identifier: string, options?: McpTargetSync...'.\n  Property 'replaceLibrary' is optional in type '{ syncTargets: Mock<Procedure>; checkTargetSync: Mock<Procedure>; getLibrary: Mock<Procedure>; listMarket: Mock<Procedure>; ... 23 more ...; importEnv?: (identifier: string, envFilePath: string, selectedKeys?: string[]) => Promise<...>; }' but required in type '{ getLibrary: () => Promise<McpLibraryFile>; replaceLibrary: (library: McpLibraryFile) => Promise<McpLibraryFile>; ... 25 more ...; syncTargets: (identifier: string, options?: McpTargetSyncOptions) => Promise<...>; }'.\ntests/unit/stores/plugin.store.test.ts(157,5): error TS2740: Type '{ getLibrary: Mock<Procedure>; listMarketSources: Mock<Procedure>; getTargetMatrix: Mock<Procedure>; listMarket: Mock<Procedure>; ... 12 more ...; deletePlugin: Mock<...>; }' is missing the following properties from type '{ getLibrary: () => Promise<PluginLibraryFile>; exportLibrarySnapshot: () => Promise<PluginLibrarySnapshot>; restoreLibrarySnapshot: (snapshot: PluginLibrarySnapshot) => Promise<...>; ... 21 more ...; getTargetMatrix: () => Promise<...>; }': exportLibrarySnapshot, restoreLibrarySnapshot, exportDataFiles, restoreDataFiles, and 4 more.\ntests/unit/stores/plugin.store.test.ts(658,11): error TS2322: Type '{ [x: string]: { status: \"update-available\"; plugin: PluginLibraryEntry; checkedAt: string; localModified: false; remoteChanged: true; } | { status: \"up-to-date\"; plugin: PluginLibraryEntry; checkedAt: string; localModified: false; remoteChanged: false; }; }' is not assignable to type 'Record<string, PluginSourceUpdateCheck>'.\n  'string' index signatures are incompatible.\n    Type '{ status: \"update-available\"; plugin: PluginLibraryEntry; checkedAt: string; localModified: false; remoteChanged: true; } | { status: \"up-to-date\"; plugin: PluginLibraryEntry; checkedAt: string; localModified: false; remoteChanged: false; }' is not assignable to type 'PluginSourceUpdateCheck'.\n      Object literal may only specify known properties, and 'checkedAt' does not exist in type 'PluginSourceUpdateCheck'.\ntests/unit/stores/rules.store.test.ts(623,11): error TS2322: Type 'Mock<(ruleId: string) => Promise<unknown>>' is not assignable to type '(ruleId: RuleFileId) => Promise<RuleFileContent>'.\n  Type 'Promise<unknown>' is not assignable to type 'Promise<RuleFileContent>'.\n    Type '{}' is missing the following properties from type 'RuleFileContent': content, versions, id, platformId, and 8 more.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 typecheck:tests: `tsc --noEmit -p tsconfig.test.json`\nExit status 2\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "web-lint",
+      "label": "Self-hosted Web lint",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/web",
+          "lint"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518056729,
+      "endedAt": 1791518058788,
+      "durationMs": 2059,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/web@0.6.0-beta.2 lint /Users/lingxiaotian/Programs/personal/PromptHub/apps/web\n> eslint . --ext ts,tsx,mts --report-unused-disable-directives --max-warnings 0\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "web-typecheck",
+      "label": "Self-hosted Web typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/web",
+          "typecheck"
+        ]
+      },
+      "status": "failed",
+      "startedAt": 1791518058788,
+      "endedAt": 1791518062807,
+      "durationMs": 4019,
+      "exitCode": 2,
+      "signal": null,
+      "outputTail": "\n> @prompthub/web@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/web\n> tsc --noEmit\n\nsrc/routes/release-acceptance-cross-surface-rewrite.test.ts(30,3): error TS2322: Type 'Response | Promise<Response>' is not assignable to type 'Promise<Response>'.\n  Type 'Response' is missing the following properties from type 'Promise<Response>': then, catch, finally, [Symbol.toStringTag]\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/web:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/web@0.6.0-beta.2 typecheck: `tsc --noEmit`\nExit status 2\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "web-cloudflare-lint",
+      "label": "Cloudflare Worker lint",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/web-cloudflare",
+          "lint"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518062807,
+      "endedAt": 1791518063794,
+      "durationMs": 987,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/web-cloudflare@0.6.0-beta.2 lint /Users/lingxiaotian/Programs/personal/PromptHub/apps/web-cloudflare\n> eslint . --ext ts --report-unused-disable-directives --max-warnings 0\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "web-cloudflare-typecheck",
+      "label": "Cloudflare Worker typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/web-cloudflare",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518063794,
+      "endedAt": 1791518064973,
+      "durationMs": 1179,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/web-cloudflare@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/web-cloudflare\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "mobile-typecheck",
+      "label": "Mobile typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/mobile",
+          "typecheck"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1791518064974,
+      "endedAt": 1791518066707,
+      "durationMs": 1733,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/mobile@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/mobile\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    }
+  ]
+}

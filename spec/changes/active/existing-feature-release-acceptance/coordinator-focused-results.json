@@ -1,0 +1,705 @@
+{
+  "initial": {
+    "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+    "results": [
+      {
+        "id": "governance-file-size",
+        "args": [
+          "lint:file-size"
+        ],
+        "pid": 46207,
+        "startedAt": "2026-10-09T04:04:56.389Z",
+        "endedAt": "2026-10-09T04:04:56.917Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\n> prompthub-monorepo@0.6.0-beta.2 lint:file-size /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/check-file-line-limits.mjs\n\nFile line limit passed: new files <= 1500; legacy files did not grow; hard limit 2000.\n"
+      },
+      {
+        "id": "desktop-typecheck",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck"
+        ],
+        "pid": 46238,
+        "startedAt": "2026-10-09T04:04:56.917Z",
+        "endedAt": "2026-10-09T04:05:05.792Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n"
+      },
+      {
+        "id": "desktop-test-typecheck",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck:tests"
+        ],
+        "pid": 46276,
+        "startedAt": "2026-10-09T04:05:05.793Z",
+        "endedAt": "2026-10-09T04:05:17.573Z",
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\ntests/unit/components/agent-sessions-panel.test.tsx(548,10): error TS2304: Cannot find name 'ManagedAgentSummary'.\ntests/unit/components/agent-sessions-panel.test.tsx(554,10): error TS2304: Cannot find name 'ManagedAgentSummary'.\ntests/unit/components/agent-sessions-panel.test.tsx(560,10): error TS2304: Cannot find name 'ManagedAgentSummary'.\ntests/unit/components/agent-sessions-panel.test.tsx(802,10): error TS2304: Cannot find name 'ManagedAgentSummary'.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 typecheck:tests: `tsc --noEmit -p tsconfig.test.json`\nExit status 2\n"
+      },
+      {
+        "id": "web-typecheck",
+        "args": [
+          "--filter",
+          "@prompthub/web",
+          "typecheck"
+        ],
+        "pid": 46338,
+        "startedAt": "2026-10-09T04:05:17.573Z",
+        "endedAt": "2026-10-09T04:05:20.061Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\n> @prompthub/web@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/web\n> tsc --noEmit\n\n"
+      },
+      {
+        "id": "desktop-root-lint",
+        "args": [
+          "exec",
+          "eslint",
+          "--config",
+          "apps/desktop/eslint.config.mjs",
+          "apps/desktop/src/main/index.ts",
+          "apps/desktop/src/main/services/network-proxy-startup.ts",
+          "apps/desktop/src/main/services/agent-conversation-service.ts",
+          "apps/desktop/tests/helpers/agent-sessions.ts",
+          "apps/desktop/tests/unit/components/agent-sessions-panel.test.tsx",
+          "apps/desktop/tests/unit/components/agent-sessions-panel-search.test.tsx",
+          "apps/desktop/tests/unit/stores/mcp.store.test.ts",
+          "apps/desktop/tests/unit/stores/plugin.store.test.ts",
+          "apps/desktop/tests/unit/stores/rules.store.test.ts",
+          "--max-warnings=0"
+        ],
+        "pid": 46374,
+        "startedAt": "2026-10-09T04:05:20.061Z",
+        "endedAt": "2026-10-09T04:05:20.979Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": ""
+      },
+      {
+        "id": "desktop-root-unit",
+        "args": [
+          "--dir",
+          "apps/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/components/agent-sessions-panel.test.tsx",
+          "tests/unit/components/agent-sessions-panel-search.test.tsx",
+          "tests/unit/stores/mcp.store.test.ts",
+          "tests/unit/stores/plugin.store.test.ts",
+          "tests/unit/stores/rules.store.test.ts",
+          "--reporter=json",
+          "--outputFile=/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/unit.json"
+        ],
+        "pid": 46381,
+        "startedAt": "2026-10-09T04:05:20.979Z",
+        "endedAt": "2026-10-09T04:05:27.523Z",
+        "code": 1,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\nJSON report written to /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/unit.json\n"
+      },
+      {
+        "id": "web-rewrite",
+        "args": [
+          "--filter",
+          "@prompthub/web",
+          "test",
+          "src/routes/release-acceptance-cross-surface-rewrite.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "--reporter=json",
+          "--outputFile=/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/web.json"
+        ],
+        "pid": 46447,
+        "startedAt": "2026-10-09T04:05:27.523Z",
+        "endedAt": "2026-10-09T04:05:27.677Z",
+        "code": 1,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": " ERROR  Unknown options: 'minWorkers', 'maxWorkers', 'outputFile'\nFor help, run: pnpm help test\n"
+      }
+    ]
+  },
+  "correction": {
+    "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+    "results": [
+      {
+        "id": "desktop-test-typecheck-fixed",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck:tests"
+        ],
+        "pid": 46520,
+        "startedAt": "2026-10-09T04:07:09.356Z",
+        "endedAt": "2026-10-09T04:07:21.416Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n"
+      },
+      {
+        "id": "plugin-cache-fixed",
+        "args": [
+          "--dir",
+          "apps/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/stores/plugin.store.test.ts",
+          "-t",
+          "deletes plugins with options and clears plugin-scoped runtime caches",
+          "--reporter=json",
+          "--outputFile=/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/plugin-fixed.json"
+        ],
+        "pid": 46573,
+        "startedAt": "2026-10-09T04:07:21.416Z",
+        "endedAt": "2026-10-09T04:07:22.426Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\nJSON report written to /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/plugin-fixed.json\n"
+      },
+      {
+        "id": "web-rewrite-run",
+        "args": [
+          "--filter",
+          "@prompthub/web",
+          "run",
+          "test",
+          "src/routes/release-acceptance-cross-surface-rewrite.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "--reporter=json",
+          "--outputFile=/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/web.json"
+        ],
+        "pid": 46590,
+        "startedAt": "2026-10-09T04:07:22.426Z",
+        "endedAt": "2026-10-09T04:07:26.091Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "overflow": false,
+        "outputTail": "\n> @prompthub/web@0.6.0-beta.2 test /Users/lingxiaotian/Programs/personal/PromptHub/apps/web\n> vitest run --config vitest.config.ts \"src/routes/release-acceptance-cross-surface-rewrite.test.ts\" \"--minWorkers=1\" \"--maxWorkers=1\" \"--reporter=json\" \"--outputFile=/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/web.json\"\n\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/prompthub-web-db-template-4wPOdF/prompthub.db\nJSON report written to /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-coordinator-final-BUa5A1/web.json\n"
+      }
+    ]
+  },
+  "unitFiles": [
+    {
+      "report": "unit.json",
+      "total": 52,
+      "pass": 51,
+      "fail": 1,
+      "skipped": 0,
+      "files": [
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/agent-sessions-panel-search.test.tsx",
+          "status": "passed",
+          "assertions": [
+            {
+              "name": "AgentSessionsPanel search submits search only on Enter and reuses the submitted query for pagination",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel search matches only effective titles and project identity",
+              "status": "passed",
+              "failureMessages": []
+            }
+          ]
+        },
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/agent-sessions-panel.test.tsx",
+          "status": "passed",
+          "assertions": [
+            {
+              "name": "AgentSessionsPanel provides fast transcript pagination",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel pages session metadata",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel sorts loaded conversations by time or size and keeps unknown sizes last",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel jumps to the latest loaded transcript page across duplicate cursor pages",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel clamps pagination when a native cursor stops advancing",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel resumes natively, previews cross-Agent continuation, and exports history",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel opens session actions on right click without exposing metadata editing",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel hides unsupported row context actions and closes on outside input",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel builds project filters from native session paths without registered projects",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel explains a successful native-source empty result",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel ignores a metadata page that resolves after the selected Agent changes",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "AgentSessionsPanel applies the system index preference without History controls",
+              "status": "passed",
+              "failureMessages": []
+            }
+          ]
+        },
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/stores/mcp.store.test.ts",
+          "status": "passed",
+          "assertions": [
+            {
+              "name": "mcp store remote market cache persistence deduplicates lightweight target inventory reads without loading markets or health",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence retains cached target rows after refresh failure and supports a forced retry",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence persists only loaded remote market entries and strips transient state",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence hydrates cached remote market entries without restoring loading or error state",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence keeps Plugin child MCP deploy requests as one-time UI handoff state",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence commits a custom MCP source only after main-process registration succeeds",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence merges renderer migration sources with main-process registered sources without deleting either",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence deletes MCP servers and clears stale detail preview state",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "mcp store remote market cache persistence syncs distributed targets without storing secret-bearing content in preview",
+              "status": "passed",
+              "failureMessages": []
+            }
+          ]
+        },
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/stores/plugin.store.test.ts",
+          "status": "failed",
+          "assertions": [
+            {
+              "name": "plugin store deduplicates lightweight target inventory reads without loading libraries or markets",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store retains cached target rows after refresh failure and supports a forced retry",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store loads the selected plugin marketplace before slower background sources",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store hydrates cached plugin marketplace entries and skips first-load market fetches",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store persists My Plugins view preferences",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store force reloads cached plugin marketplace entries",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store imports a plugin from a Git source URL into My Plugins",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store previews a plugin Git source without installing it",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store checks installed plugin package health and caches the result",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store removes a plugin distribution from selected Agent targets and updates the library",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store loads plugin versions into a runtime cache",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store creates plugin versions and reloads version history",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store rolls back plugin versions and updates the library",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store deletes plugin versions and reloads version history",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store deletes plugins with options and clears plugin-scoped runtime caches",
+              "status": "failed",
+              "failureMessages": [
+                "AssertionError: expected { 'http-source:other-kit': { …(4) } } to deeply equal { 'http-source:other-kit': { …(5) } }\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/stores/plugin.store.test.ts:689:58\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/stores/rules.store.test.ts",
+          "status": "passed",
+          "assertions": [
+            {
+              "name": "rules store keeps a file-owned global rule visible when its deployment target is missing",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store creates a missing rule through the existing save contract and selects it",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store leaves loading and exposes a retryable error when inventory loading fails",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store keeps a missing rule retryable when creation fails",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store loads descriptors, selects the first rule, and groups files into global/project sections",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store includes custom global rules in sidebar sections after preferred built-in platforms",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store hides disabled global rules even when the target file exists",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store keeps custom rules hidden after disabling their platform in settings",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store updates visible custom rules after settings change and a forced reload",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store keeps enabled global rules visible when the target file exists",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store rewrites the current rule draft with AI",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store schedules WebDAV save-sync after saving a rule",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store ignores stale rule reads when the user switches selection before the first read resolves",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "rules store opens the conflict dialog once and keeps it closed after dismiss",
+              "status": "passed",
+              "failureMessages": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "report": "plugin-fixed.json",
+      "total": 15,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 14,
+      "files": [
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/stores/plugin.store.test.ts",
+          "status": "passed",
+          "assertions": [
+            {
+              "name": "plugin store deduplicates lightweight target inventory reads without loading libraries or markets",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store retains cached target rows after refresh failure and supports a forced retry",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store loads the selected plugin marketplace before slower background sources",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store hydrates cached plugin marketplace entries and skips first-load market fetches",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store persists My Plugins view preferences",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store force reloads cached plugin marketplace entries",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store imports a plugin from a Git source URL into My Plugins",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store previews a plugin Git source without installing it",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store checks installed plugin package health and caches the result",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store removes a plugin distribution from selected Agent targets and updates the library",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store loads plugin versions into a runtime cache",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store creates plugin versions and reloads version history",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store rolls back plugin versions and updates the library",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store deletes plugin versions and reloads version history",
+              "status": "skipped",
+              "failureMessages": []
+            },
+            {
+              "name": "plugin store deletes plugins with options and clears plugin-scoped runtime caches",
+              "status": "passed",
+              "failureMessages": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "report": "web.json",
+      "total": 16,
+      "pass": 16,
+      "fail": 0,
+      "skipped": 0,
+      "files": [
+        {
+          "name": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/web/src/routes/release-acceptance-cross-surface-rewrite.test.ts",
+          "status": "passed",
+          "assertions": [
+            {
+              "name": "Web Rules draft at /api/rules/rewrite uses the actual Web transport to reject private destinations without writing a draft",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite returns the gemini provider draft using its protocol contract",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite returns the anthropic provider draft using its protocol contract",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite returns actual provider content through Core rewrite and never saves the draft (D03)",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite rejects missing AI configuration before transport and preserves current content and versions",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite rejects http failure without false draft success or persistence",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite rejects empty failure without false draft success or persistence",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/rewrite rejects network failure without false draft success or persistence",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite uses the actual Web transport to reject private destinations without writing a draft",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite returns the gemini provider draft using its protocol contract",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite returns the anthropic provider draft using its protocol contract",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite returns actual provider content through Core rewrite and never saves the draft (D03)",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite rejects missing AI configuration before transport and preserves current content and versions",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite rejects http failure without false draft success or persistence",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite rejects empty failure without false draft success or persistence",
+              "status": "passed",
+              "failureMessages": []
+            },
+            {
+              "name": "Web Rules draft at /api/rules/project%3Arewrite/rewrite rejects network failure without false draft success or persistence",
+              "status": "passed",
+              "failureMessages": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "webTests": null
+}

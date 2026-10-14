@@ -1,0 +1,496 @@
+{
+  "scope": "Skills activation followed by leftmost module navigation; no speculative production changes after the existing scoped sidebar/path-read fix.",
+  "generatedAt": "2026-10-10T03:12:22.500Z",
+  "head": "108f375bcd2c3e94c20d93dd619d641b6386b352",
+  "ownership": {
+    "newRegression": "apps/desktop/tests/unit/components/skill-navigation-lifecycle.test.tsx",
+    "documentation": "existing-feature-release-acceptance/plan.md",
+    "preserved": "Unrelated dirty worktree changes; no commit, push, branch, or pull request."
+  },
+  "status": "user_confirmed_navigation_normal",
+  "existingFixEvidence": {
+    "report": "coordinator-sidebar-navigation-results.json",
+    "currentHashes": {
+      "apps/desktop/src/main/services/skill-installer-utils.ts": "ff87bcd9ec3a7a04130ef44224aefed2a820e653c4c61bba0e7677eeb69f25c0",
+      "apps/desktop/src/renderer/components/layout/Sidebar.tsx": "26caede34221e51da862464edd1dfb4db7c825f7891e17ab1a8f047da984367a",
+      "apps/desktop/src/renderer/components/layout/SidebarRail.tsx": "61b3d54d3452a9cb2279559aaaa5a05eefcd7b334cd4db0b999560de4afb72ff",
+      "apps/desktop/src/renderer/components/layout/SidebarNavigationRail.tsx": "de2a9e4c5249e5a71ac3febe47c49839bb379352db5aca03643c367ece85f206",
+      "apps/desktop/src/renderer/components/layout/useSidebarShellController.tsx": "ce26457aa364685954d32e5c8f4bac77d749e65f6a94c068f7a4d712ddf8b12d",
+      "apps/desktop/tests/unit/components/sidebar-rail-isolation.test.tsx": "986f4c7e62e37d8cb9059d94490d705aec6fa3ac7a25ebc010f0d3d7d677c435",
+      "apps/desktop/tests/integration/skill-platform-path-read-cost.test.ts": "181d72705da415f86c3007843ced83f8842405679414a23df875fdb61aad8acf",
+      "spec/knowledge/structure/desktop-frontend-performance.md": "7fbedc0b35c46f45ffc1cb0427c5f25ae40afc980769b2dacdc27c0c4720e276"
+    },
+    "hashesUnchanged": true,
+    "reusedChecks": "139 distinct relevant cases plus types/lint/isolated build from the existing fix; not rerun because these eight scoped files are unchanged."
+  },
+  "regression": {
+    "file": "apps/desktop/tests/unit/components/skill-navigation-lifecycle.test.tsx",
+    "sha256": "d53a5e4aaad0c56da366043ea7ebd21337ea76a4f09060837de23ba41e14b4b2",
+    "modifiedAt": "2026-10-09T08:35:08.580Z",
+    "caseCount": 2,
+    "boundary": "Real MainContent, Sidebar rail, React components and Zustand stores; only IPC Promise completion is controlled. This proves navigation lifecycle while reads are pending, not native filesystem performance.",
+    "behaviors": [
+      "Cached page of 10 from 117 Skills remains visible with library/status reads unresolved; leaving Skills succeeds before read completion; late completion preserves cache and cannot navigate back.",
+      "Three departure/reentry rounds succeed with platform inspection unresolved; late inspection cannot change the final Prompts module."
+    ],
+    "oldImplementationRedRun": false
+  },
+  "initialChecks": [
+    {
+      "id": "navigation-regression",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--project",
+        "unit",
+        "tests/unit/components/skill-navigation-lifecycle.test.tsx",
+        "--minWorkers=1",
+        "--maxWorkers=1"
+      ],
+      "pid": 9231,
+      "startedAt": "2026-10-09T08:33:45.255Z",
+      "endedAt": "2026-10-09T08:33:48.379Z",
+      "exitCode": 0,
+      "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/skill-navigation-lifecycle.test.tsx (2 tests) 986ms\n   ✓ Skill module navigation while reads are pending > leaves Skills before library and platform reads finish, then ignores late completion 450ms\n   ✓ Skill module navigation while reads are pending > allows repeated departure and reentry while platform inspection is unresolved 536ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  16:33:45\n   Duration  2.47s (transform 752ms, setup 151ms, collect 947ms, tests 986ms, environment 268ms, prepare 28ms)\n\n"
+    },
+    {
+      "id": "navigation-test-types",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "run",
+        "typecheck:tests"
+      ],
+      "pid": 9246,
+      "startedAt": "2026-10-09T08:33:48.380Z",
+      "endedAt": "2026-10-09T08:34:02.644Z",
+      "exitCode": 2,
+      "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\ntests/unit/components/skill-navigation-lifecycle.test.tsx(74,7): error TS2740: Type 'Set<unknown>' is missing the following properties from type 'string[]': length, pop, push, concat, and 24 more.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 typecheck:tests: `tsc --noEmit -p tsconfig.test.json`\nExit status 2\n"
+    },
+    {
+      "id": "navigation-test-lint",
+      "args": [
+        "exec",
+        "eslint",
+        "apps/desktop/tests/unit/components/skill-navigation-lifecycle.test.tsx",
+        "--max-warnings=0"
+      ],
+      "pid": 9325,
+      "startedAt": "2026-10-09T08:34:02.644Z",
+      "endedAt": "2026-10-09T08:34:02.998Z",
+      "exitCode": 2,
+      "output": "\nOops! Something went wrong! :(\n\nESLint: 9.39.1\n\nESLint couldn't find an eslint.config.(js|mjs|cjs) file.\n\nFrom ESLint v9.0.0, the default configuration file is now eslint.config.js.\nIf you are using a .eslintrc.* file, please follow the migration guide\nto update your configuration file to the new format:\n\nhttps://eslint.org/docs/latest/use/configure/migration-guide\n\nIf you still have problems after following the migration guide, please stop by\nhttps://eslint.org/chat/help to chat with the team.\n\n"
+    }
+  ],
+  "finalChecks": [
+    {
+      "id": "navigation-regression-corrected-fixture",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--project",
+        "unit",
+        "tests/unit/components/skill-navigation-lifecycle.test.tsx",
+        "--minWorkers=1",
+        "--maxWorkers=1"
+      ],
+      "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+      "pid": 9473,
+      "startedAt": "2026-10-09T08:36:20.423Z",
+      "endedAt": "2026-10-09T08:36:23.260Z",
+      "exitCode": 0,
+      "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/skill-navigation-lifecycle.test.tsx (2 tests) 863ms\n   ✓ Skill module navigation while reads are pending > leaves Skills before library and platform reads finish, then ignores late completion 343ms\n   ✓ Skill module navigation while reads are pending > allows repeated departure and reentry while platform inspection is unresolved 519ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  16:36:20\n   Duration  2.27s (transform 725ms, setup 127ms, collect 914ms, tests 863ms, environment 248ms, prepare 29ms)\n\n"
+    },
+    {
+      "id": "navigation-test-types-corrected-fixture",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "run",
+        "typecheck:tests"
+      ],
+      "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+      "pid": 9488,
+      "startedAt": "2026-10-09T08:36:23.260Z",
+      "endedAt": "2026-10-09T08:36:36.659Z",
+      "exitCode": 0,
+      "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n"
+    },
+    {
+      "id": "navigation-test-lint-desktop-config",
+      "args": [
+        "exec",
+        "eslint",
+        "tests/unit/components/skill-navigation-lifecycle.test.tsx",
+        "--max-warnings=0"
+      ],
+      "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop",
+      "pid": 9536,
+      "startedAt": "2026-10-09T08:36:36.659Z",
+      "endedAt": "2026-10-09T08:36:37.490Z",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "id": "navigation-plan-governance",
+      "args": [
+        "run",
+        "spec:test"
+      ],
+      "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+      "pid": 9553,
+      "startedAt": "2026-10-09T08:36:37.490Z",
+      "endedAt": "2026-10-09T08:36:39.142Z",
+      "exitCode": 0,
+      "output": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (228.61225ms)\n✔ empty inventory and archived evidence remain readable (88.592666ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (6.058042ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (2.024667ms)\n✔ default traceability checks only explicitly opted-in work (70.151042ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 434.901167\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n"
+    }
+  ],
+  "gui": {
+    "authorization": "Only PromptHub six leftmost module menus, performance and error log capture.",
+    "oct09": {
+      "sequentialClicksWithReadback": 21,
+      "rapidClicks": 12,
+      "rapidReadback": "Only the final MCP state, not all twelve intermediate pages.",
+      "sustainedFreezeObserved": false,
+      "overlapSampleUtc": [
+        "2026-10-09T08:13:19Z",
+        "2026-10-09T08:16:20Z"
+      ],
+      "coveredClicksUtc": [
+        "2026-10-09T08:14:13Z",
+        "2026-10-09T08:14:22Z"
+      ],
+      "nativePointerPath": "Skills to MCP"
+    },
+    "oct10": {
+      "coldProcess": true,
+      "firstSkillsActivationAfterStartup": true,
+      "steps": [
+        {
+          "menu": "Skills",
+          "startedAt": "2026-10-10T03:05:58.593Z",
+          "endedAt": "2026-10-10T03:05:59.646Z",
+          "transport": "native accessibility",
+          "readback": "My Skills, 117 records, page size 10"
+        },
+        {
+          "menu": "MCP",
+          "startedAt": "2026-10-10T03:06:31.674Z",
+          "endedAt": "2026-10-10T03:06:32.592Z",
+          "transport": "native accessibility",
+          "readback": "My MCP"
+        },
+        {
+          "menu": "Skills",
+          "startedAt": "2026-10-10T03:06:32.640Z",
+          "endedAt": "2026-10-10T03:06:33.564Z",
+          "transport": "native accessibility",
+          "readback": "My Skills"
+        },
+        {
+          "menu": "Prompts",
+          "startedAt": "2026-10-10T03:06:33.613Z",
+          "endedAt": "2026-10-10T03:06:34.566Z",
+          "transport": "native accessibility",
+          "readback": "Prompt workspace"
+        },
+        {
+          "menu": "Skills",
+          "startedAt": "2026-10-10T03:06:34.631Z",
+          "endedAt": "2026-10-10T03:06:35.629Z",
+          "transport": "native accessibility",
+          "readback": "My Skills"
+        },
+        {
+          "menu": "Agents",
+          "startedAt": "2026-10-10T03:06:35.723Z",
+          "endedAt": "2026-10-10T03:06:37.828Z",
+          "transport": "native accessibility",
+          "readback": "Agents workspace"
+        },
+        {
+          "menu": "Skills",
+          "startedAt": "2026-10-10T03:06:37.886Z",
+          "endedAt": "2026-10-10T03:06:38.796Z",
+          "transport": "native accessibility",
+          "readback": "My Skills"
+        },
+        {
+          "menu": "Plugins",
+          "startedAt": "2026-10-10T03:06:38.846Z",
+          "endedAt": "2026-10-10T03:06:39.999Z",
+          "transport": "native accessibility",
+          "readback": "Official Store, empty state"
+        },
+        {
+          "menu": "Skills",
+          "startedAt": "2026-10-10T03:06:40.048Z",
+          "endedAt": "2026-10-10T03:06:40.976Z",
+          "transport": "native accessibility",
+          "readback": "My Skills"
+        },
+        {
+          "menu": "Rules",
+          "startedAt": "2026-10-10T03:06:41.026Z",
+          "endedAt": "2026-10-10T03:06:41.970Z",
+          "transport": "native accessibility",
+          "readback": "Rules module"
+        },
+        {
+          "menu": "MCP",
+          "startedAt": "2026-10-10T03:06:42.026Z",
+          "endedAt": "2026-10-10T03:06:42.947Z",
+          "transport": "native accessibility",
+          "readback": "My MCP"
+        },
+        {
+          "menu": "Skills",
+          "startedAt": "2026-10-10T03:07:37.654Z",
+          "endedAt": "2026-10-10T03:07:38.356Z",
+          "transport": "native pointer",
+          "readback": "My Skills"
+        },
+        {
+          "menu": "Prompts",
+          "startedAt": "2026-10-10T03:07:43.504Z",
+          "endedAt": "2026-10-10T03:07:44.013Z",
+          "transport": "native pointer",
+          "readback": "127 prompts, prompt workspace"
+        }
+      ],
+      "sustainedFreezeObserved": false,
+      "navigationSampleUtc": [
+        "2026-10-10T03:06:20.457Z",
+        "2026-10-10T03:06:51.217Z"
+      ],
+      "coveredStepIndices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "coldIdleCaptureDidNotCoverFirstClick": true,
+      "stoppedAtModule": "Prompts",
+      "automationObservationFailure": "noWindowsAvailable before a later pointer sequence; no action executed. Rebinding found the existing live window and changed selection; further control stopped.",
+      "sessionReleased": true
+    },
+    "measurementLimit": "Tool click/readback elapsed times include automatic waits and transport overhead; they are not product response latency. Non-reproduction does not establish that the reported intermittent freeze is fixed."
+  },
+  "nativeCaptures": [
+    {
+      "name": "main-cold-oct10.txt",
+      "sha256": "873acccf6aedf6360e1cf17dd67d26affba55638f1fc4db14293052888bfecca",
+      "bytes": 362435,
+      "dateTime": "2026-10-10 10:59:59.793 +0800",
+      "physicalFootprint": "152.4M",
+      "mainThreadSampleCount": 8160,
+      "firstMainThreadMachWaitCount": 8133,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "main-during-navigation.txt",
+      "sha256": "4ad1fe145b77e11aba96b4dcf1bdfb1976c46efffd3a96f208379c2e3f6686ee",
+      "bytes": 267976,
+      "dateTime": "2026-10-09 16:07:59.317 +0800",
+      "physicalFootprint": "147.0M",
+      "mainThreadSampleCount": 1814,
+      "firstMainThreadMachWaitCount": 1814,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "main-fast-navigation.txt",
+      "sha256": "bbb7e573a9aa328b1a02da7caaafe54388b0706fd7a2df13f46ff144407c757c",
+      "bytes": 272252,
+      "dateTime": "2026-10-09 16:10:47.166 +0800",
+      "physicalFootprint": "112.6M",
+      "mainThreadSampleCount": 7860,
+      "firstMainThreadMachWaitCount": 7860,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "main-navigation-overlap.txt",
+      "sha256": "184caac88ec380185456e460b498ee4d678346477bbd7b0ee7be12a1165023b7",
+      "bytes": 723828,
+      "dateTime": "2026-10-09 16:13:19.532 +0800",
+      "physicalFootprint": "107.8M",
+      "mainThreadSampleCount": 16299,
+      "firstMainThreadMachWaitCount": 16107,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "main-oct10-navigation.txt",
+      "sha256": "9400ade64b26f4ed522bee76a65d2d0778f779e3f3435b23ea177d78c00cb81e",
+      "bytes": 865247,
+      "dateTime": "2026-10-10 11:06:20.530 +0800",
+      "physicalFootprint": "177.5M",
+      "mainThreadSampleCount": 2721,
+      "firstMainThreadMachWaitCount": 2439,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "main.txt",
+      "sha256": "ed0ca64737fecafea4fd328248041ce0ced7bfb621a57602edaa48cb0e875c38",
+      "bytes": 267756,
+      "dateTime": "2026-10-09 15:53:54.979 +0800",
+      "physicalFootprint": "145.3M",
+      "mainThreadSampleCount": 7020,
+      "firstMainThreadMachWaitCount": 7020,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "renderer-cold-oct10.txt",
+      "sha256": "1003de5811fe4f6b6e4a241f8268bfdd70605df7716cf897f4fed5f7b01e8149",
+      "bytes": 263351,
+      "dateTime": "2026-10-10 10:59:59.793 +0800",
+      "physicalFootprint": "99.7M",
+      "mainThreadSampleCount": 8220,
+      "firstMainThreadMachWaitCount": 8214,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "renderer-during-navigation.txt",
+      "sha256": "d6e956e0e083b3c9bc1bb8d3d3dabbfceeb2c06d1a58cc6cd44d786c224fdcc3",
+      "bytes": 231557,
+      "dateTime": "2026-10-09 16:07:59.317 +0800",
+      "physicalFootprint": "88.0M",
+      "mainThreadSampleCount": 1827,
+      "firstMainThreadMachWaitCount": 1827,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "renderer-fast-navigation.txt",
+      "sha256": "5bc178a27f4214d1f9c98bacb64c991d08de51d6a3d2ae292d37ab179dbfbaa1",
+      "bytes": 231564,
+      "dateTime": "2026-10-09 16:10:47.166 +0800",
+      "physicalFootprint": "126.4M",
+      "mainThreadSampleCount": 7954,
+      "firstMainThreadMachWaitCount": 7954,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "renderer-navigation-overlap.txt",
+      "sha256": "b5c3947bd060602a8fd37e0d08f9845f558b96aac32750b8fee7d14e361cd5c1",
+      "bytes": 731253,
+      "dateTime": "2026-10-09 16:13:19.532 +0800",
+      "physicalFootprint": "137.3M",
+      "mainThreadSampleCount": 16407,
+      "firstMainThreadMachWaitCount": 16283,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "renderer-oct10-navigation.txt",
+      "sha256": "03a36105c85ce5dc3b45da739ed12529bedb8b7ec01ea094d856f78c0c5a1466",
+      "bytes": 825858,
+      "dateTime": "2026-10-10 11:06:20.530 +0800",
+      "physicalFootprint": "186.1M",
+      "mainThreadSampleCount": 2739,
+      "firstMainThreadMachWaitCount": 2580,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    },
+    {
+      "name": "renderer.txt",
+      "sha256": "0a201fc4c2a257e3a62021cf205b656208c34dfefadd60e4ce8381d9c7359a36",
+      "bytes": 231693,
+      "dateTime": "2026-10-09 15:53:54.979 +0800",
+      "physicalFootprint": "71.5M",
+      "mainThreadSampleCount": 7093,
+      "firstMainThreadMachWaitCount": 7093,
+      "interpretation": "Native wait dominates the sampled main-thread stack; this is not a JavaScript flame chart or an interaction-latency measurement."
+    }
+  ],
+  "logs": {
+    "inspectedCurrentDevelopmentLog": true,
+    "bytes": 963,
+    "errorOrWarnOrUnresponsiveLines": 0,
+    "limit": "Current main-process launch log only; no renderer console capture, no absence-of-all-errors claim."
+  },
+  "developmentInstance": {
+    "supervisorPid": 59664,
+    "processGroup": 59665,
+    "startedAt": "2026-10-10T02:59:15.390Z",
+    "launchRoot": "/private/tmp/prompthub-navigation-run-UJRTfv",
+    "logPath": "/private/tmp/prompthub-navigation-run-UJRTfv/launch.log",
+    "logLimitBytes": 2097152,
+    "executionDeadlineHours": 12,
+    "rendererUrl": "http://127.0.0.1:5173",
+    "stopCommand": "kill -TERM 59664",
+    "mainPid": 59733,
+    "rendererPid": 59764,
+    "retainedReason": "One development instance for user trial of the scoped fix.",
+    "oldInstance": "Prior twelve-hour supervised instance exited before this resumed run; no prior processes were stopped."
+  },
+  "cleanup": {
+    "nativeSamplerPids": [
+      60035,
+      60036,
+      61095,
+      61096
+    ],
+    "nativeSamplersExited": true,
+    "validationProcessesExited": true,
+    "guiSessionReleased": true,
+    "rawCaptureRoot": "/private/tmp/ph-skill-stall-wS9Coy",
+    "rawCaptureRootRemoved": true,
+    "rawCaptureRetention": "Only bounded summaries and SHA-256 identities are retained in this report; raw samples contain local machine paths and are removed after verification.",
+    "developmentRetainedInstances": 1,
+    "checkedAt": "2026-10-10T03:15:21.980Z"
+  },
+  "limitations": [
+    "Historical hard freeze was not reproduced during profiling; current menu behavior is confirmed normal by the user. No JavaScript hotspot root cause is claimed.",
+    "No additional runtime production change in this follow-up.",
+    "Full release acceptance and the previously recorded DataSettings bundle overage remain outside this navigation follow-up."
+  ],
+  "evidenceChecks": [
+    {
+      "id": "navigation-evidence-governance",
+      "args": [
+        "run",
+        "spec:test"
+      ],
+      "pid": 62645,
+      "startedAt": "2026-10-10T03:14:35.328Z",
+      "endedAt": "2026-10-10T03:14:36.372Z",
+      "exitCode": 0,
+      "output": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (140.0515ms)\n✔ empty inventory and archived evidence remain readable (56.910708ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (2.639584ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (1.508084ms)\n✔ default traceability checks only explicitly opted-in work (55.776708ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 298.073041\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n",
+      "truncated": false
+    },
+    {
+      "id": "navigation-tracked-diff-whitespace",
+      "args": [
+        "diff",
+        "--check"
+      ],
+      "pid": 62767,
+      "startedAt": "2026-10-10T03:14:36.372Z",
+      "endedAt": "2026-10-10T03:14:36.469Z",
+      "exitCode": 0,
+      "output": "",
+      "truncated": false
+    }
+  ],
+  "userAcceptance": {
+    "date": "2026-10-10",
+    "response": "现在切换正常",
+    "boundary": "User tested the current newly launched local desktop instance after the sidebar/path-read fix. This is local menu acceptance, not complete release acceptance."
+  },
+  "finalFileHashes": {
+    "apps/desktop/tests/unit/components/skill-navigation-lifecycle.test.tsx": "d53a5e4aaad0c56da366043ea7ebd21337ea76a4f09060837de23ba41e14b4b2",
+    "spec/changes/active/existing-feature-release-acceptance/plan.md": "c15346e94bfd9750f054deee43d38233e96266d72dec9857e87f2248c817ec6a"
+  },
+  "finalDiffCheck": {
+    "exitCode": 0,
+    "checkedAt": "2026-10-10T03:15:21.982Z"
+  }
+}

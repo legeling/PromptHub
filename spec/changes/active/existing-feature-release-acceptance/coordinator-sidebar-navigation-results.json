@@ -1,0 +1,425 @@
+{
+  "scope": "Leftmost Desktop module navigation; no release acceptance claim",
+  "generatedAt": "2026-10-09T07:44:11.914Z",
+  "head": "108f375bcd2c3e94c20d93dd619d641b6386b352",
+  "sourcePaths": [
+    "apps/desktop/src/main/services/skill-installer-utils.ts",
+    "apps/desktop/src/renderer/components/layout/Sidebar.tsx",
+    "apps/desktop/src/renderer/components/layout/SidebarRail.tsx",
+    "apps/desktop/src/renderer/components/layout/SidebarNavigationRail.tsx",
+    "apps/desktop/src/renderer/components/layout/useSidebarShellController.tsx",
+    "apps/desktop/tests/unit/components/sidebar-rail-isolation.test.tsx",
+    "apps/desktop/tests/integration/skill-platform-path-read-cost.test.ts",
+    "spec/knowledge/structure/desktop-frontend-performance.md"
+  ],
+  "regressionBeforeFix": {
+    "rail": {
+      "passed": 1,
+      "failed": 3,
+      "failureBoundaries": [
+        "rail requests platform inventory",
+        "rail and panel duplicate inventory reads",
+        "unrelated library update rerenders rail"
+      ],
+      "fixtureRepair": "Initial fixture omitted the required ToastProvider; repaired before collecting product regression results"
+    },
+    "pathTraversal": {
+      "fixtureSkillCount": 117,
+      "platformCount": 37,
+      "settingReadCount": 34636,
+      "durationMs": 186.33045800000002
+    },
+    "cacheConnectionLifecycle": {
+      "expected": "/fixture/reopened/restored-skills",
+      "actual": "/fixture/claude/custom-skills",
+      "failedBeforeConnectionIdentityFix": true
+    }
+  },
+  "initialChecks": [
+    {
+      "id": "focused-unit",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--project",
+        "unit",
+        "tests/unit/components/sidebar-rail-isolation.test.tsx",
+        "tests/unit/components/sidebar-skills.test.tsx",
+        "tests/unit/components/sidebar-modules-rules.test.tsx",
+        "tests/unit/components/sidebar-mcp-shell-tags.test.tsx",
+        "tests/unit/main/skill-installer-utils.test.ts",
+        "--minWorkers=1",
+        "--maxWorkers=1"
+      ],
+      "timeoutMs": 180000,
+      "pid": 99121,
+      "startedAt": "2026-10-09T07:35:20.777Z",
+      "endedAt": "2026-10-09T07:35:27.177Z",
+      "code": 0,
+      "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/main/skill-installer-utils.test.ts (82 tests) 545ms\n ✓ |unit| tests/unit/components/sidebar-modules-rules.test.tsx (15 tests) 890ms\n ✓ |unit| tests/unit/components/sidebar-skills.test.tsx (21 tests) 898ms\n ✓ |unit| tests/unit/components/sidebar-mcp-shell-tags.test.tsx (6 tests) 254ms\n ✓ |unit| tests/unit/components/sidebar-rail-isolation.test.tsx (4 tests) 191ms\n\n Test Files  5 passed (5)\n      Tests  128 passed (128)\n   Start at  15:35:21\n   Duration  5.76s (transform 565ms, setup 351ms, collect 1.31s, tests 2.78s, environment 812ms, prepare 105ms)\n\n",
+      "truncated": false
+    },
+    {
+      "id": "path-read-cost",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--project",
+        "integration",
+        "tests/integration/skill-platform-path-read-cost.test.ts",
+        "--minWorkers=1",
+        "--maxWorkers=1"
+      ],
+      "timeoutMs": 120000,
+      "pid": 99151,
+      "startedAt": "2026-10-09T07:35:27.178Z",
+      "endedAt": "2026-10-09T07:35:27.988Z",
+      "code": 0,
+      "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/integration/skill-platform-path-read-cost.test.ts > Skill platform path read cost > reuses the saved override snapshot throughout a 117-skill status traversal\n{\"scenario\":\"117-skill-platform-path-traversal\",\"platformCount\":37,\"settingReadCount\":4,\"durationMs\":39.756583999999975}\n\n ✓ |integration| tests/integration/skill-platform-path-read-cost.test.ts (3 tests) 59ms\n\n Test Files  1 passed (1)\n      Tests  3 passed (3)\n   Start at  15:35:27\n   Duration  385ms (transform 149ms, setup 20ms, collect 222ms, tests 59ms, environment 0ms, prepare 20ms)\n\n",
+      "truncated": false
+    },
+    {
+      "id": "desktop-typecheck",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "typecheck"
+      ],
+      "timeoutMs": 180000,
+      "pid": 99163,
+      "startedAt": "2026-10-09T07:35:27.989Z",
+      "endedAt": "2026-10-09T07:35:37.520Z",
+      "code": 0,
+      "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n",
+      "truncated": false
+    },
+    {
+      "id": "desktop-test-typecheck",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "typecheck:tests"
+      ],
+      "timeoutMs": 180000,
+      "pid": 99245,
+      "startedAt": "2026-10-09T07:35:37.521Z",
+      "endedAt": "2026-10-09T07:35:50.326Z",
+      "code": 2,
+      "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\ntests/unit/components/sidebar-rail-isolation.test.tsx(74,65): error TS2769: No overload matches this call.\n  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\n  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\ntests/unit/components/sidebar-rail-isolation.test.tsx(77,51): error TS2769: No overload matches this call.\n  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\n  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\ntests/unit/components/sidebar-rail-isolation.test.tsx(110,52): error TS2769: No overload matches this call.\n  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\n  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\ntests/unit/components/sidebar-rail-isolation.test.tsx(126,54): error TS2769: No overload matches this call.\n  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\n  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\ntests/unit/components/sidebar-rail-isolation.test.tsx(132,54): error TS2769: No overload matches this call.\n  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\n  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions): HTMLElement', gave the following error.\n    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 typecheck:tests: `tsc --noEmit -p tsconfig.test.json`\nExit status 2\n",
+      "truncated": false
+    },
+    {
+      "id": "focused-lint",
+      "args": [
+        "--filter",
+        "@prompthub/desktop",
+        "exec",
+        "eslint",
+        "src/main/services/skill-installer-utils.ts",
+        "src/renderer/components/layout/Sidebar.tsx",
+        "src/renderer/components/layout/SidebarRail.tsx",
+        "src/renderer/components/layout/SidebarNavigationRail.tsx",
+        "src/renderer/components/layout/useSidebarShellController.tsx",
+        "tests/unit/components/sidebar-rail-isolation.test.tsx",
+        "tests/integration/skill-platform-path-read-cost.test.ts",
+        "--max-warnings",
+        "0"
+      ],
+      "timeoutMs": 120000,
+      "pid": 99320,
+      "startedAt": "2026-10-09T07:35:50.327Z",
+      "endedAt": "2026-10-09T07:35:51.269Z",
+      "code": 0,
+      "output": "",
+      "truncated": false
+    }
+  ],
+  "finalChecks": {
+    "root": "/private/tmp/ph-nav-final-XmYzIX",
+    "wrapperPid": 577,
+    "startedAt": "2026-10-09T07:38:20.374Z",
+    "before": {
+      "apps/desktop/src/main/services/skill-installer-utils.ts": "ff87bcd9ec3a7a04130ef44224aefed2a820e653c4c61bba0e7677eeb69f25c0",
+      "apps/desktop/src/renderer/components/layout/Sidebar.tsx": "26caede34221e51da862464edd1dfb4db7c825f7891e17ab1a8f047da984367a",
+      "apps/desktop/src/renderer/components/layout/SidebarRail.tsx": "61b3d54d3452a9cb2279559aaaa5a05eefcd7b334cd4db0b999560de4afb72ff",
+      "apps/desktop/src/renderer/components/layout/SidebarNavigationRail.tsx": "de2a9e4c5249e5a71ac3febe47c49839bb379352db5aca03643c367ece85f206",
+      "apps/desktop/src/renderer/components/layout/useSidebarShellController.tsx": "ce26457aa364685954d32e5c8f4bac77d749e65f6a94c068f7a4d712ddf8b12d",
+      "apps/desktop/tests/unit/components/sidebar-rail-isolation.test.tsx": "986f4c7e62e37d8cb9059d94490d705aec6fa3ac7a25ebc010f0d3d7d677c435",
+      "apps/desktop/tests/integration/skill-platform-path-read-cost.test.ts": "0e8512223cb63e4849b47ae66080e7e61e2ebbc06fd6c0871b191821df689dc7",
+      "spec/knowledge/structure/desktop-frontend-performance.md": "7fbedc0b35c46f45ffc1cb0427c5f25ae40afc980769b2dacdc27c0c4720e276"
+    },
+    "results": [
+      {
+        "id": "affected-unit",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "tests/unit/components/sidebar-rail-isolation.test.tsx",
+          "tests/unit/main/skill-installer-utils.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1"
+        ],
+        "timeoutMs": 180000,
+        "pid": 578,
+        "startedAt": "2026-10-09T07:38:20.378Z",
+        "endedAt": "2026-10-09T07:38:23.443Z",
+        "code": 0,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/main/skill-installer-utils.test.ts (82 tests) 537ms\n ✓ |unit| tests/unit/components/sidebar-rail-isolation.test.tsx (4 tests) 235ms\n\n Test Files  2 passed (2)\n      Tests  86 passed (86)\n   Start at  15:38:20\n   Duration  2.50s (transform 617ms, setup 202ms, collect 931ms, tests 772ms, environment 396ms, prepare 47ms)\n\n",
+        "truncated": false
+      },
+      {
+        "id": "real-platform-and-settings-integration",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "integration",
+          "tests/integration/skill-platform-path-read-cost.test.ts",
+          "tests/integration/skill-platform-management.test.tsx",
+          "tests/integration/agent-settings-workflow.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1"
+        ],
+        "timeoutMs": 180000,
+        "pid": 615,
+        "startedAt": "2026-10-09T07:38:23.444Z",
+        "endedAt": "2026-10-09T07:38:32.688Z",
+        "code": 0,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > applies an install and a deselection uninstall without deleting the source Skill\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-W9Imr6/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-W9Imr6/profile/data/prompthub.db\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > applies an install and a deselection uninstall without deleting the source Skill\nSymlinked \"manage-package\" repo directory → Codex: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-W9Imr6/profile/cache/skill-workspaces/c73d4c21-6f46-47f2-a83d-16ad8d756178 → /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-W9Imr6/platforms/codex/skills/manage-package\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > applies an install and a deselection uninstall without deleting the source Skill\nSuccessfully installed skill directory for \"manage-package\" to Claude Code at /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-W9Imr6/platforms/claude/skills/manage-package\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > applies an install and a deselection uninstall without deleting the source Skill\nSuccessfully uninstalled SKILL.md for \"manage-package\" from Codex\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > applies an install and a deselection uninstall without deleting the source Skill\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-W9Imr6/profile/data/prompthub.db\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > retains a failed installation for explicit retry and does not undo successful uninstall\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-EKpICg/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-EKpICg/profile/data/prompthub.db\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > retains a failed installation for explicit retry and does not undo successful uninstall\nSuccessfully installed skill directory for \"partial-package\" to Codex at /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-EKpICg/platforms/codex/skills/partial-package\n\nstderr | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > retains a failed installation for explicit retry and does not undo successful uninstall\nFailed to install skill directory to Claude Code: Error: EACCES: permission denied, mkdir '/private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-EKpICg/platforms/claude/skills'\n    at Proxy.mkdir (node:internal/fs/promises:1605:10)\n    at installSkillMd (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/main/services/skill-installer-platform.ts:562:5)\n    at SkillInstaller.installSkillMdForSkill (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/main/services/skill-installer-platform.ts:896:3)\n    at Object.invoke (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/integration/helpers/skill-runtime.ts:33:9)\n    at Module.syncSkillsToPlatforms (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/skill-platform-sync.ts:103:13)\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/skill/use-skill-platform.ts:378:27\n    at handleInstall (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/components/skill/SkillQuickInstall.tsx:85:22) {\n  errno: -13,\n  code: 'EACCES',\n  syscall: 'mkdir',\n  path: '/private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-EKpICg/platforms/claude/skills'\n}\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > retains a failed installation for explicit retry and does not undo successful uninstall\nSuccessfully uninstalled SKILL.md for \"partial-package\" from Codex\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > retains a failed installation for explicit retry and does not undo successful uninstall\nSuccessfully installed skill directory for \"partial-package\" to Claude Code at /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-EKpICg/platforms/claude/skills/partial-package\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > batch uninstalls multiple packages from a selected platform while preserving My Skills\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-bN26Lt/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-bN26Lt/profile/data/prompthub.db\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > batch uninstalls multiple packages from a selected platform while preserving My Skills\nSuccessfully installed skill directory for \"batch-one\" to Claude Code at /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-bN26Lt/platforms/claude/skills/batch-one\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > batch uninstalls multiple packages from a selected platform while preserving My Skills\nSuccessfully installed skill directory for \"batch-two\" to Claude Code at /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-bN26Lt/platforms/claude/skills/batch-two\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > batch uninstalls multiple packages from a selected platform while preserving My Skills\nSuccessfully uninstalled SKILL.md for \"batch-one\" from Claude Code\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > batch uninstalls multiple packages from a selected platform while preserving My Skills\nSuccessfully uninstalled SKILL.md for \"batch-two\" from Claude Code\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > uses the current Antigravity default for a full package copy and uninstall\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-LjqE41/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-LjqE41/profile/data/prompthub.db\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > uses the current Antigravity default for a full package copy and uninstall\nSuccessfully installed skill directory for \"antigravity-package\" to Antigravity at /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-LjqE41/home/.gemini/config/skills/antigravity-package\n\nstdout | tests/integration/skill-platform-management.test.tsx > Skill platform management through renderer and real storage > uses the current Antigravity default for a full package copy and uninstall\nSuccessfully uninstalled SKILL.md for \"antigravity-package\" from Antigravity\n\n ✓ |integration| tests/integration/skill-platform-management.test.tsx (4 tests) 4300ms\n   ✓ Skill platform management through renderer and real storage > applies an install and a deselection uninstall without deleting the source Skill 1350ms\n   ✓ Skill platform management through renderer and real storage > retains a failed installation for explicit retry and does not undo successful uninstall 943ms\n   ✓ Skill platform management through renderer and real storage > batch uninstalls multiple packages from a selected platform while preserving My Skills 1153ms\n   ✓ Skill platform management through renderer and real storage > uses the current Antigravity default for a full package copy and uninstall 853ms\nstdout | tests/integration/agent-settings-workflow.test.ts > Agent settings public IPC workflow > shares explicit changes with CLI repository and installer, then clears and reopens\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-zurQKz/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-zurQKz/profile/data/prompthub.db\n\nstdout | tests/integration/agent-settings-workflow.test.ts > Agent settings public IPC workflow > rejects retired keys and malformed current inputs without altering the persisted target\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-56eiRz/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-56eiRz/profile/data/prompthub.db\n\nstdout | tests/integration/agent-settings-workflow.test.ts > Agent settings public IPC workflow > converts a legacy renderer snapshot through registered migration IPC before acknowledging cleanup\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-HG1eNN/profile/data/prompthub.db\nDatabase initialized at: /private/tmp/ph-nav-final-XmYzIX/prompthub-skill-functional-HG1eNN/profile/data/prompthub.db\n\n ✓ |integration| tests/integration/agent-settings-workflow.test.ts (3 tests) 1857ms\n   ✓ Agent settings public IPC workflow > shares explicit changes with CLI repository and installer, then clears and reopens 642ms\n   ✓ Agent settings public IPC workflow > rejects retired keys and malformed current inputs without altering the persisted target 528ms\n   ✓ Agent settings public IPC workflow > converts a legacy renderer snapshot through registered migration IPC before acknowledging cleanup 686ms\nstdout | tests/integration/skill-platform-path-read-cost.test.ts > Skill platform path read cost > reuses the saved override snapshot throughout a 117-skill status traversal\n{\"scenario\":\"117-skill-platform-path-traversal\",\"platformCount\":37,\"settingReadCount\":4,\"durationMs\":37.111166999999995}\n\n ✓ |integration| tests/integration/skill-platform-path-read-cost.test.ts (4 tests) 55ms\n\n Test Files  3 passed (3)\n      Tests  11 passed (11)\n   Start at  15:38:23\n   Duration  8.74s (transform 1.35s, setup 44ms, collect 2.03s, tests 6.21s, environment 151ms, prepare 63ms)\n\n",
+        "truncated": false
+      },
+      {
+        "id": "desktop-typecheck",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck"
+        ],
+        "timeoutMs": 180000,
+        "pid": 738,
+        "startedAt": "2026-10-09T07:38:32.689Z",
+        "endedAt": "2026-10-09T07:38:42.293Z",
+        "code": 0,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n",
+        "truncated": false
+      },
+      {
+        "id": "desktop-test-typecheck",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "typecheck:tests"
+        ],
+        "timeoutMs": 180000,
+        "pid": 831,
+        "startedAt": "2026-10-09T07:38:42.294Z",
+        "endedAt": "2026-10-09T07:38:56.066Z",
+        "code": 0,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n",
+        "truncated": false
+      },
+      {
+        "id": "affected-lint",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "eslint",
+          "src/main/services/skill-installer-utils.ts",
+          "tests/unit/components/sidebar-rail-isolation.test.tsx",
+          "tests/integration/skill-platform-path-read-cost.test.ts",
+          "--max-warnings",
+          "0"
+        ],
+        "timeoutMs": 120000,
+        "pid": 916,
+        "startedAt": "2026-10-09T07:38:56.067Z",
+        "endedAt": "2026-10-09T07:38:56.928Z",
+        "code": 0,
+        "output": "",
+        "truncated": false
+      },
+      {
+        "id": "isolated-desktop-build",
+        "args": [
+          "exec",
+          "vite",
+          "build"
+        ],
+        "timeoutMs": 300000,
+        "pid": 926,
+        "startedAt": "2026-10-09T07:38:56.931Z",
+        "endedAt": "2026-10-09T07:39:02.894Z",
+        "code": 0,
+        "output": "vite v6.4.1 building for production...\ntransforming...\n✓ 3783 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-W0IyuPcw.css                           131.47 kB │ gzip:  21.07 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-CEDWlCOs.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-CtIDHPgn.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-Bs6gRw3l.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-Dl-qft5W.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-DrwNeRGx.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-l-heVrCl.js          2.30 kB │ gzip:   0.91 kB\nout/renderer/assets/agent.store-DYYnUoUB.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-VN6mXiOk.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-DxknCnq_.js              2.79 kB │ gzip:   1.23 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-BAcFYFOm.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-DAl9KE6V.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-C4uqiZG0.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-DcbwB3mm.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-C6-roLvg.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-DXseeFOc.js                        4.48 kB │ gzip:   1.63 kB\nout/renderer/assets/SkillBatchTagDialog-guURvUeS.js                4.49 kB │ gzip:   1.85 kB\nout/renderer/assets/quick-add-utils-C8gTHgbF.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-CECUcMgR.js                      4.95 kB │ gzip:   2.02 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-uNvgi_b4.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-CDWv-t_7.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-C84eeRQB.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-BxF3sOFF.js                 6.13 kB │ gzip:   2.29 kB\nout/renderer/assets/WebWorkspaceSettings-1mEQTK7j.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-BkXb4tsi.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-Bm6jcNrl.js           6.66 kB │ gzip:   2.18 kB\nout/renderer/assets/CLISettings-BA6gZfS_.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-DujtsaTi.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-CvUsJ-7Z.js                  8.66 kB │ gzip:   3.65 kB\nout/renderer/assets/useSkillPackageInstall-DCWdtzUe.js             8.71 kB │ gzip:   3.00 kB\nout/renderer/assets/SkillIconPicker-CVNpCxRq.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-5FDg6sru.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-DdBXgH_X.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-D43fsXiG.js                      9.53 kB │ gzip:   3.94 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-CFJqCAC9.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-CsDBgbkF.js                      10.26 kB │ gzip:   3.17 kB\nout/renderer/assets/QuickAddModal-BfsZ4FN5.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-MoS4Cx_a.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-BcAPtJ32.js                    11.54 kB │ gzip:   4.04 kB\nout/renderer/assets/AboutSettings-CoQlGPj_.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-e-fGCUhi.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-Krr1FZnD.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-wBXMg97J.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-Cq3Q7w5L.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-D4t2L8Wx.js           13.35 kB │ gzip:   3.91 kB\nout/renderer/assets/PromptDetailModal-DLlN0izO.js                 13.81 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-CB8ZLEj6.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-CxBxErcc.js                   14.11 kB │ gzip:   4.89 kB\nout/renderer/assets/index-DHNzLiNM.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-Dx6k808V.js            14.20 kB │ gzip:   3.84 kB\nout/renderer/assets/PromptKanbanView-C4ZZxg7R.js                  14.44 kB │ gzip:   4.69 kB\nout/renderer/assets/PromptSourceNotesFields-ZVpsSTHg.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/VersionHistoryModal-DggYLy6H.js               15.63 kB │ gzip:   4.57 kB\nout/renderer/assets/DataSettingsDialogs-Bvhf7qhN.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-DfPetUY2.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-11hYtqrX.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-DfdBwwZp.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-4VclhHee.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-B0y82CAd.js                   20.92 kB │ gzip:   5.86 kB\nout/renderer/assets/CreatePromptModal-CKanQKXY.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-BakiTBtj.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-B3kC_0uz.js                   24.10 kB │ gzip:   7.18 kB\nout/renderer/assets/index-C8_cs7yd.js                             26.53 kB │ gzip:   8.83 kB\nout/renderer/assets/AgentAppearancePanel-DiswfdAh.js              26.76 kB │ gzip:   6.97 kB\nout/renderer/assets/index-BbsQ7oRT.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-Dov8qALO.js                       28.09 kB │ gzip:   7.93 kB\nout/renderer/assets/SkillProjectsView-BNvhtN-L.js                 28.88 kB │ gzip:   7.84 kB\nout/renderer/assets/index-BmgzlPYB.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/EditPromptModal-DwcgoOpE.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-A-2DdBDB.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-LHR8CLrA.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-Cio1STbW.js                35.83 kB │ gzip:  10.92 kB\nout/renderer/assets/RulesManager-Czw8W8Kf.js                      36.02 kB │ gzip:   9.29 kB\nout/renderer/assets/AgentSessionsPanel-Cy9501Sn.js                42.50 kB │ gzip:  11.49 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-B5Pa3ipn.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-BTwTa3Ty.js                             44.36 kB │ gzip:  15.41 kB\nout/renderer/assets/index-DjpclmB7.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-CO2aiaXi.js                   54.55 kB │ gzip:  15.72 kB\nout/renderer/assets/SkillManager-C2uD2Ksr.js                      55.77 kB │ gzip:  16.53 kB\nout/renderer/assets/AgentAssetsWorkspace-BMbFAd0d.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-j5vtV6J0.js          56.84 kB │ gzip:  14.81 kB\nout/renderer/assets/webdav-save-sync-D-I3_8Aw.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-DOoWU7DI.js                  63.10 kB │ gzip:  15.54 kB\nout/renderer/assets/AISettingsPrototype-8kbgOeGw.js               67.63 kB │ gzip:  13.96 kB\nout/renderer/assets/DataSettings-CGf5LNsN.js                      71.06 kB │ gzip:  15.67 kB\nout/renderer/assets/index-qUTqgwDF.js                             84.84 kB │ gzip:  32.75 kB\nout/renderer/assets/AgentProviderModelWorkbench-DsFt__Pq.js       88.96 kB │ gzip:  19.23 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-Df0gpIpo.js              92.97 kB │ gzip:  22.54 kB\nout/renderer/assets/SkillStore-OclNl7cD.js                       105.36 kB │ gzip:  30.36 kB\nout/renderer/assets/index-BwyuuoDy.js                            113.38 kB │ gzip:  33.47 kB\nout/renderer/assets/SkillFullDetailPage-BWNG0btm.js              115.35 kB │ gzip:  28.64 kB\nout/renderer/assets/PluginManager-BJId3LcL.js                    119.14 kB │ gzip:  25.66 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-Cuuu-kB3.js                       158.57 kB │ gzip:  36.11 kB\nout/renderer/assets/PromptGraphView-BG3YkH80.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-avIdZb-c.js                            214.25 kB │ gzip:  71.16 kB\nout/renderer/assets/zh-CBw6E0jL.js                               215.16 kB │ gzip:  70.83 kB\nout/renderer/assets/en-icp3WJV3.js                               221.12 kB │ gzip:  65.78 kB\nout/renderer/assets/de-Bm72Ynt-.js                               244.79 kB │ gzip:  73.36 kB\nout/renderer/assets/es-tYlf_7x_.js                               244.83 kB │ gzip:  72.32 kB\nout/renderer/assets/App-MEpnO4ci.js                              249.82 kB │ gzip:  76.52 kB\nout/renderer/assets/fr-DQuO-JER.js                               251.48 kB │ gzip:  73.84 kB\nout/renderer/assets/ja-B16odQ9Z.js                               276.18 kB │ gzip:  75.75 kB\nout/renderer/assets/AppWorkspaceShell-CknUblL7.js                310.57 kB │ gzip:  79.12 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-DC3bsyV3.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 4.05s\nvite v6.4.1 building for production...\ntransforming...\n✓ 941 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,057.09 kB │ gzip: 573.67 kB\n✓ built in 1.48s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  56.06 kB │ gzip: 12.64 kB\n✓ built in 30ms\n",
+        "truncated": false
+      },
+      {
+        "id": "isolated-bundle-budget",
+        "args": [
+          "bundle:budget"
+        ],
+        "timeoutMs": 120000,
+        "pid": 946,
+        "startedAt": "2026-10-09T07:39:02.895Z",
+        "endedAt": "2026-10-09T07:39:03.182Z",
+        "code": 1,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/tmp/ph-nav-final-XmYzIX/build/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/tmp/ph-nav-final-XmYzIX/build/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/tmp/ph-nav-final-XmYzIX/build/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.68 KB gzip (budget 150.00 KB) — assets/index-BwyuuoDy.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.10 KB gzip (budget 6.00 KB) — assets/SettingsPage-CsDBgbkF.js\n  ✗ settings data section: 15.30 KB gzip (budget 15.00 KB) — assets/DataSettings-CGf5LNsN.js\n  ✓ settings ai section: 13.63 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-8kbgOeGw.js\n  ✓ settings skill section: 7.12 KB gzip (budget 10.00 KB) — assets/SkillSettings-A-2DdBDB.js\n  ✓ app route coordinator: 74.73 KB gzip (budget 80.00 KB) — assets/App-MEpnO4ci.js\n  ✓ app workspace shell: 77.27 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-CknUblL7.js\n  ✓ agent workspace coordinator: 4.78 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-CxBxErcc.js\n  ✓ agent provider workbench: 18.78 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-DsFt__Pq.js\n  ✓ agent assets workspace: 14.82 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-BMbFAd0d.js\n  ✓ agent sessions panel: 11.22 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-Cy9501Sn.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-B5Pa3ipn.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.40 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-W0IyuPcw.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n",
+        "truncated": false
+      }
+    ],
+    "after": {
+      "apps/desktop/src/main/services/skill-installer-utils.ts": "ff87bcd9ec3a7a04130ef44224aefed2a820e653c4c61bba0e7677eeb69f25c0",
+      "apps/desktop/src/renderer/components/layout/Sidebar.tsx": "26caede34221e51da862464edd1dfb4db7c825f7891e17ab1a8f047da984367a",
+      "apps/desktop/src/renderer/components/layout/SidebarRail.tsx": "61b3d54d3452a9cb2279559aaaa5a05eefcd7b334cd4db0b999560de4afb72ff",
+      "apps/desktop/src/renderer/components/layout/SidebarNavigationRail.tsx": "de2a9e4c5249e5a71ac3febe47c49839bb379352db5aca03643c367ece85f206",
+      "apps/desktop/src/renderer/components/layout/useSidebarShellController.tsx": "ce26457aa364685954d32e5c8f4bac77d749e65f6a94c068f7a4d712ddf8b12d",
+      "apps/desktop/tests/unit/components/sidebar-rail-isolation.test.tsx": "986f4c7e62e37d8cb9059d94490d705aec6fa3ac7a25ebc010f0d3d7d677c435",
+      "apps/desktop/tests/integration/skill-platform-path-read-cost.test.ts": "0e8512223cb63e4849b47ae66080e7e61e2ebbc06fd6c0871b191821df689dc7",
+      "spec/knowledge/structure/desktop-frontend-performance.md": "7fbedc0b35c46f45ffc1cb0427c5f25ae40afc980769b2dacdc27c0c4720e276"
+    },
+    "changedDuringRun": [],
+    "endedAt": "2026-10-09T07:39:03.183Z"
+  },
+  "baselineBuildChecks": [
+    {
+      "id": "baseline-build",
+      "args": [
+        "exec",
+        "vite",
+        "build"
+      ],
+      "pid": 1308,
+      "startedAt": "2026-10-09T07:40:36.765Z",
+      "endedAt": "2026-10-09T07:40:42.417Z",
+      "code": 0,
+      "output": "vite v6.4.1 building for production...\ntransforming...\n✓ 3782 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-W0IyuPcw.css                           131.47 kB │ gzip:  21.07 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-CNvRtGse.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-DMSXL07E.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-BUExTiHW.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillRenderBoundary-CM3Vpg4J.js                2.00 kB │ gzip:   0.87 kB\nout/renderer/assets/SkillMarkdown-CqAY8bTc.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/index-DbrEJOPD.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-BVJWE1ci.js          2.30 kB │ gzip:   0.91 kB\nout/renderer/assets/agent.store-pXtNR-f5.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-CKtdQWzq.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-CzxxGVbI.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-cVYyOb0V.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-c_PsjUGo.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-BxrbO9Gu.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-DQRFETbP.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-CoAAZJds.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-Baw8Uo5k.js                        4.48 kB │ gzip:   1.63 kB\nout/renderer/assets/SkillBatchTagDialog-D29Qvb1k.js                4.49 kB │ gzip:   1.85 kB\nout/renderer/assets/quick-add-utils-CznA1TcL.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-BrlRS5jP.js                      4.95 kB │ gzip:   2.02 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-DZNc7aTB.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-D4P35b8V.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-BJePvg7b.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-KtGn3hxO.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-d-CVyyXn.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-BxbTnewg.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-Dhz9HCSg.js           6.66 kB │ gzip:   2.18 kB\nout/renderer/assets/CLISettings-D9UfDJBF.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-DVG5ENGR.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-Ba4W8b-6.js                  8.66 kB │ gzip:   3.65 kB\nout/renderer/assets/useSkillPackageInstall-8woLfRip.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-DugFvhD3.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-iwF-krh3.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-DMS0x4yz.js                  9.11 kB │ gzip:   2.90 kB\nout/renderer/assets/SkillListView-B_-EQCFr.js                      9.53 kB │ gzip:   3.94 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-BqSNIRGS.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-30Lu47DC.js                      10.26 kB │ gzip:   3.17 kB\nout/renderer/assets/QuickAddModal-CQKO441T.js                     10.49 kB │ gzip:   3.67 kB\nout/renderer/assets/AgentDefinitionsPanel-BMcER6xg.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-B_C0nGwe.js                    11.54 kB │ gzip:   4.04 kB\nout/renderer/assets/AboutSettings-DD1dIEOr.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-CBg58I6o.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-CBHucjks.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-CS4mZFhl.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-49KovPTm.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-DlT9OVcz.js           13.35 kB │ gzip:   3.91 kB\nout/renderer/assets/PromptDetailModal-BKCDp_ni.js                 13.81 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-C9Dnam47.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-DRROBv5Y.js                   14.11 kB │ gzip:   4.90 kB\nout/renderer/assets/index-BW1v0z9u.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-PZ1Jjv2f.js            14.20 kB │ gzip:   3.84 kB\nout/renderer/assets/PromptKanbanView-H4uLLuZI.js                  14.44 kB │ gzip:   4.70 kB\nout/renderer/assets/PromptSourceNotesFields-DHv10llO.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/VersionHistoryModal-DeuwA6-8.js               15.63 kB │ gzip:   4.57 kB\nout/renderer/assets/DataSettingsDialogs-BesqOJpp.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-BYtnZSWD.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-Dotwx0EG.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-B4xHEDED.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-4LzK_6u1.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-Bs9pVVaZ.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-kAY6a3nw.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-cOrEHeUS.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-BlQ7-GHe.js                   24.10 kB │ gzip:   7.18 kB\nout/renderer/assets/index-Bdb1xVRr.js                             26.53 kB │ gzip:   8.83 kB\nout/renderer/assets/AgentAppearancePanel-Bkd9aUSA.js              26.76 kB │ gzip:   6.97 kB\nout/renderer/assets/index-xE1F7v8W.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-DuvzKr6H.js                       28.09 kB │ gzip:   7.93 kB\nout/renderer/assets/SkillProjectsView-BlX07yec.js                 28.88 kB │ gzip:   7.84 kB\nout/renderer/assets/index-IB7jKBOD.js                             28.89 kB │ gzip:  11.49 kB\nout/renderer/assets/EditPromptModal-BEt7AgEr.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-dYH2ttYK.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-DXXw8DUk.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-BW9UNBvT.js                35.83 kB │ gzip:  10.92 kB\nout/renderer/assets/RulesManager-CTSy2kW6.js                      36.02 kB │ gzip:   9.29 kB\nout/renderer/assets/AgentSessionsPanel-B8Qa7KxU.js                42.50 kB │ gzip:  11.50 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-B6V2Ovn9.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-CNSx7LWR.js                             44.36 kB │ gzip:  15.42 kB\nout/renderer/assets/index-D2U-NKY-.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-erCDd5s4.js                   54.55 kB │ gzip:  15.72 kB\nout/renderer/assets/SkillManager-WLVFRcYi.js                      55.77 kB │ gzip:  16.53 kB\nout/renderer/assets/AgentAssetsWorkspace-vAwHxar8.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-tupYMVQJ.js          56.84 kB │ gzip:  14.81 kB\nout/renderer/assets/webdav-save-sync-D8gVF2Zk.js                  60.73 kB │ gzip:  16.02 kB\nout/renderer/assets/CreateSkillModal-328VS05u.js                  63.10 kB │ gzip:  15.53 kB\nout/renderer/assets/AISettingsPrototype-DeM0sHNk.js               67.63 kB │ gzip:  13.96 kB\nout/renderer/assets/DataSettings-C-SZ9cAy.js                      71.06 kB │ gzip:  15.67 kB\nout/renderer/assets/index-DCF4QHPi.js                             84.84 kB │ gzip:  32.75 kB\nout/renderer/assets/AgentProviderModelWorkbench-Bq3k1OYC.js       88.96 kB │ gzip:  19.23 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-D0gh5vZH.js              92.97 kB │ gzip:  22.54 kB\nout/renderer/assets/SkillStore-DeMQt6m4.js                       105.36 kB │ gzip:  30.36 kB\nout/renderer/assets/index-oicwkhAr.js                            113.20 kB │ gzip:  33.37 kB\nout/renderer/assets/SkillFullDetailPage-BVarFJOz.js              115.35 kB │ gzip:  28.64 kB\nout/renderer/assets/PluginManager-tWlSEdjZ.js                    119.14 kB │ gzip:  25.67 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-SeL2mtdL.js                       158.57 kB │ gzip:  36.11 kB\nout/renderer/assets/PromptGraphView-BlTwZGQb.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-avIdZb-c.js                            214.25 kB │ gzip:  71.16 kB\nout/renderer/assets/zh-CBw6E0jL.js                               215.16 kB │ gzip:  70.83 kB\nout/renderer/assets/en-icp3WJV3.js                               221.12 kB │ gzip:  65.78 kB\nout/renderer/assets/de-Bm72Ynt-.js                               244.79 kB │ gzip:  73.36 kB\nout/renderer/assets/es-tYlf_7x_.js                               244.83 kB │ gzip:  72.32 kB\nout/renderer/assets/App-Bv-i88x4.js                              249.82 kB │ gzip:  76.53 kB\nout/renderer/assets/fr-DQuO-JER.js                               251.48 kB │ gzip:  73.84 kB\nout/renderer/assets/ja-B16odQ9Z.js                               276.18 kB │ gzip:  75.75 kB\nout/renderer/assets/AppWorkspaceShell-DXREeP6D.js                310.22 kB │ gzip:  79.05 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-BEZNGGEw.js                  372.90 kB │ gzip: 121.13 kB\n✓ built in 3.84s\nvite v6.4.1 building for production...\ntransforming...\n✓ 941 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,056.55 kB │ gzip: 573.53 kB\n✓ built in 1.46s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  56.06 kB │ gzip: 12.64 kB\n✓ built in 31ms\n"
+    },
+    {
+      "id": "baseline-bundle-budget",
+      "args": [
+        "bundle:budget"
+      ],
+      "pid": 1338,
+      "startedAt": "2026-10-09T07:40:42.418Z",
+      "endedAt": "2026-10-09T07:40:42.694Z",
+      "code": 1,
+      "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/tmp/ph-nav-final-XmYzIX/baseline/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/tmp/ph-nav-final-XmYzIX/baseline/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/tmp/ph-nav-final-XmYzIX/baseline/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.58 KB gzip (budget 150.00 KB) — assets/index-oicwkhAr.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.10 KB gzip (budget 6.00 KB) — assets/SettingsPage-30Lu47DC.js\n  ✗ settings data section: 15.30 KB gzip (budget 15.00 KB) — assets/DataSettings-C-SZ9cAy.js\n  ✓ settings ai section: 13.64 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-DeM0sHNk.js\n  ✓ settings skill section: 7.12 KB gzip (budget 10.00 KB) — assets/SkillSettings-dYH2ttYK.js\n  ✓ app route coordinator: 74.73 KB gzip (budget 80.00 KB) — assets/App-Bv-i88x4.js\n  ✓ app workspace shell: 77.20 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-DXREeP6D.js\n  ✓ agent workspace coordinator: 4.78 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-DRROBv5Y.js\n  ✓ agent provider workbench: 18.77 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-Bq3k1OYC.js\n  ✓ agent assets workspace: 14.83 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-vAwHxar8.js\n  ✓ agent sessions panel: 11.23 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-B8Qa7KxU.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-B6V2Ovn9.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.40 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-W0IyuPcw.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n"
+    }
+  ],
+  "acceptance": {
+    "distinctUnitCases": 128,
+    "finalAffectedUnitCases": 86,
+    "unchangedSidebarCasesReused": 42,
+    "reusedFileNames": [
+      "sidebar-skills.test.tsx",
+      "sidebar-modules-rules.test.tsx",
+      "sidebar-mcp-shell-tags.test.tsx"
+    ],
+    "integrationCases": 11,
+    "sourceTypecheckPassed": true,
+    "testTypecheckPassed": true,
+    "scopedLintPassed": true,
+    "buildPassed": true,
+    "bundleBudgetPassed": false,
+    "baselineBudgetFailure": {
+      "name": "settings data section",
+      "baselineGzipBytes": 15668,
+      "finalGzipBytes": 15668,
+      "budgetBytes": 15360
+    },
+    "finalPathTraversal": {
+      "fixtureSkillCount": 117,
+      "platformCount": 37,
+      "settingReadCount": 4,
+      "durationMs": 37.111166999999995
+    },
+    "guiAcceptance": "not executed; awaiting explicit GUI control authorization",
+    "releaseVerified": false
+  },
+  "finalFileHashes": {
+    "apps/desktop/src/main/services/skill-installer-utils.ts": "ff87bcd9ec3a7a04130ef44224aefed2a820e653c4c61bba0e7677eeb69f25c0",
+    "apps/desktop/src/renderer/components/layout/Sidebar.tsx": "26caede34221e51da862464edd1dfb4db7c825f7891e17ab1a8f047da984367a",
+    "apps/desktop/src/renderer/components/layout/SidebarRail.tsx": "61b3d54d3452a9cb2279559aaaa5a05eefcd7b334cd4db0b999560de4afb72ff",
+    "apps/desktop/src/renderer/components/layout/SidebarNavigationRail.tsx": "de2a9e4c5249e5a71ac3febe47c49839bb379352db5aca03643c367ece85f206",
+    "apps/desktop/src/renderer/components/layout/useSidebarShellController.tsx": "ce26457aa364685954d32e5c8f4bac77d749e65f6a94c068f7a4d712ddf8b12d",
+    "apps/desktop/tests/unit/components/sidebar-rail-isolation.test.tsx": "986f4c7e62e37d8cb9059d94490d705aec6fa3ac7a25ebc010f0d3d7d677c435",
+    "apps/desktop/tests/integration/skill-platform-path-read-cost.test.ts": "181d72705da415f86c3007843ced83f8842405679414a23df875fdb61aad8acf",
+    "spec/knowledge/structure/desktop-frontend-performance.md": "7fbedc0b35c46f45ffc1cb0427c5f25ae40afc980769b2dacdc27c0c4720e276"
+  },
+  "developmentInstance": {
+    "supervisorPid": 85610,
+    "processGroup": 85612,
+    "electronPid": 99906,
+    "rendererUrl": "http://127.0.0.1:5173",
+    "windowReadyAt": "2026-10-09T07:37:24.859Z",
+    "stopCommand": "kill -TERM 85610",
+    "retainedFor": "user trial from previously authorized software launch",
+    "executionDeadlineHours": 12
+  },
+  "cleanup": {
+    "pending": false,
+    "checkedAt": "2026-10-09T07:46:26.225Z",
+    "removedRoots": [
+      "/private/tmp/ph-nav-final-XmYzIX",
+      "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/ph-nav-check-ilnRVV",
+      "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/ph-nav-profile-lXTlyv"
+    ],
+    "remainingRoots": [],
+    "remainingValidationProcesses": [],
+    "retainedApplicationProcessGroup": 85612,
+    "retainedApplicationProcessCount": 8
+  },
+  "finalGovernanceChecks": [
+    {
+      "id": "spec-governance",
+      "args": [
+        "--test",
+        "scripts/spec-governance.test.mjs"
+      ],
+      "pid": 3280,
+      "code": 0,
+      "output": "✔ index accepts a single plan and legacy implementation without imposing artifacts (124.4655ms)\n✔ empty inventory and archived evidence remain readable (52.41325ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (2.259959ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (2.382708ms)\n✔ default traceability checks only explicitly opted-in work (48.297333ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 267.624125\n"
+    },
+    {
+      "id": "file-line-limits",
+      "args": [
+        "scripts/check-file-line-limits.mjs"
+      ],
+      "pid": 3291,
+      "code": 0,
+      "output": "File line limit passed: new files <= 1500; legacy files did not grow; hard limit 2000.\n"
+    },
+    {
+      "id": "change-traceability",
+      "args": [
+        "scripts/validate-change-traceability.mjs"
+      ],
+      "pid": 3292,
+      "code": 0,
+      "output": "Traceability validation passed for 16 change(s).\n"
+    }
+  ],
+  "finalFormatting": {
+    "passed": true,
+    "scope": "seven changed source and test files",
+    "initialInvocationCorrection": "Final formatter invocation used .tsx for the new .ts integration file. Correct-path checking identified whitespace formatting only; formatter rewrote 132 lines as 130 and the correct-path check passed.",
+    "afterVerificationWhitespaceOnlyFile": "apps/desktop/tests/integration/skill-platform-path-read-cost.test.ts",
+    "verifiedBeforeFormattingHash": "0e8512223cb63e4849b47ae66080e7e61e2ebbc06fd6c0871b191821df689dc7"
+  },
+  "finalDiffCheckPassed": true
+}

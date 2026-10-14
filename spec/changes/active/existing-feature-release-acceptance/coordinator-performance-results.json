@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "profile": "release",
+  "surfaces": [
+    "core",
+    "desktop"
+  ],
+  "status": "failed",
+  "startedAt": 1791523238706,
+  "endedAt": 1791523253640,
+  "durationMs": 14934,
+  "maxConcurrency": 1,
+  "results": [
+    {
+      "id": "existing-core-performance",
+      "label": "Core canonical storage performance budget",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/core",
+          "test:performance"
+        ],
+        "environment": {
+          "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+          "TMPDIR": "/tmp/phperf-p2YMvy"
+        },
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub"
+      },
+      "status": "passed",
+      "startedAt": 1791523238707,
+      "endedAt": 1791523253207,
+      "durationMs": 14500,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/core@0.1.0 test:performance /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n> vitest run --config vitest.performance.config.ts\n\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n\nstdout | performance/canonical-storage-scale.perf.ts > canonical storage scale > publishes and reloads a four-digit Prompt inventory within bounded resources\n[storage-scale] prompts=1000 elapsedMs=5950.3 incrementalMs=2085.5 maxRssDeltaKiB=37760 dataBytes=2861387\n\n ✓ performance/canonical-storage-scale.perf.ts (1 test) 8710ms\n   ✓ canonical storage scale > publishes and reloads a four-digit Prompt inventory within bounded resources 8710ms\nstdout | performance/canonical-catalog-startup.perf.ts > measures current and stale catalog startup for 1k one-KiB Prompts\n[catalog-startup-scale] {\"promptCount\":1000,\"bodyBytes\":1024,\"currentMs\":1402.3465419999998,\"rebuildMs\":1275.5688750000004,\"maxRssDeltaKiB\":13808,\"node\":\"v26.7.0\",\"platform\":\"darwin\",\"arch\":\"arm64\"}\n\n ✓ performance/canonical-catalog-startup.perf.ts (1 test) 4917ms\n   ✓ measures current and stale catalog startup for 1k one-KiB Prompts 4916ms\n\n Test Files  2 passed (2)\n      Tests  2 passed (2)\n   Start at  13:20:39\n   Duration  14.09s (transform 186ms, setup 0ms, collect 269ms, tests 13.63s, environment 0ms, prepare 53ms)\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "existing-desktop-performance",
+      "label": "Desktop performance budget",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "test:perf"
+        ],
+        "environment": {
+          "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+          "TMPDIR": "/tmp/phperf-p2YMvy"
+        },
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub"
+      },
+      "status": "failed",
+      "startedAt": 1791523253207,
+      "endedAt": 1791523253640,
+      "durationMs": 433,
+      "exitCode": 1,
+      "signal": null,
+      "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 test:perf /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> pnpm perf:budget\n\n\n> @prompthub/desktop@0.6.0-beta.2 perf:budget /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> node --experimental-strip-types scripts/check-large-data-budgets.mts\n\n(node:61799) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/prompt-filter.ts is not specified and it doesn't parse as CommonJS.\nReparsing as ES module because module syntax was detected. This incurs a performance overhead.\nTo eliminate this warning, add \"type\": \"module\" to /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/package.json.\n(Use `node --trace-warnings ...` to show where the warning was created)\nnode:internal/modules/esm/resolve:272\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/skill-stats' imported from /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/skill-filter.ts\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at moduleResolve (node:internal/modules/esm/resolve:879:10)\n    at defaultResolve (node:internal/modules/esm/resolve:1006:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)\n    at #resolve (node:internal/modules/esm/loader:690:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)\n    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file:///Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/renderer/services/skill-stats'\n}\n\nNode.js v26.7.0\n ELIFECYCLE  Command failed with exit code 1.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 test:perf: `pnpm perf:budget`\nExit status 1\n",
+      "outputTruncated": false
+    }
+  ],
+  "executionBoundary": "Standalone existing performance tests. Core correctness baseline was previously passed; this is not a full release profile or GUI responsiveness measurement.",
+  "temporaryRoot": "/tmp/phperf-p2YMvy",
+  "entrypointCorrection": {
+    "schemaVersion": 1,
+    "profile": "release",
+    "surfaces": [
+      "desktop"
+    ],
+    "status": "failed",
+    "startedAt": 1791523627714,
+    "endedAt": 1791523628251,
+    "durationMs": 537,
+    "maxConcurrency": 1,
+    "results": [
+      {
+        "id": "corrected-desktop-performance",
+        "label": "Existing Desktop performance entrypoint",
+        "command": {
+          "executable": "pnpm",
+          "args": [
+            "--filter",
+            "@prompthub/desktop",
+            "test:perf"
+          ],
+          "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+          "environment": {
+            "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+            "TMPDIR": "/tmp/phperfcheck-QAXOsD"
+          }
+        },
+        "status": "failed",
+        "startedAt": 1791523627714,
+        "endedAt": 1791523628251,
+        "durationMs": 537,
+        "exitCode": 1,
+        "signal": null,
+        "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 test:perf /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> pnpm perf:budget\n\n\n> @prompthub/desktop@0.6.0-beta.2 perf:budget /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> node --import tsx scripts/check-large-data-budgets.mts\n\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/scripts/check-large-data-budgets.mts:5\n  buildPromptStats,\n  ^\nSyntaxError: The requested module '../src/renderer/services/prompt-filter.ts' does not provide an export named 'buildPromptStats'\n    at #asyncInstantiate (node:internal/modules/esm/module_job:463:21)\n    at async ModuleJob.run (node:internal/modules/esm/module_job:561:5)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.7.0\n ELIFECYCLE  Command failed with exit code 1.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 test:perf: `pnpm perf:budget`\nExit status 1\n",
+        "outputTruncated": false
+      }
+    ]
+  },
+  "finalEntrypoint": {
+    "schemaVersion": 1,
+    "profile": "release",
+    "surfaces": [
+      "desktop"
+    ],
+    "status": "passed",
+    "startedAt": 1791524447330,
+    "endedAt": 1791524447871,
+    "durationMs": 541,
+    "maxConcurrency": 1,
+    "results": [
+      {
+        "id": "desktop-performance-final-entrypoint",
+        "label": "Desktop selector budget with project TypeScript loader",
+        "command": {
+          "executable": "pnpm",
+          "args": [
+            "--filter",
+            "@prompthub/desktop",
+            "test:perf"
+          ],
+          "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+          "environment": {
+            "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+            "TMPDIR": "/tmp/phperf-final-zETFeK"
+          }
+        },
+        "status": "passed",
+        "startedAt": 1791524447330,
+        "endedAt": 1791524447871,
+        "durationMs": 541,
+        "exitCode": 0,
+        "signal": null,
+        "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 test:perf /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> pnpm perf:budget\n\n\n> @prompthub/desktop@0.6.0-beta.2 perf:budget /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> node --import tsx scripts/check-large-data-budgets.ts\n\nPromptHub large dataset budgets (prompts=5000, skills=2000, iterations=20)\n┌─────────┬────────────────────────┬────────────┬───────┬───────┬───────┐\n│ (index) │ operation              │ iterations │ avgMs │ minMs │ maxMs │\n├─────────┼────────────────────────┼────────────┼───────┼───────┼───────┤\n│ 0       │ 'buildPromptStats'     │ 20         │ 0.356 │ 0.067 │ 5.289 │\n│ 1       │ 'filterVisiblePrompts' │ 20         │ 0.453 │ 0.337 │ 1.033 │\n│ 2       │ 'sortVisiblePrompts'   │ 20         │ 1.423 │ 1.326 │ 1.673 │\n│ 3       │ 'buildSkillStats'      │ 20         │ 0.293 │ 0.226 │ 0.901 │\n│ 4       │ 'filterVisibleSkills'  │ 20         │ 0.178 │ 0.138 │ 0.458 │\n└─────────┴────────────────────────┴────────────┴───────┴───────┴───────┘\n┌─────────┬─────────┬────────┬────────────────────────────┬────────┬──────┐\n│ (index) │ actual  │ budget │ name                       │ passed │ unit │\n├─────────┼─────────┼────────┼────────────────────────────┼────────┼──────┤\n│ 0       │ 0.356   │ 8      │ 'buildPromptStats avg'     │ true   │ 'ms' │\n│ 1       │ 0.453   │ 8      │ 'filterVisiblePrompts avg' │ true   │ 'ms' │\n│ 2       │ 1.423   │ 16     │ 'sortVisiblePrompts avg'   │ true   │ 'ms' │\n│ 3       │ 0.293   │ 6      │ 'buildSkillStats avg'      │ true   │ 'ms' │\n│ 4       │ 0.178   │ 6      │ 'filterVisibleSkills avg'  │ true   │ 'ms' │\n│ 5       │ 14.053  │ 256    │ 'heapUsed'                 │ true   │ 'MB' │\n│ 6       │ 123.859 │ 512    │ 'rss'                      │ true   │ 'MB' │\n└─────────┴─────────┴────────┴────────────────────────────┴────────┴──────┘\nAll large dataset performance budgets passed.\n(node:65303) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+        "outputTruncated": false
+      }
+    ]
+  }
+}

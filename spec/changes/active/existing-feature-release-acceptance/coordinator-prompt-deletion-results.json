@@ -1,0 +1,559 @@
+{
+  "scope": "Prompt deletion delay and duplicate success notification; scoped shared Prompt/folder publication work and pending delete lifecycle.",
+  "generatedAt": "2026-10-10T03:51:28.272Z",
+  "head": "108f375bcd2c3e94c20d93dd619d641b6386b352",
+  "status": "local_checks_passed_gui_delete_not_exercised",
+  "ownership": {
+    "sourceFiles": [
+      "apps/desktop/src/main/ipc/prompt.ipc.ts",
+      "apps/desktop/src/main/ipc/folder.ipc.ts",
+      "apps/desktop/src/main/services/prompt-workspace.ts",
+      "apps/desktop/src/renderer/components/layout/usePromptWorkspaceMutationActions.ts",
+      "apps/desktop/src/renderer/components/layout/prompt-workspace-dialog-types.ts",
+      "apps/desktop/src/renderer/components/layout/PromptWorkspaceDialogLayer.tsx",
+      "apps/desktop/src/renderer/components/layout/PromptWorkspaceSupplementDialogs.tsx",
+      "apps/desktop/src/renderer/services/database.ts",
+      "apps/desktop/src/renderer/i18n/locales/en.json",
+      "apps/desktop/src/renderer/i18n/locales/zh.json",
+      "apps/desktop/src/renderer/i18n/locales/zh-TW.json",
+      "apps/desktop/src/renderer/i18n/locales/ja.json",
+      "apps/desktop/src/renderer/i18n/locales/fr.json",
+      "apps/desktop/src/renderer/i18n/locales/de.json",
+      "apps/desktop/src/renderer/i18n/locales/es.json",
+      "packages/core/src/canonical-prompt-graph-db.ts",
+      "packages/core/src/prompt-canonical-export.ts",
+      "packages/core/src/prompt-canonical-import.ts",
+      "apps/desktop/tests/unit/components/prompt-delete-lifecycle.test.tsx",
+      "apps/desktop/tests/unit/main/prompt-mutation-publication.test.ts",
+      "apps/desktop/tests/unit/components/prompt-variable-copy-dialog.test.tsx",
+      "spec/knowledge/behavior/prompt-workspace.md",
+      "spec/changes/active/existing-feature-release-acceptance/plan.md"
+    ],
+    "preserved": "Unrelated dirty worktree changes including existing Prompt copy/AI detail hydration, root-folder move and .trash reader behavior. No commit, push, branch, PR, or subagent.",
+    "authority": "Existing canonical-files runtime was inspected read-only; no schema, file format, authority marker or migration changes."
+  },
+  "findings": [
+    "Core already publishes canonical ordinary mutations inside a SQLite transaction; desktop IPC repeated publication and full legacy workspace export across Prompt and folder mutations.",
+    "Canonical publication copied unchanged Prompt bundles and replaced the whole Prompt directory. In-place publication now reuses verified unchanged bundles and CAS manifest entries, while changed/deleted bundles and complete catalog use the existing journal.",
+    "Delete confirmation lacked pending state and submission protection; the renderer service ignored a false IPC delete result. A delayed-delete fixture validates repeat-input behavior. The exact original user click sequence was not observed."
+  ],
+  "behavior": {
+    "ordinaryMutations": "Skip duplicate IPC publication/export only in existing canonical-files mode; preserve database-catalog workspace synchronization.",
+    "directInputs": "Direct inserts, graph restore, IDB migration batch and explicit sync still publish explicitly.",
+    "publication": "Retain byte-identical Prompt bundles; complete inventory/hash verification and SQLite/filesystem rollback remain. Initial publication and default standalone export generate complete directories.",
+    "delete": "One request while pending; loading/disabled confirmation and cancel; one success toast on successful completion; error toast plus preserved selection/data/dialog and retry on rejection or false."
+  },
+  "verification": {
+    "distinctFinalCases": 288,
+    "breakdown": {
+      "deleteLifecycleAndRegisteredIPC": 8,
+      "desktopRelated": 182,
+      "corePersistenceExportPublicationRecovery": 98
+    },
+    "oldImplementationRedRun": false,
+    "initialChecks": [
+      {
+        "id": "delete-regressions",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/main/prompt-mutation-publication.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1"
+        ],
+        "pid": 66311,
+        "startedAt": "2026-10-10T03:35:37.611Z",
+        "endedAt": "2026-10-10T03:35:55.631Z",
+        "exitCode": 0,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/unit/main/prompt-mutation-publication.test.ts > Prompt mutation publication ownership > deletes through the registered IPC without re-exporting every survivor or republishing\n{\"fixture\":\"127 prompts, two versions each\",\"mutationMs\":937.0292500000005,\"extraLegacyVersionReads\":0,\"extraPublicationCalls\":0}\n\nstdout | tests/unit/main/prompt-mutation-publication.test.ts > Prompt mutation publication ownership > measures the redundant legacy export separately from the required canonical delete\n{\"fixture\":\"previous IPC post-mutation full export\",\"removedWorkMs\":125.01845799999865,\"redundantVersionReads\":126}\n\n ✓ |unit| tests/unit/main/prompt-mutation-publication.test.ts (4 tests) 13371ms\n   ✓ Prompt mutation publication ownership > deletes through the registered IPC without re-exporting every survivor or republishing 3315ms\n   ✓ Prompt mutation publication ownership > keeps create, update and folder mutations under the same Core publication owner 3908ms\n   ✓ Prompt mutation publication ownership > still explicitly publishes direct restore inputs and the explicit sync command 3560ms\n   ✓ Prompt mutation publication ownership > measures the redundant legacy export separately from the required canonical delete 2587ms\n ✓ |unit| tests/unit/components/prompt-delete-lifecycle.test.tsx (3 tests) 590ms\n   ✓ Prompt deletion lifecycle > submits once during a pending delete and shows one success after completion 344ms\n\n Test Files  2 passed (2)\n      Tests  7 passed (7)\n   Start at  11:35:38\n   Duration  17.00s (transform 1.45s, setup 326ms, collect 2.05s, tests 13.96s, environment 304ms, prepare 100ms)\n\n",
+        "truncated": false
+      },
+      {
+        "id": "source-types",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "run",
+          "typecheck"
+        ],
+        "pid": 66312,
+        "startedAt": "2026-10-10T03:35:37.615Z",
+        "endedAt": "2026-10-10T03:35:52.389Z",
+        "exitCode": 0,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n",
+        "truncated": false
+      },
+      {
+        "id": "test-types",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "run",
+          "typecheck:tests"
+        ],
+        "pid": 66313,
+        "startedAt": "2026-10-10T03:35:37.616Z",
+        "endedAt": "2026-10-10T03:35:56.912Z",
+        "exitCode": 2,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\ntests/unit/components/prompt-delete-lifecycle.test.tsx(52,48): error TS2322: Type '\"card\"' is not assignable to type 'ViewMode'.\ntests/unit/components/prompt-variable-copy-dialog.test.tsx(86,3): error TS2741: Property 'isDeletingPrompt' is missing in type '{ aiTestInitialMode: \"single\"; aiTestPrompt: null; confirmDelete: Mock<Procedure>; contextMenu: null; copyPrompt: Prompt; copyPromptQueue: undefined[]; copyPromptQueueIndex: number; ... 51 more ...; versionHistoryPrompt: null; }' but required in type 'PromptWorkspaceDialogsProps'.\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prompthub/desktop@0.6.0-beta.2 typecheck:tests: `tsc --noEmit -p tsconfig.test.json`\nExit status 2\n",
+        "truncated": false
+      },
+      {
+        "id": "scoped-lint",
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop",
+        "args": [
+          "exec",
+          "eslint",
+          "src/main/ipc/prompt.ipc.ts",
+          "src/main/ipc/folder.ipc.ts",
+          "src/main/services/prompt-workspace.ts",
+          "src/renderer/services/database.ts",
+          "src/renderer/components/layout/usePromptWorkspaceMutationActions.ts",
+          "src/renderer/components/layout/prompt-workspace-dialog-types.ts",
+          "src/renderer/components/layout/PromptWorkspaceDialogLayer.tsx",
+          "src/renderer/components/layout/PromptWorkspaceSupplementDialogs.tsx",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/main/prompt-mutation-publication.test.ts",
+          "--max-warnings=0"
+        ],
+        "pid": 66314,
+        "startedAt": "2026-10-10T03:35:37.617Z",
+        "endedAt": "2026-10-10T03:35:39.143Z",
+        "exitCode": 0,
+        "output": "",
+        "truncated": false
+      }
+    ],
+    "finalFocusedChecks": [
+      {
+        "id": "delete-regressions-and-core-publication",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/main/prompt-mutation-publication.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1"
+        ],
+        "pid": 68396,
+        "startedAt": "2026-10-10T03:41:46.672Z",
+        "endedAt": "2026-10-10T03:42:07.481Z",
+        "exitCode": 0,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/unit/main/prompt-mutation-publication.test.ts > Prompt mutation publication ownership > deletes through the registered IPC without re-exporting every survivor or republishing\n{\"fixture\":\"127 prompts, two versions each\",\"mutationMs\":363.31245800000033,\"extraLegacyVersionReads\":0,\"extraPublicationCalls\":0}\n\nstdout | tests/unit/main/prompt-mutation-publication.test.ts > Prompt mutation publication ownership > measures the redundant legacy export separately from the required canonical delete\n{\"fixture\":\"previous IPC post-mutation full export\",\"removedWorkMs\":142.82454099999995,\"redundantVersionReads\":126}\n\n ✓ |unit| tests/unit/main/prompt-mutation-publication.test.ts (5 tests) 15399ms\n   ✓ Prompt mutation publication ownership > deletes through the registered IPC without re-exporting every survivor or republishing 3732ms\n   ✓ Prompt mutation publication ownership > keeps create, update and folder mutations under the same Core publication owner 3864ms\n   ✓ Prompt mutation publication ownership > still explicitly publishes direct restore inputs and the explicit sync command 2795ms\n   ✓ Prompt mutation publication ownership > measures the redundant legacy export separately from the required canonical delete 2553ms\n   ✓ Prompt mutation publication ownership > rolls back a delete and preserves both persisted graphs if publication fails 2454ms\n ✓ |unit| tests/unit/components/prompt-delete-lifecycle.test.tsx (3 tests) 431ms\n\n Test Files  2 passed (2)\n      Tests  8 passed (8)\n   Start at  11:41:47\n   Duration  19.76s (transform 2.01s, setup 540ms, collect 2.78s, tests 15.83s, environment 254ms, prepare 80ms)\n\n",
+        "truncated": false
+      },
+      {
+        "id": "source-types-final",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "run",
+          "typecheck"
+        ],
+        "pid": 68397,
+        "startedAt": "2026-10-10T03:41:46.675Z",
+        "endedAt": "2026-10-10T03:42:04.843Z",
+        "exitCode": 0,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n",
+        "truncated": false
+      },
+      {
+        "id": "test-types-final",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "run",
+          "typecheck:tests"
+        ],
+        "pid": 68398,
+        "startedAt": "2026-10-10T03:41:46.675Z",
+        "endedAt": "2026-10-10T03:42:08.264Z",
+        "exitCode": 0,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n",
+        "truncated": false
+      },
+      {
+        "id": "core-types",
+        "args": [
+          "--filter",
+          "@prompthub/core",
+          "run",
+          "typecheck"
+        ],
+        "pid": 68399,
+        "startedAt": "2026-10-10T03:41:46.676Z",
+        "endedAt": "2026-10-10T03:41:50.283Z",
+        "exitCode": 0,
+        "output": "\n> @prompthub/core@0.1.0 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n> tsc --noEmit\n\n",
+        "truncated": false
+      }
+    ],
+    "broaderChecks": [
+      {
+        "id": "desktop-related-regressions",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "tests/unit/main/prompt-db.test.ts",
+          "tests/unit/main/prompt-ipc-idb-migration.test.ts",
+          "tests/unit/main/prompt-workspace.test.ts",
+          "tests/unit/main/folder-db.test.ts",
+          "tests/unit/stores/prompt-read-consistency.test.ts",
+          "tests/unit/stores/prompt-save-sync.test.ts",
+          "tests/unit/components/confirm-dialog.test.tsx",
+          "tests/unit/components/toast.test.tsx",
+          "tests/unit/components/prompt-variable-copy-dialog.test.tsx",
+          "--minWorkers=1",
+          "--maxWorkers=1"
+        ],
+        "pid": 68968,
+        "startedAt": "2026-10-10T03:43:24.603Z",
+        "endedAt": "2026-10-10T03:43:32.881Z",
+        "exitCode": 0,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/main/prompt-db.test.ts (81 tests) 323ms\nstderr | tests/unit/main/prompt-workspace.test.ts > prompt workspace storage > importPromptWorkspaceIntoDatabase resolves duplicate prompt.id by newer updatedAt, trashing losers\n[prompt-workspace] same-id conflict for prompt dup-id-abc: moving /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-workspace-m4FjiI/data/prompts/loser__dup-id-abc/prompt.md to .trash/conflicts\n[prompt-workspace] import completed with skips: 0 folders, 0 prompts, 1 conflict losers. See errors above. User data on disk is untouched; see .trash for orphans and .trash/conflicts for conflict losers.\n\nstderr | tests/unit/main/prompt-workspace.test.ts > prompt workspace storage > Q4 passes skippedPromptDirs to Phase 2 so insert-failing imports are not trashed as orphans\n[prompt-workspace] failed to import prompt fk-fail-xyz789 (FK Fail): SQLite3Error: FOREIGN KEY constraint failed\n    at Database._handleError (/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/node-sqlite3-wasm@0.8.53/node_modules/node-sqlite3-wasm/dist/node-sqlite3-wasm.js:1:5811)\n    at Statement.finalize (/Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/node-sqlite3-wasm@0.8.53/node_modules/node-sqlite3-wasm/dist/node-sqlite3-wasm.js:1:6748)\n    at Statement.execute (/Users/lingxiaotian/Programs/personal/PromptHub/packages/db/src/adapter.ts:102:14)\n    at Statement.run (/Users/lingxiaotian/Programs/personal/PromptHub/packages/db/src/adapter.ts:65:17)\n    at CanonicalPromptDB.insertPromptDirect (/Users/lingxiaotian/Programs/personal/PromptHub/packages/db/src/prompt.ts:631:8)\n    at importPromptWorkspaceIntoDatabase (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/main/services/prompt-workspace.ts:1226:16)\n    at Module.bootstrapPromptWorkspace (/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/src/main/services/prompt-workspace.ts:1422:20)\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/main/prompt-workspace.test.ts:871:20\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n[prompt-workspace] import completed with skips: 0 folders, 1 prompts, 0 conflict losers. See errors above. User data on disk is untouched; see .trash for orphans and .trash/conflicts for conflict losers.\n\n ✓ |unit| tests/unit/main/prompt-workspace.test.ts (22 tests) 423ms\n ✓ |unit| tests/unit/main/folder-db.test.ts (40 tests) 458ms\n ✓ |unit| tests/unit/stores/prompt-read-consistency.test.ts (10 tests) 13ms\n ✓ |unit| tests/unit/components/confirm-dialog.test.tsx (13 tests) 118ms\n ✓ |unit| tests/unit/components/prompt-variable-copy-dialog.test.tsx (2 tests) 79ms\n ✓ |unit| tests/unit/stores/prompt-save-sync.test.ts (5 tests) 7ms\n ✓ |unit| tests/unit/components/toast.test.tsx (6 tests) 104ms\n ✓ |unit| tests/unit/main/prompt-ipc-idb-migration.test.ts (3 tests) 60ms\n\n Test Files  9 passed (9)\n      Tests  182 passed (182)\n   Start at  11:43:25\n   Duration  7.54s (transform 1.27s, setup 736ms, collect 2.65s, tests 1.58s, environment 1.50s, prepare 241ms)\n\n",
+        "truncated": false
+      },
+      {
+        "id": "core-persistence-regressions",
+        "args": [
+          "--filter",
+          "@prompthub/core",
+          "test",
+          "--",
+          "tests/canonical-prompt-graph-db.test.ts",
+          "tests/prompt-canonical-export.test.ts",
+          "tests/canonical-entry-publication.test.ts",
+          "tests/canonical-entry-commit.test.ts",
+          "tests/canonical-catalog-reconciliation.test.ts",
+          "tests/canonical-storage-shadow.test.ts",
+          "--minWorkers=1",
+          "--maxWorkers=1"
+        ],
+        "pid": 68969,
+        "startedAt": "2026-10-10T03:43:24.605Z",
+        "endedAt": "2026-10-10T03:43:51.557Z",
+        "exitCode": 0,
+        "output": "\n> @prompthub/core@0.1.0 test /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n> vitest run \"tests/canonical-prompt-graph-db.test.ts\" \"tests/prompt-canonical-export.test.ts\" \"tests/canonical-entry-publication.test.ts\" \"tests/canonical-entry-commit.test.ts\" \"tests/canonical-catalog-reconciliation.test.ts\" \"tests/canonical-storage-shadow.test.ts\" \"--minWorkers=1\" \"--maxWorkers=1\"\n\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n\n ✓ tests/canonical-storage-shadow.test.ts (26 tests) 4797ms\n   ✓ complete canonical storage shadow > publishes every local durable domain and rebuilds a verified SQLite catalog 1551ms\n   ✓ complete canonical storage shadow > projects orphaned server Skill ownership locally without rewriting the bundle 1102ms\n   ✓ complete canonical storage shadow > rejects incompatible or miscounted preserved database state 1390ms\nstdout | tests/prompt-canonical-export.test.ts > prompt canonical export > collects the real SQLite graph and publishes a complete deterministic shadow tree\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-graph-imsspH/prompthub.db\n\n ✓ tests/prompt-canonical-export.test.ts (16 tests) 659ms\nstdout | tests/canonical-catalog-reconciliation.test.ts > rebuilds a missing database without publishing an empty writable graph\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-4hsiNO/data/prompthub.db\n\nstdout | tests/canonical-catalog-reconciliation.test.ts > Core startup repairs stale state once and reuses its open handle\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-iKVIuN/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-iKVIuN/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-iKVIuN/data/prompthub.db\n\nstdout | tests/canonical-catalog-reconciliation.test.ts > invalidates and closes an already-open stale handle without overwriting the files\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-B3Cukw/data/prompthub.db\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-B3Cukw/data/prompthub.db\n\nstdout | tests/canonical-catalog-reconciliation.test.ts > keeps legacy database-authority startup behavior\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-catalog-reconcile-T1h57Y/legacy/data/prompthub.db\n\n ✓ tests/canonical-catalog-reconciliation.test.ts (32 tests) 15826ms\n   ✓ rebuilds a stale graph, preserving histories, relationships and every registered operational table 487ms\n   ✓ does not replace a current database and cleans the unused stage 748ms\n   ✓ rebuilds when only the resource catalog is stale 388ms\n   ✓ rebuilds a missing database without publishing an empty writable graph 380ms\n   ✓ Core startup repairs stale state once and reuses its open handle 729ms\n   ✓ CLI lists the recovered content and releases its database lease 467ms\n   ✓ invalidates and closes an already-open stale handle without overwriting the files 588ms\n   ✓ rejects a missing canonical graph before opening or replacing the DB 684ms\n   ✓ rejects a malformed canonical graph before opening or replacing the DB 618ms\n   ✓ preserves a database that fails quick_check: {\"rows\":[]} 622ms\n   ✓ preserves a database that fails quick_check: {\"rows\":[{\"quick_check\":\"corrupt\"}]} 633ms\n   ✓ preserves a database that fails quick_check: {\"rows\":[null]} 821ms\n   ✓ retains the Desktop compatibility policy for unreadable catalogs 312ms\n   ✓ rejects future database versions without downgrading them 693ms\n   ✓ preserves incompatible operational tables instead of replacing them 718ms\n   ✓ rejects a symlinked database without touching its target 562ms\n   ✓ rejects a symlinked data-directory without touching its target 612ms\n   ✓ rejects malformed non-Prompt bundles before publication 819ms\n   ✓ rolls back a failed replacement and succeeds on the next startup 1215ms\n   ✓ rolls back if verification finds a mismatched published catalog 805ms\n   ✓ recovers committed publication evidence before validating the next startup 393ms\n ✓ tests/canonical-entry-commit.test.ts (19 tests) 751ms\n ✓ tests/canonical-prompt-graph-db.test.ts (2 tests) 2440ms\n   ✓ canonical Prompt graph database adapters > publishes the complete Prompt graph without mixing in its cache workspace 2070ms\n   ✓ canonical Prompt graph database adapters > publishes direct restore rows only when the batch explicitly converges 370ms\n ✓ tests/canonical-entry-publication.test.ts (3 tests) 198ms\n\n Test Files  6 passed (6)\n      Tests  98 passed (98)\n   Start at  11:43:25\n   Duration  26.39s (transform 589ms, setup 0ms, collect 1.00s, tests 24.67s, environment 0ms, prepare 190ms)\n\n",
+        "truncated": false
+      },
+      {
+        "id": "final-scoped-lint",
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop",
+        "args": [
+          "exec",
+          "eslint",
+          "src/main/ipc/prompt.ipc.ts",
+          "src/main/ipc/folder.ipc.ts",
+          "src/main/services/prompt-workspace.ts",
+          "src/renderer/services/database.ts",
+          "src/renderer/components/layout/usePromptWorkspaceMutationActions.ts",
+          "src/renderer/components/layout/prompt-workspace-dialog-types.ts",
+          "src/renderer/components/layout/PromptWorkspaceDialogLayer.tsx",
+          "src/renderer/components/layout/PromptWorkspaceSupplementDialogs.tsx",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/main/prompt-mutation-publication.test.ts",
+          "tests/unit/components/prompt-variable-copy-dialog.test.tsx",
+          "--max-warnings=0"
+        ],
+        "pid": 68970,
+        "startedAt": "2026-10-10T03:43:24.605Z",
+        "endedAt": "2026-10-10T03:43:25.790Z",
+        "exitCode": 0,
+        "output": "",
+        "truncated": false
+      }
+    ],
+    "buildAndGovernance": [
+      {
+        "id": "isolated-desktop-build",
+        "cwd": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/ph-prompt-delete-KQZT4i/build/apps/desktop",
+        "args": [
+          "exec",
+          "vite",
+          "build"
+        ],
+        "pid": 70082,
+        "startedAt": "2026-10-10T03:46:10.310Z",
+        "endedAt": "2026-10-10T03:46:16.371Z",
+        "exitCode": 1,
+        "output": "vite v6.4.1 building for production...\ntransforming...\n✓ 3783 modules transformed.\nrendering chunks...\n✗ Build failed in 4.02s\nvite v6.4.1 building for production...\ntransforming...\n✓ 942 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,058.54 kB │ gzip: 573.86 kB\n✓ built in 1.53s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  56.06 kB │ gzip: 12.64 kB\n✓ built in 31ms\nerror during build:\n[vite:build-html] The \"fileName\" or \"name\" properties of emitted chunks and assets must be strings that are neither absolute nor relative paths, received \"../../../../../../../../../../Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/index.html\".\n    at getRollupError (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/es/shared/parseAst.js:401:41)\n    at error (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/es/shared/parseAst.js:397:42)\n    at FileEmitter.emitFile (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/es/shared/node-entry.js:21765:24)\n    at Object.generateBundle (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vite@6.4.1_@types+node@24.12.4_jiti@1.21.7_lightningcss@1.32.0_terser@5.48.0_tsx@4.21.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:36714:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Bundle.generate (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/es/shared/node-entry.js:20580:9)\n    at async file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/es/shared/node-entry.js:23438:27\n    at async catchUnfinishedHookActions (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/es/shared/node-entry.js:22805:16)\n    at async buildEnvironment (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vite@6.4.1_@types+node@24.12.4_jiti@1.21.7_lightningcss@1.32.0_terser@5.48.0_tsx@4.21.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46241:16)\n    at async Object.defaultBuildApp [as buildApp] (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vite@6.4.1_@types+node@24.12.4_jiti@1.21.7_lightningcss@1.32.0_terser@5.48.0_tsx@4.21.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46713:5)\n",
+        "truncated": false
+      },
+      {
+        "id": "core-scoped-lint",
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+        "args": [
+          "exec",
+          "eslint",
+          "-c",
+          "apps/desktop/eslint.config.mjs",
+          "packages/core/src/canonical-prompt-graph-db.ts",
+          "packages/core/src/prompt-canonical-export.ts",
+          "packages/core/src/prompt-canonical-import.ts",
+          "--max-warnings=0"
+        ],
+        "pid": 70083,
+        "startedAt": "2026-10-10T03:46:10.314Z",
+        "endedAt": "2026-10-10T03:46:11.256Z",
+        "exitCode": 0,
+        "output": "",
+        "truncated": false
+      },
+      {
+        "id": "delete-evidence-governance",
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+        "args": [
+          "run",
+          "spec:test"
+        ],
+        "pid": 70084,
+        "startedAt": "2026-10-10T03:46:10.314Z",
+        "endedAt": "2026-10-10T03:46:11.402Z",
+        "exitCode": 0,
+        "output": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (131.455833ms)\n✔ empty inventory and archived evidence remain readable (60.191042ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (2.48175ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (1.30425ms)\n✔ default traceability checks only explicitly opted-in work (57.955666ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 291.588875\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n",
+        "truncated": false
+      }
+    ],
+    "correctedBuild": {
+      "id": "isolated-desktop-build-corrected-html-copy",
+      "cwd": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/ph-prompt-delete-KQZT4i/build/apps/desktop",
+      "args": [
+        "exec",
+        "vite",
+        "build"
+      ],
+      "pid": 70384,
+      "startedAt": "2026-10-10T03:47:22.817Z",
+      "endedAt": "2026-10-10T03:47:29.406Z",
+      "exitCode": 0,
+      "output": "vite v6.4.1 building for production...\ntransforming...\n✓ 3783 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-W0IyuPcw.css                           131.47 kB │ gzip:  21.07 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-B_yoKgiq.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-Cawy4a8x.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-sT2vt5ml.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-BlR9YJ97.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-Cl3sgRql.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-BBdKmhcd.js          2.30 kB │ gzip:   0.92 kB\nout/renderer/assets/agent.store-BpKfliRr.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-Cw\n[bounded output; full raw file removed after verification]\n-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-B7NYXqI-.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-9VLcPbkn.js           6.66 kB │ gzip:   2.19 kB\nout/renderer/assets/CLISettings-B_nK1yC-.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-BDZhk8E3.js                  7.37 kB │ gzip:   2.34 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-Do8lc6-K.js                  8.66 kB │ gzip:   3.65 kB\nout/renderer/assets/useSkillPackageInstall-CquASu8M.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-E71zhZgX.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-D6a2j4Rc.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-CzACjqwJ.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-CANZgnIi.js                      9.53 kB │ gzip:   3.94 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-BJ71IN4v.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-B2miSyXR.js                      10.26 kB │ gzip:   3.17 kB\nout/renderer/assets/QuickAddModal-DwFIxpS_.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-DVWHR84E.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-BIrqg_cl.js                    11.54 kB │ gzip:   4.04 kB\nout/renderer/assets/AboutSettings-BwA9Slmt.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-DIlRUm_8.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-DWxDyE1c.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-CKi5CiY7.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-Z0zKGMIm.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-B0ocpBkg.js           13.35 kB │ gzip:   3.92 kB\nout/renderer/assets/PromptDetailModal-Bb1Nx1I_.js                 13.81 kB │ gzip:   4.02 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-BNiHbKEp.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-9OddA_pJ.js                   14.11 kB │ gzip:   4.89 kB\nout/renderer/assets/index-Cyc0nNdo.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-BXgfvepz.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptKanbanView-BlwFrHbQ.js                  14.44 kB │ gzip:   4.70 kB\nout/renderer/assets/PromptSourceNotesFields-BHUGuaNQ.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/VersionHistoryModal-DzhivqHO.js               15.63 kB │ gzip:   4.58 kB\nout/renderer/assets/DataSettingsDialogs-Bwlztq9y.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-DSv1L8A3.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-C1xhsX-i.js                      18.74 kB │ gzip:   4.96 kB\nout/renderer/assets/ImagePromptReverseModal-OZ6-eMHW.js           19.43 kB │ gzip:   6.71 kB\nout/renderer/assets/CloudAccountSettings-DvC1eTRy.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-DbmAhaOS.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-BPVrKC4K.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-C8vSV-ph.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-vszDlR3m.js                   24.10 kB │ gzip:   7.18 kB\nout/renderer/assets/index-C7L0DJ8t.js                             26.53 kB │ gzip:   8.82 kB\nout/renderer/assets/AgentAppearancePanel-BOvByh-q.js              26.76 kB │ gzip:   6.98 kB\nout/renderer/assets/index-C_jizsng.js                             27.40 kB │ gzip:  12.07 kB\nout/renderer/assets/AiTestModal-PD-clN4f.js                       28.09 kB │ gzip:   7.93 kB\nout/renderer/assets/SkillProjectsView-DxgSDL8W.js                 28.88 kB │ gzip:   7.84 kB\nout/renderer/assets/index--eroaZs-.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/EditPromptModal-BZTL7KTG.js                   31.58 kB │ gzip:   8.75 kB\nout/renderer/assets/SkillSettings-D2EGobaM.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-D5ejYK8z.js                                33.63 kB │ gzip:  11.20 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-LtPTF15K.js                35.83 kB │ gzip:  10.92 kB\nout/renderer/assets/RulesManager-sAjgoA0b.js                      36.02 kB │ gzip:   9.30 kB\nout/renderer/assets/AgentSessionsPanel-q7m1r08y.js                42.50 kB │ gzip:  11.50 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-B6Skysc8.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-DPld0_fD.js                             44.36 kB │ gzip:  15.41 kB\nout/renderer/assets/index-gF5F__qR.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-CG9JJ5LA.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-DlwPaej8.js                      55.77 kB │ gzip:  16.53 kB\nout/renderer/assets/AgentAssetsWorkspace-eZVlK2Sn.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-Bv1xbK0J.js          56.84 kB │ gzip:  14.81 kB\nout/renderer/assets/webdav-save-sync-aU_q8rLa.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-FeZt0ns8.js                  63.10 kB │ gzip:  15.54 kB\nout/renderer/assets/AISettingsPrototype-BHxx6Kb3.js               67.63 kB │ gzip:  13.97 kB\nout/renderer/assets/DataSettings-Dpv5kNwG.js                      71.06 kB │ gzip:  15.68 kB\nout/renderer/assets/index-CNMW6z2K.js                             84.84 kB │ gzip:  32.75 kB\nout/renderer/assets/AgentProviderModelWorkbench-Di0r8f_c.js       88.96 kB │ gzip:  19.23 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-DhImSFNs.js              92.97 kB │ gzip:  22.55 kB\nout/renderer/assets/SkillStore-DBgs9TCq.js                       105.36 kB │ gzip:  30.36 kB\nout/renderer/assets/index-Z7SK4mgK.js                            113.43 kB │ gzip:  33.49 kB\nout/renderer/assets/SkillFullDetailPage-chiDsiXS.js              115.35 kB │ gzip:  28.64 kB\nout/renderer/assets/PluginManager-CpBI09XH.js                    119.14 kB │ gzip:  25.66 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-Cf3v9CiQ.js                       158.57 kB │ gzip:  36.11 kB\nout/renderer/assets/PromptGraphView-CBxJN-0H.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-iTNVEHMk.js                            214.29 kB │ gzip:  71.17 kB\nout/renderer/assets/zh-BCF-usfz.js                               215.20 kB │ gzip:  70.84 kB\nout/renderer/assets/en-CHVS-2Tv.js                               221.16 kB │ gzip:  65.79 kB\nout/renderer/assets/de-Dz1ogmMr.js                               244.84 kB │ gzip:  73.37 kB\nout/renderer/assets/es-C8Ho6Zsq.js                               244.88 kB │ gzip:  72.33 kB\nout/renderer/assets/App-DzYq-TGO.js                              249.82 kB │ gzip:  76.53 kB\nout/renderer/assets/fr-Dsvf22FF.js                               251.54 kB │ gzip:  73.84 kB\nout/renderer/assets/ja-DstVwGe0.js                               276.24 kB │ gzip:  75.76 kB\nout/renderer/assets/AppWorkspaceShell-CXp-Cihz.js                310.85 kB │ gzip:  79.23 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-Dif-ScPu.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 3.86s\nvite v6.4.1 building for production...\ntransforming...\n✓ 942 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,058.54 kB │ gzip: 573.86 kB\n✓ built in 2.31s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  56.06 kB │ gzip: 12.64 kB\n✓ built in 42ms\n"
+    },
+    "initialFailuresResolved": [
+      "Test fixture used card in the UI store module ViewMode; corrected to prompt. Existing dialog test fixture now supplies isDeletingPrompt=false.",
+      "Isolated build index.html symlink resolved outside the temporary root and caused an invalid Rollup fileName; copied only the temporary HTML instead and the main/preload/renderer build passed."
+    ],
+    "sourceSnapshotsCapturedAfterChecks": {
+      "apps/desktop/src/main/ipc/prompt.ipc.ts": {
+        "sha256": "146ef707a7e76b628704f785b63cfd42af461a5107ec85d5527d82dcb61dd15c",
+        "modifiedAt": "2026-10-10T03:29:04.016Z"
+      },
+      "apps/desktop/src/main/ipc/folder.ipc.ts": {
+        "sha256": "05e2c751b4b4292155bf0de122c662cb2c76791f815b1fccdbc25b810c72112f",
+        "modifiedAt": "2026-10-10T03:33:27.862Z"
+      },
+      "apps/desktop/src/main/services/prompt-workspace.ts": {
+        "sha256": "ad54d3c67844950e08cf1769f3e1e8b7a7c6add8706ba41e894d9200a01962b3",
+        "modifiedAt": "2026-10-10T03:33:27.863Z"
+      },
+      "apps/desktop/src/renderer/components/layout/usePromptWorkspaceMutationActions.ts": {
+        "sha256": "48b6c58c8f394f6cfa2ae3d4717d0ff06a5a5e1042eab1b66cfc280eb8fc887d",
+        "modifiedAt": "2026-10-10T03:33:28.623Z"
+      },
+      "apps/desktop/src/renderer/components/layout/prompt-workspace-dialog-types.ts": {
+        "sha256": "6de8fe032f7a8e5ec280751bdf001bfe6f5d33bd1c36d9b1567b28ef744e9a6e",
+        "modifiedAt": "2026-10-10T03:29:04.013Z"
+      },
+      "apps/desktop/src/renderer/components/layout/PromptWorkspaceDialogLayer.tsx": {
+        "sha256": "13944c6f62b5afe6060a23b894aac18e247852220da9d59347cb42ce5ea9b69a",
+        "modifiedAt": "2026-10-10T03:29:04.013Z"
+      },
+      "apps/desktop/src/renderer/components/layout/PromptWorkspaceSupplementDialogs.tsx": {
+        "sha256": "021cfc62985f19b735a1aa05da47b27a09c36fd4be8af5ba5786789207383576",
+        "modifiedAt": "2026-10-10T03:29:04.014Z"
+      },
+      "apps/desktop/src/renderer/services/database.ts": {
+        "sha256": "e2d43c6a7b9ffcce6888dc9900b3279f4ab7935a8c0e4ebd4db494478c8d26d0",
+        "modifiedAt": "2026-10-10T03:29:04.014Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/en.json": {
+        "sha256": "6f000e1c8bd8e3891c234e0ad29367dcd4f36aebd750289db84ec6375e89a452",
+        "modifiedAt": "2026-10-10T03:29:04.155Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/zh.json": {
+        "sha256": "dd46435f42e6a909218a69f703f7d948a3b1719fd2d3dac5245a8055c0409f10",
+        "modifiedAt": "2026-10-10T03:29:04.157Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/zh-TW.json": {
+        "sha256": "7fbb67355dfb2dc0696782657c2d352edf68a31345f8815d33848fcd182fd28f",
+        "modifiedAt": "2026-10-10T03:29:04.158Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/ja.json": {
+        "sha256": "b0fe10adb1999d06c8cbdc671865c5374daf29041b16c88b4e93ed7a6d48f6c8",
+        "modifiedAt": "2026-10-10T03:29:04.160Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/fr.json": {
+        "sha256": "27a29c2b7c4f6b7ec2cf2e98789d7f2991335204e86fc0154d3f22e941e3f3e3",
+        "modifiedAt": "2026-10-10T03:29:04.161Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/de.json": {
+        "sha256": "0841a4070e349f29eb4d402e02d553f42d83fec5d967127387f3ef5d1171312d",
+        "modifiedAt": "2026-10-10T03:29:04.163Z"
+      },
+      "apps/desktop/src/renderer/i18n/locales/es.json": {
+        "sha256": "66bdd5e6aeac231163416d2cd40ea829177e237eb10b8af6903d771dd5931321",
+        "modifiedAt": "2026-10-10T03:29:04.165Z"
+      },
+      "packages/core/src/canonical-prompt-graph-db.ts": {
+        "sha256": "ce61d0b84ce1b24ca5c284a753880d693f5c136bc25061d7c17742dd6dd22b60",
+        "modifiedAt": "2026-10-10T03:40:11.009Z"
+      },
+      "packages/core/src/prompt-canonical-export.ts": {
+        "sha256": "33c818e2ed4d59442a200546ed9dc56f8042996247478f2e250f7ab6844bcd94",
+        "modifiedAt": "2026-10-10T03:40:11.067Z"
+      },
+      "packages/core/src/prompt-canonical-import.ts": {
+        "sha256": "768e2abb95d34dfc259ef88b005dd3539f1941ada4500594cbd9b65d9c61dc1e",
+        "modifiedAt": "2026-10-10T03:41:15.483Z"
+      },
+      "apps/desktop/tests/unit/components/prompt-delete-lifecycle.test.tsx": {
+        "sha256": "7b490e816912ec3ce524f51c86be0dc5cc6e3db3e660402ad36e6382f0d7f6d7",
+        "modifiedAt": "2026-10-10T03:39:03.811Z"
+      },
+      "apps/desktop/tests/unit/main/prompt-mutation-publication.test.ts": {
+        "sha256": "774e1c2c8af8f68cce241486876ea898dded072213c64e9fe2c67ef6ce3868b7",
+        "modifiedAt": "2026-10-10T03:40:11.115Z"
+      },
+      "apps/desktop/tests/unit/components/prompt-variable-copy-dialog.test.tsx": {
+        "sha256": "f123416c105767ec42e85e398832379ac43682134b8fc0a3f504ade23f30fbe6",
+        "modifiedAt": "2026-10-10T03:39:03.812Z"
+      },
+      "spec/knowledge/behavior/prompt-workspace.md": {
+        "sha256": "8d4aa78e02307a86c6d1c5d8578be293ab0f16ea9eb7b81f234060ff65af6ea4",
+        "modifiedAt": "2026-10-10T03:47:22.752Z"
+      },
+      "spec/changes/active/existing-feature-release-acceptance/plan.md": {
+        "sha256": "c152843719780694b05eefc51e4202b596fd8f810a14a4aa4b450d6c309c53f8",
+        "modifiedAt": "2026-10-10T03:50:23.155Z"
+      }
+    },
+    "finalEvidenceGovernance": {
+      "command": "pnpm run spec:test",
+      "exitCode": 0,
+      "scope": "Rechecked after the completed plan and new results artifact; 5 governance cases, index check and 16-change traceability passed."
+    }
+  },
+  "measurements": {
+    "fixture": "127 synthetic Prompts with two versions each, temporary SQLite and filesystem.",
+    "initial": [
+      {
+        "fixture": "127 prompts, two versions each",
+        "mutationMs": 937.0292500000005,
+        "extraLegacyVersionReads": 0,
+        "extraPublicationCalls": 0
+      },
+      {
+        "fixture": "previous IPC post-mutation full export",
+        "removedWorkMs": 125.01845799999865,
+        "redundantVersionReads": 126
+      }
+    ],
+    "final": [
+      {
+        "fixture": "127 prompts, two versions each",
+        "mutationMs": 363.31245800000033,
+        "extraLegacyVersionReads": 0,
+        "extraPublicationCalls": 0
+      },
+      {
+        "fixture": "previous IPC post-mutation full export",
+        "removedWorkMs": 142.82454099999995,
+        "redundantVersionReads": 126
+      }
+    ],
+    "limits": "Single synthetic samples, with concurrent type checks; not a controlled GUI or percentile latency benchmark. Full graph reads, hashing and verification remain linear in graph data; no O(K) total-cost or full foundation performance-budget claim."
+  },
+  "boundaryLimits": [
+    "No GUI Prompt deletion performed and no real user Prompt deleted through the UI. Previous GUI authorization was limited to six module menus.",
+    "No packaged installer, cross-platform native or complete release acceptance run. This does not resolve unrelated release gates.",
+    "The prior Skills navigation problem used a different measured path; these findings do not prove every lag has one root cause."
+  ],
+  "resources": {
+    "temporaryRoot": "/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/ph-prompt-delete-KQZT4i",
+    "checksExitCodesCollected": true,
+    "cleanupPending": false,
+    "newServicesStartedThisTurn": false,
+    "retainedDevelopmentInstance": {
+      "reason": "User trial of the existing single desktop development instance.",
+      "rendererURL": "http://127.0.0.1:5173",
+      "port": 5173,
+      "supervisorPid": 59664,
+      "processGroup": 59665,
+      "vitePid": 59722,
+      "mainPid": 69209,
+      "rendererPid": 69232,
+      "launchRoot": "/private/tmp/prompthub-navigation-run-UJRTfv",
+      "stopCommand": "kill -TERM 59664",
+      "autoStop": "12 hours from 2026-10-10T02:59:15.390Z; supervisor cleans its process group and launch directory."
+    },
+    "guiControlSession": "No GUI automation opened this turn; previous session already released.",
+    "cleanup": {
+      "at": "2026-10-10T03:52:06.385Z",
+      "temporaryRootRemoved": true,
+      "trackedCheckPidsAbsent": true,
+      "sourceHashesUnchangedAtCleanup": true,
+      "retainedProcessGroup": [
+        {
+          "pid": 59664,
+          "pgid": 59664,
+          "executable": "node"
+        },
+        {
+          "pid": 59665,
+          "pgid": 59665,
+          "executable": "node"
+        },
+        {
+          "pid": 59692,
+          "pgid": 59665,
+          "executable": "node"
+        },
+        {
+          "pid": 59722,
+          "pgid": 59665,
+          "executable": "node"
+        },
+        {
+          "pid": 59728,
+          "pgid": 59665,
+          "executable": "esbuild"
+        },
+        {
+          "pid": 69209,
+          "pgid": 59665,
+          "executable": "Electron"
+        },
+        {
+          "pid": 69211,
+          "pgid": 59665,
+          "executable": "Electron Helper (GPU)"
+        },
+        {
+          "pid": 69212,
+          "pgid": 59665,
+          "executable": "Electron Helper"
+        },
+        {
+          "pid": 69232,
+          "pgid": 59665,
+          "executable": "Electron Helper (Renderer)"
+        }
+      ]
+    }
+  }
+}

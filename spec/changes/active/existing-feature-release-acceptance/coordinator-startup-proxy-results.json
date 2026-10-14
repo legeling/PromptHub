@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "profile": "quick",
+  "surfaces": [
+    "desktop"
+  ],
+  "status": "failed",
+  "startedAt": 1791524847306,
+  "endedAt": 1791524850316,
+  "durationMs": 3010,
+  "maxConcurrency": 1,
+  "results": [
+    {
+      "id": "proxy-startup-functional",
+      "label": "proxy-startup-functional",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/main/network-proxy-startup.test.ts",
+          "tests/unit/main/network-proxy.test.ts"
+        ],
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+        "environment": {
+          "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+          "TMPDIR": "/tmp/phproxy-test-CcZMl9"
+        }
+      },
+      "status": "failed",
+      "startedAt": 1791524847306,
+      "endedAt": 1791524849568,
+      "durationMs": 2262,
+      "exitCode": 1,
+      "signal": null,
+      "outputTail": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > uses completed renderer settings over a different SQLite value after reopening\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-RbKSb7/data/prompthub.db\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-RbKSb7/data/prompthub.db\n\nstdout | tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > reads SQLite until migration is complete, even when renderer files already exist\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-GF3t3a/data/prompthub.db\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-GF3t3a/data/prompthub.db\n\nstdout | tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > uses the formal default when migrated settings omit the proxy\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-bz0x2C/data/prompthub.db\n\nstdout | tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > preserves malformed SQLite JSON while applying the formal default\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-V3auae/data/prompthub.db\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-V3auae/data/prompthub.db\n\nstdout | tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > uses the formal default for a new profile without saving a fabricated setting\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /tmp/phproxy-test-CcZMl9/prompthub-proxy-startup-qMJZAo/data/prompthub.db\n\n ❯ |unit| tests/unit/main/network-proxy-startup.test.ts (5 tests | 1 failed) 522ms\n   × startup network proxy settings from actual persisted sources > uses the formal default for a new profile without saving a fabricated setting 39ms\n     → expected null to be undefined\n ✓ |unit| tests/unit/main/network-proxy.test.ts (4 tests) 28ms\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL |unit|  tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > uses the formal default for a new profile without saving a fabricated setting\nAssertionError: expected null to be undefined\n\n- Expected: \nundefined\n\n+ Received: \nnull\n\n ❯ tests/unit/main/network-proxy-startup.test.ts:163:7\n    161|         .prepare(\"SELECT value FROM settings WHERE key = ?\")\n    162|         .get(\"networkProxy\"),\n    163|     ).toBeUndefined();\n       |       ^\n    164|   });\n    165| });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n Test Files  1 failed | 1 passed (2)\n      Tests  1 failed | 8 passed (9)\n   Start at  13:47:27\n   Duration  1.83s (transform 436ms, setup 169ms, collect 582ms, tests 550ms, environment 351ms, prepare 39ms)\n\nundefined\n/Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop:\n ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --project unit --minWorkers=1 --maxWorkers=1 tests/unit/main/network-proxy-startup.test.ts tests/unit/main/network-proxy.test.ts\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "proxy-and-budget-test-lint",
+      "label": "proxy-and-budget-test-lint",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "eslint",
+          "tests/unit/main/network-proxy-startup.test.ts",
+          "scripts/check-large-data-budgets.ts",
+          "--max-warnings",
+          "0"
+        ],
+        "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+        "environment": {
+          "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+          "TMPDIR": "/tmp/phproxy-test-CcZMl9"
+        }
+      },
+      "status": "passed",
+      "startedAt": 1791524849568,
+      "endedAt": 1791524850316,
+      "durationMs": 748,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "",
+      "outputTruncated": false
+    }
+  ],
+  "adapterFixtureCorrection": {
+    "schemaVersion": 1,
+    "profile": "quick",
+    "surfaces": [
+      "desktop"
+    ],
+    "status": "passed",
+    "startedAt": 1791525006219,
+    "endedAt": 1791525007901,
+    "durationMs": 1682,
+    "maxConcurrency": 1,
+    "results": [
+      {
+        "id": "proxy-startup-empty-row-contract",
+        "label": "Current adapter null result for a missing row",
+        "command": {
+          "executable": "pnpm",
+          "args": [
+            "--filter",
+            "@prompthub/desktop",
+            "exec",
+            "vitest",
+            "run",
+            "--project",
+            "unit",
+            "--minWorkers=1",
+            "--maxWorkers=1",
+            "tests/unit/main/network-proxy-startup.test.ts",
+            "-t",
+            "new profile without saving"
+          ],
+          "cwd": "/Users/lingxiaotian/Programs/personal/PromptHub",
+          "environment": {
+            "PATH": "/Users/lingxiaotian/Library/pnpm/.tools/pnpm/9.15.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Users/lingxiaotian/.pyenv/shims:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/lingxiaotian/.codex/tmp/arg0/codex-arg0XYjy2P:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/lingxiaotian/.opencode/bin:/Users/lingxiaotian/.kimi-code/bin:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.grok/bin:/Users/lingxiaotian/.antigravity/antigravity/bin:/Users/lingxiaotian/.codeium/windsurf/bin:/opt/homebrew/opt/postgresql@16/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Cursor.app/Contents/Resources/app/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/lingxiaotian/.npm-global/bin:/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/lingxiaotian/Library/Application Support/PromptHub/bin:/Users/lingxiaotian/.cargo/bin:/Users/lingxiaotian/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS:/Users/lingxiaotian/.local/bin:/Users/lingxiaotian/.local/bin",
+            "TMPDIR": "/tmp/phproxy-correct-PQhbPW"
+          }
+        },
+        "status": "passed",
+        "startedAt": 1791525006219,
+        "endedAt": 1791525007901,
+        "durationMs": 1682,
+        "exitCode": 0,
+        "signal": null,
+        "outputTail": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/unit/main/network-proxy-startup.test.ts > startup network proxy settings from actual persisted sources > uses the formal default for a new profile without saving a fabricated setting\nMigrated: Backfilled legacy fingerprint_algorithm for existing skills\nMigrating: Aligning prompt current_version with latest stored version\nMigrating: Repairing prompts without a stored version chain\nDatabase initialized at: /tmp/phproxy-correct-PQhbPW/prompthub-proxy-startup-75CgRW/data/prompthub.db\n\n ✓ |unit| tests/unit/main/network-proxy-startup.test.ts (5 tests | 4 skipped) 74ms\n\n Test Files  1 passed (1)\n      Tests  1 passed | 4 skipped (5)\n   Start at  13:50:06\n   Duration  1.16s (transform 469ms, setup 117ms, collect 635ms, tests 74ms, environment 235ms, prepare 24ms)\n\n",
+        "outputTruncated": false
+      }
+    ]
+  }
+}

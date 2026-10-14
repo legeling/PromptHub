@@ -1,0 +1,715 @@
+{
+  "recordedAt": "2026-10-10T07:06:23.124Z",
+  "head": "108f375bcd2c3e94c20d93dd619d641b6386b352",
+  "scope": "Prompt Kanban detail-loading stability, virtual row spacing, localized preview labels, list checkbox alignment, and favorite-button focus",
+  "rootCause": "The board subscribed to the full detail cache and prefetched all missing details on cache updates. A 116-item list exceeded the 100-entry cache, allowing eviction/refetch feedback and whole-board commits.",
+  "changes": [
+    "Load detail through mounted cards using the existing detail hook; retain loaded body during eviction.",
+    "End loading when a detail arrives through the shared cache; show explicit failure and retry.",
+    "Measure virtual rows including spacing; share card geometry through a CSS property.",
+    "Fit three columns in the 832px fixture, localize preview labels, avoid nested scrollbars in regular cards.",
+    "Align list checkbox and body columns; remove remount entrance/size animations.",
+    "Keep stable footer action identity so favorite changes retain keyboard focus."
+  ],
+  "persistence": {
+    "schemaChanged": false,
+    "dataChanged": false,
+    "ipcContractChanged": false,
+    "dependenciesAdded": false
+  },
+  "regression": {
+    "distinctPassingTests": 62,
+    "newTests": 6,
+    "finalKanbanTests": 11,
+    "performanceProbe": {
+      "prompts": 116,
+      "mountedCards": 6,
+      "detailReads": 6,
+      "unrelatedCacheWrites": 20,
+      "additionalCommits": 0
+    },
+    "boundary": "Real React UI and Zustand store, mocked IPC transport and bounded virtualizer viewport. Counts cover the Kanban component, not full-app native FPS or pixel layout.",
+    "nativeGuiVerified": false
+  },
+  "checks": {
+    "checks.json": [
+      {
+        "name": "unit",
+        "args": [
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/components/prompt-kanban-stability.test.tsx",
+          "tests/unit/components/prompt-kanban-view.test.tsx",
+          "tests/unit/components/main-content-batch-selection.test.tsx",
+          "tests/unit/components/main-content-selection-restore.test.tsx",
+          "tests/unit/components/main-content-inline-edit.test.tsx",
+          "tests/unit/components/main-content-context-move.test.tsx",
+          "tests/unit/components/prompt-card-layout.test.tsx",
+          "tests/unit/components/prompt-delete-lifecycle.test.tsx",
+          "tests/unit/components/renderer-i18n-smoke.test.tsx",
+          "tests/unit/services/renderer-i18n-hardcode-regression.test.ts",
+          "tests/unit/stores/prompt-read-consistency.test.ts"
+        ],
+        "pid": 85898,
+        "startedAt": "2026-10-10T05:55:46.708Z",
+        "finishedAt": "2026-10-10T05:55:55.718Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\n ✓ |unit| tests/unit/components/main-content-inline-edit.test.tsx (16 tests) 815ms\n ✓ |unit| tests/unit/components/main-content-context-move.test.tsx (6 tests) 688ms\n ✓ |unit| tests/unit/stores/prompt-read-consistency.test.ts (10 tests) 9ms\n ✓ |unit| tests/unit/components/main-content-selection-restore.test.tsx (3 tests) 140ms\nstdout | tests/unit/components/prompt-kanban-stability.test.tsx > Kanban viewport stability > loads only mounted cards in a 116-prompt board and stays idle after cache writes\nkanban-viewport-probe {\"prompts\":116,\"mountedCards\":6,\"detailReads\":6,\"unrelatedCacheWrites\":20,\"additionalCommits\":0}\n\nstderr | tests/unit/components/prompt-kanban-stability.test.tsx > Kanban viewport stability > translates preview labels and exposes a failed read with an explicit retry\nusePromptDetail failed to load prompt detail: Error: Synthetic detail failure\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx:201:32\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\nusePromptDetail failed to load prompt detail: Error: Synthetic detail failure\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx:201:32\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n\n ✓ |unit| tests/unit/components/prompt-kanban-stability.test.tsx (5 tests) 217ms\n ✓ |unit| tests/unit/components/main-content-batch-selection.test.tsx (8 tests) 716ms\n ✓ |unit| tests/unit/components/prompt-kanban-view.test.tsx (5 tests) 189ms\n ✓ |unit| tests/unit/components/prompt-delete-lifecycle.test.tsx (3 tests) 306ms\n ✓ |unit| tests/unit/components/renderer-i18n-smoke.test.tsx (2 tests) 158ms\n ✓ |unit| tests/unit/components/prompt-card-layout.test.tsx (2 tests) 58ms\n ✓ |unit| tests/unit/services/renderer-i18n-hardcode-regression.test.ts (1 test) 28ms\n\n Test Files  11 passed (11)\n      Tests  61 passed (61)\n   Start at  13:55:47\n   Duration  8.40s (transform 550ms, setup 661ms, collect 1.84s, tests 3.32s, environment 1.58s, prepare 219ms)\n\n"
+      },
+      {
+        "name": "typecheck",
+        "args": [
+          "typecheck"
+        ],
+        "pid": 85959,
+        "startedAt": "2026-10-10T05:55:55.718Z",
+        "finishedAt": "2026-10-10T05:56:04.576Z",
+        "exitCode": 2,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\nsrc/renderer/components/prompt/PromptKanbanView.tsx(405,19): error TS2353: Object literal may only specify known properties, and '[KANBAN_CARD_HEIGHT_PROPERTY]' does not exist in type 'Properties<string | number, string & {}>'.\n ELIFECYCLE  Command failed with exit code 2.\n"
+      },
+      {
+        "name": "test-types",
+        "args": [
+          "typecheck:tests"
+        ],
+        "pid": 86021,
+        "startedAt": "2026-10-10T05:56:04.576Z",
+        "finishedAt": "2026-10-10T05:56:16.490Z",
+        "exitCode": 2,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\nsrc/renderer/components/prompt/PromptKanbanView.tsx(405,19): error TS2353: Object literal may only specify known properties, and '[KANBAN_CARD_HEIGHT_PROPERTY]' does not exist in type 'Properties<string | number, string & {}>'.\n ELIFECYCLE  Command failed with exit code 2.\n"
+      },
+      {
+        "name": "lint",
+        "args": [
+          "exec",
+          "eslint",
+          "src/renderer/components/prompt/PromptKanbanView.tsx",
+          "src/renderer/components/prompt/PromptKanbanCard.tsx",
+          "src/renderer/components/layout/PromptListCard.tsx",
+          "src/renderer/hooks/usePromptDetail.ts",
+          "tests/unit/components/prompt-kanban-stability.test.tsx",
+          "--max-warnings",
+          "0"
+        ],
+        "pid": 86083,
+        "startedAt": "2026-10-10T05:56:16.490Z",
+        "finishedAt": "2026-10-10T05:56:17.287Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": ""
+      }
+    ],
+    "repair-checks.json": [
+      {
+        "name": "typecheck",
+        "args": [
+          "typecheck"
+        ],
+        "pid": 86183,
+        "startedAt": "2026-10-10T05:59:37.570Z",
+        "finishedAt": "2026-10-10T05:59:46.436Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n"
+      },
+      {
+        "name": "test-types",
+        "args": [
+          "typecheck:tests"
+        ],
+        "pid": 86222,
+        "startedAt": "2026-10-10T05:59:46.436Z",
+        "finishedAt": "2026-10-10T05:59:58.578Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n"
+      },
+      {
+        "name": "lint",
+        "args": [
+          "exec",
+          "eslint",
+          "src/renderer/components/prompt/PromptKanbanView.tsx",
+          "--max-warnings",
+          "0"
+        ],
+        "pid": 86262,
+        "startedAt": "2026-10-10T05:59:58.579Z",
+        "finishedAt": "2026-10-10T05:59:59.326Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": ""
+      }
+    ],
+    "final-card-checks.json": [
+      {
+        "name": "kanban",
+        "args": [
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/components/prompt-kanban-stability.test.tsx",
+          "tests/unit/components/prompt-kanban-view.test.tsx"
+        ],
+        "pid": 86368,
+        "startedAt": "2026-10-10T06:02:36.731Z",
+        "finishedAt": "2026-10-10T06:02:39.049Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/unit/components/prompt-kanban-stability.test.tsx > Kanban viewport stability > loads only mounted cards in a 116-prompt board and stays idle after cache writes\nkanban-viewport-probe {\"prompts\":116,\"mountedCards\":6,\"detailReads\":6,\"unrelatedCacheWrites\":20,\"additionalCommits\":0}\n\nstderr | tests/unit/components/prompt-kanban-stability.test.tsx > Kanban viewport stability > translates preview labels and exposes a failed read with an explicit retry\nusePromptDetail failed to load prompt detail: Error: Synthetic detail failure\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx:201:32\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\nusePromptDetail failed to load prompt detail: Error: Synthetic detail failure\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx:201:32\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n\n ✓ |unit| tests/unit/components/prompt-kanban-stability.test.tsx (5 tests) 225ms\n ✓ |unit| tests/unit/components/prompt-kanban-view.test.tsx (5 tests) 189ms\n\n Test Files  2 passed (2)\n      Tests  10 passed (10)\n   Start at  14:02:37\n   Duration  1.71s (transform 336ms, setup 183ms, collect 549ms, tests 414ms, environment 374ms, prepare 47ms)\n\n"
+      },
+      {
+        "name": "card-lint",
+        "args": [
+          "exec",
+          "eslint",
+          "src/renderer/components/prompt/PromptKanbanCard.tsx",
+          "--max-warnings",
+          "0"
+        ],
+        "pid": 86386,
+        "startedAt": "2026-10-10T06:02:39.050Z",
+        "finishedAt": "2026-10-10T06:02:39.786Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": ""
+      }
+    ],
+    "focus-checks.json": [
+      {
+        "name": "focus-kanban",
+        "args": [
+          "exec",
+          "vitest",
+          "run",
+          "--project",
+          "unit",
+          "--minWorkers=1",
+          "--maxWorkers=1",
+          "tests/unit/components/prompt-kanban-stability.test.tsx",
+          "tests/unit/components/prompt-kanban-view.test.tsx"
+        ],
+        "pid": 86926,
+        "startedAt": "2026-10-10T06:12:17.076Z",
+        "finishedAt": "2026-10-10T06:12:19.346Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n\n RUN  v2.1.9 /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n\nstdout | tests/unit/components/prompt-kanban-stability.test.tsx > Kanban viewport stability > loads only mounted cards in a 116-prompt board and stays idle after cache writes\nkanban-viewport-probe {\"prompts\":116,\"mountedCards\":6,\"detailReads\":6,\"unrelatedCacheWrites\":20,\"additionalCommits\":0}\n\nstderr | tests/unit/components/prompt-kanban-stability.test.tsx > Kanban viewport stability > translates preview labels and exposes a failed read with an explicit retry\nusePromptDetail failed to load prompt detail: Error: Synthetic detail failure\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx:201:32\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\nusePromptDetail failed to load prompt detail: Error: Synthetic detail failure\n    at /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx:201:32\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///Users/lingxiaotian/Programs/personal/PromptHub/node_modules/.pnpm/vitest@2.1.9_@types+node@24.12.4_jsdom@27.3.0_lightningcss@1.32.0_terser@5.48.0/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n\n ✓ |unit| tests/unit/components/prompt-kanban-stability.test.tsx (6 tests) 249ms\n ✓ |unit| tests/unit/components/prompt-kanban-view.test.tsx (5 tests) 187ms\n\n Test Files  2 passed (2)\n      Tests  11 passed (11)\n   Start at  14:12:17\n   Duration  1.70s (transform 334ms, setup 178ms, collect 533ms, tests 436ms, environment 368ms, prepare 45ms)\n\n"
+      },
+      {
+        "name": "focus-types",
+        "args": [
+          "typecheck:tests"
+        ],
+        "pid": 86946,
+        "startedAt": "2026-10-10T06:12:19.346Z",
+        "finishedAt": "2026-10-10T06:12:31.669Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck:tests /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit -p tsconfig.test.json\n\n"
+      },
+      {
+        "name": "focus-lint",
+        "args": [
+          "exec",
+          "eslint",
+          "src/renderer/components/prompt/PromptKanbanCard.tsx",
+          "tests/unit/components/prompt-kanban-stability.test.tsx",
+          "--max-warnings",
+          "0"
+        ],
+        "pid": 86988,
+        "startedAt": "2026-10-10T06:12:31.670Z",
+        "finishedAt": "2026-10-10T06:12:32.432Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": ""
+      }
+    ],
+    "build-checks.json": [
+      {
+        "name": "build-analyze",
+        "args": [
+          "build:analyze"
+        ],
+        "pid": 86490,
+        "startedAt": "2026-10-10T06:04:57.433Z",
+        "finishedAt": "2026-10-10T06:05:08.530Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 build:analyze /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop\n> BUILD_ANALYZE=1 vite build\n\nvite v6.4.1 building for production...\ntransforming...\n✓ 3784 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-BJ5wjxaf.css                           131.27 kB │ gzip:  21.06 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-DVriTdRB.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-5PRUa8_l.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-DtaulhFW.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-BncipDD7.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-DT9aXeSm.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-Ch4TVfX8.js          2.30 kB │ gzip:   0.92 kB\nout/renderer/assets/agent.store-DKOJ0xLC.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-zEdfgrfA.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-D9DK6iMJ.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-B-NRr36C.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-CWbZhKLF.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-CXXTkzZj.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-BKrj6idB.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-xjolyPV8.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-CnmQ79WQ.js                        4.48 kB │ gzip:   1.63 kB\nout/renderer/assets/SkillBatchTagDialog-DFS2xGFu.js                4.52 kB │ gzip:   1.87 kB\nout/renderer/assets/quick-add-utils-qDHR0aMs.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-DmmytdZz.js                      4.95 kB │ gzip:   2.03 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-BQnmyMJ_.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-C5WFQLdj.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-BABpsAGx.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-Cooa6NsT.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-BDQg_0AW.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-C-Jm4_Mz.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-AHlEFWuZ.js           6.66 kB │ gzip:   2.19 kB\nout/renderer/assets/CLISettings-DVFsllGO.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-DF6h8U07.js                  7.37 kB │ gzip:   2.34 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-wv-q97lK.js                  8.69 kB │ gzip:   3.66 kB\nout/renderer/assets/useSkillPackageInstall-YcwCuw_h.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-DL2PV9Ik.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-CpLjQ-xN.js                        8.95 kB │ gzip:   2.80 kB\nout/renderer/assets/RulesSidebarPanel-CnuRRbKM.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-DTl6w0kQ.js                      9.56 kB │ gzip:   3.96 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-DBb9aMcb.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-DK4PtYFu.js                      10.26 kB │ gzip:   3.17 kB\nout/renderer/assets/QuickAddModal-BnD_wMKm.js                     10.49 kB │ gzip:   3.68 kB\nout/renderer/assets/AgentDefinitionsPanel-DU7Y0lgA.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-DM6G4dH_.js                    11.58 kB │ gzip:   4.06 kB\nout/renderer/assets/AboutSettings-Bg_eARok.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-Czi4UEJm.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-kZHV9yKQ.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-3IFczHhz.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-COchywi9.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-nYb1rJt2.js           13.35 kB │ gzip:   3.91 kB\nout/renderer/assets/PromptDetailModal-By6nMjcW.js                 13.84 kB │ gzip:   4.03 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-GAhpReqd.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-D3BA3ch_.js                   14.12 kB │ gzip:   4.90 kB\nout/renderer/assets/index-CxVO0o6D.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-E1OyHP_w.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptSourceNotesFields-DfzaFdBe.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/PromptKanbanView-DzDkg8rH.js                  14.78 kB │ gzip:   4.98 kB\nout/renderer/assets/VersionHistoryModal-3sjeGGeb.js               15.63 kB │ gzip:   4.58 kB\nout/renderer/assets/DataSettingsDialogs-BDKJXO-o.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-BA5r6_PK.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-DBgQX8Hh.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-YE46fE1g.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-C9G5wfkr.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-D8wAbBiS.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-BkCPvU5E.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-DL5ZMEhT.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-BHw43TBT.js                   24.13 kB │ gzip:   7.20 kB\nout/renderer/assets/index-BT2US-_v.js                             26.53 kB │ gzip:   8.83 kB\nout/renderer/assets/AgentAppearancePanel-RimXA7nT.js              26.76 kB │ gzip:   6.98 kB\nout/renderer/assets/index-DpxgO_9m.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-Dke368P-.js                       28.12 kB │ gzip:   7.95 kB\nout/renderer/assets/index-oCfgSDpa.js                             28.89 kB │ gzip:  11.49 kB\nout/renderer/assets/SkillProjectsView-tZq-j2WB.js                 28.91 kB │ gzip:   7.86 kB\nout/renderer/assets/EditPromptModal-WR5GqEZ-.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-DwBQrcfe.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-dY-X2xd-.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-BLBX1bpa.js                35.86 kB │ gzip:  10.94 kB\nout/renderer/assets/RulesManager-DmFsA70c.js                      36.02 kB │ gzip:   9.30 kB\nout/renderer/assets/AgentSessionsPanel-BnCv1grQ.js                42.50 kB │ gzip:  11.50 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-BSsUJGU1.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-CFJal8vs.js                             44.36 kB │ gzip:  15.42 kB\nout/renderer/assets/index-B5yW3nEC.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-B2GTm35R.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-BeFVuZ7n.js                      55.80 kB │ gzip:  16.56 kB\nout/renderer/assets/AgentAssetsWorkspace-CUEooug8.js              56.31 kB │ gzip:  15.18 kB\nout/renderer/assets/ImageGenerationWorkbench-qF1auUVN.js          56.88 kB │ gzip:  14.83 kB\nout/renderer/assets/webdav-save-sync-CKMdN0j3.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-GrhBpmE4.js                  63.13 kB │ gzip:  15.56 kB\nout/renderer/assets/AISettingsPrototype-C00u96Gc.js               67.63 kB │ gzip:  13.96 kB\nout/renderer/assets/DataSettings-k_1hlVQF.js                      71.06 kB │ gzip:  15.67 kB\nout/renderer/assets/index-DkKD5llR.js                             84.84 kB │ gzip:  32.75 kB\nout/renderer/assets/AgentProviderModelWorkbench-DTsloNnN.js       88.99 kB │ gzip:  19.24 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-C0OzS-_4.js              92.97 kB │ gzip:  22.54 kB\nout/renderer/assets/SkillStore-DfRIkMrK.js                       105.39 kB │ gzip:  30.38 kB\nout/renderer/assets/index-z4SkEW4m.js                            113.01 kB │ gzip:  33.50 kB\nout/renderer/assets/SkillFullDetailPage-DDjQlWwQ.js              115.38 kB │ gzip:  28.66 kB\nout/renderer/assets/PluginManager-ClxEXmIU.js                    119.17 kB │ gzip:  25.69 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-891SEAgB.js                       158.60 kB │ gzip:  36.13 kB\nout/renderer/assets/PromptGraphView-DAYp5lGc.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-BskbL6uu.js                            214.32 kB │ gzip:  71.17 kB\nout/renderer/assets/zh-BTwuLuZa.js                               215.24 kB │ gzip:  70.84 kB\nout/renderer/assets/en-V35uq_hQ.js                               221.22 kB │ gzip:  65.80 kB\nout/renderer/assets/de-DIG_Tyq6.js                               244.91 kB │ gzip:  73.38 kB\nout/renderer/assets/es-C0xx6IYn.js                               244.93 kB │ gzip:  72.35 kB\nout/renderer/assets/App-CA7yuSTn.js                              250.18 kB │ gzip:  76.62 kB\nout/renderer/assets/fr-KketBk5S.js                               251.61 kB │ gzip:  73.86 kB\nout/renderer/assets/ja-Oevuaxru.js                               276.31 kB │ gzip:  75.78 kB\nout/renderer/assets/AppWorkspaceShell-B7jyy8JM.js                312.02 kB │ gzip:  79.47 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-DwMG9NLb.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 9.15s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 1.53s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 28ms\n"
+      },
+      {
+        "name": "bundle-budget",
+        "args": [
+          "bundle:budget"
+        ],
+        "pid": 86525,
+        "startedAt": "2026-10-10T06:05:08.530Z",
+        "finishedAt": "2026-10-10T06:05:08.827Z",
+        "exitCode": 1,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.71 KB gzip (budget 150.00 KB) — assets/index-z4SkEW4m.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.10 KB gzip (budget 6.00 KB) — assets/SettingsPage-DK4PtYFu.js\n  ✗ settings data section: 15.30 KB gzip (budget 15.00 KB) — assets/DataSettings-k_1hlVQF.js\n  ✓ settings ai section: 13.64 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-C00u96Gc.js\n  ✓ settings skill section: 7.12 KB gzip (budget 10.00 KB) — assets/SkillSettings-DwBQrcfe.js\n  ✓ app route coordinator: 74.82 KB gzip (budget 80.00 KB) — assets/App-CA7yuSTn.js\n  ✓ app workspace shell: 77.61 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-B7jyy8JM.js\n  ✓ agent workspace coordinator: 4.78 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-D3BA3ch_.js\n  ✓ agent provider workbench: 18.79 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-DTsloNnN.js\n  ✓ agent assets workspace: 14.83 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-CUEooug8.js\n  ✓ agent sessions panel: 11.23 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-BnCv1grQ.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-BSsUJGU1.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.39 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-BJ5wjxaf.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n"
+      }
+    ],
+    "final-build-checks.json": [
+      {
+        "name": "final-build",
+        "args": [
+          "build"
+        ],
+        "pid": 87892,
+        "startedAt": "2026-10-10T06:21:11.819Z",
+        "finishedAt": "2026-10-10T06:21:17.814Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 build /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop\n> vite build\n\nvite v6.4.1 building for production...\ntransforming...\n✓ 3784 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/renderer/index.html                                            0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/workbuddy-D1Gu2IKl.svg                         4.14 kB │ gzip:   1.94 kB\nout/renderer/assets/codebuddy-dark-Dxr25PWV.svg                    4.19 kB │ gzip:   1.87 kB\nout/renderer/assets/qwen-DxpNqoac.svg                              4.33 kB │ gzip:   2.09 kB\nout/renderer/assets/openclaw-Cv4UIFLH.png                          5.92 kB\nout/renderer/assets/ollama-D1y5Vb3M.svg                            6.92 kB │ gzip:   3.21 kB\nout/renderer/assets/moonshot-EP1661Nr.svg                          7.03 kB │ gzip:   3.38 kB\nout/renderer/assets/cursor-B8reDX7Y.png                            7.05 kB\nout/renderer/assets/kimi-Dq9k-BkP.png                              7.30 kB\nout/renderer/assets/antigravity-C87BHcWp.svg                       7.61 kB │ gzip:   1.74 kB\nout/renderer/assets/copaw-BEPujztw.png                             8.76 kB\nout/renderer/assets/zcode-BYMvh8zI.svg                            11.04 kB │ gzip:   2.16 kB\nout/renderer/assets/zhipu-Cv29FZq1.svg                            12.50 kB │ gzip:   5.38 kB\nout/renderer/assets/windsurf-XfjLtL8L.png                         13.41 kB\nout/renderer/assets/trae-Dkz-r5Se.png                             20.31 kB\nout/renderer/assets/qclaw-BYNw6m4R.png                            22.65 kB\nout/renderer/assets/cherry-studio-CMONqZ8c.png                    24.54 kB\nout/renderer/assets/kiro-Pc-BD8ql.png                             25.40 kB\nout/renderer/assets/doubao-BToTw3IK.svg                           31.74 kB │ gzip:  23.93 kB\nout/renderer/assets/copilot-C4zrg3Yb.png                          32.35 kB\nout/renderer/assets/icon-DoP3v5cB.png                             52.90 kB\nout/renderer/assets/claude-CmeYjUz9.png                           58.15 kB\nout/renderer/assets/autoclaw-DhNT3UTz.png                         76.20 kB\nout/renderer/assets/qwen-DJ3t4sbc.png                             76.59 kB\nout/renderer/assets/hermes-CseHaRix.png                          148.01 kB\nout/renderer/assets/gemini-ajOb7iAl.png                          253.15 kB\nout/renderer/assets/codex-D796s3iU.png                           493.47 kB\nout/renderer/assets/chatgpt-dark-BRdOP04r.png                    508.30 kB\nout/renderer/assets/nanoclaw-DVQz4oEL.png                        528.92 kB\nout/renderer/assets/codex-dark-CCKjoGuJ.png                      630.02 kB\nout/renderer/assets/chatgpt-light-bAikXbHk.png                   922.85 kB\nout/renderer/assets/SkillFullDetailPage-CrMVDieh.css               4.55 kB │ gzip:   1.38 kB\nout/renderer/assets/SkillFileEditor-BSsMhZtH.css                  14.25 kB │ gzip:   2.54 kB\nout/renderer/assets/index-BJ5wjxaf.css                           131.27 kB │ gzip:  21.06 kB\nout/renderer/assets/icon-BbLONG0g.js                               0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/doubao-E1ZbVeCu.js                             0.08 kB │ gzip:   0.10 kB\nout/renderer/assets/detailPageLayout-if8RCK1R.js                   0.21 kB │ gzip:   0.15 kB\nout/renderer/assets/prompt-markdown-url-vMdkXh2m.js                0.25 kB │ gzip:   0.20 kB\nout/renderer/assets/CardStatusBadge-BE8pBzeI.js                    0.66 kB │ gzip:   0.42 kB\nout/renderer/assets/skill-categories-BDnoA5Df.js                   0.68 kB │ gzip:   0.38 kB\nout/renderer/assets/usePromptBatchSelection-1Kkd2KuP.js            0.75 kB │ gzip:   0.43 kB\nout/renderer/assets/clipboard-Duk_FRU3.js                          0.83 kB │ gzip:   0.48 kB\nout/renderer/assets/download-generated-image-Bejl8dbJ.js           0.90 kB │ gzip:   0.57 kB\nout/renderer/assets/LanguageSettings-VTGgkqAY.js                   0.95 kB │ gzip:   0.54 kB\nout/renderer/assets/AgentSkillDetailPage-DqCTBQ4m.js               0.96 kB │ gzip:   0.45 kB\nout/renderer/assets/skill-scan-status-Bf6gbA8V.js                  1.03 kB │ gzip:   0.53 kB\nout/renderer/assets/project-skill-targets-r_hOKtaI.js              1.20 kB │ gzip:   0.55 kB\nout/renderer/assets/Checkbox-5bjRch-F.js                           1.24 kB │ gzip:   0.63 kB\nout/renderer/assets/BackgroundImageBackdrop-BU-KLUzV.js            1.51 kB │ gzip:   0.74 kB\nout/renderer/assets/SkillUpdateSafetyReviewDialog-CKSjN5Xq.js      1.58 kB │ gzip:   0.80 kB\nout/renderer/assets/safety-i18n-BJaf4jin.js                        1.64 kB │ gzip:   0.64 kB\nout/renderer/assets/SkillMarkdown-De9j5JS_.js                      2.01 kB │ gzip:   1.11 kB\nout/renderer/assets/SkillRenderBoundary-CTlTge-J.js                2.18 kB │ gzip:   0.97 kB\nout/renderer/assets/index-CgSZa7Er.js                              2.22 kB │ gzip:   1.35 kB\nout/renderer/assets/BackupImportConfirmDialog-DyyEGhgs.js          2.30 kB │ gzip:   0.92 kB\nout/renderer/assets/agent.store-CTGVn5dM.js                        2.38 kB │ gzip:   1.10 kB\nout/renderer/assets/PromptMarkdownContent-CwqiawwU.js              2.68 kB │ gzip:   1.23 kB\nout/renderer/assets/SkillSafetySettingsSection-Bs9euv_Y.js         2.77 kB │ gzip:   1.20 kB\nout/renderer/assets/SkillIcon-DTN-sQE4.js                          2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/AgentConfigFilesPanel-DJjOwbcF.js              2.79 kB │ gzip:   1.24 kB\nout/renderer/assets/ConfirmDialog-DdCEF18Z.js                      2.80 kB │ gzip:   1.26 kB\nout/renderer/assets/UnsavedChangesDialog-BCQ8eVQk.js               2.86 kB │ gzip:   1.29 kB\nout/renderer/assets/TopBarRulesSearch-JCQ7RE_Y.js                  3.27 kB │ gzip:   1.42 kB\nout/renderer/assets/ShortcutsSettings-DDz50na8.js                  3.42 kB │ gzip:   1.17 kB\nout/renderer/assets/NetworkSettings-Dh5rRLCF.js                    3.83 kB │ gzip:   1.33 kB\nout/renderer/assets/SkillVariantBadgeList-B05HIbYu.js              4.11 kB │ gzip:   1.54 kB\nout/renderer/assets/Modal-DHol0Rnn.js                              4.12 kB │ gzip:   1.72 kB\nout/renderer/assets/Select-DWdmJIeT.js                             4.28 kB │ gzip:   1.80 kB\nout/renderer/assets/CloseDialog-DcpENMHI.js                        4.48 kB │ gzip:   1.64 kB\nout/renderer/assets/SkillBatchTagDialog-BL7ZSNUY.js                4.52 kB │ gzip:   1.87 kB\nout/renderer/assets/quick-add-utils-8jryMp2o.js                    4.54 kB │ gzip:   2.14 kB\nout/renderer/assets/QuickTagModal-PiziHmie.js                      4.95 kB │ gzip:   2.02 kB\nout/renderer/assets/folderIconHelper-DioVTQX9.js                   4.98 kB │ gzip:   2.18 kB\nout/renderer/assets/shared-Dkhw1R13.js                             5.11 kB │ gzip:   1.99 kB\nout/renderer/assets/AgentSettingsDialog-Dm_g6FN2.js                5.18 kB │ gzip:   2.00 kB\nout/renderer/assets/GeneralSettings-3GbzITNt.js                    5.20 kB │ gzip:   1.53 kB\nout/renderer/assets/Textarea-Bw7Yf4up.js                           5.21 kB │ gzip:   2.04 kB\nout/renderer/assets/browser-B-cVdNk9.js                            5.41 kB │ gzip:   2.70 kB\nout/renderer/assets/use-skill-platform-DV2_Egs2.js                 6.13 kB │ gzip:   2.30 kB\nout/renderer/assets/WebWorkspaceSettings-IObuTl0c.js               6.22 kB │ gzip:   1.70 kB\nout/renderer/assets/WebAgentServicesWorkspace-Bnrvjj3P.js          6.28 kB │ gzip:   2.14 kB\nout/renderer/assets/SecuritySettings-Cvf5Yrxa.js                   6.52 kB │ gzip:   1.90 kB\nout/renderer/assets/PromptQuickRewriteDialog-BOlINv4K.js           6.66 kB │ gzip:   2.18 kB\nout/renderer/assets/CLISettings-IVgrTC-8.js                        7.17 kB │ gzip:   2.10 kB\nout/renderer/assets/runtime-platform-0_7e2LTa.js                   7.19 kB │ gzip:   2.14 kB\nout/renderer/assets/WebDeviceSettings-B8-4Wm-o.js                  7.37 kB │ gzip:   2.33 kB\nout/renderer/assets/AgentAssetManagementSurface-D-3Qvy0q.js        7.70 kB │ gzip:   2.41 kB\nout/renderer/assets/PromptGalleryView-CoXYadUS.js                  8.69 kB │ gzip:   3.66 kB\nout/renderer/assets/useSkillPackageInstall-pNy2ASqW.js             8.71 kB │ gzip:   3.01 kB\nout/renderer/assets/SkillIconPicker-T7nXJf2P.js                    8.87 kB │ gzip:   2.72 kB\nout/renderer/assets/rules.store-Ddk5UdKL.js                        8.95 kB │ gzip:   2.79 kB\nout/renderer/assets/RulesSidebarPanel-CnQ7vkPM.js                  9.11 kB │ gzip:   2.91 kB\nout/renderer/assets/SkillListView-C5vJZIkd.js                      9.56 kB │ gzip:   3.96 kB\nout/renderer/assets/AgentDeepSeekHarnessPanel-CTTF_qoJ.js         10.15 kB │ gzip:   2.93 kB\nout/renderer/assets/SettingsPage-C1gugddK.js                      10.26 kB │ gzip:   3.18 kB\nout/renderer/assets/QuickAddModal-DrDMs086.js                     10.49 kB │ gzip:   3.67 kB\nout/renderer/assets/AgentDefinitionsPanel-prNu3UGZ.js             11.09 kB │ gzip:   3.20 kB\nout/renderer/assets/EditSkillModal-G9gLJt-p.js                    11.58 kB │ gzip:   4.06 kB\nout/renderer/assets/AboutSettings-BpLx9403.js                     11.73 kB │ gzip:   3.65 kB\nout/renderer/assets/index-TYKASZAx.js                             11.79 kB │ gzip:   5.17 kB\nout/renderer/assets/detail-utils-Cf19vSiw.js                      11.84 kB │ gzip:   4.30 kB\nout/renderer/assets/VariableInputModal-x92hjdq8.js                12.28 kB │ gzip:   4.21 kB\nout/renderer/assets/skill-source-update-diagnostics-C4Q1XT39.js   12.33 kB │ gzip:   4.16 kB\nout/renderer/assets/SkillLibraryImportModal-ZBAkYwzE.js           13.35 kB │ gzip:   3.91 kB\nout/renderer/assets/PromptDetailModal-DxRazOUU.js                 13.84 kB │ gzip:   4.03 kB\nout/renderer/assets/SkillScanPreview-9-EuXDXC.js                  14.02 kB │ gzip:   4.01 kB\nout/renderer/assets/SkillStoreSourceForm-Cql3AurW.js              14.06 kB │ gzip:   3.63 kB\nout/renderer/assets/AgentsWorkspace-Bl9pcGYW.js                   14.12 kB │ gzip:   4.91 kB\nout/renderer/assets/index-BoQ_HKbs.js                             14.20 kB │ gzip:   6.10 kB\nout/renderer/assets/SkillBatchDeployDialog-CcNH1jFj.js            14.20 kB │ gzip:   3.85 kB\nout/renderer/assets/PromptSourceNotesFields-DaYusvpK.js           14.57 kB │ gzip:   4.84 kB\nout/renderer/assets/PromptKanbanView-UF7DZkpJ.js                  14.83 kB │ gzip:   5.00 kB\nout/renderer/assets/VersionHistoryModal-ChJJTvpu.js               15.63 kB │ gzip:   4.57 kB\nout/renderer/assets/DataSettingsDialogs-CdtvK-VZ.js               17.57 kB │ gzip:   4.84 kB\nout/renderer/assets/AppearanceSettings-CZXsB_M1.js                18.67 kB │ gzip:   4.83 kB\nout/renderer/assets/UpdateDialog-Bd--4M3I.js                      18.74 kB │ gzip:   4.95 kB\nout/renderer/assets/ImagePromptReverseModal-NJpE-ZeX.js           19.43 kB │ gzip:   6.70 kB\nout/renderer/assets/CloudAccountSettings-Dm3fJsF2.js              20.29 kB │ gzip:   4.29 kB\nout/renderer/assets/SkillAgentsView-BbV5ezMe.js                   20.92 kB │ gzip:   5.87 kB\nout/renderer/assets/CreatePromptModal-RDRbjps0.js                 20.96 kB │ gzip:   5.13 kB\nout/renderer/assets/AgentMcpEntryDetail-I4n2ykTG.js               21.95 kB │ gzip:   5.73 kB\nout/renderer/assets/PromptTableView-DpbLoTmz.js                   24.13 kB │ gzip:   7.20 kB\nout/renderer/assets/index-DnG-Z1WW.js                             26.53 kB │ gzip:   8.83 kB\nout/renderer/assets/AgentAppearancePanel-BptP4wy6.js              26.76 kB │ gzip:   6.97 kB\nout/renderer/assets/index-Bw1kMAzS.js                             27.40 kB │ gzip:  12.06 kB\nout/renderer/assets/AiTestModal-1hhwQYR_.js                       28.12 kB │ gzip:   7.95 kB\nout/renderer/assets/index-D7ZP1WNZ.js                             28.89 kB │ gzip:  11.48 kB\nout/renderer/assets/SkillProjectsView-8A80Wdn0.js                 28.91 kB │ gzip:   7.86 kB\nout/renderer/assets/EditPromptModal-52IUB0vE.js                   31.58 kB │ gzip:   8.74 kB\nout/renderer/assets/SkillSettings-CXQ83hW9.js                     32.37 kB │ gzip:   7.29 kB\nout/renderer/assets/ai-BoqHLsd4.js                                33.63 kB │ gzip:  11.19 kB\nout/renderer/assets/platform-visibility-B_euIK43.js               34.66 kB │ gzip:  12.29 kB\nout/renderer/assets/AgentOverviewPanel-Ckd_ILit.js                35.86 kB │ gzip:  10.94 kB\nout/renderer/assets/RulesManager-kvFtT9FF.js                      36.02 kB │ gzip:   9.30 kB\nout/renderer/assets/AgentSessionsPanel-r2HDHijP.js                42.50 kB │ gzip:  11.50 kB\nout/renderer/assets/helpers-BRiEpdQY.js                           42.58 kB │ gzip:  13.81 kB\nout/renderer/assets/SkillFileEditor-CLOCZcPY.js                   42.68 kB │ gzip:  12.07 kB\nout/renderer/assets/skill-icons-YSjTM530.js                       43.03 kB │ gzip:  15.63 kB\nout/renderer/assets/index-CF-sj4dk.js                             44.36 kB │ gzip:  15.41 kB\nout/renderer/assets/index-BsxfloT3.js                             45.31 kB │ gzip:  18.75 kB\nout/renderer/assets/skill-registry-B_f_irC4.js                    47.21 kB │ gzip:  11.75 kB\nout/renderer/assets/i18n-vendor-CY_-wCHY.js                       49.39 kB │ gzip:  15.37 kB\nout/renderer/assets/ui-vendor-DJZjomw1.js                         50.60 kB │ gzip:  16.75 kB\nout/renderer/assets/database-backup-CLcOkHq4.js                   54.60 kB │ gzip:  15.73 kB\nout/renderer/assets/SkillManager-wPka32td.js                      55.80 kB │ gzip:  16.56 kB\nout/renderer/assets/AgentAssetsWorkspace-B0EazZCD.js              56.31 kB │ gzip:  15.19 kB\nout/renderer/assets/ImageGenerationWorkbench-C1emKvfv.js          56.88 kB │ gzip:  14.83 kB\nout/renderer/assets/webdav-save-sync-DvIZCrlx.js                  60.91 kB │ gzip:  16.13 kB\nout/renderer/assets/CreateSkillModal-v62usXjr.js                  63.13 kB │ gzip:  15.56 kB\nout/renderer/assets/AISettingsPrototype-CTEoalOT.js               67.63 kB │ gzip:  13.97 kB\nout/renderer/assets/DataSettings-CN8oyBWd.js                      71.06 kB │ gzip:  15.67 kB\nout/renderer/assets/index-B9Jgh9gk.js                             84.84 kB │ gzip:  32.74 kB\nout/renderer/assets/AgentProviderModelWorkbench-B2FYSTqP.js       88.99 kB │ gzip:  19.24 kB\nout/renderer/assets/icons-0ZXCBCmo.js                             90.31 kB │ gzip:  17.12 kB\nout/renderer/assets/plugin-manager-utils-_-EOVYps.js              92.97 kB │ gzip:  22.54 kB\nout/renderer/assets/SkillStore-56U4yiC1.js                       105.39 kB │ gzip:  30.38 kB\nout/renderer/assets/index-DGdaWNI0.js                            113.01 kB │ gzip:  33.50 kB\nout/renderer/assets/SkillFullDetailPage-BCWZFMaY.js              115.38 kB │ gzip:  28.66 kB\nout/renderer/assets/PluginManager-CFYSp6IS.js                    119.17 kB │ gzip:  25.68 kB\nout/renderer/assets/react-vendor-CRB3T2We.js                     141.74 kB │ gzip:  45.45 kB\nout/renderer/assets/McpManager-CJqpc4eU.js                       158.60 kB │ gzip:  36.13 kB\nout/renderer/assets/PromptGraphView-BGD7CbbQ.js                  200.91 kB │ gzip:  66.59 kB\nout/renderer/assets/zh-TW-BskbL6uu.js                            214.32 kB │ gzip:  71.17 kB\nout/renderer/assets/zh-BTwuLuZa.js                               215.24 kB │ gzip:  70.84 kB\nout/renderer/assets/en-V35uq_hQ.js                               221.22 kB │ gzip:  65.80 kB\nout/renderer/assets/de-DIG_Tyq6.js                               244.91 kB │ gzip:  73.38 kB\nout/renderer/assets/es-C0xx6IYn.js                               244.93 kB │ gzip:  72.35 kB\nout/renderer/assets/App-XP4u6d67.js                              250.18 kB │ gzip:  76.60 kB\nout/renderer/assets/fr-KketBk5S.js                               251.61 kB │ gzip:  73.86 kB\nout/renderer/assets/ja-Oevuaxru.js                               276.31 kB │ gzip:  75.78 kB\nout/renderer/assets/AppWorkspaceShell-Cuip2jp4.js                312.02 kB │ gzip:  79.48 kB\nout/renderer/assets/markdown-vendor-CtKNWiEf.js                  330.74 kB │ gzip: 101.05 kB\nout/renderer/assets/SkillCodeEditor-CTVfzZBK.js                  372.90 kB │ gzip: 121.12 kB\n✓ built in 4.08s\nvite v6.4.1 building for production...\ntransforming...\n✓ 936 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/main/index.js  2,009.89 kB │ gzip: 565.64 kB\n✓ built in 1.47s\nvite v6.4.1 building for production...\ntransforming...\n✓ 34 modules transformed.\nrendering chunks...\ncomputing gzip size...\nout/preload/index.js  55.71 kB │ gzip: 12.64 kB\n✓ built in 33ms\n"
+      },
+      {
+        "name": "final-bundle-budget",
+        "args": [
+          "bundle:budget"
+        ],
+        "pid": 87927,
+        "startedAt": "2026-10-10T06:21:17.815Z",
+        "finishedAt": "2026-10-10T06:21:18.102Z",
+        "exitCode": 1,
+        "timedOut": false,
+        "output": "\n> @prompthub/desktop@0.6.0-beta.2 bundle:budget /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop\n> node --experimental-strip-types scripts/check-bundle-budget.mts\n\n[bundle-budget] checking against /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop/bundle-budget.json\n[bundle-budget] renderer output: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK/candidate/apps/desktop/out/renderer\n\n  ✓ main entry (index-*.js): 32.71 KB gzip (budget 150.00 KB) — assets/index-DGdaWNI0.js\n  ✓ markdown vendor: 98.69 KB gzip (budget 120.00 KB) — assets/markdown-vendor-CtKNWiEf.js\n  ✓ settings page bundle: 3.10 KB gzip (budget 6.00 KB) — assets/SettingsPage-C1gugddK.js\n  ✗ settings data section: 15.30 KB gzip (budget 15.00 KB) — assets/DataSettings-CN8oyBWd.js\n  ✓ settings ai section: 13.64 KB gzip (budget 32.00 KB) — assets/AISettingsPrototype-CTEoalOT.js\n  ✓ settings skill section: 7.12 KB gzip (budget 10.00 KB) — assets/SkillSettings-CXQ83hW9.js\n  ✓ app route coordinator: 74.81 KB gzip (budget 80.00 KB) — assets/App-XP4u6d67.js\n  ✓ app workspace shell: 77.62 KB gzip (budget 84.00 KB) — assets/AppWorkspaceShell-Cuip2jp4.js\n  ✓ agent workspace coordinator: 4.79 KB gzip (budget 6.00 KB) — assets/AgentsWorkspace-Bl9pcGYW.js\n  ✓ agent provider workbench: 18.79 KB gzip (budget 22.00 KB) — assets/AgentProviderModelWorkbench-B2FYSTqP.js\n  ✓ agent assets workspace: 14.83 KB gzip (budget 18.00 KB) — assets/AgentAssetsWorkspace-B0EazZCD.js\n  ✓ agent sessions panel: 11.23 KB gzip (budget 14.00 KB) — assets/AgentSessionsPanel-r2HDHijP.js\n  ✓ skill file editor: 11.79 KB gzip (budget 150.00 KB) — assets/SkillFileEditor-CLOCZcPY.js\n  ✓ ui vendor (dnd-kit): 16.35 KB gzip (budget 22.00 KB) — assets/ui-vendor-DJZjomw1.js\n  ✓ react vendor: 44.38 KB gzip (budget 50.00 KB) — assets/react-vendor-CRB3T2We.js\n  ✓ icons (lucide-react): 16.72 KB gzip (budget 18.00 KB) — assets/icons-0ZXCBCmo.js\n  ✓ i18n vendor: 15.01 KB gzip (budget 20.00 KB) — assets/i18n-vendor-CY_-wCHY.js\n  ✓ renderer css total: 24.39 KB gzip (budget 30.00 KB) — assets/SkillFileEditor-BSsMhZtH.css, assets/SkillFullDetailPage-CrMVDieh.css, assets/index-BJ5wjxaf.css\n\n[bundle-budget] FAIL: one or more budgets exceeded.\n ELIFECYCLE  Command failed with exit code 1.\n"
+      }
+    ],
+    "doc-checks.json": [
+      {
+        "name": "documentation",
+        "args": [
+          "spec:test"
+        ],
+        "pid": 86764,
+        "startedAt": "2026-10-10T06:10:22.866Z",
+        "finishedAt": "2026-10-10T06:10:24.224Z",
+        "exitCode": 0,
+        "timedOut": false,
+        "output": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability\n\n✔ index accepts a single plan and legacy implementation without imposing artifacts (120.984708ms)\n✔ empty inventory and archived evidence remain readable (50.629917ms)\n✔ unstructured topic needs no IDs while existing traceability still detects orphan references (2.433083ms)\n✔ project topology and entry links resolve without embedded Skill test scripts (1.708958ms)\n✔ default traceability checks only explicitly opted-in work (50.00275ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 266.893417\n\n> prompthub-monorepo@0.6.0-beta.2 spec:index:check /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/generate-spec-change-index.mjs --check\n\n\n> prompthub-monorepo@0.6.0-beta.2 spec:traceability /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/validate-change-traceability.mjs\n\nTraceability validation passed for 16 change(s).\n"
+      }
+    ]
+  },
+  "compiledCss": {
+    "cssFiles": [
+      "SkillFileEditor-BSsMhZtH.css",
+      "SkillFullDetailPage-CrMVDieh.css",
+      "index-BJ5wjxaf.css"
+    ],
+    "cardHeightRulePresent": true
+  },
+  "bundleBudget": {
+    "passed": false,
+    "onlyFailure": "settings data section",
+    "file": "DataSettings-CN8oyBWd.js",
+    "gzipBytes": 15669,
+    "maximumGzipBytes": 15360,
+    "knownExistingFailure": true,
+    "analysis": {
+      "chunk": "assets/DataSettings-k_1hlVQF.js",
+      "gzipBytes": 15670,
+      "maximumGzipBytes": 15360,
+      "entries": [
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/data-settings-controller-utils.ts",
+          "parts": {
+            "renderedLength": 2334,
+            "gzipLength": 921,
+            "brotliLength": 751,
+            "metaUid": "801afbd0-4478"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useBackupExportActions.ts",
+          "parts": {
+            "renderedLength": 2270,
+            "gzipLength": 717,
+            "brotliLength": 621,
+            "metaUid": "801afbd0-4480"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useBackupImportFlow.ts",
+          "parts": {
+            "renderedLength": 3408,
+            "gzipLength": 912,
+            "brotliLength": 780,
+            "metaUid": "801afbd0-4482"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useClearDataFlow.ts",
+          "parts": {
+            "renderedLength": 2061,
+            "gzipLength": 671,
+            "brotliLength": 554,
+            "metaUid": "801afbd0-4484"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useUpgradeBackupFlow.ts",
+          "parts": {
+            "renderedLength": 4550,
+            "gzipLength": 1051,
+            "brotliLength": 893,
+            "metaUid": "801afbd0-4486"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useBackupController.ts",
+          "parts": {
+            "renderedLength": 518,
+            "gzipLength": 240,
+            "brotliLength": 191,
+            "metaUid": "801afbd0-4488"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useDataPathController.ts",
+          "parts": {
+            "renderedLength": 5987,
+            "gzipLength": 1564,
+            "brotliLength": 1346,
+            "metaUid": "801afbd0-4490"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useAutoSyncPresentation.ts",
+          "parts": {
+            "renderedLength": 1559,
+            "gzipLength": 495,
+            "brotliLength": 420,
+            "metaUid": "801afbd0-4492"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useDataSettingsRuntime.ts",
+          "parts": {
+            "renderedLength": 3134,
+            "gzipLength": 949,
+            "brotliLength": 796,
+            "metaUid": "801afbd0-4494"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useDataSyncController.ts",
+          "parts": {
+            "renderedLength": 11559,
+            "gzipLength": 2043,
+            "brotliLength": 1803,
+            "metaUid": "801afbd0-4496"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useRecoveryController.ts",
+          "parts": {
+            "renderedLength": 6038,
+            "gzipLength": 1510,
+            "brotliLength": 1282,
+            "metaUid": "801afbd0-4498"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/useDataSettingsController.ts",
+          "parts": {
+            "renderedLength": 1819,
+            "gzipLength": 712,
+            "brotliLength": 611,
+            "metaUid": "801afbd0-4500"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/DataSettingsSection.tsx",
+          "parts": {
+            "renderedLength": 588,
+            "gzipLength": 317,
+            "brotliLength": 262,
+            "metaUid": "801afbd0-4502"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/LocalDataPanel.tsx",
+          "parts": {
+            "renderedLength": 7596,
+            "gzipLength": 1686,
+            "brotliLength": 1433,
+            "metaUid": "801afbd0-4504"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/RecoveryPanel.tsx",
+          "parts": {
+            "renderedLength": 7092,
+            "gzipLength": 1647,
+            "brotliLength": 1369,
+            "metaUid": "801afbd0-4506"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/SelfHostedSyncPanel.tsx",
+          "parts": {
+            "renderedLength": 13506,
+            "gzipLength": 1994,
+            "brotliLength": 1705,
+            "metaUid": "801afbd0-4508"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/SyncProviderSelector.tsx",
+          "parts": {
+            "renderedLength": 1186,
+            "gzipLength": 493,
+            "brotliLength": 409,
+            "metaUid": "801afbd0-4510"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/WebDAVSyncPanel.tsx",
+          "parts": {
+            "renderedLength": 17192,
+            "gzipLength": 2352,
+            "brotliLength": 1960,
+            "metaUid": "801afbd0-4512"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/S3SyncPanel.tsx",
+          "parts": {
+            "renderedLength": 20290,
+            "gzipLength": 2452,
+            "brotliLength": 2091,
+            "metaUid": "801afbd0-4514"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/AutoSyncHistoryPanel.tsx",
+          "parts": {
+            "renderedLength": 3585,
+            "gzipLength": 985,
+            "brotliLength": 836,
+            "metaUid": "801afbd0-4516"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/BackupGuidanceCard.tsx",
+          "parts": {
+            "renderedLength": 2000,
+            "gzipLength": 680,
+            "brotliLength": 591,
+            "metaUid": "801afbd0-4518"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/BackupPanel.tsx",
+          "parts": {
+            "renderedLength": 17368,
+            "gzipLength": 3438,
+            "brotliLength": 2903,
+            "metaUid": "801afbd0-4520"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/data-settings/DangerPanel.tsx",
+          "parts": {
+            "renderedLength": 887,
+            "gzipLength": 419,
+            "brotliLength": 343,
+            "metaUid": "801afbd0-4522"
+          }
+        },
+        {
+          "path": "assets/DataSettings-k_1hlVQF.js/src/renderer/components/settings/DataSettings.tsx",
+          "parts": {
+            "renderedLength": 1827,
+            "gzipLength": 651,
+            "brotliLength": 544,
+            "metaUid": "801afbd0-4524"
+          }
+        }
+      ],
+      "previousComparison": {
+        "source": "coordinator-prompt-selection-results.json",
+        "moduleCount": 24,
+        "renderedLengthDifferences": [],
+        "newModules": []
+      }
+    },
+    "analysisBoundary": "Analysis build precedes the final stable footer-key change; final production build and budget check ran after that change."
+  },
+  "sourceHashes": [
+    {
+      "file": "apps/desktop/src/renderer/components/prompt/PromptKanbanView.tsx",
+      "sha256": "6cc21be6a2c49ae932c36fe4790bc71e214119d8e2826114410033a05deade45",
+      "candidateSha256": "6cc21be6a2c49ae932c36fe4790bc71e214119d8e2826114410033a05deade45"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/prompt/PromptKanbanCard.tsx",
+      "sha256": "9fb0468e13781050399a8ec4da36779fcd945f5f65472ecf0957da1821e1d63f",
+      "candidateSha256": "9fb0468e13781050399a8ec4da36779fcd945f5f65472ecf0957da1821e1d63f"
+    },
+    {
+      "file": "apps/desktop/src/renderer/components/layout/PromptListCard.tsx",
+      "sha256": "069dffe1fc7a7ca9401b642c95158aafcffc6a5fe3e2dc56fb4ca67a9baec49f",
+      "candidateSha256": "069dffe1fc7a7ca9401b642c95158aafcffc6a5fe3e2dc56fb4ca67a9baec49f"
+    },
+    {
+      "file": "apps/desktop/src/renderer/hooks/usePromptDetail.ts",
+      "sha256": "f381cbb86cc89dd69d2ce78461b1a1be9cce8e2680e5726780cbda103759088f",
+      "candidateSha256": "f381cbb86cc89dd69d2ce78461b1a1be9cce8e2680e5726780cbda103759088f"
+    },
+    {
+      "file": "apps/desktop/tests/unit/components/prompt-kanban-stability.test.tsx",
+      "sha256": "065c496f74795c44706566d71b72af41d5e731eac41176f51bc0b56612b8ee97",
+      "candidateSha256": "065c496f74795c44706566d71b72af41d5e731eac41176f51bc0b56612b8ee97"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/en.json",
+      "sha256": "ef674a79e30718926f040ee111453441e7d8becd04248a6dd2f44c31c3220829",
+      "candidateSha256": "ef674a79e30718926f040ee111453441e7d8becd04248a6dd2f44c31c3220829"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/zh.json",
+      "sha256": "71cfbc5f925f7e562091a4b092bd7920807949dad6d0762d20763f36c3aaf3ce",
+      "candidateSha256": "71cfbc5f925f7e562091a4b092bd7920807949dad6d0762d20763f36c3aaf3ce"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/zh-TW.json",
+      "sha256": "58aca014c037e14ce00b41022ae2719a877140c7a04c3827d11f7c1cc77e7f2e",
+      "candidateSha256": "58aca014c037e14ce00b41022ae2719a877140c7a04c3827d11f7c1cc77e7f2e"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/ja.json",
+      "sha256": "feb70e960141af8b47b92cde881ed6774223cba7d594d2c54b58eb2faa3ce65a",
+      "candidateSha256": "feb70e960141af8b47b92cde881ed6774223cba7d594d2c54b58eb2faa3ce65a"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/fr.json",
+      "sha256": "adf219554cdc13f7c6c5d78e943bbc37af3ca45e75e8214900472da5f37c5aba",
+      "candidateSha256": "adf219554cdc13f7c6c5d78e943bbc37af3ca45e75e8214900472da5f37c5aba"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/de.json",
+      "sha256": "32de699390bbcc3b221adeed68beec04ddceb933cbc6d2d93c55b981ffd4e0eb",
+      "candidateSha256": "32de699390bbcc3b221adeed68beec04ddceb933cbc6d2d93c55b981ffd4e0eb"
+    },
+    {
+      "file": "apps/desktop/src/renderer/i18n/locales/es.json",
+      "sha256": "9076cda141472b061d36b0aff44c4f8276840711575b2875432d743690868167",
+      "candidateSha256": "9076cda141472b061d36b0aff44c4f8276840711575b2875432d743690868167"
+    }
+  ],
+  "documents": [
+    {
+      "file": "spec/knowledge/behavior/prompt-workspace.md",
+      "sha256": "6f174dbb54716567c2cca4f0dbfef0824e0829bd3d6f7f720173e8c6202cdace"
+    },
+    {
+      "file": "spec/changes/active/existing-feature-release-acceptance/plan.md",
+      "sha256": "7a188a87c9d58f9ae76eb9a91fece20ee3a09957eb76806a41c5687fb3322642"
+    }
+  ],
+  "resources": {
+    "checkProcessGroups": [
+      {
+        "pid": 85898,
+        "alive": false
+      },
+      {
+        "pid": 85959,
+        "alive": false
+      },
+      {
+        "pid": 86021,
+        "alive": false
+      },
+      {
+        "pid": 86083,
+        "alive": false
+      },
+      {
+        "pid": 86183,
+        "alive": false
+      },
+      {
+        "pid": 86222,
+        "alive": false
+      },
+      {
+        "pid": 86262,
+        "alive": false
+      },
+      {
+        "pid": 86368,
+        "alive": false
+      },
+      {
+        "pid": 86386,
+        "alive": false
+      },
+      {
+        "pid": 86926,
+        "alive": false
+      },
+      {
+        "pid": 86946,
+        "alive": false
+      },
+      {
+        "pid": 86988,
+        "alive": false
+      },
+      {
+        "pid": 86490,
+        "alive": false
+      },
+      {
+        "pid": 86525,
+        "alive": false
+      },
+      {
+        "pid": 87892,
+        "alive": false
+      },
+      {
+        "pid": 87927,
+        "alive": false
+      },
+      {
+        "pid": 86764,
+        "alive": false
+      }
+    ],
+    "temporaryRoot": "/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-kanban-TjL1PK",
+    "temporaryRootRemoved": true,
+    "newServicesStarted": 0,
+    "existingTrial": {
+      "url": "http://127.0.0.1:5173",
+      "listenerPid": 59722,
+      "processGroup": 59665,
+      "reason": "Retained from the earlier user trial; not restarted or controlled during this fix.",
+      "stopCommand": "kill -TERM -- -59665",
+      "observedListenerCount": 1
+    },
+    "guiSessionsCreated": 0
+  },
+  "limitations": [
+    "Native GUI flicker and visual layout acceptance remain unverified.",
+    "Known DataSettings bundle budget remains over limit; no budget relaxation applied.",
+    "No commit, push, package release, or complete release acceptance claimed."
+  ]
+}
