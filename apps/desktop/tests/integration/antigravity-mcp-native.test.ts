@@ -12,6 +12,7 @@ import {
   resetRuntimePaths,
 } from "@prompthub/core";
 import { createNativeCommandRunner } from "../../src/main/services/native-command";
+import { createMcpTestStorage } from "../../../../packages/core/tests/helpers/mcp-storage";
 
 const execute = promisify(execFile);
 const nativeCommandTimeoutMs = 15_000;
@@ -22,11 +23,14 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
   "Antigravity native MCP configuration (#220)",
   () => {
     let root: string;
+    let storage: ReturnType<typeof createMcpTestStorage>;
     beforeEach(() => {
       root = fs.mkdtempSync(path.join(os.tmpdir(), "issue-220-native-mcp-"));
       configureRuntimePaths({ userDataPath: path.join(root, "userdata") });
+      storage = createMcpTestStorage();
     });
     afterEach(() => {
+      storage.dispose();
       resetRuntimePaths();
       fs.rmSync(root, { recursive: true, force: true });
     });
@@ -79,7 +83,7 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
       };
       const source = path.join(root, "input.json");
       fs.writeFileSync(source, JSON.stringify({ mcpServers: entries }));
-      const service = new CoreMcpLibraryService();
+      const service = new CoreMcpLibraryService(storage.options);
       const imported = service.importFromFile(source).imported;
       expect(imported.map((server) => server.name).sort()).toEqual(
         Object.keys(entries).sort(),
@@ -92,7 +96,7 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
           mcpServers: { unrelated },
         }),
       );
-      const reopened = new CoreMcpLibraryService();
+      const reopened = new CoreMcpLibraryService(storage.options);
       const target = {
         target: preset.target,
         scope: preset.scope,
