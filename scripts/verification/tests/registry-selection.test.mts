@@ -72,6 +72,17 @@ test("core storage performance remains an isolated release gate", () => {
   ]);
 });
 
+test("CLI package gate executes the extracted tarball proof after building", () => {
+  const gate = VERIFICATION_CHECKS.find((item) => item.id === "cli-package");
+  assert.ok(gate);
+  assert.deepEqual(gate.dependsOn, ["cli-build"]);
+  assert.deepEqual(gate.command.args, [
+    "--filter",
+    "@prompthub/cli",
+    "verify:package",
+  ]);
+});
+
 test("desktop unit coverage uses bounded serial shards", () => {
   const shards = VERIFICATION_CHECKS.filter((item) =>
     item.id.startsWith("desktop-unit-"),

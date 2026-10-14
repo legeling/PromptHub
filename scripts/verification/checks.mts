@@ -147,7 +147,7 @@ export const VERIFICATION_CHECKS: VerificationCheck[] = [
     "CLI package proof",
     ["cli"],
     ["package"],
-    ["--dir", "apps/cli", "pack", "--ignore-scripts"],
+    ["--filter", "@prompthub/cli", "verify:package"],
     {
       profiles: ["package"],
       dependsOn: ["cli-build"],

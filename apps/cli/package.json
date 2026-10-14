@@ -30,6 +30,7 @@
     "dev": "tsx src/index.ts",
     "build": "vite build",
     "prepack": "pnpm run build",
+    "verify:package": "node scripts/verify-package.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
