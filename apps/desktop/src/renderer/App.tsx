@@ -624,10 +624,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Apply persisted theme settings
-    // 应用保存的主题设置
-    applyTheme();
-
     // Sync language setting: use settings store as the source of truth (zh/zh-TW/en/ja/es/de/fr)
     // i18n reads from the persisted store on init, but we also apply it here as a fallback
     // 同步语言设置：以 settings store 为准（支持 zh/zh-TW/en/ja/es/de/fr）
@@ -1103,6 +1099,7 @@ function App() {
       if (disposed) {
         return;
       }
+      applyTheme();
 
       const initialVisibility = await window.electron?.isVisible?.();
       if (disposed) {
