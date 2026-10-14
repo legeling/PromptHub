@@ -5,8 +5,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { closeDatabase, initDatabase } from "@prompthub/db";
 import {
   CoreMcpLibraryService,
+  getDatabasePath,
   configureRuntimePaths,
   resetRuntimePaths,
 } from "@prompthub/core";
@@ -110,6 +112,37 @@ describe("Antigravity MCP import and projection", () => {
         "antigravity",
         JSON.stringify({ mcpServers: { remote: nativeEntry } }),
       ),
+    ).not.toContain("synthetic-secret");
+  });
+
+  it("preserves native options and credentials across an actual SQLite close and reopen", () => {
+    const service = new CoreMcpLibraryService(mcpStorage.options);
+    const imported = service.createFromSource({
+      kind: "config",
+      input: JSON.stringify({ mcpServers: { "Docs.API": nativeEntry } }),
+    });
+    expect(imported.imported).toHaveLength(1);
+    const server = imported.imported[0];
+    service.updateServer(server.id, {
+      ...redactMcpServerConfig(server),
+      enabled: false,
+    });
+    closeDatabase();
+    const database = initDatabase(getDatabasePath());
+    const reopened = new CoreMcpLibraryService({
+      ...mcpStorage.options,
+      database,
+    });
+    const persisted = reopened.read().servers;
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0].id).toBe(server.id);
+    expect(persisted[0].name).toBe("Docs.API");
+    expect(getMcpTargetEntryObject("antigravity", persisted[0])).toEqual({
+      ...nativeEntry,
+      disabled: true,
+    });
+    expect(
+      JSON.stringify(redactMcpLibraryForTransport(reopened.read())),
     ).not.toContain("synthetic-secret");
   });
 

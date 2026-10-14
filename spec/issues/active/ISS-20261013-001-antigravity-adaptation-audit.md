@@ -301,7 +301,41 @@ macOS 桌面项目 stdio 主流程，不覆盖 Windows IDE 2.16.0、远程 SSE/H
 的客户端、Electron、语言服务与三个探针进程已退出，临时应用副本、资料目录和项目
 文件已清理；保留本地证据及原生客户端中已归档的验收会话和无目录的测试项目记录。
 
-## GitHub issues
+## #220 configuration closure verification (2026-10-14)
+
+The original request asks for the newer MCP configuration. The configuration
+defects are fixed by `bd4ad7f3`; unrelated CLI Plugin registration, Windows
+native execution and remote OAuth login are not evidence of missing JSON
+configuration support and remain separate unverified boundaries.
+
+The isolated reproduction script now preserves the test's repository-relative
+layout and copies its real SQLite helper. It again proves two failures against
+the pre-fix importer (`0ad39c27bfcb600cb239268be0628451d78c28e2`) and two against
+the legacy native projection: empty import and lost native authentication/tool
+options, respectively. It removes the temporary copy on completion.
+
+Added a regression that closes and reopens the actual SQLite connection before
+checking stable identity, native options, credentials and redacted transport.
+This is stronger than reconstructing only the service with the same connection.
+No production source change or storage migration was needed.
+
+Current isolated verification:
+
+- Desktop `vitest run --project unit tests/unit/main/mcp-antigravity.test.ts
+  --minWorkers=1 --maxWorkers=1`: 9 passed.
+- Desktop `vitest run --project integration
+  tests/integration/antigravity-mcp-agent-import.test.tsx --minWorkers=1
+  --maxWorkers=1`: 7 passed, including real preload/registered handlers,
+  filesystem/SQLite, reopen and rollback. Electron OS encryption is substituted
+  with an isolated AES-GCM test boundary; native OAuth is not exercised.
+- Desktop `tsx tests/helpers/reproduce-antigravity-mcp-regression.mts
+  0ad39c27bfcb600cb239268be0628451d78c28e2`: both expected red checks passed.
+
+This closes the configuration request locally, not a release, Windows native
+execution or full Antigravity feature acceptance. The earlier native GUI
+evidence above is historical and was not repeated in this cycle.
+
+## GitHub issues (historical 2026-10-13 snapshot)
 
 本轮读取 PromptHub 全部 200 个 issue（open + closed），不是仅按标题搜索；#220/#226 当前均 open，评论均为空。检索正文明确提到 Antigravity 的当前 open 报告只有这两条。
 

@@ -68,7 +68,11 @@ try {
       path.join(destination, "package.json"),
     );
     const directories =
-      name === "shared" ? ["types", "constants", "utils"] : ["src"];
+      name === "shared"
+        ? ["types", "constants", "utils"]
+        : name === "core"
+          ? ["src", "tests/helpers"]
+          : ["src"];
     for (const directory of directories)
       fs.cpSync(
         path.join(source, directory),
@@ -81,18 +85,19 @@ try {
       "dir",
     );
   }
-  fs.mkdirSync(path.join(root, "tests"));
+  const testPath = "apps/desktop/tests/unit/main/mcp-antigravity.test.ts";
+  fs.mkdirSync(path.dirname(path.join(root, testPath)), { recursive: true });
   fs.copyFileSync(
     path.join(
       repository,
       "apps/desktop/tests/unit/main/mcp-antigravity.test.ts",
     ),
-    path.join(root, "tests/mcp-antigravity.test.ts"),
+    path.join(root, testPath),
   );
   const config = {
     test: {
       environment: "node",
-      include: ["tests/mcp-antigravity.test.ts"],
+      include: [testPath],
       minWorkers: 1,
       maxWorkers: 1,
       testTimeout: 30_000,
