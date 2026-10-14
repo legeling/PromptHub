@@ -67,7 +67,7 @@ function portableSourcePaths() {
   };
 }
 
-function registerExportHandler(): void {
+function registerExportHandler(onDatabaseReopened?: () => void): void {
   ipcMain.handle(
     "data:exportZip",
     async (_event, params: { scope: ExportZipScope }) => {
@@ -92,6 +92,7 @@ function registerExportHandler(): void {
               destinationPath: selected.filePath,
               sourcePaths: portableSourcePaths(),
               scope: normalizedScope,
+              onDatabaseReopened,
               persistExtractedMcpSecrets: (secrets) =>
                 createMcpResourceSecretStore({
                   filePath: path.join(
@@ -147,8 +148,9 @@ function registerPreviewHandler(): void {
 
 export function registerPortableSnapshotIPC(
   scheduleRelaunch: (delayMs: number) => void,
+  onDatabaseReopened?: () => void,
 ): void {
-  registerExportHandler();
+  registerExportHandler(onDatabaseReopened);
   registerPreviewHandler();
   ipcMain.handle(
     IPC_CHANNELS.DATA_PORTABLE_RESTORE,

@@ -65,6 +65,10 @@ describe("canonical portable export coordinator", () => {
         },
         scope: completeScope(),
         persistExtractedMcpSecrets: vi.fn(),
+        onDatabaseReopened: () => {
+          expect(databaseOpen).toBe(true);
+          events.push("rebind");
+        },
       },
       {
         closeDatabase: () => {
@@ -124,6 +128,7 @@ describe("canonical portable export coordinator", () => {
       "zip",
       "release",
       "reopen",
+      "rebind",
     ]);
     expect(databaseOpen).toBe(true);
     expect(fs.existsSync(checkpointPath)).toBe(false);
@@ -137,6 +142,7 @@ describe("canonical portable export coordinator", () => {
     const cachePath = path.join(root, "cache");
     const release = vi.fn();
     const reopen = vi.fn();
+    const rebind = vi.fn(() => expect(reopen).toHaveBeenCalledTimes(1));
 
     await expect(
       createCheckpointedPortableSnapshotZip(
@@ -157,6 +163,7 @@ describe("canonical portable export coordinator", () => {
             videosPath: "",
           },
           scope: completeScope(),
+          onDatabaseReopened: rebind,
         },
         {
           closeDatabase: vi.fn(),
@@ -181,6 +188,7 @@ describe("canonical portable export coordinator", () => {
     ).rejects.toThrow("archive failed");
     expect(release).toHaveBeenCalledTimes(1);
     expect(reopen).toHaveBeenCalledTimes(1);
+    expect(rebind).toHaveBeenCalledTimes(1);
     expect(fs.existsSync(path.join(cachePath, "canonical-checkpoints"))).toBe(
       true,
     );

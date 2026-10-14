@@ -31,6 +31,7 @@ export interface CanonicalPortableExportOptions {
   persistExtractedMcpSecrets?: (
     secrets: readonly ExtractedMcpSecret[],
   ) => void | Promise<void>;
+  onDatabaseReopened?: () => void;
 }
 
 export interface CanonicalPortableExportDependencies {
@@ -127,6 +128,7 @@ export async function createCheckpointedPortableSnapshotZip(
     if (databaseClosed) {
       try {
         dependencies.reopenDatabase();
+        options.onDatabaseReopened?.();
       } catch (error) {
         failure = combineFailure(failure, error);
       }

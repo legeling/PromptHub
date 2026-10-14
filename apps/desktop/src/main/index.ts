@@ -25,7 +25,7 @@ import type {
   RecoveryScanOptions,
 } from "@prompthub/shared/types";
 import Database from "./database/sqlite";
-import { initDatabase, closeDatabase } from "./database";
+import { initDatabase, closeDatabase, getDatabase } from "./database";
 import {
   isDatabaseEmpty,
   detectRecoverableDatabases,
@@ -1074,7 +1074,10 @@ ipcMain.handle("data:dismissRecovery", () => {
   return { success: true };
 });
 
-registerPortableSnapshotIPC(isE2E ? () => undefined : scheduleAppRelaunch);
+registerPortableSnapshotIPC(
+  isE2E ? () => undefined : scheduleAppRelaunch,
+  () => registerDatabaseBoundIpc(getDatabase()),
+);
 
 function scheduleAppRelaunch(delayMs = 0): void {
   const relaunch = () => {
