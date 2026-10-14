@@ -17,6 +17,8 @@
   - `全局规则`
   - `项目规则`
 - `全局规则` 展示由共享平台注册表声明的已知全局规则文件。
+- Claude Code 同时扫描其配置根的 `rules/**/*.md`。每个文件作为独立规则管理，
+  原文包含的 YAML `paths` frontmatter 必须在读取、编辑、版本和恢复中完整保留。
 - `项目规则` 只展示用户手动添加目录的 canonical 项目规则文件。
 
 ### 3. Current Project vs Added Project
@@ -34,6 +36,12 @@
   - `opencode-global`
   - `windsurf-global`
 - 手动项目规则使用动态 id：`project:<project-id>`
+- Claude 目录规则复用 `custom:<id>` 合同，以 `custom:claude-rule:<相对路径的 base64url>`
+  保持稳定身份；SQLite 继续拥有记录，实际原文及版本沿用现有 Rules 文件存储。
+  托管副本置于 `data/rules/global/claude/scoped/<id的SHA-256>/<文件名>`，每个规则独立
+  `_rule.json` 和版本目录，不与 `CLAUDE.md` 或相邻规则共享元数据。无需结构迁移。
+  Scoped Rule 的版本目录使用 `claude-scoped-<id的SHA-256>`，避免合法长文件名经编码后超过单个目录名的文件系统限制。
+  外部修改保持 out-of-sync，外部删除保留托管副本为 target-missing；扫描不自动覆盖。
 - CLI 操作项目规则时必须支持 cwd-aware 初始化：
   - `prompthub rules project-init` 默认把当前工作目录注册为项目规则目录
   - 未传 `--name` 时使用当前目录 basename 作为项目名称
@@ -43,7 +51,7 @@
 ### 5. Global Rule Support Is Explicit, Not Automatic
 
 - 平台在 `spec/knowledge/reference/agent-platforms.md` 中“有官方文档”并不等于它会自动进入 `Rules` 运行时支持集合。
-- 当前 `Rules` 模块的全局规则区只建模“每个平台一个稳定、可直接编辑的用户级规则入口文件”。该入口可以是平台唯一的全局规则文件，也可以是官方规则目录明确接受的约定入口；后一种情况不得暗示 PromptHub 已管理同目录的全部文件。
+- 除已实现的 Claude `rules/**/*.md` 目录适配外，当前全局规则区建模“每个平台一个稳定、可直接编辑的用户级规则入口文件”。该入口可以是平台唯一的全局规则文件，也可以是官方规则目录明确接受的约定入口；后一种情况不得暗示 PromptHub 已管理同目录的全部文件。
 - 因此，新增全局规则支持需要同时满足：
   - 该平台存在稳定公开的用户级文件路径
   - 平台明确读取该文件，而不是 PromptHub 自行猜测文件名

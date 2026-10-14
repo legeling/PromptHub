@@ -269,7 +269,7 @@ export async function writeTextFileAtomic(
   await fsp.mkdir(path.dirname(filePath), { recursive: true });
   const tempPath = path.join(
     path.dirname(filePath),
-    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`,
+    `.rule-write-${crypto.randomUUID()}.tmp`,
   );
 
   try {

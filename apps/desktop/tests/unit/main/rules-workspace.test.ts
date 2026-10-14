@@ -844,20 +844,18 @@ describe("rules workspace storage", () => {
       "utf8",
     );
 
-    const originalWriteFile = fsp.writeFile.bind(fsp);
+    const originalRename = fsp.rename.bind(fsp);
     let claudeMetaWrites = 0;
-    vi.spyOn(fsp, "writeFile").mockImplementation(
-      async (file, data, options) => {
-        if (
-          path.basename(String(file)).startsWith("._rule.json.") &&
-          String(file).includes(`${path.sep}global${path.sep}claude${path.sep}`)
-        ) {
-          claudeMetaWrites += 1;
-        }
+    vi.spyOn(fsp, "rename").mockImplementation(async (temporary, file) => {
+      if (
+        path.basename(String(file)) === "_rule.json" &&
+        String(file).includes(`${path.sep}global${path.sep}claude${path.sep}`)
+      ) {
+        claudeMetaWrites += 1;
+      }
 
-        return originalWriteFile(file, data, options);
-      },
-    );
+      return originalRename(temporary, file);
+    });
 
     await Promise.all([
       service.listRuleDescriptors(),

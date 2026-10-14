@@ -31,6 +31,12 @@ import type {
 import { RuleDB } from "./database";
 import { getProjectRuleManagedDirectory } from "./canonical-rule-db";
 import { createRuleBackupImporter } from "./rules-workspace-import";
+import {
+  claudeScopedRuleRelativePath,
+  claudeScopedRuleTarget,
+  claudeScopedRuleTemplate,
+  discoverClaudeScopedRules,
+} from "./claude-scoped-rules";
 export type {
   ExtraGlobalRuleTemplate,
   RulesWorkspaceService,
@@ -103,13 +109,16 @@ export function createRulesWorkspaceService(
     deps.assertStorageAvailable?.();
   }
 
-  function getAllGlobalRuleTemplates(): Array<
+  function getAllGlobalRuleTemplates(
+    db: RuleDB,
+  ): Array<
     | (typeof KNOWN_RULE_FILE_TEMPLATES)[KnownRuleFileId]
     | ExtraGlobalRuleTemplate
   > {
     return [
       ...Object.values(KNOWN_RULE_FILE_TEMPLATES),
       ...(deps.getExtraGlobalRuleTemplates?.() ?? []),
+      ...discoverClaudeScopedRules(deps, db.getAll()),
     ];
   }
 
@@ -126,7 +135,10 @@ export function createRulesWorkspaceService(
   }
 
   function getRuleVersionsDir(ruleId: RuleFileId): string {
-    return path.join(getRuleVersionsRoot(), encodeRuleId(ruleId));
+    const key = claudeScopedRuleRelativePath(ruleId)
+      ? `claude-scoped-${hashContent(ruleId)}`
+      : encodeRuleId(ruleId);
+    return path.join(getRuleVersionsRoot(), key);
   }
 
   function getRuleVersionIndexPath(ruleId: RuleFileId): string {
@@ -174,6 +186,15 @@ export function createRulesWorkspaceService(
   }
 
   function getManagedCustomRulePath(template: ExtraGlobalRuleTemplate): string {
+    if (claudeScopedRuleRelativePath(template.id))
+      return path.join(
+        deps.getRulesDir(),
+        "global",
+        "claude",
+        "scoped",
+        hashContent(template.id),
+        path.basename(template.name),
+      );
     return path.join(
       deps.getRulesDir(),
       "global",
@@ -215,6 +236,7 @@ export function createRulesWorkspaceService(
     template: ExtraGlobalRuleTemplate,
   ): StoredRuleMeta {
     const targetPath =
+      claudeScopedRuleTarget(template.id, deps) ??
       deps.getExtraGlobalRuleTargetPath?.(template) ??
       getManagedCustomRulePath(template);
     return {
@@ -869,9 +891,12 @@ export function createRulesWorkspaceService(
     ruleId: KnownRuleFileId | CustomRuleFileId,
     db: RuleDB = getRuleDb(),
   ): Promise<StoredRuleMeta> {
-    const customTemplate = deps
-      .getExtraGlobalRuleTemplates?.()
-      .find((template) => template.id === ruleId);
+    const customTemplate = isCustomRuleFileId(ruleId)
+      ? (claudeScopedRuleTemplate(ruleId) ??
+        deps
+          .getExtraGlobalRuleTemplates?.()
+          .find((template) => template.id === ruleId))
+      : undefined;
     const baseMeta = customTemplate
       ? buildCustomGlobalMeta(customTemplate)
       : buildGlobalMeta(ruleId as KnownRuleFileId);
@@ -956,7 +981,7 @@ export function createRulesWorkspaceService(
   async function scanRuleDescriptors(): Promise<RuleFileDescriptor[]> {
     const db = getRuleDb();
     const allGlobalDescriptors = await Promise.all(
-      getAllGlobalRuleTemplates().map(async (template) =>
+      getAllGlobalRuleTemplates(db).map(async (template) =>
         buildDescriptor(await ensureGlobalRuleMaterialized(template.id, db)),
       ),
     );
