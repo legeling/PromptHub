@@ -11,6 +11,9 @@
 
 ## Current Records
 
+- [Codex / Claude 适配核查](active/ISS-20261013-002-codex-claude-adaptation-audit.md)：MCP 原生字段、Plugin 包识别与加载、Provider 协议、配置根、Rules 及相关 issue 状态。
+- [Antigravity 适配核查](active/ISS-20261013-001-antigravity-adaptation-audit.md)：CLI/IDE 目录、MCP 导入/认证/脱敏、Plugin 生命周期、Rules 与原生验收差异；关联 #220/#226。
+
 - `active/quality.md`：内部质量与工具链问题跟踪。
 - `active/github-open.md`：当前 `legeling/PromptHub` 仓库 open issues 快照。
 - `active/local-github-status.md`：本地 triage / delivery 状态覆盖层，用于记录已实现但尚未发布的问题。
@@ -29,6 +32,8 @@
 | `ISS-20260820-001` | Rules Restore Conflict Data Loss | open   | `spec/issues/active/ISS-20260820-001-rules-restore-conflict-data-loss.md` | `rules-managed-copies`, #209, #210        | 2026-08-20 |
 | `ISS-20260902-001` | Git Transport Resilience Parity  | open   | `spec/issues/active/ISS-20260902-001-git-transport-resilience-parity.md`  | `skills-issue-211-git-http-fallback`      | 2026-09-02 |
 | `ISS-20260806-001` | MCP Issues 200-202 Triage        | closed | `spec/issues/archive/ISS-20260806-001-mcp-issue-triage.md`                | `0.6.0-beta.1`, #200, #201, #202          | 2026-08-20 |
+| `ISS-20261013-001` | Antigravity Adaptation Audit | open | `spec/issues/active/ISS-20261013-001-antigravity-adaptation-audit.md` | #220, #226, #197, #212, #190, #203 | 2026-10-13 |
+| `ISS-20261013-002` | Codex / Claude Adaptation Audit | open | `spec/issues/active/ISS-20261013-002-codex-claude-adaptation-audit.md` | #190, #194, #196, #197, #209, #210, #212 | 2026-10-13 |
 
 ## GitHub vs Local State
 

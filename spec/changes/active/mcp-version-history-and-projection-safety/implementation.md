@@ -71,6 +71,103 @@ tests/mcp-target-projection.test.ts --coverage
 This change must remain active until implementation, adversarial verification,
 stable documentation sync, and issue-state reconciliation are complete.
 
+## MCP Functional Audit — 2026-10-13
+
+### Baselines and Scope
+
+- Audited the dirty working copy, including existing uncommitted MCP adaptation
+  work, in a dependency-reusing source snapshot. No product code, test assertions,
+  GitHub issues, commits, or personal Agent configuration were changed by this
+  audit.
+- Initial baseline: HEAD `428f4c2296825957292c3c43544f53760f55fe11`, 2,258
+  source/config files, SHA-256
+  `efe3862a12e1078f7f64711d1ec1393654c4f0bd5f7b1b4eec50174952baf48d`.
+- Concurrent edits changed MCP IPC and native-root selection during acceptance.
+  The refreshed snapshot contained 2,262 source/config files, SHA-256
+  `acbb4be72d9b59a6b0e167eae520298374a430d4b32a1b89b8ecf9715bb79157`.
+  Affected entrypoint/root tests and typechecks were rerun. GUI evidence applies
+  to the initial built snapshot, not the refreshed build or future edits.
+
+### Executed Checks
+
+| Boundary                                                                  | Initial result                            | Refreshed result                                   |
+| ------------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------- |
+| Desktop registered IPC, preload/renderer import, real SQLite/files/reopen | 4 files, 37 passed                        | 4 files, 37 passed                                 |
+| Core MCP library/schema/env/market/projection                             | 7 files, 51 passed                        | Not repeated; affected root behavior covered below |
+| Desktop MCP unit/component tests                                          | 24 files, 201 passed, 1 failed            | Failed assertion remains unresolved                |
+| Native MCP roundtrip and Claude/Codex root workflows                      | Included native MCP cases above           | 4 files, 13 passed                                 |
+| Installed Antigravity `agy` against isolated native files                 | 1 passed; native opt-in enabled           | Not repeated                                       |
+| CLI `runCli` entrypoint, actual isolated persistence/output               | 2 passed, 17 unrelated cases filtered out | 2 passed, same filter                              |
+| Web runtime capabilities/install bridge/workspace components              | 3 files, 17 passed                        | Not repeated                                       |
+| Web Agent routes/service/dependencies                                     | 3 files, 16 passed                        | 3 files, 16 passed                                 |
+| Desktop test types, Core/CLI/Web types                                    | Passed                                    | Passed                                             |
+| Desktop main/preload/renderer build                                       | Passed                                    | Not repeated                                       |
+
+The initial test batch totaled 325 passed and 1 failed. The refreshed 68 passing
+cases overlap the initial batch and must not be added as independent coverage.
+Core projection tests inject verification, persistence, rename and write failures
+against real temporary files, checking exact rollback and temporary-file cleanup.
+Credential import tests exercise redaction, selective secret hydration and native
+field preservation; injected Electron/keychain boundaries do not prove OS vault
+security. Web route tests use real authentication/SQLite but inject domain results;
+workspace/bridge tests are component contracts, not Web MCP mutation acceptance.
+The first Web route collection failed because required `JWT_SECRET` was absent;
+rerunning with an isolated fixture environment passed without changing source.
+
+Commands used the existing package scripts and Vitest configuration: Desktop
+integration filters `release-acceptance-agents-assets-mcp`,
+`release-acceptance-agents-assets-plugin-mcp`, `antigravity-mcp-agent-import`;
+Desktop unit filter `mcp`; Core filter `mcp`; CLI `tests/run.test.ts -t MCP`;
+Web `src/routes/agents.test.ts`, `src/services/agent-services.service.test.ts`,
+`src/services/agent-services.dependencies.test.ts` plus the three client tests
+listed above. All used `pnpm`; native Antigravity required
+`PROMPTHUB_NATIVE_AGENT_TESTS=1`.
+
+### Isolated GUI Acceptance
+
+- Fresh startup without an authority fixture; manual creation and same-process
+  detail/list rendering; metadata/argument edits; library disable and re-enable.
+- Static health refresh; missing-command and missing-env fixtures remain explicit
+  error states rather than being counted as successful service connections.
+- Actual Codex TOML and Cursor JSON distribution, edited-argument synchronization,
+  native-file readback, unrelated-entry preservation and binding persistence.
+- Agent detail import, pasted JSON import and local config-file path import;
+  exact `Docs.API` identity preserved; duplicate import adds no record; malformed
+  config is rejected without changing existing records.
+- Environment edit persists while renderer inventory remains redacted.
+- Process restart reads all three records, changed arguments and two bindings;
+  platform removal, cancelled deletion and confirmed deletion work. A second
+  restart shows an empty My MCP list and no bindings or canonical MCP bundles.
+- Library disable produces `skipped-server-disabled` on synchronization and does
+  not disable/remove an already distributed native entry. Runtime stop/start is
+  not implemented by this switch; explicit platform removal is a separate action.
+
+### Findings and Remaining Acceptance
+
+1. **Test drift:** `mcp-manager-import.test.tsx` still mocks/asserts `createServer`
+   for Agent detail import. The current action correctly uses `createFromSource`
+   with the exact target preset/name so main rereads the native source, rather
+   than persisting redacted inventory values. Real IPC/GUI import passed, but the
+   stale component assertion keeps the unit gate red. It was not weakened.
+2. **Misleading empty-description text:** `McpFullDetailPage.tsx` uses
+   `mcp.selectServerHint` for an already saved server with no description.
+3. **Untranslated health errors:** `packages/core/src/mcp-health.ts` supplies
+   Chinese issue messages directly to the English GUI, reproduced with
+   `COMMAND_NOT_FOUND`.
+4. **TOML cleanup residue:** removing the last managed Codex entry leaves the
+   opening PromptHub block comment without its closing comment. Native entries
+   are removed and unrelated values remain; the observed file still parses,
+   but managed-block cleanup is incomplete.
+5. **Unfinished product surface:** canonical automatic snapshots are tested, but
+   formal version list/detail/diff/manual-create/restore/delete entrypoints,
+   conflict workflow and confirmed legacy-sidecar cleanup remain unfinished.
+
+Health checks do not launch an MCP process, perform an MCP handshake or call a
+tool. Standalone Web currently offers Agent MCP inventory browsing, not the
+Desktop My MCP mutation workflow. Remote marketplace/network imports, real MCP
+protocol connections, Web GUI, Windows/Linux hardware and release packaging were
+not accepted by this audit. The active change remains in progress.
+
 ## MCP correction #231 — 2026-10-13
 
 Saved MCP entries with no description display the dedicated empty-description
@@ -142,6 +239,44 @@ The JSON-only standalone CLI initialization/migration, device vault access and O
 remain incomplete, so #234 is in_progress and must not use Closes. SQLite
 foundation ownership conversion, full #203 sidecar/retention scope, entry import
 conflict workflows and Windows/Linux release acceptance remain separate gates.
+
+## MCP import regression #230 — 2026-10-14
+
+The Agent detail component assertion uses the actual createFromSource request
+with exact target/name and asserts that createServer/importFile were not called.
+The production source-import contract is delivered in `bd4ad7f3` (#220), so the
+test correction can now be submitted independently. The combined independent
+HEAD-plus-authorized-MCP snapshot passes 204 MCP unit tests (including this
+file's 9 cases) and 9 registered IPC/history cases. Re-run from the repository:
+`pnpm --dir apps/desktop exec vitest run --project unit --minWorkers=1 --maxWorkers=1 tests/unit/components/mcp-manager-import.test.tsx`.
+The component's mocked IPC result proves request/UI selection, not persistence;
+`antigravity-mcp-agent-import.test.tsx` supplies real storage/reopen and injected
+AES-GCM boundary coverage. The isolated Electron non-secret Agent import/edit/
+process-reopen also passes. The OS-backed credential import remains explicitly
+blocked by unavailable Electron secret storage, not classified as GUI success.
+
+### Cross-surface checks and resource closure
+
+- Desktop MCP unit: 204 passed; registered MCP integrations: initial 38 passed,
+  followed by the expanded history file's 3 passed (overlapping, not additive).
+- Core MCP/resource: 102 passed; cleanup/canonical backup: 27 passed.
+- CLI MCP/history: 3 passed; 17 unrelated cases filtered out.
+- Web client/runtime/bridge/service: 20 passed; authenticated Agent routes and
+  dependencies: 13 passed after supplying the required isolated fixture config.
+  Domain results are injected in route tests; these do not prove Web mutations
+  or a Web GUI that the existing product does not expose.
+- Desktop source/test, Core, CLI, Shared and Web typechecks; scoped Desktop lint
+  and Desktop main/preload/renderer build passed.
+- Whole-repository file-size gate fails on pre-existing
+  `agent-usage-service.ts` (1,529 lines against 1,500 preferred); touched MCP
+  files remain below the applicable limits. Full release packaging, live remote
+  marketplace and real MCP protocol connections were not executed.
+- Only isolated test profiles, home/platform files, source snapshots and named
+  browser control sessions were used; personal application data were untouched.
+  All owned Electron/test processes exited, port 19485 has no listener, and the
+  named browser session is detached. Temporary profiles, snapshots and logs were
+  moved to recoverable Trash on 2026-10-14; the active temporary root no longer
+  exists. Existing user processes and data were not changed.
 
 ## MCP correction #235 — 2026-10-14
 
@@ -231,21 +366,6 @@ did not advance click-stability frames; this is not default-GPU or packaged UI
 acceptance. Owned GUI processes and the named browser session are stopped; the
 temporary verification root is retained only while the authorized migration work
 continues. #220 remains Refs-only for its unverified native/credential boundaries.
-
-## MCP import regression #230 — 2026-10-14
-
-The Agent detail component assertion uses the actual createFromSource request
-with exact target/name and asserts that createServer/importFile were not called.
-The production source-import contract is delivered in `bd4ad7f3` (#220), so the
-test correction can now be submitted independently. The combined independent
-HEAD-plus-authorized-MCP snapshot passes 204 MCP unit tests (including this
-file's 9 cases) and 9 registered IPC/history cases. Re-run from the repository:
-`pnpm --dir apps/desktop exec vitest run --project unit --minWorkers=1 --maxWorkers=1 tests/unit/components/mcp-manager-import.test.tsx`.
-The component's mocked IPC result proves request/UI selection, not persistence;
-`antigravity-mcp-agent-import.test.tsx` supplies real storage/reopen and injected
-AES-GCM boundary coverage. The isolated Electron non-secret Agent import/edit/
-process-reopen also passes. The OS-backed credential import remains explicitly
-blocked by unavailable Electron secret storage, not classified as GUI success.
 
 ## MCP SQLite adoption #234 — 2026-10-14
 

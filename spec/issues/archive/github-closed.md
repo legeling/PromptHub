@@ -3,14 +3,14 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-03`
+- Snapshot date: `2026-10-13`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
 - Closed issues captured: `155`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `../active/local-github-status.md`.
-- The shared capture contains 197 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 200 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
 ## Closed Issues Archive

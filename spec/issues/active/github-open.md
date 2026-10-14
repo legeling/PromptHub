@@ -3,20 +3,23 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-03`
+- Snapshot date: `2026-10-13`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Open issues captured: `42`
+- Open issues captured: `45`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `local-github-status.md`.
-- The shared capture contains 197 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 200 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
-## Current Open Issues
+## Open Issues
 
-| # | 标题 | 标签 | 创建时间 | 最近更新 | 链接 |
+| # | 标题 | 标签 | 创建时间 | 更新时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #226 | [Bug]: antigravity中的plugin配置方式有误。 | bug, version: 最新稳定版 | 2026-10-11 | 2026-10-11 | [#226](https://github.com/legeling/PromptHub/issues/226) |
+| #225 | [Feature]: 解除 Prompt「用户提示词」非空限制，改为「系统/用户提示词至少一个非空」 | enhancement, version: 0.5.9 | 2026-10-11 | 2026-10-11 | [#225](https://github.com/legeling/PromptHub/issues/225) |
+| #224 | [Feature]: 支持千问办公（Qwen Work）Skill 目录管理 | enhancement, version: 0.5.9 | 2026-10-05 | 2026-10-05 | [#224](https://github.com/legeling/PromptHub/issues/224) |
 | #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-01 | [#221](https://github.com/legeling/PromptHub/issues/221) |
 | #220 | [Feature]: 请求支持antigravity 新版本的 MCP | enhancement, version: 版本2.16.0 (985656990) | 2026-09-24 | 2026-09-24 | [#220](https://github.com/legeling/PromptHub/issues/220) |
 | #219 | [Bug]: 自托管 Web：prompt 无法归入普通分类（分类 visibility=shared、prompt 默认 private，必报 422） | bug, version: v0.5.9 | 2026-09-18 | 2026-09-18 | [#219](https://github.com/legeling/PromptHub/issues/219) |
@@ -24,7 +27,7 @@
 | #217 | [Feature]: MCP Registry | enhancement, version: 0.5.9 | 2026-09-12 | 2026-09-12 | [#217](https://github.com/legeling/PromptHub/issues/217) |
 | #216 | [Bug]: 更新新版之后开启APP就显示Loading一直卡着 | bug, version: 0.6.0-beta.2 (0.6.0-beta.2) | 2026-09-11 | 2026-09-11 | [#216](https://github.com/legeling/PromptHub/issues/216) |
 | #215 | [Feature]: 使用部分克隆、稀疏检出减少克隆内容 | enhancement, version: new release | 2026-09-07 | 2026-09-07 | [#215](https://github.com/legeling/PromptHub/issues/215) |
-| #212 | [Feature]: 建议将现有 Rules 模块调整为 Instructions，并新增真正的 Scoped Rules 模块 | enhancement, version: Next release | 2026-09-03 | 2026-09-03 | [#212](https://github.com/legeling/PromptHub/issues/212) |
+| #212 | [Feature]: 建议将现有 Rules 模块调整为 Instructions，并新增真正的 Scoped Rules 模块 | enhancement, version: Next release | 2026-09-03 | 2026-10-12 | [#212](https://github.com/legeling/PromptHub/issues/212) |
 | #210 | [Bug]: 导入备份/快照时无条件覆盖用户的真实规则文件并删除版本历史（绕过 rules 冲突保护） | bug | 2026-08-19 | 2026-08-20 | [#210](https://github.com/legeling/PromptHub/issues/210) |
 | #209 | [Bug]: 本地 ~/.claude/CLAUDE.md 变更后，会被 PromptHub 自动恢复 | bug, version: 0.5.8 | 2026-08-19 | 2026-08-20 | [#209](https://github.com/legeling/PromptHub/issues/209) |
 | #205 | Would you take a pull-request security scan workflow? | question | 2026-08-14 | 2026-08-20 | [#205](https://github.com/legeling/PromptHub/issues/205) |
