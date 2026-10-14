@@ -2,6 +2,29 @@
 
 ## Added Requirements
 
+### Native configuration round-trip
+
+Codex TOML imports use the existing TOML parser, including multiline arrays and nested tables.
+Disabled state, environment/authentication references, tool selection, helper commands and
+native timeout/required fields must survive import, persistence/reopen and target projection.
+Claude `headersHelper` is preserved without executing it during import. Native names are
+translated once at the import/projection boundary into the shared typed MCP fields.
+SQLite/canonical MCP storage and the existing credential vault remain the owners; no new
+storage layout or duplicate secret store is introduced. Optional fields require no migration;
+missing values retain the native defaults. Previously lost fields require recovery from the
+original configuration; same-name imports still skip duplicates, so back up and verify the
+existing records and target bindings before restoring a correct record.
+
+The existing JSONC parser is extracted into `mcp-jsonc.ts` to keep the touched config module
+within the source-file budget; the public entrypoint and parsing behavior are unchanged.
+Its comment scanner remains one state machine slightly above 50 lines because quote/escape
+state must stay consistent throughout one pass; existing JSONC and MCP-library regressions
+cover this extraction.
+The native-options normalizer remains slightly above 50 lines to keep the one
+typed field/validation contract together across import, canonical validation and
+projection. Native round-trip, malformed TOML, OAuth masking and retained-secret
+regressions cover this boundary; it performs no I/O or helper execution.
+
 ### `FR-MCPVER-001`: Formal My MCP version history
 
 PromptHub MUST maintain immutable, monotonically numbered versions for every My
@@ -229,6 +252,18 @@ Empty-description text uses its own empty-state key;
 health UI translates stable issue codes and field context rather than backend
 diagnostic strings. Core/CLI health diagnostics are English and never contain
 literal environment values.
+
+### Antigravity native definition preservation (#220)
+
+- File import, pasted JSON and Plugin child MCP import use the same Core parser. Native `serverUrl` becomes the canonical server `url` and is projected back as `serverUrl` for Antigravity.
+- Imported server names are exact native config entry keys, including case and punctuation. The shared normalizer retains explicit names on imported records; generated/manual/store names keep their existing slug convention. Inventory, selected import, editing, reopen, duplicate detection, target sync and removal use the same exact key, so `Docs.API` and `docs-api` remain distinct. Existing normalized records are not renamed automatically; recovery of an earlier changed name requires the original config and review of its existing record/bindings. No schema or credential migration is needed. Reverting this change would normalize these imported names again; export the affected records and inspect targets before downgrading.
+- Agent MCP import in both the MCP workspace and Agent asset panel uses the existing create-from-source IPC with `{ kind: "target", preset, serverName }`. Core rereads only the selected target file, selects the named server and creates the managed record with complete native fields and real credentials. Redacted renderer inventory is never used as a new credential source; missing entries or malformed requests do not create records. `McpTargetPreset` is shared by the request and inventory contract; its existing Core type export is unchanged for consumers.
+- Agent MCP detail previews use the target's shared native projection with credential redaction, including `serverUrl`, OAuth, tool selection and disabled state. The source file is not rewritten by import or preview. No database or vault-layout migration is required; existing records that were imported with lost fields or literal mask values require restoration from the original config after checking records and bindings.
+- The existing `createFromSource` orchestrator remains above 50 lines to keep source selection and its single persistence/result contract together; existing import/health regressions and the new Agent-import integration cover its branches. Normal integration scenarios remain longer than 50 lines so import, masked form edits, runtime reopen, both target scopes, conflict synchronization and removal verify the same persisted identities rather than independent prebuilt records. Target handling remains linear in selected entries and file size, with no additional scans, network calls or business limits introduced by name preservation.
+- `authProviderType`, `oauth.clientId`, `oauth.clientSecret` and `disabledTools` are optional versioned definition fields. Ordinary edits retain them; projections to other Agents do not emit these Antigravity options. Native `disabled` maps to the existing `enabled` state.
+- Non-empty `oauth.clientSecret` uses the existing device-bound secret vault. Canonical current/version files contain only an optional `secretReferences.oauth.clientSecret` reference. Older bundles without the optional fields retain their schema and semantic digest; no target-file migration is required.
+- IPC/export/sync/config previews redact `clientSecret`; saving a redacted value retains the existing local credential. Antigravity-owned OAuth token files are never read or modified by this workflow.
+- Reverting the source change requires exporting affected definitions through the current version first; an older reader cannot hydrate the newly introduced OAuth reference. Recovery uses the existing canonical bundle and device secret store, rather than resetting or reimporting the library.
 
 ### `NFR-MCPVER-001`: Bounded work
 

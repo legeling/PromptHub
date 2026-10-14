@@ -8,6 +8,7 @@ import type {
   McpTargetEntryDigest,
 } from "@prompthub/shared/types/mcp";
 import { isMcpTargetKind, MCP_TARGET_KINDS } from "@prompthub/shared/types/mcp";
+import { normalizeMcpNativeOptions } from "@prompthub/shared/utils/mcp-native-options";
 
 import {
   readResourceBundle,
@@ -35,11 +36,12 @@ const EMBEDDED_SECRET_PATTERN =
 export interface McpResourceSecretReferences {
   env: Record<string, string>;
   headers: Record<string, string>;
+  oauth?: Record<string, string>;
 }
 
 export interface ExtractedMcpSecret {
   ref: string;
-  field: "env" | "headers";
+  field: "env" | "headers" | "oauth";
   key: string;
   value: string;
   version: number;
@@ -280,10 +282,14 @@ function validateServer(
   const headers = validateStringMap(value.headers, "headers");
   const envRefs = validateStringMap(value.envRefs, "envRefs");
   const headerRefs = validateStringMap(value.headerRefs, "headerRefs");
+  const nativeOptions = normalizeMcpNativeOptions(value);
   const containsLiteralCredential = [env, headers].some((entries) =>
     Object.values(entries ?? {}).some((item) => item.length > 0),
   );
-  if (!allowSecrets && containsLiteralCredential)
+  if (
+    !allowSecrets &&
+    (containsLiteralCredential || Boolean(nativeOptions.oauth?.clientSecret))
+  )
     throw new Error("MCP resource cannot contain literal credentials");
   if (value.transport === "stdio" && !String(value.command ?? "").trim())
     throw new Error("MCP resource stdio server requires command");
@@ -307,6 +313,7 @@ function validateServer(
     headers,
     envRefs,
     headerRefs,
+    ...nativeOptions,
     source,
   };
 }
@@ -349,6 +356,19 @@ function extractSecrets(
     } else {
       delete portable[field];
     }
+  }
+  const clientSecret = server.oauth?.clientSecret;
+  if (clientSecret) {
+    const ref = secretRef(server.id, version, "oauth", "clientSecret");
+    references.oauth = { clientSecret: ref };
+    secrets.push({
+      ref,
+      field: "oauth",
+      key: "clientSecret",
+      value: clientSecret,
+      version,
+    });
+    if (portable.oauth) delete portable.oauth.clientSecret;
   }
   return { server: portable, references, secrets };
 }
@@ -581,6 +601,9 @@ function validateSecretReferences(value: unknown): McpResourceSecretReferences {
   return {
     env: validateStringMap(value.env, "secret env references") ?? {},
     headers: validateStringMap(value.headers, "secret header references") ?? {},
+    ...(value.oauth !== undefined && {
+      oauth: validateStringMap(value.oauth, "secret OAuth references"),
+    }),
   };
 }
 
@@ -729,6 +752,12 @@ export async function hydrateMcpServerResourceSecrets(
     }
     if (Object.keys(values).length > 0) hydrated[field] = values;
   }
+  const ref = resource.secretReferences.oauth?.clientSecret;
+  if (ref) {
+    const value = await readSecret(ref);
+    if (value === null) throw new Error(`missing MCP secret: ${ref}`);
+    hydrated.oauth = { ...hydrated.oauth, clientSecret: value };
+  }
   return hydrated;
 }
 
@@ -746,6 +775,12 @@ export function hydrateMcpServerResourceSecretsSync(
     }
     if (Object.keys(values).length > 0) hydrated[field] = values;
   }
+  const ref = resource.secretReferences.oauth?.clientSecret;
+  if (ref) {
+    const value = readSecret(ref);
+    if (value === null) throw new Error(`missing MCP secret: ${ref}`);
+    hydrated.oauth = { ...hydrated.oauth, clientSecret: value };
+  }
   return hydrated;
 }
 
@@ -762,6 +797,12 @@ export function hydrateMcpServerVersionSecretsSync(
       values[key] = value;
     }
     if (Object.keys(values).length > 0) hydrated[field] = values;
+  }
+  const ref = version.secretReferences.oauth?.clientSecret;
+  if (ref) {
+    const value = readSecret(ref);
+    if (value === null) throw new Error(`missing MCP secret: ${ref}`);
+    hydrated.oauth = { ...hydrated.oauth, clientSecret: value };
   }
   return hydrated;
 }

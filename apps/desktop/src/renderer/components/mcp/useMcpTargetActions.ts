@@ -5,7 +5,7 @@ import type {
   McpServerConfig,
 } from "@prompthub/shared/types/mcp";
 import {
-  buildAgentMcpImportDraft,
+  buildAgentMcpImportRequest,
   findAgentMcpServer,
 } from "./mcp-manager-utils";
 import type { McpErrorReporter } from "./mcp-manager-action-utils";
@@ -150,9 +150,12 @@ function createAgentMcpImport(options: McpTargetActionOptions) {
             "Agent MCP entry details are unavailable. Refresh Agent MCP and try again.",
           ),
         );
-      const server = await options.bindings.mcpStore.createServer(
-        buildAgentMcpImportDraft(agentServer, preset),
+      const result = await options.bindings.mcpStore.createFromSource(
+        buildAgentMcpImportRequest(agentServer, preset),
       );
+      const server = result.imported[0];
+      if (!server)
+        throw new Error(options.bindings.t("mcp.agentEntryUnavailable"));
       options.openServerDetail(server);
       options.bindings.showToast(
         options.bindings.t("mcp.imported", "MCP imported"),

@@ -1,7 +1,14 @@
 import { ArrowLeftIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { McpServerConfig } from "@prompthub/shared/types/mcp";
+import type {
+  McpServerConfig,
+  McpTargetKind,
+} from "@prompthub/shared/types/mcp";
+import {
+  getMcpTargetEntryObject,
+  getMcpServersJsonKey,
+} from "@prompthub/shared/utils/mcp-config";
 import { AgentMcpDetailActions } from "./AgentMcpDetailActions";
 import { AgentMcpPreviewSidebar } from "./AgentMcpPreviewSidebar";
 
@@ -18,6 +25,7 @@ interface AgentMcpEntryDetailProps {
   removeEntryLabel?: string;
   sectionTitle?: string;
   server: McpServerConfig;
+  target: McpTargetKind;
   sourcePath: string;
   onBack: () => void;
   onImport?: () => void | Promise<void>;
@@ -32,34 +40,16 @@ function formatRecord(record?: Record<string, string>): string {
     .join("\n");
 }
 
-function buildAgentServerConfig(server: McpServerConfig): string {
-  const entry =
-    server.transport === "stdio"
-      ? {
-          command: server.command,
-          args: server.args,
-          cwd: server.cwd,
-          env: server.env,
-        }
-      : {
-          type: server.transport,
-          url: server.url,
-          headers: server.headers,
-        };
-
+function buildAgentServerConfig(
+  server: McpServerConfig,
+  target: McpTargetKind,
+): string {
   return JSON.stringify(
     {
-      mcpServers: {
-        [server.name]: Object.fromEntries(
-          Object.entries(entry).filter(
-            ([, value]) =>
-              value !== undefined &&
-              (!Array.isArray(value) || value.length > 0) &&
-              (typeof value !== "object" ||
-                value === null ||
-                Object.keys(value).length > 0),
-          ),
-        ),
+      [getMcpServersJsonKey(target)]: {
+        [server.name]: getMcpTargetEntryObject(target, server, {
+          redactValues: true,
+        }),
       },
     },
     null,
@@ -230,7 +220,9 @@ function DetailContent(props: AgentMcpEntryDetailProps) {
       >
         <div className="space-y-4">
           <SourceDetails server={props.server} />
-          <ConfigPreview content={buildAgentServerConfig(props.server)} />
+          <ConfigPreview
+            content={buildAgentServerConfig(props.server, props.target)}
+          />
         </div>
         <aside className="space-y-4">
           <AgentMcpPreviewSidebar

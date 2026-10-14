@@ -281,6 +281,7 @@ export function McpAgentsView({
         removeEntryLabel={resolvedRemoveEntryLabel}
         sectionTitle={resolvedTitle}
         server={selectedAgentServer}
+        target={selectedPreset.target}
         sourcePath={selectedPreset.path}
         onBack={() => setSelectedServerName(null)}
         onImport={handleImportSelectedAgentServer}

@@ -3,7 +3,7 @@ import type { TFunction } from "i18next";
 import type { McpTargetPreset } from "@prompthub/core";
 import type {
   McpServerConfig,
-  McpServerDraft,
+  McpCreateFromTargetRequest,
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 
@@ -133,23 +133,13 @@ export function findAgentMcpServer(
   );
 }
 
-export function buildAgentMcpImportDraft(
+export function buildAgentMcpImportRequest(
   server: McpServerConfig,
   preset: McpTargetPreset,
-): McpServerDraft {
+): McpCreateFromTargetRequest {
   return {
-    name: server.name,
-    displayName: server.displayName || server.name,
-    description: server.description,
-    transport: server.transport,
-    command: server.command,
-    args: server.args,
-    cwd: server.cwd,
-    env: server.env,
-    url: server.url,
-    headers: server.headers,
-    enabled: server.enabled,
-    tags: server.tags,
-    source: { type: "import", id: preset.id, label: preset.label },
+    kind: "target",
+    preset,
+    serverName: server.name,
   };
 }

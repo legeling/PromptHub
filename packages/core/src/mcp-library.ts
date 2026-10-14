@@ -98,6 +98,7 @@ import {
   parseTomlStringArray,
   readImportServersFromContent,
   readMcpImportServers,
+  readMcpTargetImportDraft,
   readMcpTargetServers,
 } from "./mcp-import";
 
@@ -644,6 +645,14 @@ export class CoreMcpLibraryService {
       }),
       ...(draft.headers !== undefined && {
         headers: restoreRedactedDraftValues(current.headers, draft.headers),
+      }),
+      ...(draft.oauth && {
+        oauth: {
+          ...draft.oauth,
+          ...(draft.oauth.clientSecret === MCP_REDACTED_VALUE && {
+            clientSecret: current.oauth?.clientSecret ?? "",
+          }),
+        },
       }),
       id,
       createdAt: current.createdAt,
@@ -1326,6 +1335,17 @@ export class CoreMcpLibraryService {
   createFromSource(
     request: McpCreateFromSourceRequest,
   ): McpCreateFromSourceResult {
+    if (request.kind === "target") {
+      const server = this.createServer(
+        readMcpTargetImportDraft(request, nowMs()),
+      );
+      return {
+        imported: [server],
+        skipped: [],
+        detectedKind: "config-file",
+        warnings: [],
+      };
+    }
     if (request.kind === "config") {
       const library = this.read();
       const now = nowMs();

@@ -104,6 +104,36 @@ describe("canonical MCP library", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it("keeps OAuth secrets in the device vault and native options through versions and reopen", () => {
+    const native = server({
+      env: undefined,
+      authProviderType: "google_credentials",
+      oauth: { clientId: "client", clientSecret: "oauth-test-secret" },
+      disabledTools: ["delete"],
+    });
+    writeCanonicalMcpLibrary(library([native]), { secretStore });
+    const bundle = path.join(root, "data", "mcp", native.id);
+    expect(
+      fs.readFileSync(path.join(bundle, "server.json"), "utf8"),
+    ).not.toContain("oauth-test-secret");
+    expect(
+      fs.readFileSync(path.join(bundle, "versions", "000001.json"), "utf8"),
+    ).not.toContain("oauth-test-secret");
+    expect(readCanonicalMcpLibrary({ secretStore }).servers[0]).toEqual(native);
+    expect(
+      readCanonicalMcpLibrary({ secretReadMode: "redacted" }).servers[0].oauth
+        ?.clientSecret,
+    ).toBe("[REDACTED]");
+    writeCanonicalMcpLibrary(
+      library([{ ...native, disabledTools: ["delete", "write"] }]),
+      { secretStore },
+    );
+    expect(readMcpServerResourceBundle(bundle).currentVersion).toBe(2);
+    expect(readCanonicalMcpLibrary({ secretStore }).servers[0].oauth).toEqual(
+      native.oauth,
+    );
+  });
+
   it("creates, versions, reloads, and deletes server bundles with secrets", () => {
     writeCanonicalMcpLibrary(library([server()]), { secretStore });
 

@@ -11,6 +11,9 @@ import type {
   McpTransport,
 } from "../types/mcp";
 import { redactMcpTomlConfigContent } from "./mcp-config-redaction";
+import { normalizeMcpNativeOptions } from "./mcp-native-options";
+import { parseMcpJsonConfigContent } from "./mcp-jsonc";
+export { parseMcpJsonConfigContent } from "./mcp-jsonc";
 
 export class McpConfigError extends Error {
   code: string;
@@ -544,9 +547,11 @@ export function normalizeMcpServerDraft(
   draft: McpServerDraft,
   now = Date.now(),
 ): McpServerConfig {
-  const name = sanitizeMcpServerName(
-    draft.name || draft.displayName || "mcp-server",
-  );
+  // Imported names are target entry keys; rewriting them changes server identity.
+  const name =
+    draft.source?.type === "import" && draft.name
+      ? draft.name
+      : sanitizeMcpServerName(draft.name || draft.displayName || "mcp-server");
   const transport = draft.transport || "stdio";
   const displayName = (draft.displayName || name).trim();
   const command = draft.command?.trim();
@@ -567,6 +572,7 @@ export function normalizeMcpServerDraft(
 
   return {
     id: draft.id || createId("mcp"),
+    ...normalizeMcpNativeOptions(draft),
     name,
     displayName,
     description: draft.description?.trim() || undefined,
@@ -598,6 +604,14 @@ export function redactMcpServerConfig(
     ...server,
     env: redactMcpValueMap(server.env),
     headers: redactMcpValueMap(server.headers),
+    ...(server.oauth && {
+      oauth: {
+        ...server.oauth,
+        ...(server.oauth.clientSecret !== undefined && {
+          clientSecret: MCP_REDACTED_VALUE,
+        }),
+      },
+    }),
   };
 }
 
@@ -636,6 +650,14 @@ export function mergeMcpLibraryFromTransport(
         ...server,
         env: restoreMcpValueMap(existing?.env, server.env),
         headers: restoreMcpValueMap(existing?.headers, server.headers),
+        ...(server.oauth && {
+          oauth: {
+            ...server.oauth,
+            ...(server.oauth.clientSecret === MCP_REDACTED_VALUE && {
+              clientSecret: existing?.oauth?.clientSecret ?? "",
+            }),
+          },
+        }),
       };
     }),
   };
@@ -707,6 +729,7 @@ export function toMcpServerEntry(
     type: server.transport === "sse" ? "sse" : "http",
     url: server.url,
     headers: projectMcpValues(server, target, "headers", options.redactValues),
+    ...(target === "claude" && { headersHelper: server.headersHelper }),
   });
 }
 
@@ -751,8 +774,21 @@ function toCodexTomlMcpEntry(
   target: McpTargetKind,
   options: { redactValues?: boolean } = {},
 ): Record<string, unknown> {
+  const native =
+    target === "codex"
+      ? {
+          ...(server.enabled === false && { enabled: false }),
+          enabled_tools: server.enabledTools,
+          disabled_tools: server.disabledTools,
+          startup_timeout_sec: server.startupTimeoutSec,
+          tool_timeout_sec: server.toolTimeoutSec,
+          required: server.required,
+          env_vars: server.envVars,
+        }
+      : {};
   if (server.transport === "stdio") {
     return stripUndefined({
+      ...native,
       command: server.command,
       args: server.args,
       cwd: server.cwd,
@@ -761,14 +797,37 @@ function toCodexTomlMcpEntry(
   }
 
   return stripUndefined({
+    ...native,
     url: server.url,
+    ...(target === "codex" && {
+      bearer_token_env_var: server.bearerTokenEnvVar,
+      http_headers_helper: server.httpHeadersHelper,
+      env_http_headers: codexHeaderEnvironment(server.headerRefs),
+    }),
     [target === "grok" ? "headers" : "http_headers"]: projectMcpValues(
-      server,
+      target === "codex" ? { ...server, headerRefs: undefined } : server,
       target,
       "headers",
       options.redactValues,
     ),
   });
+}
+
+function codexHeaderEnvironment(
+  references: McpServerConfig["headerRefs"],
+): Record<string, string> | undefined {
+  if (!references) return undefined;
+  return Object.fromEntries(
+    Object.entries(references).map(([key, value]) => {
+      const match = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/.exec(value);
+      if (!match)
+        throw new McpConfigError(
+          "UNSUPPORTED_ENV_REFERENCE",
+          `Codex header ${key} requires a single environment variable`,
+        );
+      return [key, match[1]];
+    }),
+  );
 }
 
 function toOpenClawMcpEntry(
@@ -796,18 +855,26 @@ function toAntigravityMcpEntry(
   server: McpServerConfig,
   options: { redactValues?: boolean } = {},
 ): Record<string, unknown> {
-  if (server.transport === "stdio") {
-    return toMcpServerEntry(server, "antigravity", options);
-  }
-
+  const transport =
+    server.transport === "stdio"
+      ? toMcpServerEntry(server, "antigravity", options)
+      : stripUndefined({
+          serverUrl: server.url,
+          headers: projectMcpValues(
+            server,
+            "antigravity",
+            "headers",
+            options.redactValues,
+          ),
+        });
   return stripUndefined({
-    serverUrl: server.url,
-    headers: projectMcpValues(
-      server,
-      "antigravity",
-      "headers",
-      options.redactValues,
-    ),
+    ...transport,
+    authProviderType: server.authProviderType,
+    oauth: options.redactValues
+      ? redactMcpServerConfig(server).oauth
+      : server.oauth,
+    disabledTools: server.disabledTools,
+    disabled: server.enabled ? undefined : true,
   });
 }
 
@@ -890,119 +957,6 @@ export function computeMcpTargetEntryDigest(
   };
 }
 
-export function parseMcpJsonConfigContent(content: string): unknown {
-  const trimmed = content.trim();
-  if (!trimmed) {
-    return {};
-  }
-  return JSON.parse(stripJsoncSyntax(trimmed));
-}
-
-function stripJsoncSyntax(content: string): string {
-  return stripTrailingJsonCommas(stripJsonComments(content));
-}
-
-function stripJsonComments(content: string): string {
-  let output = "";
-  let inString = false;
-  let quote = "";
-  let escaped = false;
-
-  for (let index = 0; index < content.length; index += 1) {
-    const char = content[index];
-    const next = content[index + 1];
-
-    if (inString) {
-      output += char;
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === quote) {
-        inString = false;
-        quote = "";
-      }
-      continue;
-    }
-
-    if (char === '"' || char === "'") {
-      inString = true;
-      quote = char;
-      output += char;
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      while (index < content.length && !/[\r\n]/.test(content[index])) {
-        index += 1;
-      }
-      output += content[index] ?? "";
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      index += 2;
-      while (
-        index < content.length &&
-        !(content[index] === "*" && content[index + 1] === "/")
-      ) {
-        index += 1;
-      }
-      index += 1;
-      continue;
-    }
-
-    output += char;
-  }
-
-  return output;
-}
-
-function stripTrailingJsonCommas(content: string): string {
-  let output = "";
-  let inString = false;
-  let quote = "";
-  let escaped = false;
-
-  for (let index = 0; index < content.length; index += 1) {
-    const char = content[index];
-
-    if (inString) {
-      output += char;
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === quote) {
-        inString = false;
-        quote = "";
-      }
-      continue;
-    }
-
-    if (char === '"' || char === "'") {
-      inString = true;
-      quote = char;
-      output += char;
-      continue;
-    }
-
-    if (char === ",") {
-      let lookahead = index + 1;
-      while (/\s/.test(content[lookahead] ?? "")) {
-        lookahead += 1;
-      }
-      if (content[lookahead] === "}" || content[lookahead] === "]") {
-        continue;
-      }
-    }
-
-    output += char;
-  }
-
-  return output;
-}
-
 export function buildMcpServersJson(servers: McpServerConfig[]): {
   mcpServers: Record<string, Record<string, unknown>>;
 } {
@@ -1055,39 +1009,25 @@ export function buildMcpToml(
     .filter((server) => server.enabled)
     .map((server) => {
       const lines = [`[mcp_servers.${tomlBareKey(server.name)}]`];
-      if (server.transport === "stdio") {
-        lines.push(`command = ${tomlString(server.command || "")}`);
-        if (server.args?.length) {
-          lines.push(`args = [${server.args.map(tomlString).join(", ")}]`);
-        }
-        if (server.cwd) {
-          lines.push(`cwd = ${tomlString(server.cwd)}`);
-        }
-        const env = projectMcpValues(
-          server,
-          target,
-          "env",
-          options.redactValues,
-        );
-        if (env && Object.keys(env).length > 0) {
-          lines.push(`env = ${tomlInlineTable(env)}`);
-        }
-      } else if (server.url) {
-        lines.push(`url = ${tomlString(server.url)}`);
-        const headers = projectMcpValues(
-          server,
-          target,
-          "headers",
-          options.redactValues,
-        );
-        if (headers && Object.keys(headers).length > 0) {
-          const headersKey = target === "grok" ? "headers" : "http_headers";
-          lines.push(`${headersKey} = ${tomlInlineTable(headers)}`);
-        }
-      }
+      for (const [key, value] of Object.entries(
+        toCodexTomlMcpEntry(server, target, options),
+      ))
+        lines.push(`${tomlBareKey(key)} = ${tomlValue(value)}`);
       return lines.join("\n");
     })
     .join("\n\n");
+}
+
+function tomlValue(value: unknown): string {
+  if (typeof value === "string") return tomlString(value);
+  if (typeof value === "boolean" || typeof value === "number")
+    return String(value);
+  if (Array.isArray(value)) return `[${value.map(tomlValue).join(", ")}]`;
+  if (value && typeof value === "object")
+    return `{ ${Object.entries(value)
+      .map(([key, entry]) => `${tomlBareKey(key)} = ${tomlValue(entry)}`)
+      .join(", ")} }`;
+  throw new McpConfigError("INVALID_SERVER", "Invalid MCP TOML value");
 }
 
 export function buildCodexMcpToml(
@@ -1142,6 +1082,8 @@ function redactMcpJsonValue(value: unknown): unknown {
 
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
+      if (key === "clientSecret" && typeof entry === "string")
+        return [key, MCP_REDACTED_VALUE];
       if (
         key === "env" ||
         key === "environment" ||
@@ -1397,14 +1339,6 @@ function tomlString(value: string): string {
 
 function tomlBareKey(value: string): string {
   return /^[A-Za-z0-9_-]+$/.test(value) ? value : tomlString(value);
-}
-
-function tomlInlineTable(value: Record<string, string>): string {
-  return `{ ${Object.entries(value)
-    .map(
-      ([key, entryValue]) => `${tomlBareKey(key)} = ${tomlString(entryValue)}`,
-    )
-    .join(", ")} }`;
 }
 
 function escapeRegExp(value: string): string {

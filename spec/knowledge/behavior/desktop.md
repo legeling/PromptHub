@@ -373,6 +373,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 ### 13. MCP Store Source And Update Boundaries
 
+- 新版 Antigravity MCP 的 `serverUrl`、认证、工具选择和禁用状态在导入、编辑、重开及原生投影中保留；Agent 导入在主进程按目标与名称读取原始配置，不能把 renderer 遮罩值保存为真实凭据（#220）。
 - MCP 版本弹窗的普通 Tab / Shift+Tab 只在当前可用控件间循环；确认框独立管理焦点，取消后回到原操作按钮。确认前不禁用触发按钮，不改变其他弹窗的默认行为（#235）。
 - 已保存 MCP 缺少 description 时显示独立的空描述状态，不显示“先选择或保存”提示（#231）。
 - MCP 健康检查 UI 按稳定 issue code 和字段上下文翻译；Core/CLI 返回英文诊断，不把环境变量或凭据值拼入提示（#232）。健康检查仍是配置静态检查，不代表协议连接成功。

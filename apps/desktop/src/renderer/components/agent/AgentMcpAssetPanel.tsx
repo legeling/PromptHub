@@ -20,7 +20,7 @@ import type { ManagedAgentSummary } from "@prompthub/shared/types";
 import { AgentMcpEntryDetail } from "../mcp/AgentMcpEntryDetail";
 import { McpLibraryDeployDialog } from "../mcp/McpLibraryDeployDialog";
 import {
-  buildAgentMcpImportDraft,
+  buildAgentMcpImportRequest,
   findAgentMcpServer,
 } from "../mcp/mcp-manager-utils";
 import { useMcpStore } from "../../stores/mcp.store";
@@ -277,7 +277,7 @@ export function AgentMcpAssetPanel({
   const load = useMcpStore((state) => state.load);
   const loadTargetInventory = useMcpStore((state) => state.loadTargetInventory);
   const refreshTargetStatus = useMcpStore((state) => state.refreshTargetStatus);
-  const createServer = useMcpStore((state) => state.createServer);
+  const createFromSource = useMcpStore((state) => state.createFromSource);
   const applyTarget = useMcpStore((state) => state.applyTarget);
   const removeTargetNames = useMcpStore((state) => state.removeTargetNames);
   const selectServer = useMcpStore((state) => state.selectServer);
@@ -462,9 +462,11 @@ export function AgentMcpAssetPanel({
         ),
       );
     }
-    const server = await createServer(
-      buildAgentMcpImportDraft(sourceServer, card.preset),
+    const result = await createFromSource(
+      buildAgentMcpImportRequest(sourceServer, card.preset),
     );
+    const server = result.imported[0];
+    if (!server) throw new Error(t("mcp.agentEntryUnavailable"));
     setAppModule("mcp");
     setSelectedTab("library");
     selectServer(server.id);
@@ -539,6 +541,7 @@ export function AgentMcpAssetPanel({
           platformName={selectedCard.preset.label}
           sectionTitle={t("mcp.agentMcp", "Agent MCP")}
           server={selectedCard.server}
+          target={selectedCard.preset.target}
           sourcePath={selectedCard.preset.path}
           onBack={() => setSelectedCardKey(null)}
           onImport={

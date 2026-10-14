@@ -44,6 +44,17 @@ const baseServer: McpServerConfig = {
 };
 
 describe("mcp-config", () => {
+  it("retains imported target entry names when normalizing and editing", () => {
+    const imported = normalizeMcpServerDraft({
+      name: "Docs.API",
+      command: "node",
+      source: { type: "import" },
+    });
+    expect(imported.name).toBe("Docs.API");
+    expect(normalizeMcpServerDraft({ ...imported, notes: "edited" }).name).toBe(
+      "Docs.API",
+    );
+  });
   it("normalizes stdio server drafts and rejects missing command", () => {
     const normalized = normalizeMcpServerDraft({
       name: "Playwright MCP",

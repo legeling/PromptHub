@@ -195,3 +195,43 @@ change. Other Modal consumers retain their default behavior.
 Owned GUI/browser sessions are closed, port 19485 is free, and isolated profiles,
 snapshots and logs were moved to recoverable Trash. Full packaged/cross-platform
 release acceptance and real MCP protocol connections were not run.
+
+## MCP adaptation #220 — 2026-10-14
+
+The authorized submission includes only existing MCP native import/normalization,
+credential masking/vault references, target projection, Agent MCP import/preview
+and their regression tests. Codex root/provider preferences, unrelated Agent
+models, Plugin and Prompt changes remain outside this commit. The shared preset
+type moves to Shared because the target import request crosses the IPC boundary;
+its unrelated Codex-root behavior change is not included.
+
+The current official Antigravity MCP contract requires `serverUrl` for remote
+servers and defines `authProviderType`, OAuth, disabled tools and disabled state:
+<https://antigravity.google/docs/mcp> (checked 2026-10-14). Native fields are
+adapted once into the typed internal contract, not retained as runtime aliases.
+OAuth secrets are excluded from portable definitions and previews; selected
+Agent import reads actual credentials from the source file in the main process.
+
+Independent HEAD-plus-authorized-MCP verification passes 204 Desktop MCP unit
+tests, 9 registered IPC/storage integrations and 29 Core history/schema tests;
+Desktop source/test, Core and Shared types, scoped renderer lint and the Desktop
+build pass. The #230 test-only
+correction is included in the verification snapshot but will be committed
+separately. Windows IDE 2.16.0 native acceptance, remote/OAuth handshakes and
+release packaging remain unverified; those boundaries must not be promoted from
+source or local IPC results. Isolated Electron renders the exact native
+`serverUrl`/tool selection and masks OAuth/header credentials. The actual
+credential import reports `MCP_RESOURCE_SECRET_STORE_UNAVAILABLE` in this runtime
+and preserves an empty My MCP library and the source file; this is not a GUI
+success claim. IPC crypto tests substitute Electron's unavailable OS boundary
+with real AES-GCM and disposable fixture keys.
+
+The same isolated UI also imports a valid non-secret native definition, edits
+its display name and retains `Docs.API`, OAuth client identity and disabled-tools
+selection after a full process restart. The original native file and unrelated
+entry remain unchanged by import/edit. The test launcher uses software rendering
+and disables background renderer throttling because the initial occluded runtime
+did not advance click-stability frames; this is not default-GPU or packaged UI
+acceptance. Owned GUI processes and the named browser session are stopped; the
+temporary verification root is retained only while the authorized migration work
+continues. #220 remains Refs-only for its unverified native/credential boundaries.

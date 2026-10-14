@@ -12,21 +12,11 @@ import {
 
 import type {
   McpTargetKind,
+  McpTargetPreset,
   McpTargetScope,
 } from "@prompthub/shared/types/mcp";
 
-export interface McpTargetPreset {
-  id: string;
-  target: McpTargetKind;
-  scope: McpTargetScope;
-  label: string;
-  path: string;
-  /**
-   * Skill platform id used for brand icon rendering in the renderer.
-   * 用于渲染端品牌图标的平台 id（对应 Skills 平台体系）。
-   */
-  platformId?: string;
-}
+export type { McpTargetPreset } from "@prompthub/shared/types/mcp";
 
 /**
  * Global MCP config targets for every supported agent platform.

@@ -1,17 +1,21 @@
 import fs from "fs";
 import path from "path";
+import { parse as parseToml } from "smol-toml";
+import { normalizeMcpNativeOptions } from "@prompthub/shared/utils/mcp-native-options";
+import { isMcpTargetKind } from "@prompthub/shared/types/mcp";
 
 import type {
+  McpCreateFromTargetRequest,
   McpImportResult,
   McpLibraryFile,
   McpServerConfig,
+  McpServerDraft,
   McpTargetKind,
 } from "@prompthub/shared/types/mcp";
 import {
   getMcpJsonServerEntries,
   normalizeMcpServerDraft,
   parseMcpJsonConfigContent,
-  sanitizeMcpServerName,
 } from "@prompthub/shared/utils/mcp-config";
 
 function importServerEntry(
@@ -28,7 +32,7 @@ function importServerEntry(
   const command =
     typeof record.command === "string" ? record.command : commandParts[0];
   const url =
-    target === "antigravity" && typeof record.serverUrl === "string"
+    typeof record.serverUrl === "string"
       ? record.serverUrl
       : typeof record.url === "string"
         ? record.url
@@ -46,7 +50,19 @@ function importServerEntry(
 
   return normalizeMcpServerDraft(
     {
-      name: sanitizeMcpServerName(name),
+      name,
+      ...normalizeMcpNativeOptions({
+        ...record,
+        ...(target === "codex" && {
+          bearerTokenEnvVar: record.bearer_token_env_var,
+          enabledTools: record.enabled_tools,
+          disabledTools: record.disabled_tools,
+          httpHeadersHelper: record.http_headers_helper,
+          startupTimeoutSec: record.startup_timeout_sec,
+          toolTimeoutSec: record.tool_timeout_sec,
+          envVars: record.env_vars,
+        }),
+      }),
       displayName: name,
       description:
         typeof record.description === "string" ? record.description : undefined,
@@ -72,6 +88,10 @@ function importServerEntry(
         typeof headersRecord === "object" &&
         !Array.isArray(headersRecord)
           ? (headersRecord as Record<string, string>)
+          : undefined,
+      headerRefs:
+        target === "codex"
+          ? codexHeaderReferences(record.env_http_headers)
           : undefined,
       enabled:
         record.enable !== false &&
@@ -128,40 +148,27 @@ function parseCodexTomlServers(
   content: string,
   now: number,
 ): McpServerConfig[] {
-  const servers: McpServerConfig[] = [];
-  let currentName: string | null = null;
-  let current: Record<string, unknown> = {};
-  const flush = () => {
-    if (!currentName) return;
-    const server = importServerEntry(currentName, current, now);
-    if (server) servers.push(server);
-    currentName = null;
-    current = {};
-  };
+  const entries = parseToml(content).mcp_servers;
+  if (!entries || typeof entries !== "object" || Array.isArray(entries))
+    return [];
+  return Object.entries(entries)
+    .map(([name, entry]) => importServerEntry(name, entry, now, "codex"))
+    .filter((server): server is McpServerConfig => server !== null);
+}
 
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const sectionMatch = line.match(/^\[mcp_servers\.("?)([^"\]]+)\1\]$/);
-    if (sectionMatch) {
-      flush();
-      currentName = sectionMatch[2];
-      continue;
-    }
-    if (!currentName) continue;
-    const separatorIndex = line.indexOf("=");
-    if (separatorIndex === -1) continue;
-    const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1).trim();
-    if (key === "args") current.args = parseTomlStringArray(value);
-    else if (key === "env" || key === "http_headers" || key === "headers") {
-      current[key === "env" ? "env" : "headers"] = parseTomlInlineTable(value);
-    } else if (key === "command" || key === "cwd" || key === "url") {
-      current[key] = parseTomlString(value);
-    }
-  }
-  flush();
-  return servers;
+function codexHeaderReferences(
+  value: unknown,
+): Record<string, string> | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Codex env_http_headers must be a table");
+  return Object.fromEntries(
+    Object.entries(value).map(([key, name]) => {
+      if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
+        throw new Error(`Invalid Codex header environment variable: ${key}`);
+      return [key, `\${${name}}`];
+    }),
+  );
 }
 
 function parseJsonImportServers(
@@ -261,4 +268,34 @@ export function readMcpTargetServers(
       ...server,
       source: { type: "import", id: target, label: filePath },
     }));
+}
+
+export function readMcpTargetImportDraft(
+  request: McpCreateFromTargetRequest,
+  now: number,
+): McpServerDraft {
+  const { preset, serverName } = request;
+  if (
+    !preset ||
+    !isMcpTargetKind(preset.target) ||
+    typeof preset.path !== "string" ||
+    !path.isAbsolute(preset.path) ||
+    preset.path.includes("\0") ||
+    typeof preset.id !== "string" ||
+    !preset.id.trim() ||
+    typeof preset.label !== "string" ||
+    typeof serverName !== "string" ||
+    !serverName.trim()
+  )
+    throw new Error("Invalid MCP target import request");
+  const server = readMcpTargetServers(preset.path, preset.target, now).find(
+    (entry) => entry.name === serverName,
+  );
+  if (!server) throw new Error(`MCP target server not found: ${serverName}`);
+  // Credentials must come from the main-process file read, never the redacted inventory.
+  return {
+    ...server,
+    id: undefined,
+    source: { type: "import", id: preset.id, label: preset.label },
+  };
 }

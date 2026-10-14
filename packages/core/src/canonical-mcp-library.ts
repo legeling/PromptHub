@@ -180,7 +180,8 @@ function hasSecretReferences(resource: ReadMcpServerResourceResult): boolean {
   return resource.versions.some(
     (version) =>
       Object.keys(version.secretReferences.env).length > 0 ||
-      Object.keys(version.secretReferences.headers).length > 0,
+      Object.keys(version.secretReferences.headers).length > 0 ||
+      Object.keys(version.secretReferences.oauth ?? {}).length > 0,
   );
 }
 
@@ -296,6 +297,7 @@ function collectRefs(resource: ReadMcpServerResourceResult): string[] {
   return resource.versions.flatMap((version) => [
     ...Object.values(version.secretReferences.env),
     ...Object.values(version.secretReferences.headers),
+    ...Object.values(version.secretReferences.oauth ?? {}),
   ]);
 }
 

@@ -41,6 +41,15 @@ export function isMcpTargetKind(value: unknown): value is McpTargetKind {
 
 export type McpTargetScope = "global" | "workspace" | "custom";
 
+export interface McpTargetPreset {
+  id: string;
+  target: McpTargetKind;
+  scope: McpTargetScope;
+  label: string;
+  path: string;
+  platformId?: string;
+}
+
 export interface McpServerSource {
   type: "manual" | "market" | "import";
   id?: string;
@@ -71,6 +80,18 @@ export interface McpServerConfig {
   headers?: Record<string, string>;
   /** Canonical templates for HTTP header values; values are never resolved here. */
   headerRefs?: Record<string, string>;
+  /** Native options are projected only to targets that implement their contract. */
+  authProviderType?: string;
+  oauth?: { clientId?: string; clientSecret?: string };
+  disabledTools?: string[];
+  enabledTools?: string[];
+  bearerTokenEnvVar?: string;
+  headersHelper?: string;
+  httpHeadersHelper?: string;
+  startupTimeoutSec?: number;
+  toolTimeoutSec?: number;
+  required?: boolean;
+  envVars?: string[];
   enabled: boolean;
   isFavorite?: boolean;
   tags?: string[];
@@ -317,10 +338,15 @@ export type McpDetectedSourceKind =
   | "local-project"
   | "remote-url";
 
-export interface McpCreateFromSourceRequest {
-  input: string;
-  kind?: McpCreateSourceKind;
+export interface McpCreateFromTargetRequest {
+  kind: "target";
+  preset: McpTargetPreset;
+  serverName: string;
 }
+
+export type McpCreateFromSourceRequest =
+  | { input: string; kind?: McpCreateSourceKind }
+  | McpCreateFromTargetRequest;
 
 export interface McpCreateFromSourceResult extends McpImportResult {
   detectedKind: McpDetectedSourceKind;
