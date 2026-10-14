@@ -9,12 +9,12 @@ import {
   CoreMcpLibraryService,
   CorePluginLibraryService,
   getPluginLibraryFilePath,
+  initDatabase,
   resetRuntimePaths,
   runCli,
 } from "@prompthub/core";
 import type { PluginLibraryFile } from "@prompthub/shared/types/plugin";
-
-const WORKSPACE_SYNC_TEST_TIMEOUT_MS = 15_000;
+import { MCP_STORAGE_SNAPSHOT_FILE } from "@prompthub/core/mcp-storage-snapshot";
 
 import { makeTempRoot } from "./helpers/cli-harness";
 
@@ -46,8 +46,10 @@ function withRuntimePaths<T>(rootDir: string, run: () => T): T {
     platform: process.platform,
   });
   try {
+    initDatabase();
     return run();
   } finally {
+    closeDatabase();
     resetRuntimePaths();
   }
 }
@@ -65,7 +67,7 @@ function seedMcpAndPluginLibraries(
       servers: [
         {
           id: "mcp-1",
-          name: "Docs MCP",
+          name: "docs-mcp",
           displayName: "Docs MCP",
           description: "Docs helper",
           transport: "stdio",
@@ -188,8 +190,9 @@ describe("CLI workspace sync snapshots", () => {
       expect(JSON.stringify(bundle)).not.toContain("cli-secret");
       const mcpLibraryAsset = bundle.payload.agentAssetFiles.mcp.find(
         (file: { relativePath: string }) =>
-          file.relativePath === "library.json",
+          file.relativePath === MCP_STORAGE_SNAPSHOT_FILE,
       );
+      expect(mcpLibraryAsset).toBeDefined();
       expect(
         Buffer.from(mcpLibraryAsset.contentBase64, "base64").toString("utf8"),
       ).not.toContain("cli-secret");
@@ -218,7 +221,6 @@ describe("CLI workspace sync snapshots", () => {
         },
       });
     },
-    WORKSPACE_SYNC_TEST_TIMEOUT_MS,
   );
 
   it(
@@ -263,7 +265,7 @@ describe("CLI workspace sync snapshots", () => {
         "--force-clear",
       ]);
 
-      expect(importResult.exitCode).toBe(0);
+      expect(importResult.exitCode, importResult.stderr).toBe(0);
       expect(importResult.stdout).toMatchObject({
         imported: true,
         prompts: 1,
@@ -282,7 +284,7 @@ describe("CLI workspace sync snapshots", () => {
       ]);
 
       const libraries = withRuntimePaths(targetRoot, () => ({
-        mcp: new CoreMcpLibraryService().read(),
+        mcp: new CoreMcpLibraryService().readForTransport(),
         plugin: new CorePluginLibraryService().read(),
         pluginNote: fs.readFileSync(
           path.join(
@@ -301,7 +303,6 @@ describe("CLI workspace sync snapshots", () => {
       ]);
       expect(libraries.pluginNote).toBe("plugin asset");
     },
-    WORKSPACE_SYNC_TEST_TIMEOUT_MS,
   );
 
   it(
@@ -385,7 +386,6 @@ describe("CLI workspace sync snapshots", () => {
         },
       });
     },
-    WORKSPACE_SYNC_TEST_TIMEOUT_MS,
   );
 
   it("falls back to sync manifest when a cloud endpoint has no status route", async () => {
@@ -574,6 +574,5 @@ describe("CLI workspace sync snapshots", () => {
         fs.readFileSync(path.join(sourceRuleRoot, "AGENTS.md"), "utf8"),
       ).toBe("# target changed externally");
     },
-    WORKSPACE_SYNC_TEST_TIMEOUT_MS,
   );
 });

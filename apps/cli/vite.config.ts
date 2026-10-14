@@ -20,6 +20,7 @@ export default defineConfig({
     maxWorkers: 4,
     minWorkers: 2,
     globalSetup: "./tests/global-setup.ts",
+    setupFiles: "./tests/setup.ts",
     // Real subprocess and SQLite workflows routinely exceed Vitest's 5s default.
     testTimeout: 30_000,
     hookTimeout: 30_000,

@@ -1393,7 +1393,7 @@ export class CoreMcpLibraryService {
     selectedKeys?: string[],
   ): McpEnvImportResult {
     const library = this.readForTransport();
-    const server = resolveServer(library, identifier);
+    const server = this.hydrateSelected(resolveServer(library, identifier));
     const result = buildMcpEnvImportResult(
       server,
       fs.readFileSync(envFilePath, "utf8"),

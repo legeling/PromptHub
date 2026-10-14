@@ -1,3 +1,11 @@
+import {
+  exportMcpStorageFiles,
+  restoreMcpStorageFiles,
+} from "../mcp-storage-file-snapshot";
+import {
+  exportAgentAssetDirectorySnapshot,
+  restoreAgentAssetDirectorySnapshot,
+} from "../agent-asset-file-snapshot";
 import fs from "fs";
 import path from "path";
 
@@ -11,16 +19,19 @@ import {
   type SkillDB,
 } from "../database";
 import { publishCanonicalPromptGraph } from "../canonical-prompt-graph-db";
-import { CoreMcpLibraryService, getMcpLibraryFilePath } from "../mcp-library";
+import { CoreMcpLibraryService } from "../mcp-library";
 import {
   CorePluginLibraryService,
   getPluginLibraryFilePath,
 } from "../plugin-library";
 import { coreRulesWorkspaceService } from "../rules-workspace-default";
 import { getImagesDir, getVideosDir } from "../runtime-paths";
-import { hasEncodedSkillSnapshots, SKILL_SNAPSHOT_SYNC_VERSION, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
+import {
+  hasEncodedSkillSnapshots,
+  SKILL_SNAPSHOT_SYNC_VERSION,
+  validateSkillFileSnapshots,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
-  AgentAssetFileSnapshot,
   AgentAssetFilesSnapshot,
   SyncSnapshot,
 } from "@prompthub/shared/types/sync";
@@ -30,7 +41,6 @@ import type {
   PromptVersion,
   SkillFileSnapshot,
 } from "@prompthub/shared/types";
-import type { McpLibraryFile } from "@prompthub/shared/types/mcp";
 import {
   mergeMcpLibraryFromTransport,
   redactMcpLibraryForTransport,
@@ -39,16 +49,6 @@ import { coreCliSkillService, type CliSkillService } from "./skill";
 
 const WORKSPACE_BUNDLE_KIND = "prompthub-cli-workspace";
 const WORKSPACE_BUNDLE_VERSION = 2;
-const MAX_AGENT_ASSET_FILE_BYTES = 5 * 1024 * 1024;
-const MAX_AGENT_ASSET_FILE_COUNT = 5000;
-const IGNORED_DIRECTORIES = new Set([
-  ".git",
-  "node_modules",
-  ".venv",
-  "__pycache__",
-  ".cache",
-]);
-
 export interface CliWorkspaceBundleV2 {
   kind: typeof WORKSPACE_BUNDLE_KIND;
   version: typeof WORKSPACE_BUNDLE_VERSION | 3;
@@ -111,92 +111,6 @@ function normalizeRelativePath(relativePath: string): string {
   return withoutPrefix;
 }
 
-function ensureInsideDirectory(rootDir: string, candidatePath: string): void {
-  const root = path.resolve(rootDir);
-  const candidate = path.resolve(candidatePath);
-  if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) {
-    throw new Error(
-      `Refusing to write outside agent asset directory: ${candidate}`,
-    );
-  }
-}
-
-function exportAgentAssetDirectorySnapshot(
-  rootDir: string,
-): AgentAssetFileSnapshot[] {
-  if (!fs.existsSync(rootDir)) {
-    return [];
-  }
-
-  const files: AgentAssetFileSnapshot[] = [];
-  const queue = [path.resolve(rootDir)];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current) break;
-
-    const entries = fs.readdirSync(current, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (!IGNORED_DIRECTORIES.has(entry.name)) {
-          queue.push(fullPath);
-        }
-        continue;
-      }
-      if (!entry.isFile()) {
-        continue;
-      }
-
-      const stat = fs.statSync(fullPath);
-      if (stat.size > MAX_AGENT_ASSET_FILE_BYTES) {
-        throw new Error(`Agent asset file exceeds sync limit: ${entry.name}`);
-      }
-      if (files.length >= MAX_AGENT_ASSET_FILE_COUNT) {
-        throw new Error(
-          `Agent asset file count exceeds sync limit: ${rootDir}`,
-        );
-      }
-
-      files.push({
-        relativePath: normalizeRelativePath(path.relative(rootDir, fullPath)),
-        contentBase64: fs.readFileSync(fullPath).toString("base64"),
-        size: stat.size,
-      });
-    }
-  }
-  return files;
-}
-
-function restoreAgentAssetDirectorySnapshot(
-  rootDir: string,
-  files: AgentAssetFileSnapshot[],
-): void {
-  const tempDir = `${rootDir}.sync-tmp-${process.pid}-${Date.now()}`;
-  try {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    fs.mkdirSync(tempDir, { recursive: true });
-
-    for (const file of files) {
-      const relativePath = normalizeRelativePath(file.relativePath);
-      const targetPath = path.join(tempDir, ...relativePath.split("/"));
-      ensureInsideDirectory(tempDir, targetPath);
-      const content = Buffer.from(file.contentBase64, "base64");
-      if (content.length !== file.size) {
-        throw new Error(`Agent asset file size mismatch: ${relativePath}`);
-      }
-      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-      fs.writeFileSync(targetPath, content);
-    }
-
-    fs.rmSync(rootDir, { recursive: true, force: true });
-    fs.mkdirSync(path.dirname(rootDir), { recursive: true });
-    fs.renameSync(tempDir, rootDir);
-  } catch (error) {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    throw error;
-  }
-}
-
 function readMediaDirectory(dir: string): Record<string, string> | undefined {
   if (!fs.existsSync(dir)) {
     return undefined;
@@ -233,9 +147,7 @@ function writeMediaDirectory(
 }
 
 function createAgentAssetFilesSnapshot(): AgentAssetFilesSnapshot | undefined {
-  const mcp = redactMcpAssetFiles(
-    exportAgentAssetDirectorySnapshot(path.dirname(getMcpLibraryFilePath())),
-  );
+  const mcp = exportMcpStorageFiles();
   const plugins = exportAgentAssetDirectorySnapshot(
     path.dirname(getPluginLibraryFilePath()),
   );
@@ -243,63 +155,6 @@ function createAgentAssetFilesSnapshot(): AgentAssetFilesSnapshot | undefined {
   if (mcp.length > 0) snapshot.mcp = mcp;
   if (plugins.length > 0) snapshot.plugins = plugins;
   return Object.keys(snapshot).length > 0 ? snapshot : undefined;
-}
-
-function encodeMcpLibraryAssetSnapshot(
-  library: McpLibraryFile,
-  original: AgentAssetFileSnapshot,
-  redactValues = true,
-): AgentAssetFileSnapshot {
-  const content = Buffer.from(
-    `${JSON.stringify(
-      redactValues ? redactMcpLibraryForTransport(library) : library,
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-  return {
-    ...original,
-    contentBase64: content.toString("base64"),
-    size: content.length,
-  };
-}
-
-function redactMcpAssetFiles(
-  files: AgentAssetFileSnapshot[],
-): AgentAssetFileSnapshot[] {
-  return files.map((file) => {
-    if (file.relativePath !== "library.json") return file;
-    try {
-      const library = JSON.parse(
-        Buffer.from(file.contentBase64, "base64").toString("utf8"),
-      ) as McpLibraryFile;
-      return encodeMcpLibraryAssetSnapshot(library, file);
-    } catch {
-      return file;
-    }
-  });
-}
-
-function mergeMcpAssetFiles(
-  files: AgentAssetFileSnapshot[],
-  local: McpLibraryFile,
-): AgentAssetFileSnapshot[] {
-  return files.map((file) => {
-    if (file.relativePath !== "library.json") return file;
-    try {
-      const incoming = JSON.parse(
-        Buffer.from(file.contentBase64, "base64").toString("utf8"),
-      ) as McpLibraryFile;
-      return encodeMcpLibraryAssetSnapshot(
-        mergeMcpLibraryFromTransport(local, incoming),
-        file,
-        false,
-      );
-    } catch {
-      return file;
-    }
-  });
 }
 
 export function createCliWorkspaceSummary(
@@ -333,7 +188,10 @@ async function collectSkillFilesSnapshot(
   const skills = skillDb.getAll();
   const skillFiles: Record<string, SkillFileSnapshot[]> = {};
   for (const skill of skills) {
-    const files = await skillService.readCurrentFilesSnapshot(skillDb, skill.id);
+    const files = await skillService.readCurrentFilesSnapshot(
+      skillDb,
+      skill.id,
+    );
     if (files && files.length > 0) {
       skillFiles[skill.id] = files;
     }
@@ -364,7 +222,9 @@ export async function createCliWorkspaceBundle(
   const outputFormatItems = outputFormatDb?.list() ?? [];
   const exportedAt = new Date().toISOString();
   const payload: SyncSnapshot = {
-    version: hasEncodedSkillSnapshots({ skillFiles, skillVersions }) ? SKILL_SNAPSHOT_SYNC_VERSION : "prompthub-cli-workspace-v2",
+    version: hasEncodedSkillSnapshots({ skillFiles, skillVersions })
+      ? SKILL_SNAPSHOT_SYNC_VERSION
+      : "prompthub-cli-workspace-v2",
     exportedAt,
     prompts,
     promptVersions,
@@ -377,7 +237,7 @@ export async function createCliWorkspaceBundle(
     ...(promptRelations.length > 0 && { promptRelations }),
     ...(outputFormatItems.length > 0 && { outputFormatItems }),
     mcpLibrary: redactMcpLibraryForTransport(
-      new CoreMcpLibraryService().read(),
+      new CoreMcpLibraryService().readForTransport(),
     ),
     pluginLibrary: pluginSnapshot.library,
     pluginPackages: pluginSnapshot.packages,
@@ -412,10 +272,12 @@ function snapshotFromLegacyBundle(
 
 function assertSyncSnapshotShape(value: Record<string, unknown>): SyncSnapshot {
   const skillFiles = value.skillFiles as SyncSnapshot["skillFiles"];
-  for (const files of Object.values(skillFiles ?? {})) validateSkillFileSnapshots(files);
+  for (const files of Object.values(skillFiles ?? {}))
+    validateSkillFileSnapshots(files);
   if (Array.isArray(value.skillVersions)) {
     for (const version of value.skillVersions) {
-      if (version.filesSnapshot !== undefined) validateSkillFileSnapshots(version.filesSnapshot);
+      if (version.filesSnapshot !== undefined)
+        validateSkillFileSnapshots(version.filesSnapshot);
     }
   }
   if (
@@ -655,10 +517,7 @@ export async function restoreCliWorkspaceSnapshot(
 
   const currentMcpLibrary = new CoreMcpLibraryService().read();
   if (snapshot.agentAssetFiles?.mcp) {
-    restoreAgentAssetDirectorySnapshot(
-      path.dirname(getMcpLibraryFilePath()),
-      mergeMcpAssetFiles(snapshot.agentAssetFiles.mcp, currentMcpLibrary),
-    );
+    restoreMcpStorageFiles(snapshot.agentAssetFiles.mcp);
   }
   if (snapshot.agentAssetFiles?.plugins) {
     restoreAgentAssetDirectorySnapshot(

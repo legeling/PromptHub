@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { PassThrough } from "stream";
+import { MCP_REDACTED_VALUE } from "@prompthub/shared/utils/mcp-config";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -357,15 +358,17 @@ describe("standalone cli wiring", () => {
     expect(envImportRes.exitCode).toBe(0);
     expect(envImportRes.json.importedKeys).toEqual(["API_TOKEN"]);
     expect(envImportRes.json.server.env).toEqual({
-      API_TOKEN: "token-from-env",
+      API_TOKEN: MCP_REDACTED_VALUE,
     });
+    expect(envImportRes.joinedStdout).not.toContain("token-from-env");
 
     const listRes = await execCli([...withDataDir(root), "mcp", "list"]);
     expect(listRes.exitCode).toBe(0);
     expect(listRes.json[0]).toMatchObject({
       name: "docs",
-      env: { API_TOKEN: "token-from-env" },
+      env: { API_TOKEN: MCP_REDACTED_VALUE },
     });
+    expect(listRes.joinedStdout).not.toContain("token-from-env");
 
     const exportRes = await execCli([
       ...withDataDir(root),

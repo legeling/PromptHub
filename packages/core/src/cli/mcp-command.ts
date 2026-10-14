@@ -245,14 +245,15 @@ export async function handleMcpCommand(
         EXIT_CODES.USAGE,
       );
     }
-    emitSuccess(
-      context,
-      service.importEnvForServer(
-        identifier,
-        path.resolve(filePath),
-        selectedKeys,
-      ),
+    const result = service.importEnvForServer(
+      identifier,
+      path.resolve(filePath),
+      selectedKeys,
     );
+    emitSuccess(context, {
+      ...result,
+      server: redactMcpServerConfig(result.server),
+    });
     return;
   }
 
