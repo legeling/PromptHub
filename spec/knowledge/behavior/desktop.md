@@ -249,6 +249,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - 初期额度查询仅支持 Claude Code、Codex、Antigravity 和已有的 Kimi Code；其他平台统一暂不支持，不读其额度凭据、不发出额度请求、不进入托盘额度列表。Overview 和调用入口使用同一共享 capability registry，不将未知额度伪造为零。
 - 状态栏额度只能通过 Electron 原生 `Menu` / submenu 呈现；不得为额度创建 renderer `BrowserWindow`、vibrancy 外壳、自绘卡片、产品图标行、套餐胶囊、环形/条形进度或展开控件。macOS、Windows 与 Linux 共享同一原生菜单信息层级。
 - 原生状态栏菜单必须复用 Agent 工作区的进程级 usage service，不得创建第二套凭据读取、网络请求或额度缓存。
+- 进程级 usage service 显式复用 `network-proxy` 的请求入口；系统代理模式使用应用已配置的 Electron Session 网络栈，手动代理和直连保持各自既有策略。不得捕获代理初始化前的全局 fetch 或在请求失败时偷偷改为直连。Overview 区分网络失败、超时和 HTTP 错误，未知错误保留通用提示，不展示原始网络异常或凭据。
 - 菜单打开时先同步展示最近一次内存快照，再在后台通过 adapter 自身的 60 秒缓存更新；只有用户点击“刷新额度”时才绕过缓存。
 - 首次快照尚未完成时，菜单必须按稳定 registry 顺序同步展示每个已验证 Agent 的具名 loading 行；两路有界并发中的单项结果完成后，只替换对应 Agent 行，不等待其他 Provider。
 - 额度投影只覆盖已经验证的 usage adapter，Provider 请求最多两路并发。单个平台失败必须被隔离并显示明确的未连接、凭据过期或暂不可用状态，不得伪造成 `0%`。

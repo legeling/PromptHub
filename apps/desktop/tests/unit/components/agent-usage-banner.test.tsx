@@ -130,6 +130,23 @@ describe("AgentUsageBanner", () => {
     window.localStorage.clear();
   });
 
+  it.each([
+    ["network-error", "Cannot connect to the usage service. Check your network and PromptHub proxy settings."],
+    ["timeout", "The usage request timed out. Check your network and proxy, then retry."],
+    ["http-error", "The usage service returned an HTTP error. Try again later."],
+    ["unrecognized", "Usage data could not be retrieved right now. Try again."],
+  ])("explains %s and retries through the usage API", async (errorCode, message) => {
+    window.api.agent.getUsage = vi.fn()
+      .mockResolvedValueOnce(createQuota({ status: "unavailable", metrics: [], errorCode }))
+      .mockResolvedValueOnce(createQuota());
+    await renderWithI18n(<AgentUsageBanner agent={agent} />);
+    expect(await screen.findByText(message)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+    expect(await screen.findAllByRole("progressbar")).toHaveLength(2);
+    expect(window.api.agent.getUsage).toHaveBeenLastCalledWith(agent.id, { forceRefresh: true });
+  });
+
   it("renders compact window meters with countdowns and plan badge without a provider note", async () => {
     window.api.agent.getUsage = vi.fn().mockResolvedValue(createQuota());
 

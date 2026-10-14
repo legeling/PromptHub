@@ -399,6 +399,14 @@ export async function fetchWithNetworkProxy(
   input: FetchInput,
   init?: FetchInit,
 ): Promise<Response> {
+  // Node fetch does not consult the OS proxy/PAC configuration. Use the same
+  // Chromium session that receives the application's system proxy settings.
+  if (activeNetworkProxy.mode === "system") {
+    return session.defaultSession.fetch(
+      input instanceof URL ? input.href : input,
+      init,
+    );
+  }
   const targetUrl = getFetchUrl(input);
   const dispatcher = targetUrl ? getFetchDispatcher(targetUrl) : undefined;
   if (

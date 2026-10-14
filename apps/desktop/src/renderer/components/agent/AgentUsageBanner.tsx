@@ -271,6 +271,14 @@ function AgentUsageBannerContent({ agent }: { agent: ManagedAgentSummary }) {
     !hasError &&
     quota?.status === "unavailable" &&
     quota.errorCode === "antigravity-not-running";
+  const unavailableDescription =
+    quota?.errorCode === "network-error"
+      ? t("agents.usageTab.networkErrorDesc")
+      : quota?.errorCode === "timeout"
+        ? t("agents.usageTab.timeoutDesc")
+        : quota?.errorCode === "http-error"
+          ? t("agents.usageTab.httpErrorDesc")
+          : t("agents.usageTab.unavailableDesc");
 
   return (
     <section
@@ -325,7 +333,7 @@ function AgentUsageBannerContent({ agent }: { agent: ManagedAgentSummary }) {
       !hasCachedSuccess ? (
         <GuidedState
           title={t("agents.usageTab.unavailableTitle")}
-          description={t("agents.usageTab.unavailableDesc")}
+          description={unavailableDescription}
           onRetry={refresh}
         />
       ) : null}
