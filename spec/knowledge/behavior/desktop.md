@@ -90,7 +90,7 @@
 - Agent 的 Provider & Model 页面必须复用同一套供应商 workbench 布局和 normalized model contract；平台差异只能存在于 main-process native adapter，不得为每个 Agent 复制 renderer 页面。
 - 用户侧统一使用“供应商”术语；内部 `ProviderProfile` 类型、存储和 IPC 名称仅作为兼容合同保留，不得直接成为界面文案。
 - Agent 当前原生配置是只读投影，不得提供“导入当前配置”或“转为可编辑配置”入口。供应商侧栏保留“从 PromptHub 导入”和新增供应商操作；两者必须显示图标与本地化文字，固定宽度侧栏允许纵向滚动，但列表行、内边距和 focus state 不得制造横向滚动条。
-- 从 PromptHub 导入供应商时必须复用 Model Services 的供应商图标，并按模型标识推断模型家族图标；协议选项由 main process 计算 PromptHub 上游协议与目标 Agent 可写协议的直接交集。界面必须显示并提交所选协议，main 必须重新验证；官方 OpenAI 直连优先 Responses，第三方兼容端点优先 Chat/Completions，不得通过本地代理伪装协议转换。
+- 从 PromptHub 导入供应商时必须复用 Model Services 的供应商图标，并按模型标识推断模型家族图标；协议选项由 main process 计算 PromptHub 上游协议与目标 Agent 可写协议的直接交集。界面必须显示并提交所选协议，main 必须重新验证；官方 OpenAI 直连优先 Responses，支持 Chat/Completions 的目标对第三方兼容端点优先使用该协议。当前 Codex 原生直连仅接受 Responses，缺省 `wire_api` 同样按 Responses 解释；不得通过本地代理伪装协议转换。
 - 初期供应商/模型配置仅支持 Claude Code、Codex、Antigravity、Pi、OpenCode。`supported` 表示完整 Provider adapter，`partial` 表示已有原生模型适配；Antigravity 不因此获得第三方供应商接入能力。其他 Agent 在此能力上标为暂不支持，不开放配置、导入、激活或探活入口。共享 capability registry 是页面、主进程与托盘的唯一支持范围真源。
 - 收敛范围不删除既有供应商档案、密钥、原生文件或会话，不新增数据库迁移；旧档案仍可备份、导出或删除，但不可新建、修改或激活到暂不支持的平台。恢复支持只需更新 registry 并重新验证适配器，不需要数据回迁。其他 Agent 保留既有 Skill、MCP、Plugin、规则与配置文件能力；没有原生 Plugin 协议的平台不因本轮扩大支持。已有历史会话读取保留，不新增适配，也不作为初期交付门槛。
 - Antigravity 的 Skills/MCP root 仍是 `~/.gemini/config`，模型设置单独解析到 `~/.gemini/antigravity-cli/settings.json`。Claw family 只用于展示分组，各成员继续使用自己的 root、文件格式和安全边界，不得继承 OpenClaw adapter。

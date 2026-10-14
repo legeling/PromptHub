@@ -27,10 +27,11 @@ Pi derives:
 - CLI diagnostic: `pi --version`
 
 `auth.json`, sessions and package caches are excluded from editable config.
-Pi receives no `mcpRelativePath` because MCP is extension-provided rather than
-a native built-in configuration contract. The MCP manager's separate `pi`
-target is an explicit compatibility writer for selected `mcpServers` files;
-it does not change this Agent capability boundary or execute `pi-mcp-adapter`.
+Pi now declares `mcpRelativePath: mcp.json`; the current capability boundary is
+`FR-AGENT-111` in the Agent workbench requirements. Upstream Pi 1.2.0 defines
+native user/project MCP files, while the MCP manager preserves distinct
+adapter/shared candidates. File projection remains partial without native
+runtime consumption evidence and never executes/installs `pi-mcp-adapter`.
 
 ## `DES-PI-003`: Parameterized Pi-Family Session Reader
 

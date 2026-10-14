@@ -93,8 +93,7 @@ function createHarness(
     now: () => clock,
     env: overrides.env ?? {},
     lookupHost:
-      overrides.lookupHost ??
-      (async () => [{ address: "93.184.216.34" }]),
+      overrides.lookupHost ?? (async () => [{ address: "93.184.216.34" }]),
     hooks: overrides.hooks,
   });
   return {
@@ -118,7 +117,7 @@ function upsertInput(
     providerId: "deepseek",
     name: "DeepSeek",
     baseUrl: "https://api.deepseek.com/v1",
-    wireApi: "chat",
+    wireApi: "responses",
     ...overrides,
   };
 }
@@ -206,10 +205,7 @@ describe("agent codex provider service", () => {
           "",
         ].join("\n"),
       );
-      await harness.secretStore.write(
-        "codex-provider:managed",
-        MANAGED_KEY,
-      );
+      await harness.secretStore.write("codex-provider:managed", MANAGED_KEY);
 
       const list = await harness.service.listProviders("codex");
       expect(list.activeProvider).toBe("work");
@@ -234,7 +230,7 @@ describe("agent codex provider service", () => {
         hasKey: true,
         isActive: false,
         profileModel: null,
-        wireApi: "chat",
+        wireApi: "responses",
       });
 
       const plain = list.providers.find((entry) => entry.id === "plain");
@@ -284,13 +280,9 @@ describe("agent codex provider service", () => {
           "",
         ].join("\n"),
       );
-      await harness.secretStore.write(
-        "codex-provider:managed",
-        MANAGED_KEY,
-      );
+      await harness.secretStore.write("codex-provider:managed", MANAGED_KEY);
 
-      const inspection =
-        await harness.service.inspectMigrationSources("codex");
+      const inspection = await harness.service.inspectMigrationSources("codex");
 
       expect(inspection.defaultModel).toBe("gpt-5.4");
       expect(inspection.nativeDigest).toMatch(/^[a-f0-9]{64}$/);
@@ -347,9 +339,7 @@ describe("agent codex provider service", () => {
       const saved = await fs.readFile(harness.configPath, "utf8");
       // Comments, unrelated top-level keys, other providers, sub-tables and
       // profiles survive byte-for-byte.
-      expect(saved).toContain(
-        "# User Codex configuration - keep this comment",
-      );
+      expect(saved).toContain("# User Codex configuration - keep this comment");
       expect(saved).toContain('model_reasoning_effort = "high"');
       expect(saved).toContain(
         "# built-in openai provider reads auth.json; do not touch",
@@ -362,10 +352,8 @@ describe("agent codex provider service", () => {
       expect(saved).toContain("[model_providers.deepseek]");
       expect(saved).toContain('name = "DeepSeek"');
       expect(saved).toContain('base_url = "https://api.deepseek.com/v1"');
-      expect(saved).toContain('wire_api = "chat"');
-      expect(saved).toContain(
-        `experimental_bearer_token = "${MANAGED_KEY}"`,
-      );
+      expect(saved).toContain('wire_api = "responses"');
+      expect(saved).toContain(`experimental_bearer_token = "${MANAGED_KEY}"`);
       expect(saved).toContain("[profiles.deepseek]");
       expect(saved).toContain('model = "deepseek-chat"');
 
@@ -374,9 +362,7 @@ describe("agent codex provider service", () => {
         harness.secretStore.read("codex-provider:deepseek"),
       ).resolves.toBe(MANAGED_KEY);
 
-      const created = list.providers.find(
-        (entry) => entry.id === "deepseek",
-      );
+      const created = list.providers.find((entry) => entry.id === "deepseek");
       expect(created).toMatchObject({
         keySource: "managed",
         hasKey: true,
@@ -417,9 +403,7 @@ describe("agent codex provider service", () => {
         await expect(
           harness.service.upsertProvider(upsertInput({ providerId })),
         ).rejects.toThrow("agent-codex-provider:reserved-provider-id");
-        expect(await fs.readFile(harness.configPath, "utf8")).toBe(
-          BASE_CONFIG,
-        );
+        expect(await fs.readFile(harness.configPath, "utf8")).toBe(BASE_CONFIG);
       },
     );
 
@@ -476,12 +460,13 @@ describe("agent codex provider service", () => {
         ),
       ).rejects.toThrow("agent-codex-provider:invalid-wire-api");
       await expect(
+        harness.service.upsertProvider(upsertInput({ wireApi: "chat" })),
+      ).rejects.toThrow("agent-codex-provider:invalid-wire-api");
+      await expect(
         harness.service.upsertProvider(upsertInput({ name: "  " })),
       ).rejects.toThrow("agent-codex-provider:invalid-name");
       await expect(
-        harness.service.upsertProvider(
-          upsertInput({ name: "x".repeat(81) }),
-        ),
+        harness.service.upsertProvider(upsertInput({ name: "x".repeat(81) })),
       ).rejects.toThrow("agent-codex-provider:invalid-name");
       await expect(
         harness.service.upsertProvider(
@@ -512,14 +497,14 @@ describe("agent codex provider service", () => {
           providerId: "work",
           name: "Work Renamed",
           baseUrl: "https://gateway2.example.com/v1",
-          wireApi: "chat",
+          wireApi: "responses",
         }),
       );
 
       const saved = await fs.readFile(harness.configPath, "utf8");
       expect(saved).toContain('name = "Work Renamed"');
       expect(saved).toContain('base_url = "https://gateway2.example.com/v1"');
-      expect(saved).toContain('wire_api = "chat"');
+      expect(saved).toContain('wire_api = "responses"');
       // env_key auth is preserved and no bearer token appears.
       expect(saved).toContain('env_key = "WORK_API_KEY"');
       expect(saved).not.toContain("experimental_bearer_token");
@@ -588,9 +573,7 @@ describe("agent codex provider service", () => {
       await fs.writeFile(harness.configPath, BASE_CONFIG);
 
       await expect(
-        harness.service.upsertProvider(
-          upsertInput({ apiKey: MANAGED_KEY }),
-        ),
+        harness.service.upsertProvider(upsertInput({ apiKey: MANAGED_KEY })),
       ).rejects.toThrow("agent-codex-provider:concurrent-change");
 
       // The external modification is preserved, our write never landed, and
@@ -640,9 +623,7 @@ describe("agent codex provider service", () => {
       });
 
       await expect(
-        harness.service.upsertProvider(
-          upsertInput({ apiKey: MANAGED_KEY }),
-        ),
+        harness.service.upsertProvider(upsertInput({ apiKey: MANAGED_KEY })),
       ).rejects.toThrow();
       expect(
         await fs
@@ -689,9 +670,7 @@ describe("agent codex provider service", () => {
       expect(saved).not.toContain("[profiles.work]");
       // Unrelated content is preserved.
       expect(saved).toContain("[profiles.solo]");
-      expect(saved).toContain(
-        "# User Codex configuration - keep this comment",
-      );
+      expect(saved).toContain("# User Codex configuration - keep this comment");
       expect(saved).toContain('model_provider = "openai"');
       await expect(
         harness.secretStore.has("codex-provider:work"),
@@ -792,28 +771,25 @@ describe("agent codex provider service", () => {
       "http://127.0.1.5:8080",
       "http://localhost:1234/v1",
       "http://[::1]:8080/v1",
-    ])(
-      "allows loopback target %j and issues the request",
-      async (baseUrl) => {
-        const harness = await createTestHarness([
-          "[model_providers.target]",
-          'name = "Target"',
-          `base_url = "${baseUrl}"`,
-          `experimental_bearer_token = "${INLINE_KEY}"`,
-        ]);
-        harness.fetchImpl.mockResolvedValue(
-          fakeResponse(200, { data: [{ id: "llama3" }] }),
-        );
+    ])("allows loopback target %j and issues the request", async (baseUrl) => {
+      const harness = await createTestHarness([
+        "[model_providers.target]",
+        'name = "Target"',
+        `base_url = "${baseUrl}"`,
+        `experimental_bearer_token = "${INLINE_KEY}"`,
+      ]);
+      harness.fetchImpl.mockResolvedValue(
+        fakeResponse(200, { data: [{ id: "llama3" }] }),
+      );
 
-        const result = await harness.service.testProvider("codex", "target");
-        expect(result.status).toBe("ok");
-        expect(result.modelCount).toBe(1);
-        expect(harness.fetchImpl).toHaveBeenCalledTimes(1);
-        expect(harness.fetchImpl.mock.calls[0][0]).toBe(
-          `${baseUrl.replace(/\/+$/, "")}/models`,
-        );
-      },
-    );
+      const result = await harness.service.testProvider("codex", "target");
+      expect(result.status).toBe("ok");
+      expect(result.modelCount).toBe(1);
+      expect(harness.fetchImpl).toHaveBeenCalledTimes(1);
+      expect(harness.fetchImpl.mock.calls[0][0]).toBe(
+        `${baseUrl.replace(/\/+$/, "")}/models`,
+      );
+    });
 
     it("allows hosts resolving to loopback addresses", async () => {
       const harness = await createTestHarness(

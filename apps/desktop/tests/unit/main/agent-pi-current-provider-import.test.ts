@@ -2,10 +2,14 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parse } from "jsonc-parser";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { importCurrentPiProvider } from "../../../src/main/services/agent-pi-current-provider-import";
 import { inspectAgentModelConfig } from "../../../src/main/services/agent-model-config";
+// This fixture owns the refreshed cache, not a developer's global installation.
+vi.mock("../../../src/main/services/agent-pi-native-catalog", () => ({
+  readPiNativeCatalog: async () => ({}),
+}));
 
 const temporaryRoots: string[] = [];
 

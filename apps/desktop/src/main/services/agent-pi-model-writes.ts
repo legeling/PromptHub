@@ -12,6 +12,7 @@ import type {
 } from "@prompthub/shared/types";
 
 import { fileExists, readTextConfig } from "./agent-model-config-io";
+import { PI_MODEL_CONFIG_FILES } from "./agent-pi-model-sources";
 import {
   assertConfigUnchanged,
   atomicWrite,
@@ -29,13 +30,9 @@ import {
  * returned from any function in this module.
  */
 
-const PI_MODELS_PATH = "models.json";
-const PI_AUTH_PATH = "auth.json";
-
 const PROVIDER_ID_PATTERN = /^[a-z0-9]([a-z0-9._-]{0,126}[a-z0-9])?$/;
 const MODEL_ID_MAX_LENGTH = 512;
 const MAX_SECRET_LENGTH = 10 * 1024;
-const MAX_MODELS_PER_PROVIDER = 64;
 
 const PI_APIS = new Set([
   "openai-completions",
@@ -142,7 +139,6 @@ function normalizeProviderInput(input: AgentPiCustomProviderInput): {
   if (!Array.isArray(input.models) || input.models.length === 0) {
     fail("MODELS_REQUIRED");
   }
-  if (input.models.length > MAX_MODELS_PER_PROVIDER) fail("MODELS_TOO_MANY");
   const models = input.models.map(normalizeModelInput);
   const ids = new Set(models.map((model) => String(model.id)));
   if (ids.size !== models.length) fail("MODEL_ID_DUPLICATE");
@@ -298,7 +294,9 @@ export async function addPiCustomProvider(
   options: PiWriteOptions,
 ): Promise<AgentPiWriteResult> {
   const { providerId, value } = normalizeProviderInput(input);
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const existing = providersOf(parseJsonObject(context.raw));
   if (isRecord(existing[providerId])) fail("PROVIDER_EXISTS");
   return applyJsonWrite(
@@ -319,7 +317,9 @@ export async function addPiProviderOverride(
   const providerId = requireProviderId(providerIdInput);
   const modelId = requireModelId(modelIdInput);
 
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const existing = providersOf(parseJsonObject(context.raw));
   if (isRecord(existing[providerId])) fail("PROVIDER_EXISTS");
   return applyJsonWrite(
@@ -342,9 +342,11 @@ export async function importPiCustomProvider(
   const { providerId, value } = normalizeProviderInput(input);
   const managedSecret = requireSecret(secret);
   const modelsContext = await readJsonTarget(
-    path.join(rootPath, PI_MODELS_PATH),
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
   );
-  const authContext = await readJsonTarget(path.join(rootPath, PI_AUTH_PATH));
+  const authContext = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.auth),
+  );
   if (isRecord(providersOf(parseJsonObject(modelsContext.raw))[providerId])) {
     fail("PROVIDER_EXISTS");
   }
@@ -393,7 +395,9 @@ export async function updatePiCustomProvider(
   if (!baseUrl) fail("ENDPOINT_INVALID");
   if (!PI_APIS.has(input.api)) fail("API_INVALID");
 
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const current = parseJsonObject(context.raw);
   const provider = providersOf(current)[providerId];
   if (!isRecord(provider)) fail("PROVIDER_NOT_FOUND");
@@ -420,12 +424,13 @@ export async function addPiCustomModel(
 ): Promise<AgentPiWriteResult> {
   const providerId = requireProviderId(providerIdInput);
   const entry = normalizeModelInput(model);
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const current = parseJsonObject(context.raw);
   const provider = providersOf(current)[providerId];
   if (!isRecord(provider)) fail("PROVIDER_NOT_FOUND");
   const models = Array.isArray(provider.models) ? provider.models : [];
-  if (models.length >= MAX_MODELS_PER_PROVIDER) fail("MODELS_TOO_MANY");
   if (models.some((item) => isRecord(item) && item.id === entry.id)) {
     fail("MODEL_ID_DUPLICATE");
   }
@@ -473,7 +478,9 @@ export async function updatePiCustomModel(
   const providerId = requireProviderId(providerIdInput);
   const originalId = requireModelId(model.originalId);
   const normalized = normalizeModelInput(model);
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const current = parseJsonObject(context.raw);
   const provider = providersOf(current)[providerId];
   if (!isRecord(provider)) fail("PROVIDER_NOT_FOUND");
@@ -531,7 +538,9 @@ export async function removePiCustomModel(
 ): Promise<AgentPiWriteResult> {
   const providerId = requireProviderId(providerIdInput);
   const modelId = requireModelId(modelIdInput);
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const current = parseJsonObject(context.raw);
   const providers = providersOf(current);
   const provider = providers[providerId];
@@ -574,7 +583,9 @@ export async function removePiCustomProvider(
   options: PiWriteOptions,
 ): Promise<AgentPiWriteResult> {
   const providerId = requireProviderId(providerIdInput);
-  const context = await readJsonTarget(path.join(rootPath, PI_MODELS_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.models),
+  );
   const current = parseJsonObject(context.raw);
   if (!isRecord(providersOf(current)[providerId])) fail("PROVIDER_NOT_FOUND");
   return applyJsonWrite(
@@ -594,7 +605,9 @@ export async function setPiCredential(
 ): Promise<AgentPiWriteResult> {
   const providerId = requireProviderId(providerIdInput);
   const managedSecret = requireSecret(secret);
-  const context = await readJsonTarget(path.join(rootPath, PI_AUTH_PATH));
+  const context = await readJsonTarget(
+    path.join(rootPath, PI_MODEL_CONFIG_FILES.auth),
+  );
   return applyJsonWrite(
     context,
     options,

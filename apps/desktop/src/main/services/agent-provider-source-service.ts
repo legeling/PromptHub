@@ -13,6 +13,7 @@ import type {
 } from "@prompthub/shared";
 import { normalizeAgentProviderEndpoint } from "@prompthub/shared/utils/agent-provider-config";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
+import { getAgentDirectProviderProtocols } from "@prompthub/shared/utils/agent-provider-protocol-route";
 
 interface AgentProviderSourceServiceOptions {
   readConfig: () => CoreAIConfigFile;
@@ -46,13 +47,6 @@ const IMPORT_PLATFORM_IDS = new Set([
   "pi",
   "qwen",
 ]);
-
-const OPENAI_PROTOCOL_OPTIONS: Readonly<Record<string, readonly string[]>> = {
-  codex: ["openai-chat", "openai-responses"],
-  opencode: ["openai-chat", "openai-responses"],
-  pi: ["openai-completions", "openai-responses"],
-  qwen: ["openai-chat"],
-};
 
 function requireRequestId(value: unknown): string {
   if (
@@ -98,7 +92,9 @@ function protocolOptionsFor(
     return [];
   switch (provider.apiProtocol) {
     case "openai": {
-      const protocols = [...(OPENAI_PROTOCOL_OPTIONS[platformId] ?? [])];
+      const protocols = getAgentDirectProviderProtocols(platformId).filter(
+        (protocol) => protocol.startsWith("openai-"),
+      );
       return isOfficialOpenAIProvider(provider)
         ? protocols.reverse()
         : protocols;

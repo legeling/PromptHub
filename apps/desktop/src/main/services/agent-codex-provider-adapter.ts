@@ -211,10 +211,10 @@ function comparableState(
   const envKey = getString(active.provider, "env_key");
   const endpoint = sanitizeEndpoint(getString(active.provider, "base_url"));
   const protocol =
-    active.provider && getString(active.provider, "wire_api") === "responses"
-      ? "responses"
+    active.provider && getString(active.provider, "wire_api") === "chat"
+      ? "chat"
       : active.provider
-        ? "chat"
+        ? "responses"
         : "platform-native";
   const values: Record<string, AgentProviderComparableValue> = {
     provider: active.providerId,
@@ -278,7 +278,6 @@ function normalizedProviderId(profile: AgentProviderProfile): string | null {
 function normalizedProtocol(
   value: string,
 ): "chat" | "responses" | "platform-native" | null {
-  if (value === "chat" || value === "openai-chat") return "chat";
   if (value === "responses" || value === "openai-responses") return "responses";
   if (value === "platform-native" || value === "native")
     return "platform-native";

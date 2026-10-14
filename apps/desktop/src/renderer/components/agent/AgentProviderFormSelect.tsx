@@ -103,7 +103,8 @@ export function protocolOptions(
     ];
   }
 
-  options.push({ value: "openai-chat", label: "OpenAI Chat" });
+  if (platformId !== "codex")
+    options.push({ value: "openai-chat", label: "OpenAI Chat" });
   if (platformId !== "qwen") {
     options.push({ value: "openai-responses", label: "OpenAI Responses" });
   }

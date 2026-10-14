@@ -92,6 +92,21 @@ function backupEncryption() {
 }
 
 describe("Codex unified Provider Profile adapter", () => {
+  it("defaults a native custom provider without wire_api to Responses", async () => {
+    const root = await temporaryRoot();
+    await fs.writeFile(
+      path.join(root, "config.toml"),
+      'model = "audit-model"\nmodel_provider = "audit"\n[model_providers.audit]\nbase_url = "https://example.test/v1"\n',
+    );
+    const adapter = createAgentCodexProviderAdapter({
+      backupRoot: path.join(root, "backups"),
+      backupEncryption: backupEncryption(),
+      secretStore: secretStore(),
+    });
+    expect((await adapter.inspect(context(root))).values.protocol).toBe(
+      "responses",
+    );
+  });
   it("imports the active native provider without exposing inline credentials", async () => {
     const root = await temporaryRoot();
     await fs.writeFile(
@@ -413,7 +428,7 @@ describe("Codex unified Provider Profile adapter", () => {
     await expect(
       adapter.testConnection?.(context(root), {
         profile: profile({
-          protocol: "chat",
+          protocol: "responses",
           endpoint: "https://environment.example.com/v1",
           config: {
             providerId: "environment",
@@ -428,7 +443,7 @@ describe("Codex unified Provider Profile adapter", () => {
       endpoint: "https://environment.example.com/v1",
       credential: "environment-secret",
       model: "gpt-5.4",
-      protocol: "chat",
+      protocol: "responses",
     });
   });
 
@@ -564,7 +579,7 @@ describe("Codex unified Provider Profile adapter", () => {
     await expect(adapter.inspect(context(root))).resolves.toMatchObject({
       values: {
         provider: "minimal",
-        protocol: "chat",
+        protocol: "responses",
         model: null,
         credentialStatus: "missing",
       },
@@ -573,7 +588,7 @@ describe("Codex unified Provider Profile adapter", () => {
       profile: {
         name: "minimal",
         providerKind: "openai-compatible",
-        protocol: "chat",
+        protocol: "responses",
       },
       modelMappings: [],
       warnings: [],
@@ -739,11 +754,8 @@ describe("Codex unified Provider Profile adapter", () => {
       modelMappings: mappings(),
       baseline: null,
     });
-    expect(chatPlan.decisions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ field: "protocol", desired: "chat" }),
-      ]),
-    );
+    expect(chatPlan.canApply).toBe(false);
+    expect(chatPlan.blockedReasons).toContain("provider-protocol-unsupported");
   });
 
   it("atomically activates and verifies a managed provider while preserving unrelated config", async () => {

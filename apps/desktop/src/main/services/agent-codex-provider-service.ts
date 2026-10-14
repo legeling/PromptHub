@@ -148,8 +148,8 @@ function normalizeProviderName(name: string): string {
   return trimmed;
 }
 
-function normalizeWireApi(wireApi: string): "chat" | "responses" {
-  if (wireApi !== "chat" && wireApi !== "responses") {
+function normalizeWireApi(wireApi: string): "responses" {
+  if (wireApi !== "responses") {
     throw new AgentCodexProviderError("invalid-wire-api");
   }
   return wireApi;
@@ -314,8 +314,7 @@ export function createAgentCodexProviderService(
         id,
         name: getString(entry, "name") ?? id,
         baseUrl: sanitizeEndpoint(getString(entry, "base_url")) ?? "",
-        wireApi:
-          getString(entry, "wire_api") === "responses" ? "responses" : "chat",
+        wireApi: getString(entry, "wire_api") === "chat" ? "chat" : "responses",
         envKey,
         keySource: managed ? "managed" : envKey ? "env" : "none",
         hasKey: managed || Boolean(envKey) || hasInlineToken,
@@ -365,8 +364,7 @@ export function createAgentCodexProviderService(
         providerId,
         name: getString(entry, "name") ?? providerId,
         baseUrl: sanitizeEndpoint(getString(entry, "base_url")) ?? "",
-        wireApi:
-          getString(entry, "wire_api") === "responses" ? "responses" : "chat",
+        wireApi: getString(entry, "wire_api") === "chat" ? "chat" : "responses",
         envKey,
         credentialSource,
         credential: managedCredential ?? inlineCredential,
@@ -661,6 +659,13 @@ export function createAgentCodexProviderService(
       throw new AgentCodexProviderError("provider-not-found");
     }
 
+    if (providerId !== "openai")
+      normalizeWireApi(
+        getString(
+          getRecord(getRecord(data, "model_providers"), providerId),
+          "wire_api",
+        ) ?? "responses",
+      );
     const nextText = setTopLevelString(
       original ?? "",
       "model_provider",

@@ -13,7 +13,7 @@ const CREATED_PROFILE: AgentProviderProfilePublic = {
   platformId: "codex",
   name: "Work Gateway",
   providerKind: "openai-compatible",
-  protocol: "openai-chat",
+  protocol: "openai-responses",
   endpoint: "https://gateway.example.com/v1",
   config: { providerId: "provider-work" },
   source: "import",
@@ -124,8 +124,8 @@ describe("Agent Provider source service", () => {
       expect.objectContaining({
         sourceId: "provider-work",
         name: "Work Gateway",
-        protocol: "openai-chat",
-        protocols: ["openai-chat", "openai-responses"],
+        protocol: "openai-responses",
+        protocols: ["openai-responses"],
         compatible: true,
         credentialReady: true,
         models: [
@@ -164,7 +164,7 @@ describe("Agent Provider source service", () => {
     expect(service.list("codex")[0]).toEqual(
       expect.objectContaining({
         protocol: "openai-responses",
-        protocols: ["openai-responses", "openai-chat"],
+        protocols: ["openai-responses"],
       }),
     );
     expect(service.list("opencode")[0]).toEqual(
@@ -298,7 +298,7 @@ describe("Agent Provider source service", () => {
       platformId: "codex",
       sourceId: "provider-work",
       modelId: "model-chat",
-      protocol: "openai-chat",
+      protocol: "openai-responses",
     });
 
     expect(create).toHaveBeenCalledWith(
@@ -317,7 +317,7 @@ describe("Agent Provider source service", () => {
       platformId: "codex",
       sourceId: "provider-work",
       modelId: "model-chat",
-      protocol: "openai-chat",
+      protocol: "openai-responses",
     });
 
     expect(create).toHaveBeenCalledWith(
@@ -633,7 +633,7 @@ describe("Agent Provider source service", () => {
         platformId: "codex",
         sourceId: "provider-work",
         modelId: "missing",
-        protocol: "openai-chat",
+        protocol: "openai-responses",
       }),
     ).rejects.toThrow("AGENT_PROVIDER_SOURCE_MODEL_NOT_FOUND");
     await expect(

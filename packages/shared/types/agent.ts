@@ -392,6 +392,8 @@ export interface AgentModelCatalogEntry {
   id: string;
   name?: string;
   api?: string;
+  /** Effective endpoint without URL credentials, query or fragment. */
+  endpoint?: string | null;
   reasoning?: boolean;
   input?: string[];
   contextWindow?: number;

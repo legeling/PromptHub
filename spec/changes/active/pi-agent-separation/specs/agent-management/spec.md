@@ -17,10 +17,10 @@ names, executables and default roots.
 The Pi Agent MUST derive Skills, extensions, global instructions and editable
 non-secret configuration from `~/.pi/agent` or its resolved override.
 
-The Pi Agent MUST NOT claim native MCP support solely because an optional Pi
-extension can provide MCP. A separate MCP manager target may write an
-explicitly selected compatible `mcpServers` file, but that target MUST NOT be
-reported as a native Pi Agent capability or execute/install the adapter.
+The Pi Agent MUST distinguish native Pi 1.2.0 user/project MCP files from
+optional adapter/shared candidates, following `FR-AGENT-111` in the current
+workbench requirements. Configuration writing remains partial until native
+runtime consumption is verified; it MUST NOT execute/install an adapter.
 
 ## `FR-PI-003`: Bounded Read-Only Sessions
 
@@ -32,7 +32,8 @@ Pi's default root.
 ## `FR-PI-004`: Non-Secret Model Selection
 
 PromptHub MUST inspect and update Pi's `defaultProvider` and `defaultModel`
-selection in `settings.json` without reading or exposing authentication data.
+selection in `settings.json` without exposing authentication data. The main-only
+credential/catalog boundary is defined in the workbench Pi model catalog design.
 Writes MUST preserve unrelated JSONC fields, use backup plus atomic
 replacement, detect concurrent changes and verify the persisted result.
 

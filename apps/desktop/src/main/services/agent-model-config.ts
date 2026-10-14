@@ -10,7 +10,10 @@ import {
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { parseDocument } from "yaml";
 import { getAgentDefinitionById } from "@prompthub/shared/constants/agent-definitions";
-import { getAgentModelConfigPaths, getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
+import {
+  getAgentModelConfigPaths,
+  getAgentPrimaryModelConfigPath,
+} from "./agent-model-config-paths";
 
 import type {
   AgentCredentialStatus,
@@ -20,6 +23,7 @@ import type {
 } from "@prompthub/shared/types";
 
 import { inspectPiModelCatalog } from "./agent-pi-model-catalog";
+import { readOpenCodeConfigFiles } from "./agent-opencode-config-files";
 import {
   fileExists,
   readTextConfig,
@@ -894,14 +898,20 @@ export async function inspectAgentModelConfig(
   );
   if (!resolved) return emptyResult(context.agentId, "unsupported");
   if (!(await fileExists(resolved.absolutePath))) {
-    return emptyResult(context.agentId, "missing", {
+    const result = emptyResult(context.agentId, "missing", {
       adapter: jsonAdapterId(context.agentId),
       sourceRelativePath: resolved.relativePath,
       canSetModel: true,
     });
+    if (context.agentId === "pi")
+      result.modelCatalog = await inspectPiModelCatalog(context.rootPath);
+    return result;
   }
   try {
-    const data = parseJsonRecord(await readTextConfig(resolved.absolutePath));
+    const data =
+      context.agentId === "opencode"
+        ? (await readOpenCodeConfigFiles(context.rootPath)).config
+        : parseJsonRecord(await readTextConfig(resolved.absolutePath));
     const result = inspectJsonAdapter(
       context.agentId,
       data,

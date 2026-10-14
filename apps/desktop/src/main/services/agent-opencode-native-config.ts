@@ -5,7 +5,7 @@ import {
   type ParseError,
 } from "jsonc-parser";
 
-import { sanitizeEndpoint } from "./agent-model-config";
+import { sanitizeEndpoint } from "./agent-model-config-io";
 
 export type JsonRecord = Record<string, unknown>;
 export type OpenCodeAuthOwnership = "api" | "oauth" | "wellknown" | "missing";
@@ -168,6 +168,26 @@ function edit(raw: string, segments: (string | number)[], value: unknown) {
   );
 }
 
+export function renderOpenCodeSelection(
+  original: string | null,
+  providerId: string,
+  model: string,
+  secondaryModel: string | null,
+  inheritedSecondary = false,
+): string {
+  let next = edit(original ?? "{}\n", ["model"], `${providerId}/${model}`);
+  next = edit(
+    next,
+    ["small_model"],
+    secondaryModel
+      ? `${providerId}/${secondaryModel}`
+      : inheritedSecondary
+        ? ""
+        : undefined,
+  );
+  return next.endsWith("\n") ? next : `${next}\n`;
+}
+
 function existingModel(
   config: JsonRecord,
   providerId: string,
@@ -185,6 +205,7 @@ export function renderOpenCodeConfig(
   original: string | null,
   config: JsonRecord,
   desired: OpenCodeDirectProjection,
+  inheritedSecondary = false,
 ): string {
   let next = original ?? "{}\n";
   const providerPath = ["provider", desired.providerId];
@@ -212,13 +233,12 @@ export function renderOpenCodeConfig(
         modelId,
     });
   }
-  next = edit(next, ["model"], `${desired.providerId}/${desired.model}`);
-  next = edit(
+  next = renderOpenCodeSelection(
     next,
-    ["small_model"],
-    desired.secondaryModel
-      ? `${desired.providerId}/${desired.secondaryModel}`
-      : undefined,
+    desired.providerId,
+    desired.model,
+    desired.secondaryModel,
+    inheritedSecondary,
   );
   parseOpenCodeConfig(next);
   return next.endsWith("\n") ? next : `${next}\n`;

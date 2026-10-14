@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
-import { getAgentModelConfigPaths, getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
+import { getAgentModelConfigPaths } from "./agent-model-config-paths";
+import { readOpenCodeConfigFiles } from "./agent-opencode-config-files";
 
 import {
   reconcileAgentProviderState,
@@ -28,7 +29,6 @@ import {
   readEncryptedConfigBackup,
 } from "./agent-encrypted-config-backup";
 import {
-  assertConfigUnchanged,
   atomicWrite,
   fileExists,
   readTextConfig,
@@ -37,10 +37,10 @@ import {
 import {
   isJsonRecord,
   parseOpenCodeAuth,
-  parseOpenCodeConfig,
   projectOpenCodeState,
   renderOpenCodeAuth,
   renderOpenCodeConfig,
+  renderOpenCodeSelection,
   type JsonRecord,
   type OpenCodeActiveProjection,
   type OpenCodeDirectProjection,
@@ -82,6 +82,7 @@ interface OpenCodeNativeState {
   configRaw: string | null;
   authRaw: string | null;
   config: JsonRecord;
+  inherited: JsonRecord;
   auth: JsonRecord;
   projection: OpenCodeActiveProjection;
   paths: OpenCodePaths;
@@ -89,18 +90,31 @@ interface OpenCodeNativeState {
 }
 
 interface DesiredOpenCodeProvider extends OpenCodeDirectProjection {
+  native: false;
   protocol: OpenCodeProtocol;
   secret: string;
 }
+
+interface DesiredOpenCodeNative {
+  native: true;
+  providerId: string;
+  model: string;
+  secondaryModel: string | null;
+  values: Record<string, AgentProviderComparableValue>;
+}
+
+type DesiredOpenCode = DesiredOpenCodeProvider | DesiredOpenCodeNative;
 
 interface OpenCodeBackupBundle {
   version: 1;
   configRelativePath: string;
   config: string | null;
   auth: string | null;
+  /** Selection-only operations must never restore platform-owned credentials. */
+  preserveAuth?: true;
 }
 
-const ADAPTER_VERSION = "opencode-provider-profile-v1";
+const ADAPTER_VERSION = "opencode-provider-profile-v2";
 const PROVIDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const MAX_NAME_LENGTH = 80;
 const MAX_MODEL_LENGTH = 512;
@@ -151,25 +165,6 @@ function requireContext(
   };
 }
 
-async function resolvePaths(
-  context: AgentProviderAdapterContext,
-  authPath?: string,
-): Promise<OpenCodePaths> {
-  const base = requireContext(context, authPath);
-  for (const relativePath of getAgentModelConfigPaths("opencode")) {
-    const configPath = path.join(base.rootPath, relativePath);
-    if (await fileExists(configPath)) {
-      return { ...base, configPath, configRelativePath: relativePath };
-    }
-  }
-  const configRelativePath = getAgentPrimaryModelConfigPath("opencode");
-  return {
-    ...base,
-    configPath: path.join(base.rootPath, configRelativePath),
-    configRelativePath,
-  };
-}
-
 async function readOptional(filePath: string): Promise<string | null> {
   return (await fileExists(filePath)) ? readTextConfig(filePath) : null;
 }
@@ -217,23 +212,35 @@ async function readNative(
   context: AgentProviderAdapterContext,
   authPath?: string,
 ): Promise<OpenCodeNativeState> {
-  const paths = await resolvePaths(context, authPath);
+  const base = requireContext(context, authPath);
   try {
-    const [configRaw, authRaw] = await Promise.all([
-      readOptional(paths.configPath),
-      readOptional(paths.authPath),
+    const [merged, authRaw] = await Promise.all([
+      readOpenCodeConfigFiles(base.rootPath),
+      readOptional(base.authPath),
     ]);
-    const config = configRaw === null ? {} : parseOpenCodeConfig(configRaw);
+    const paths = {
+      ...base,
+      configRelativePath: merged.selected.relativePath,
+      configPath: path.join(base.rootPath, merged.selected.relativePath),
+    };
+    const configRaw = merged.selected.raw;
+    const config = merged.config;
     const auth = authRaw === null ? {} : parseOpenCodeAuth(authRaw);
     const projection = projectOpenCodeState(config, auth);
     return {
       configRaw,
       authRaw,
       config,
+      inherited: merged.inherited,
       auth,
       projection,
       paths,
-      state: comparableState(paths, configRaw, authRaw, projection),
+      state: comparableState(
+        paths,
+        JSON.stringify(merged.files),
+        authRaw,
+        projection,
+      ),
     };
   } catch (error) {
     if (
@@ -288,14 +295,84 @@ function mappingByRoute(
   return matches.length === 1 ? matches[0] : null;
 }
 
+function resolveNativeSelection(
+  target: Pick<AgentProviderActivationInput, "profile" | "modelMappings">,
+  native: OpenCodeNativeState,
+): { blockedReasons: string[]; desired: DesiredOpenCodeNative | null } {
+  const { profile, modelMappings } = target;
+  const providerId = profile.config.providerId;
+  const primary = mappingByRoute(modelMappings, "primary");
+  const secondary = mappingByRoute(modelMappings, "secondary");
+  if (
+    typeof providerId !== "string" ||
+    !PROVIDER_ID_PATTERN.test(providerId) ||
+    !primary ||
+    !validText(primary.modelId, MAX_MODEL_LENGTH) ||
+    modelMappings.length > 2 ||
+    modelMappings.some(
+      (mapping) => Object.keys(mapping.parameters).length > 0,
+    ) ||
+    profile.providerKind !== "platform-native" ||
+    profile.secretRef ||
+    profile.source !== "native-import"
+  ) {
+    return {
+      blockedReasons: ["native-provider-state-mismatch"],
+      desired: null,
+    };
+  }
+  const model = primary.modelId;
+  const secondaryModel = secondary?.modelId ?? null;
+  const selected = {
+    ...native.config,
+    model: `${providerId}/${model}`,
+    small_model: secondaryModel ? `${providerId}/${secondaryModel}` : "",
+  };
+  const projection = projectOpenCodeState(selected, native.auth);
+  const providers = native.config.provider;
+  const provider = isJsonRecord(providers) ? providers[providerId] : undefined;
+  const models = isJsonRecord(provider) ? provider.models : undefined;
+  if (
+    projection.v2ProviderConfig ||
+    projection.credentialStatus === "missing" ||
+    projection.authOwnership !== profile.config.nativeAuthOwnership ||
+    projection.packageName !== profile.config.package ||
+    projection.endpoint !== profile.endpoint ||
+    (isJsonRecord(models) &&
+      (!Object.hasOwn(models, model) ||
+        (secondaryModel !== null && !Object.hasOwn(models, secondaryModel))))
+  ) {
+    return {
+      blockedReasons: ["native-provider-state-mismatch"],
+      desired: null,
+    };
+  }
+  return {
+    blockedReasons: [],
+    desired: {
+      native: true,
+      providerId,
+      model,
+      secondaryModel,
+      values: comparableState(native.paths, null, null, projection).values,
+    },
+  };
+}
+
 async function resolveDesired(
   target: Pick<AgentProviderActivationInput, "profile" | "modelMappings">,
   native: OpenCodeNativeState,
   secretStore: Pick<AgentSecretStore, "read">,
 ): Promise<{
   blockedReasons: string[];
-  desired: DesiredOpenCodeProvider | null;
+  desired: DesiredOpenCode | null;
 }> {
+  if (
+    target.profile.protocol === "platform-native" &&
+    target.profile.source === "native-import" &&
+    target.profile.providerKind === "platform-native"
+  )
+    return resolveNativeSelection(target, native);
   const blockedReasons: string[] = [];
   const profile = target.profile;
   const providerId =
@@ -320,7 +397,17 @@ async function resolveDesired(
   if (native.projection.v2ProviderConfig) {
     blockedReasons.push("opencode-v2-provider-config-unsupported");
   }
-  if (native.projection.authorizationHeaderConflict) {
+  const targetProjection = projectOpenCodeState(
+    { ...native.config, model: `${providerId}/${model}` },
+    native.auth,
+  );
+  if (
+    targetProjection.authOwnership === "oauth" ||
+    targetProjection.authOwnership === "wellknown"
+  ) {
+    blockedReasons.push("native-provider-auth-owned");
+  }
+  if (targetProjection.authorizationHeaderConflict) {
     blockedReasons.push("native-authorization-header-conflict");
   }
   if (!validText(profile.name.trim(), MAX_NAME_LENGTH)) {
@@ -381,6 +468,7 @@ async function resolveDesired(
   return {
     blockedReasons: [],
     desired: {
+      native: false,
       providerId,
       packageName: packageName as DesiredOpenCodeProvider["packageName"],
       endpoint,
@@ -394,9 +482,10 @@ async function resolveDesired(
 }
 
 function publicDesiredValues(
-  desired: DesiredOpenCodeProvider,
+  desired: DesiredOpenCode,
   configRelativePath: string,
 ): Record<string, AgentProviderComparableValue> {
+  if (desired.native === true) return desired.values;
   return {
     providerId: desired.providerId,
     package: desired.packageName,
@@ -456,12 +545,16 @@ function importPreview(
   };
 }
 
-function backupContent(native: OpenCodeNativeState): string {
+function backupContent(
+  native: OpenCodeNativeState,
+  preserveAuth: boolean,
+): string {
   return JSON.stringify({
     version: 1,
     configRelativePath: native.paths.configRelativePath,
     config: native.configRaw,
-    auth: native.authRaw,
+    auth: preserveAuth ? null : native.authRaw,
+    ...(preserveAuth ? { preserveAuth: true as const } : {}),
   } satisfies OpenCodeBackupBundle);
 }
 
@@ -478,7 +571,8 @@ function parseBackup(raw: string): OpenCodeBackupBundle {
     typeof value.configRelativePath !== "string" ||
     !getAgentModelConfigPaths("opencode").includes(value.configRelativePath) ||
     (value.config !== null && typeof value.config !== "string") ||
-    (value.auth !== null && typeof value.auth !== "string")
+    (value.auth !== null && typeof value.auth !== "string") ||
+    (value.preserveAuth !== undefined && value.preserveAuth !== true)
   ) {
     throw new Error("AGENT_OPENCODE_PROVIDER_BACKUP_INVALID");
   }
@@ -492,13 +586,15 @@ async function restoreBundle(
   const configPath = path.join(paths.rootPath, bundle.configRelativePath);
   await Promise.all([
     restoreModelConfig(configPath, bundle.config),
-    restoreModelConfig(paths.authPath, bundle.auth),
+    ...(bundle.preserveAuth
+      ? []
+      : [restoreModelConfig(paths.authPath, bundle.auth)]),
   ]);
 }
 
 function verifyDesired(
   state: AgentProviderComparableState,
-  desired: DesiredOpenCodeProvider,
+  desired: DesiredOpenCode,
   configRelativePath: string,
 ): boolean {
   return Object.entries(publicDesiredValues(desired, configRelativePath)).every(
@@ -581,7 +677,7 @@ export function createAgentOpenCodeProviderAdapter(
         native,
         options.secretStore,
       );
-      if (!resolved.desired) {
+      if (!resolved.desired || resolved.desired.native === true) {
         return emptyConnection(
           target.profile,
           target.modelMappings,
@@ -604,7 +700,7 @@ export function createAgentOpenCodeProviderAdapter(
         native,
         options.secretStore,
       );
-      if (!resolved.desired) {
+      if (!resolved.desired || resolved.desired.native === true) {
         return emptyModel(
           target.profile,
           target.modelMappings,
@@ -702,36 +798,51 @@ export function createAgentOpenCodeProviderAdapter(
       if (!resolved.desired) {
         throw new Error("AGENT_OPENCODE_PROVIDER_PROFILE_INVALID");
       }
-      const nextConfig = renderOpenCodeConfig(
-        native.configRaw,
-        native.config,
-        resolved.desired,
-      );
-      const nextAuth = renderOpenCodeAuth(
-        native.auth,
-        resolved.desired.providerId,
-        resolved.desired.secret,
-      );
+      const inheritedSecondary =
+        typeof native.inherited.small_model === "string";
+      const nextConfig =
+        resolved.desired.native === true
+          ? renderOpenCodeSelection(
+              native.configRaw,
+              resolved.desired.providerId,
+              resolved.desired.model,
+              resolved.desired.secondaryModel,
+              inheritedSecondary,
+            )
+          : renderOpenCodeConfig(
+              native.configRaw,
+              native.config,
+              resolved.desired,
+              inheritedSecondary,
+            );
+      const nextAuth =
+        resolved.desired.native === true
+          ? null
+          : renderOpenCodeAuth(
+              native.auth,
+              resolved.desired.providerId,
+              resolved.desired.secret,
+            );
       const backupRef = await createEncryptedConfigBackup({
         backupRoot: options.backupRoot,
         agentId: "opencode",
         sourcePath: native.paths.bundlePath,
-        content: backupContent(native),
+        content: backupContent(native, resolved.desired.native),
         encryption: options.backupEncryption,
       });
       await options.hooks?.beforeWrite?.();
       try {
-        await Promise.all([
-          assertConfigUnchanged(native.paths.configPath, native.configRaw),
-          assertConfigUnchanged(native.paths.authPath, native.authRaw),
-        ]);
+        const beforeWrite = await readNative(context, options.authPath);
+        if (beforeWrite.state.nativeDigest !== native.state.nativeDigest)
+          throw new Error("AGENT_PROVIDER_PLAN_STALE");
       } catch {
         throw new Error("AGENT_PROVIDER_PLAN_STALE");
       }
       try {
         await atomicWrite(native.paths.configPath, nextConfig);
         await options.hooks?.afterConfigWrite?.();
-        await atomicWrite(native.paths.authPath, nextAuth);
+        if (nextAuth !== null)
+          await atomicWrite(native.paths.authPath, nextAuth);
         await options.hooks?.afterWrite?.();
         const after = await readNative(context, options.authPath);
         if (
@@ -758,6 +869,7 @@ export function createAgentOpenCodeProviderAdapter(
           configRelativePath: native.paths.configRelativePath,
           config: native.configRaw,
           auth: native.authRaw,
+          ...(resolved.desired.native ? { preserveAuth: true as const } : {}),
         });
         throw error;
       }
@@ -797,10 +909,16 @@ export function createAgentOpenCodeProviderAdapter(
         );
         await restoreBundle(native.paths, bundle);
         const restored = await readNative(context, options.authPath);
+        // Existing encrypted v1 receipts used a single-file digest. Keep this
+        // conversion at recovery only; normal reads use the merged v2 state.
+        const restoredDigest =
+          receipt.adapterVersion === "opencode-provider-profile-v1"
+            ? digest(restored.configRaw, restored.authRaw)
+            : restored.state.nativeDigest;
         return {
-          restored: restored.state.nativeDigest === receipt.nativeDigestBefore,
+          restored: restoredDigest === receipt.nativeDigestBefore,
           nativeDigest: restored.state.nativeDigest,
-          ...(restored.state.nativeDigest === receipt.nativeDigestBefore
+          ...(restoredDigest === receipt.nativeDigestBefore
             ? {}
             : { errorCode: "provider-rollback-mismatch" }),
         };

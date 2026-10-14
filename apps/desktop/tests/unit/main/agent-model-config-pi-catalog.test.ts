@@ -1,9 +1,13 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { inspectAgentModelConfig } from "../../../src/main/services/agent-model-config";
+// Native installation discovery is covered separately by the real package-layout fixture.
+vi.mock("../../../src/main/services/agent-pi-native-catalog", () => ({
+  readPiNativeCatalog: async () => ({}),
+}));
 
 const temporaryRoots: string[] = [];
 
@@ -16,6 +20,7 @@ async function createRoot(): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryRoots
       .splice(0)
@@ -32,6 +37,16 @@ async function writeJson(root: string, name: string, value: unknown) {
 }
 
 describe("Pi model catalog inspect", () => {
+  it("returns the catalog before the first settings file is created", async () => {
+    const root = await createRoot();
+    await writeJson(root, "models-store.json", {
+      native: { models: [{ id: "available" }] },
+    });
+    const result = await inspectAgentModelConfig(piContext(root));
+    expect(result.status).toBe("missing");
+    expect(result.modelCatalog?.[0].models[0].id).toBe("available");
+    expect(await fs.readdir(root)).toEqual(["models-store.json"]);
+  });
   it("merges built-in store and user custom models with per-provider readiness", async () => {
     const rootPath = await createRoot();
     await writeJson(rootPath, "settings.json", {
@@ -211,7 +226,7 @@ describe("Pi model catalog inspect", () => {
     expect(result.modelCatalog).toEqual([]);
   });
 
-  it("bounds oversized catalogs and preserves Unicode model ids", async () => {
+  it("preserves every legal provider and Unicode model id", async () => {
     const rootPath = await createRoot();
     await writeJson(rootPath, "settings.json", { defaultModel: "m" });
     const huge: Record<string, unknown> = {};
@@ -226,13 +241,12 @@ describe("Pi model catalog inspect", () => {
 
     const result = await inspectAgentModelConfig(piContext(rootPath));
     const catalog = result.modelCatalog ?? [];
-    expect(catalog.length).toBeGreaterThan(0);
-    expect(catalog.length).toBeLessThanOrEqual(64);
+    expect(catalog).toHaveLength(Object.keys(huge).length);
     const totalModels = catalog.reduce(
       (count, provider) => count + provider.models.length,
       0,
     );
-    expect(totalModels).toBeLessThanOrEqual(64 * 64);
+    expect(totalModels).toBe(Object.values(huge).length * 20);
     const unicode = catalog
       .flatMap((provider) => provider.models)
       .find((model) => model.id.includes("🚀"));
@@ -240,6 +254,7 @@ describe("Pi model catalog inspect", () => {
   });
 
   it("never returns an inline apiKey even when it contains an env reference", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "synthetic-env-key");
     const rootPath = await createRoot();
     await writeJson(rootPath, "settings.json", { defaultModel: "g4" });
     await writeJson(rootPath, "models.json", {
@@ -257,12 +272,12 @@ describe("Pi model catalog inspect", () => {
     const google = result.modelCatalog?.find(
       (provider) => provider.id === "my-google",
     );
-    // $ENV references count as configured credentials.
+    // Only resolved references count as configured credentials.
     expect(google?.credentialReady).toBe(true);
     expect(JSON.stringify(result)).not.toContain("GEMINI_API_KEY");
   });
 
-  it("skips malformed entries and enforces per-provider model bounds", async () => {
+  it("skips malformed entries without truncating valid models", async () => {
     const rootPath = await createRoot();
     await writeJson(rootPath, "settings.json", { defaultModel: "k3" });
     await writeJson(rootPath, "models-store.json", {
@@ -315,7 +330,7 @@ describe("Pi model catalog inspect", () => {
     ]);
 
     const bounded = catalog.find((provider) => provider.id === "bounded");
-    expect(bounded?.models).toHaveLength(64);
+    expect(bounded?.models).toHaveLength(80);
 
     const noModels = catalog.find((provider) => provider.id === "no-models");
     expect(noModels).toMatchObject({ source: "custom", models: [] });
@@ -324,7 +339,7 @@ describe("Pi model catalog inspect", () => {
     ).toBeUndefined();
   });
 
-  it("stops adding providers beyond the provider cap even for custom entries", async () => {
+  it("preserves custom entries beyond the former provider cap", async () => {
     const rootPath = await createRoot();
     await writeJson(rootPath, "settings.json", { defaultModel: "k3" });
     const store: Record<string, unknown> = {};
@@ -344,10 +359,10 @@ describe("Pi model catalog inspect", () => {
 
     const result = await inspectAgentModelConfig(piContext(rootPath));
     const catalog = result.modelCatalog ?? [];
-    expect(catalog).toHaveLength(64);
+    expect(catalog).toHaveLength(Object.keys(store).length + 1);
     expect(
       catalog.find((provider) => provider.id === "custom-overflow"),
-    ).toBeUndefined();
+    ).toMatchObject({ models: [{ id: "overflow-model", source: "custom" }] });
     const merged = catalog.find((provider) => provider.id === "store-0");
     expect(merged?.models.map((model) => model.id)).toEqual([
       "m",

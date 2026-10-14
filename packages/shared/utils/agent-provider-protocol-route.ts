@@ -21,7 +21,6 @@ const ALL_DIRECT: DirectProtocolMap = Object.fromEntries(
 const CAPABILITIES: Readonly<Record<string, AgentProtocolCapability>> = {
   codex: {
     direct: {
-      "openai-chat": "openai-chat",
       "openai-responses": "openai-responses",
     },
     bridgeInput: "openai-responses",
@@ -143,4 +142,8 @@ export function planAgentProviderProtocolRoute(input: {
     agentProtocol: capability.bridgeInput,
     ...(!input.bridgeAvailable && { reason: "bridge-unavailable" as const }),
   };
+}
+
+export function getAgentDirectProviderProtocols(platformId: string): string[] {
+  return Object.values(CAPABILITIES[platformId]?.direct ?? {});
 }

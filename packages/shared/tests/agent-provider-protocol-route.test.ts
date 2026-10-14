@@ -18,6 +18,30 @@ const SUPPORTED_PLATFORMS = [
 ] as const;
 
 describe("Agent provider protocol route planner", () => {
+  it("offers Codex Responses directly and keeps Chat on the separately available bridge", () => {
+    assert.equal(
+      planAgentProviderProtocolRoute({
+        platformId: "codex",
+        upstreamProtocol: "openai-responses",
+        bridgeAvailable: false,
+      }).mode,
+      "direct",
+    );
+    assert.deepEqual(
+      planAgentProviderProtocolRoute({
+        platformId: "codex",
+        upstreamProtocol: "openai-chat",
+        bridgeAvailable: false,
+      }),
+      {
+        mode: "bridge",
+        available: false,
+        upstreamProtocol: "openai-chat",
+        agentProtocol: "openai-responses",
+        reason: "bridge-unavailable",
+      },
+    );
+  });
   it("models the four canonical protocols in product order", () => {
     assert.deepEqual(AGENT_PROVIDER_PROTOCOLS, [
       "openai-chat",

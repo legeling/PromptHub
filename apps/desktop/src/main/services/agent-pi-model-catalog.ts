@@ -1,258 +1,229 @@
-import path from "node:path";
-import { parse as parseJsonc, type ParseError } from "jsonc-parser";
-
 import type {
   AgentModelCatalogEntry,
   AgentModelCatalogProvider,
+  AgentPiProviderApi,
 } from "@prompthub/shared/types";
-
+import { sanitizeEndpoint } from "./agent-model-config-io";
 import {
-  fileExists,
-  readTextConfig,
-  sanitizeEndpoint,
-} from "./agent-model-config-io";
+  piRecord,
+  piString,
+  readPiModelSources,
+  resolvePiCredential,
+  type PiConfigRecord,
+  type PiModelCatalogOptions,
+  type PiModelSources,
+} from "./agent-pi-model-sources";
 
-/**
- * Pi model catalog reader.
- *
- * Pi (pi-coding-agent) keeps a three-file model surface under the agent root:
- * - `models-store.json`: built-in provider catalog cache (etag/checkedAt);
- *   read-only, cache metadata is stripped.
- * - `models.json`: user-authored custom providers/models (official override
- *   surface; see pi docs models.md).
- * - `auth.json`: per-provider credentials. Only key presence is inspected;
- *   values are never read into the returned catalog.
- *
- * All readers fail closed per-file so a malformed cache or user file never
- * breaks the settings-driven default-model surface.
- */
-
-const PI_MODELS_STORE_PATH = "models-store.json";
-const PI_MODELS_PATH = "models.json";
-const PI_AUTH_PATH = "auth.json";
-
-const MAX_PROVIDERS = 64;
-const MAX_MODELS_PER_PROVIDER = 64;
 const MAX_MODEL_ID_LENGTH = 512;
 const MAX_PROVIDER_ID_LENGTH = 128;
+// Pi 0.83 provider-composer.modelFromJson defaults; only routing inherits the base model.
+const PI_CUSTOM_MODEL_DEFAULT_METADATA = {
+  reasoning: false,
+  input: ["text"],
+  contextWindow: 128000,
+  maxTokens: 16384,
+};
 
-type JsonRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is JsonRecord {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getString(value: unknown, key: string): string | null {
-  if (!isRecord(value)) return null;
-  const entry = value[key];
-  return typeof entry === "string" && entry.trim() ? entry.trim() : null;
-}
-
-function parseJsonRecordSafe(raw: string): JsonRecord | null {
-  const errors: ParseError[] = [];
-  const parsed = parseJsonc(raw, errors, {
-    allowTrailingComma: true,
-    disallowComments: false,
-  });
-  if (errors.length > 0 || !isRecord(parsed)) return null;
-  return parsed;
-}
-
-async function readJsonFileSafe(
-  absolutePath: string,
-): Promise<JsonRecord | null> {
-  if (!(await fileExists(absolutePath))) return null;
-  try {
-    return parseJsonRecordSafe(await readTextConfig(absolutePath));
-  } catch {
-    // Missing, malformed, oversized, or symlinked catalog files degrade to
-    // an empty catalog instead of breaking the settings surface.
-    return null;
-  }
-}
-
-function normalizeModelId(value: unknown): string | null {
+function modelId(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > MAX_MODEL_ID_LENGTH) return null;
-
-  if (/[\u0000-\u001f\u007f]/.test(trimmed)) return null;
-  return trimmed;
+  const id = value.trim();
+  return id &&
+    id.length <= MAX_MODEL_ID_LENGTH &&
+    !/[\u0000-\u001f\u007f]/.test(id)
+    ? id
+    : null;
 }
-
-function toCatalogEntry(
-  value: unknown,
-  source: AgentModelCatalogEntry["source"],
-): AgentModelCatalogEntry | null {
-  if (!isRecord(value)) return null;
-  const id = normalizeModelId(value.id);
-  if (!id) return null;
-  const entry: AgentModelCatalogEntry = { id, source };
-  const name = getString(value, "name");
-  if (name) entry.name = name;
-  const api = getString(value, "api");
-  if (api) entry.api = api;
-  if (typeof value.reasoning === "boolean") entry.reasoning = value.reasoning;
-  if (Array.isArray(value.input)) {
-    const input = value.input.filter(
+function providerApi(value: string | null): AgentPiProviderApi | null {
+  return value === "openai-completions" ||
+    value === "openai-responses" ||
+    value === "anthropic-messages" ||
+    value === "google-generative-ai"
+    ? value
+    : null;
+}
+function metadata(
+  value: PiConfigRecord,
+): Omit<AgentModelCatalogEntry, "id" | "source"> {
+  const result: Omit<AgentModelCatalogEntry, "id" | "source"> = {};
+  const name = piString(value, "name");
+  if (name) result.name = name;
+  if (typeof value.reasoning === "boolean") result.reasoning = value.reasoning;
+  if (Array.isArray(value.input))
+    result.input = value.input.filter(
       (item): item is string => typeof item === "string",
     );
-    if (input.length > 0) entry.input = input;
+  for (const key of ["contextWindow", "maxTokens"] satisfies (
+    | "contextWindow"
+    | "maxTokens"
+  )[]) {
+    const number = value[key];
+    if (
+      typeof number === "number" &&
+      Number.isSafeInteger(number) &&
+      number > 0
+    )
+      result[key] = number;
   }
-  if (
-    typeof value.contextWindow === "number" &&
-    Number.isSafeInteger(value.contextWindow) &&
-    value.contextWindow > 0
-  ) {
-    entry.contextWindow = value.contextWindow;
+  if (piRecord(value.thinkingLevelMap)) {
+    const map: NonNullable<AgentModelCatalogEntry["thinkingLevelMap"]> = {};
+    for (const level of [
+      "off",
+      "minimal",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ] satisfies (keyof typeof map)[]) {
+      const mapped = value.thinkingLevelMap[level];
+      if (typeof mapped === "string") map[level] = mapped;
+      else if (mapped === null) map[level] = null;
+    }
+    result.thinkingLevelMap = map;
   }
-  if (
-    typeof value.maxTokens === "number" &&
-    Number.isSafeInteger(value.maxTokens) &&
-    value.maxTokens > 0
-  ) {
-    entry.maxTokens = value.maxTokens;
-  }
-  if (isRecord(value.thinkingLevelMap)) {
-    const allowed = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
-    const map = Object.fromEntries(
-      allowed.flatMap((level) => {
-        const mapped = value.thinkingLevelMap?.[level];
-        return typeof mapped === "string" || mapped === null
-          ? [[level, mapped]]
-          : [];
-      }),
-    );
-    if (Object.keys(map).length > 0) entry.thinkingLevelMap = map;
-  }
-  return entry;
+  return result;
 }
-
-function mergeModels(
-  builtIn: AgentModelCatalogEntry[],
-  custom: AgentModelCatalogEntry[],
+function catalogModel(
+  value: unknown,
+  source: AgentModelCatalogEntry["source"],
+  provider: PiConfigRecord,
+  defaults?: AgentModelCatalogEntry,
+): AgentModelCatalogEntry | null {
+  if (!piRecord(value)) return null;
+  const id = modelId(value.id);
+  if (!id) return null;
+  const api =
+    piString(value, "api") ?? piString(provider, "api") ?? defaults?.api;
+  const endpoint =
+    sanitizeEndpoint(
+      piString(value, "baseUrl") ?? piString(provider, "baseUrl"),
+    ) ?? defaults?.endpoint;
+  const attributes =
+    source === "custom"
+      ? { ...PI_CUSTOM_MODEL_DEFAULT_METADATA, name: id }
+      : {};
+  return {
+    ...attributes,
+    ...metadata(value),
+    id,
+    source,
+    ...(api ? { api } : {}),
+    ...(endpoint ? { endpoint } : {}),
+  };
+}
+function resolvedModels(
+  base: AgentModelCatalogEntry[],
+  custom: PiConfigRecord,
 ): AgentModelCatalogEntry[] {
-  const merged = new Map<string, AgentModelCatalogEntry>();
-  for (const model of builtIn) merged.set(model.id, model);
-  // Custom models override same-id built-ins (official override semantics).
-  for (const model of custom) merged.set(model.id, model);
-  return [...merged.values()];
+  const endpoint = sanitizeEndpoint(piString(custom, "baseUrl"));
+  const models = new Map(
+    base.map((model) => [model.id, endpoint ? { ...model, endpoint } : model]),
+  );
+  for (const value of Array.isArray(custom.models) ? custom.models : []) {
+    const id = piRecord(value) ? modelId(value.id) : null;
+    const defaults = id
+      ? (models.get(id) ?? models.values().next().value)
+      : undefined;
+    const model = catalogModel(value, "custom", custom, defaults);
+    if (model) models.set(model.id, model);
+  }
+  const overrides = piRecord(custom.modelOverrides)
+    ? custom.modelOverrides
+    : {};
+  return [...models.values()].map((model) => {
+    const override = overrides[model.id];
+    if (!piRecord(override)) return model;
+    const next = metadata(override);
+    return {
+      ...model,
+      ...next,
+      ...(next.thinkingLevelMap
+        ? {
+            thinkingLevelMap: {
+              ...model.thinkingLevelMap,
+              ...next.thinkingLevelMap,
+            },
+          }
+        : {}),
+    };
+  });
 }
-
+function buildProvider(
+  id: string,
+  builtIn: PiConfigRecord | null,
+  custom: PiConfigRecord | null,
+  sources: PiModelSources,
+  environment: Readonly<Record<string, string | undefined>>,
+): AgentModelCatalogProvider {
+  const base = (Array.isArray(builtIn?.models) ? builtIn.models : [])
+    .map((model) => catalogModel(model, "built-in", builtIn ?? {}))
+    .filter((model): model is AgentModelCatalogEntry => model !== null);
+  const models = custom ? resolvedModels(base, custom) : base;
+  const credential = resolvePiCredential(id, sources, environment);
+  const apis = new Set(models.map((model) => model.api));
+  const oauthReady =
+    credential.platformManaged &&
+    Boolean(
+      piString(sources.auth[id], "access") ||
+      piString(sources.auth[id], "refresh"),
+    );
+  return {
+    id,
+    models,
+    source: custom ? "custom" : "built-in",
+    api:
+      apis.size === 1
+        ? providerApi(models[0]?.api ?? null)
+        : providerApi(piString(custom, "api") ?? piString(builtIn, "api")),
+    endpoint:
+      sanitizeEndpoint(
+        piString(custom, "baseUrl") ?? piString(builtIn, "baseUrl"),
+      ) ??
+      models[0]?.endpoint ??
+      null,
+    credentialReady: Boolean(credential.key) || oauthReady,
+    credentialSource: credential.source,
+  };
+}
+export function buildPiModelCatalog(
+  sources: PiModelSources,
+  environment: Readonly<Record<string, string | undefined>>,
+): AgentModelCatalogProvider[] {
+  const custom = piRecord(sources.custom.providers)
+    ? sources.custom.providers
+    : {};
+  const providers: AgentModelCatalogProvider[] = [];
+  for (const id of new Set([
+    ...Object.keys(sources.builtIn),
+    ...Object.keys(custom),
+  ])) {
+    if (
+      !id.trim() ||
+      id.length > MAX_PROVIDER_ID_LENGTH ||
+      /[\u0000-\u001f\u007f]/.test(id)
+    )
+      continue;
+    const base = sources.builtIn[id];
+    const override = custom[id];
+    if (!piRecord(base) && !piRecord(override)) continue;
+    providers.push(
+      buildProvider(
+        id,
+        piRecord(base) ? base : null,
+        piRecord(override) ? override : null,
+        sources,
+        environment,
+      ),
+    );
+  }
+  return providers;
+}
 export async function inspectPiModelCatalog(
   rootPath: string,
+  options: PiModelCatalogOptions = {},
 ): Promise<AgentModelCatalogProvider[]> {
-  const store = await readJsonFileSafe(
-    path.join(rootPath, PI_MODELS_STORE_PATH),
+  return buildPiModelCatalog(
+    await readPiModelSources(rootPath, options),
+    options.environment ?? process.env,
   );
-  const custom = await readJsonFileSafe(path.join(rootPath, PI_MODELS_PATH));
-  const auth = await readJsonFileSafe(path.join(rootPath, PI_AUTH_PATH));
-
-  const authProviders = new Set<string>();
-  if (auth) {
-    for (const [providerId, credential] of Object.entries(auth)) {
-      if (
-        isRecord(credential) &&
-        (getString(credential, "key") ||
-          getString(credential, "type") === "oauth")
-      ) {
-        authProviders.add(providerId);
-      }
-    }
-  }
-
-  const providers = new Map<string, AgentModelCatalogProvider>();
-
-  if (store) {
-    for (const [providerId, entry] of Object.entries(store)) {
-      if (providers.size >= MAX_PROVIDERS) break;
-      if (
-        !isRecord(entry) ||
-        !providerId.trim() ||
-        providerId.length > MAX_PROVIDER_ID_LENGTH
-      ) {
-        continue;
-      }
-      const rawModels = Array.isArray(entry.models) ? entry.models : [];
-      const models = rawModels
-        .slice(0, MAX_MODELS_PER_PROVIDER)
-        .map((model) => toCatalogEntry(model, "built-in"))
-        .filter((model): model is AgentModelCatalogEntry => model !== null);
-      const endpoint = sanitizeEndpoint(
-        getString(
-          Array.isArray(entry.models) ? entry.models[0] : undefined,
-          "baseUrl",
-        ) ?? getString(entry, "baseUrl"),
-      );
-      providers.set(providerId, {
-        id: providerId,
-        models,
-        credentialReady: authProviders.has(providerId),
-        credentialSource: authProviders.has(providerId) ? "auth" : "missing",
-        source: "built-in",
-        api: getString(entry, "api") as AgentModelCatalogProvider["api"],
-        endpoint,
-      });
-    }
-  }
-
-  const customProviders = isRecord(custom?.providers)
-    ? (custom.providers as JsonRecord)
-    : {};
-  for (const [providerId, entry] of Object.entries(customProviders)) {
-    if (!isRecord(entry)) continue;
-    if (!providerId.trim() || providerId.length > MAX_PROVIDER_ID_LENGTH) {
-      continue;
-    }
-    const rawModels = Array.isArray(entry.models) ? entry.models : [];
-    const models = rawModels
-      .slice(0, MAX_MODELS_PER_PROVIDER)
-      .map((model) => toCatalogEntry(model, "custom"))
-      .filter((model): model is AgentModelCatalogEntry => model !== null);
-    // apiKey presence (literal or $ENV reference) counts as configured auth;
-    // the value itself never crosses the boundary.
-    const configuredKey = getString(entry, "apiKey");
-    const hasInlineKey = Boolean(configuredKey);
-    const credentialSource = authProviders.has(providerId)
-      ? "auth"
-      : configuredKey?.startsWith("$")
-        ? "environment"
-        : hasInlineKey
-          ? "provider-config"
-          : "missing";
-    const endpoint = sanitizeEndpoint(getString(entry, "baseUrl"));
-    const existing = providers.get(providerId);
-    if (existing) {
-      existing.models = mergeModels(existing.models, models).slice(
-        0,
-        MAX_MODELS_PER_PROVIDER,
-      );
-      existing.credentialReady =
-        existing.credentialReady ||
-        authProviders.has(providerId) ||
-        hasInlineKey;
-      existing.credentialSource = credentialSource;
-      existing.api = getString(
-        entry,
-        "api",
-      ) as AgentModelCatalogProvider["api"];
-      if (endpoint) existing.endpoint = endpoint;
-      existing.source = "custom";
-    } else {
-      // The cap only blocks new providers; merges into existing providers
-      // must still run for entries after a capped one.
-      if (providers.size >= MAX_PROVIDERS) continue;
-      providers.set(providerId, {
-        id: providerId,
-        models,
-        credentialReady: authProviders.has(providerId) || hasInlineKey,
-        credentialSource,
-        source: "custom",
-        api: getString(entry, "api") as AgentModelCatalogProvider["api"],
-        endpoint,
-      });
-    }
-  }
-
-  return [...providers.values()];
 }

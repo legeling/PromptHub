@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   addPiCustomModel,
@@ -14,6 +14,10 @@ import {
   updatePiCustomProvider,
 } from "../../../src/main/services/agent-pi-model-writes";
 import { inspectPiModelCatalog } from "../../../src/main/services/agent-pi-model-catalog";
+// Package discovery has its own real-layout test; these fixtures own only user files.
+vi.mock("../../../src/main/services/agent-pi-native-catalog", () => ({
+  readPiNativeCatalog: async () => ({}),
+}));
 
 const temporaryRoots: string[] = [];
 
@@ -24,6 +28,7 @@ async function createRoot(): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryRoots
       .splice(0)
@@ -438,6 +443,7 @@ describe("Pi custom provider writes", () => {
   });
 
   it("supports $ENV key references and marks the provider ready", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "synthetic-env-key");
     const rootPath = await createRoot();
     await addPiCustomProvider(
       rootPath,
@@ -737,9 +743,6 @@ describe("Pi model input validation", () => {
     await expect(attempt([{ id: "m" }, { id: "m" }])).rejects.toThrow(
       /AGENT_PI_MODEL_ID_DUPLICATE/,
     );
-    await expect(
-      attempt(Array.from({ length: 65 }, (_, index) => ({ id: `m-${index}` }))),
-    ).rejects.toThrow(/AGENT_PI_MODELS_TOO_MANY/);
   });
 
   it("rejects adding a provider that already exists", async () => {

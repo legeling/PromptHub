@@ -1,164 +1,86 @@
 # Pi Model Catalog 适配设计
 
-## 1. 目标
+## 目标与所有权
 
-为内置 `pi` 平台(pi-coding-agent,本机 v0.83.0)的 Provider & Model 页补齐两个能力:
+Pi（`pi-coding-agent`）的供应商/模型目录由 Desktop main 读取，renderer 只接收脱敏投影。
+`settings.json` 选择默认模型；Pi 安装包和上游缓存拥有内置目录；`models.json` 拥有用户覆盖；
+`auth.json` 拥有原生凭据。Pi 与 Oh My Pi 不合并。
 
-1. **展示当前有哪些模型**:合并内置模型目录与用户自定义模型,按 provider 展示完整清单、
-   当前默认选择与凭据就绪状态。
-2. **添加自定义模型**:向官方用户配置文件写入自定义 provider/model,无需重启即可在
-   `/model` 中使用。
+## 原生文件契约
 
-## 2. 官方文件契约(证据:`pi-coding-agent` 包 docs/models.md,本机 0.83.0)
+本机 0.83.0 的 `core/provider-composer.js`、`core/resolve-config-value.js`、
+`core/auth-storage.js` 及 `@earendil-works/pi-ai` 数据是模型解析证据。
 
-| 文件 | 角色 | PromptHub 权限 |
-| :--- | :--- | :--- |
-| `~/.pi/agent/settings.json` | 用户选择:`defaultProvider` / `defaultModel` / `defaultThinkingLevel` | 读 + 受控写(既有管线) |
-| `~/.pi/agent/models-store.json` | 内置模型目录缓存(带 `etag` / `checkedAt` / `lastModified`,上游刷新) | **只读**,永不写入 |
-| `~/.pi/agent/models.json` | 用户自定义 provider/model,官方明确 "reloads each time you open /model" | **唯一写入目标** |
-| `~/.pi/agent/auth.json` | 按 provider 的凭据(`{ "<id>": { "type": "api_key", "key": "..." } }`,0600) | 只读就绪状态,永不读值、永不写 |
+| 来源 | 行为 |
+| --- | --- |
+| `settings.json` | 读写 defaultProvider/defaultModel/defaultThinkingLevel；缺失时仍展示目录 |
+| 已安装 npm 包的 `pi-ai/dist/providers/data/*.json` | 只读公开模型数据，不执行 CLI、SDK、extensions 或凭据命令 |
+| `models-store.json` | 上游刷新缓存；同名 provider 替换安装包目录，不写入 |
+| `models.json` | 自定义 provider/model 及 modelOverrides；受控写入 |
+| `auth.json` | main 解析 api_key 或确认 OAuth 状态；受控投影托管密钥，不提供原始编辑器 |
 
-`models.json` 官方结构:
+安装目录通过声明的 Pi executable 和包依赖解析定位，不硬编码用户 home。
+当前安装数据读取覆盖可定位 npm 包的安装方式；独立二进制/不对应包目录的包装脚本只使用已有缓存及用户模型，
+不宣称已覆盖其内置目录。不存在 Pi 安装包时不启动或安装 Pi。
 
-```json
-{
-  "providers": {
-    "<provider-id>": {
-      "baseUrl": "http://localhost:11434/v1",
-      "api": "openai-completions",
-      "apiKey": "literal or $ENV_REF",
-      "compat": { "supportsDeveloperRole": false, "supportsReasoningEffort": false },
-      "models": [
-        {
-          "id": "llama3.1:8b",
-          "name": "Llama 3.1 8B (Local)",
-          "reasoning": false,
-          "input": ["text", "image"],
-          "contextWindow": 128000,
-          "maxTokens": 32000,
-          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
-        }
-      ]
-    }
-  }
-}
-```
+## 解析与测试契约
 
-- 自定义 provider 的 `baseUrl` + `api`(provider 或 model 级)必填;`apiKey` 可省略
-  (由 `/login`/`auth.json`/CLI `--api-key` 提供),也可以是 `$ENV` 引用。
-- 无凭据的模型会加载但在 `/model` 中不可用 — UI 必须区分"已就绪/缺凭据"。
-- 用户 `models.json` 的同名 provider 会**覆盖/合并**内置目录中的该 provider。
+- 目录合并采用 Map，时间与空间为 `O(P + M)`；不按供应商数或模型数截断。
+  文件读取复用现有大小与软链接安全校验，依次读取安装数据文件，不创建并发池。
+- 模型 API/端点优先级为 model → provider → 同 id 原生模型或该 provider 首个模型。
+  自定义模型其他元数据使用 Pi 原生默认值，再应用 modelOverrides；thinkingLevelMap 按键合并。
+- modelOverrides 只覆盖展示元数据，不覆盖 API/端点，也不凭空创建模型。
+- 凭据优先使用 auth.json 的 api_key/OAuth，再使用 models.json 的 apiKey。
+  api_key 支持字面值、`$ENV`、`${ENV}` 和原生 `$$`/`$!` 转义；
+  auth.json 的显式 env 值优先于进程环境。缺失引用不能标记就绪。
+- 目录和模型测试共用一次加载的解析来源。所选模型决定探测协议与端点，不按 provider 默认协议猜测。
+- 四个直接探测 API：openai-completions、openai-responses、anthropic-messages、google-generative-ai。
+  其他 API、OAuth 以及 `!command` 凭据返回 unsupported，不执行命令、不刷新 OAuth、不回退 Chat。
+- Pi 内置供应商默认环境变量映射、扩展注册模型、请求 headers/compat/authHeader 的完整运行时行为仍由 Pi 拥有，
+  当前探测不宣称复现这些路径，凭据就绪只代表本次已解析到的凭据/原生 OAuth 记录。
 
-## 3. 与 OpenCode 的异同
+## 写入、数据保全与恢复
 
-| | OpenCode | Pi |
-| :--- | :--- | :--- |
-| 主配置 | `opencode.jsonc`(provider 定义 + npm 包 + 模型字符串) | `settings.json` 只存选择 |
-| 模型目录 | 模型内嵌在 provider 定义 | `models-store.json`(内置缓存)+ `models.json`(自定义)双层 |
-| 凭据 | XDG `auth.json` | `~/.pi/agent/auth.json`,同构按 provider 存储 |
+默认选择写 settings.json；用户模型写 models.json；托管凭据投影 auth.json（0600）。
+models-store.json 和安装包目录永不写入。既有 backup → revision check → atomic write → readback → rollback
+管线保留，两个文件的供应商导入维持失败恢复，保留其他 provider、未知字段和 JSONC 注释。
 
-结构同构(JSON 配置 + 独立 auth.json),模型层不同:Pi 是 provider → 完整模型目录
-(cost / contextWindow / compat / input 等元数据),OpenCode 是 provider → 模型字符串。
+无数据库/schema/布局迁移，无历史数据重写；endpoint 只是可选的脱敏派生字段。
+回退代码无需迁移数据；文件写入仍可由既有备份恢复。
+明文凭据只在 main 中解析/调用，不进入目录、测试结果、SQLite、导出或普通备份。
 
-## 4. 读取(inspect)扩展
+## MCP 版本边界
 
-`inspectAgentModelConfig` 增加 pi 专用分支,依次读取 4 个文件:
+[上游原生 MCP 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/mcp.md)
+在 2026-10-13 的 1.2.0 契约中定义用户 `<root>/mcp.json` 和项目 `.pi/mcp.json`。
+原生支持 stdio/HTTP，不支持 SSE；项目同名条目替换用户条目，
+仅 enabled/exposure/toolExposure 的最小项目覆盖保留用户传输字段。
+共享 adapter 候选和原生文件仍独立可选，不由 PromptHub 合并生效层。
 
-1. `settings.json` → 当前 `defaultProvider` / `defaultModel` / `defaultThinkingLevel`。
-2. `models-store.json` → 内置 provider 目录;过滤缓存元数据(`etag` / `checkedAt` /
-   `lastModified` 不进入返回)。
-3. `models.json` → 用户自定义 provider 目录。
-4. `auth.json` → 每个 provider 的凭据就绪布尔值(只统计 key 存在性,永不读值)。
+本机 0.83.0 不作为 1.2.0 原生 MCP 消费验收。
+本批仅核对契约及真实 MCP 库导入/重开/文件投影；不升级 Pi、不安装 adapter，不提升 partial 能力等级。
 
-合并规则:内置 ∪ 自定义;自定义 provider 与内置同 id 时合并 models 并标记 override;
-返回中区分 `source: "built-in" | "custom"`。
+## 验证
 
-返回契约扩展(`packages/shared/types/agent.ts`,`AgentModelConfiguration` 增加可选字段,
-其他平台不受影响):
+回归覆盖目录冷启动、缓存覆盖、模型路由、modelOverrides、环境/字面值凭据、未解析引用、
+OAuth/命令/未知 API 不执行、合法大目录、超出旧模型上限的写入、真实 HTTP Responses 探测、
+文件保全/重读及原生 MCP stdio/HTTP 配置导入-重开-投影。
 
-```ts
-export interface AgentModelCatalogEntry {
-  id: string;
-  name?: string;
-  api?: string;
-  reasoning?: boolean;
-  input?: string[];
-  contextWindow?: number;
-  maxTokens?: number;
-  source: "built-in" | "custom";
-}
+2026-10-13 验证结果：
 
-export interface AgentModelCatalogProvider {
-  id: string;
-  models: AgentModelCatalogEntry[];
-  credentialReady: boolean;
-  source: "built-in" | "custom";
-  /** 脱敏端点(去 userinfo/query/fragment);平台默认端点为 null */
-  endpoint?: string | null;
-}
+- 分批定向 Vitest 回归累计 14 个文件、145 项通过；只重跑受修复影响的检查。
+  覆盖 Pi 目录/写入/导入/默认选择/会话、现有目录页面（41 项）、MCP 配置与真实投影、通用模型和执行开关。
+- 真实 HTTP Responses fixture 验证路径、模型、Authorization、流式输出、结果脱敏和文件不变。
+- 本机 0.83.0 公开安装目录已进入实际读取路径；另有 import-only npm 包及 .manifest.json fixture，
+  验证不执行 CLI/SDK、缓存覆盖、重开一致、畸形数据与软链接拒绝。
+- 70 个缓存 provider × 80 个模型，加 81 个用户模型，共 5,681 项投影约 5.8 ms，
+  heapUsed 增量约 5.3 MB（单次本机 fixture 测量，含分配但不等于峰值/稳定预算）。
+- 定向 ESLint、Shared typecheck、git diff --check 通过。
+- 初始 Desktop source/test typecheck 被范围外 Skill 改动阻塞：skill-library-actions 的 RegistrySkill.content、
+  canonical-skill-sources 的 unknown 类型，以及 skill-first-launch/skill-scanned-import fixture 字段；
+  本批未改动这些文件。最终按 tsconfig.test.json 建立完整 TypeScript program：
+  13 个本批文件全部包含，完整 program 无诊断。
+  最终标准命令 `pnpm --filter @prompthub/desktop typecheck:tests` 通过，涵盖源码及测试。
 
-// AgentModelConfiguration 新增:
-modelCatalog?: AgentModelCatalogProvider[];
-```
-
-`availableModels` 保持既有语义(当前默认模型),目录走 `modelCatalog`,避免破坏既有消费方。
-
-## 5. 写入
-
-| 操作 | 目标文件 | 管线 |
-| :--- | :--- | :--- |
-| 切换默认模型 | `settings.json` 的 `defaultProvider` / `defaultModel` | 既有 backup → 原子写 → 重读验证 → 回滚 |
-| 添加自定义模型 | `models.json` 的 `providers.<id>.models[]` 追加 | 同一管线;新 provider 需 baseUrl/api 校验 |
-| 添加自定义供应商 | `models.json` 新增 `providers.<id>`(baseUrl/api/models) | 同一管线;缺失文件时创建 |
-| 移除自定义模型/供应商 | `models.json` 移除条目;空 provider 一并移除 | 同一管线 |
-| 配置凭据(可选) | `auth.json` 投影 `{ "<id>": { "type": "api_key", "key": "..." } }` | Codex 托管密钥同构管线:0600、原子写、备份、回滚 |
-
-- 只允许写 `models.json` 与 `auth.json`;`models-store.json` 只读。
-- 写入只触达目标条目,保留其他 provider、未知字段与注释(在 JSONC 解析能力范围内)。
-- 凭据三种来源(官方契约):PromptHub 托管密钥投影到 `auth.json`(默认可选用)、
-  `models.json` 的 `apiKey: "$ENV"` 环境变量引用、或留给用户自行 `/login`。PromptHub
-  不把明文密钥写进 `models.json`,也不写进 PromptHub 自己的 SQLite/备份/导出。
-- **“确保 pi 能调用”**:模型可用的官方条件是凭据就绪(auth.json 条目 / apiKey /
-  $ENV)。添加供应商流程完成后,重读 models.json + auth.json 验证条目与凭据就绪,
-  才返回成功;缺凭据时返回明确的 guided 状态。
-
-## 6. 安全边界
-
-- `auth.json` 永不读值、永不写;仅返回 `credentialReady` 布尔值。
-- 返回给 renderer 的目录脱敏:provider `apiKey` 内联值不出现在任何 payload。
-- `models.json` 读写遵循路径校验(realpath、拒绝软链接越界、空字节、超大文件上限)。
-- 自定义模型 id 校验:非空、长度上限、无控制字符;provider id 同 registry 规则。
-
-## 7. UI
-
-Pi 的 Provider & Model 页按 pi 原生模型目录组织(与 `/model` 列表一致):
-
-- **左栏:每个供应商一行**。内置供应商(deepseek / kimi-coding / openai-codex /
-  opencode-go 等,来自 models-store.json)与自定义供应商(来自 models.json)各占一行,
-  显示名称、模型数、凭据就绪态、当前默认标记;顶部 `[+ 添加供应商]`。
-- **右栏:所选供应商的模型列表**。每个模型显示 id/name/reasoning/contextWindow,
-  可“设为默认”(写 settings.json 的 defaultProvider/defaultModel);自定义供应商的
-  模型可移除;`[+ 添加模型]` 向所选 provider 追加模型。
-- **添加供应商表单**:provider id、baseUrl、api(四种官方类型)、模型清单、凭据方式
-  (托管密钥 → auth.json / $ENV 引用 / 稍后自行登录),提交走备份/回滚管线并重读验证,
-  确保 pi 立即可调用。
-- 当前默认选择始终展示;切换/添加结果内联反馈。
-
-## 8. 实施批次
-
-| 批次 | 内容 | 验证 |
-| :--- | :--- | :--- |
-| P1 | shared 契约扩展(`modelCatalog` 可选字段)+ pi inspect 读取 4 文件 + 脱敏合并 | 真实 fixture:settings/models-store/models.json/auth 的合并、缺失、畸形、超限、软链接、Unicode |
-| P2 | 写入:添加/移除自定义模型与 provider(backup/atomic/verify/rollback) | 失败注入、并发修改、重读验证、未知字段保留、凭据不外泄 |
-| P3 | UI:provider 列表 + 模型目录 + 添加自定义模型表单 + 设为默认 | renderer 测试 + 7 locales |
-| P4 | 全量回归 + capability 从 partial 提升评估 + 文档 converge | `pnpm typecheck`、`pnpm test:run`、affected lint |
-
-## 9. 决策记录
-
-- `[确认]` 左栏为每个供应商一行(内置 + 自定义),与 pi `/model` 列表一致。
-- `[确认]` 自定义模型/provider 只写 `models.json`;`models-store.json` 是缓存,只读。
-- `[确认]` 凭据三选:托管密钥投影 `auth.json`(Codex 同构)、`$ENV` 引用、用户自行 `/login`;
-  明文密钥不进 PromptHub SQLite/备份/导出,也不写进 `models.json`。
-- `[确认]` 添加完成后重读验证条目与凭据就绪,确保 pi 可调用;缺凭据返回 guided 状态。
-- `[确认]` 目录合并遵循官方“用户 models.json 覆盖内置同名 provider”语义。
-- `[确认]` 契约扩展走可选字段,不影响其他平台的既有消费方。
+HTTP/MCP 完整场景测试保留单个较长用例，使建立 fixture、执行、读回及释放资源保持同一验收边界；
+生产函数维持小粒度。GUI、Pi 原生 1.2.0 消费和完整发布门禁不属于本批结论。
