@@ -394,6 +394,71 @@ describe('web prompt routes', () => {
     }
   }, TEST_TIMEOUT);
 
+  it.each(['create', 'move'])(
+    'infers ordinary folder visibility through authenticated HTTP %s and database reopen (#219)',
+    async (operation) => {
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-issue-219-'));
+      try {
+        let app = await createTestApp(dataDir);
+        const { payload: admin } = await registerUser(app, 'folderadmin', 'debugpass001');
+        const { payload: member } = await registerUser(app, 'foldermember', 'debugpass001');
+        expect(admin.data.user.role).toBe('admin');
+        const token = admin.data.accessToken;
+        const folder = await createFolder(app, token, { name: 'c', isPrivate: false });
+        expect(folder.response.status).toBe(201);
+        expect(folder.payload.data?.visibility).toBe('shared');
+        const folderId = folder.payload.data!.id;
+        const created = await createPrompt(app, token, {
+          title: 't',
+          userPrompt: 'x',
+          ...(operation === 'create' ? { folderId } : {}),
+        });
+        expect(created.response.status, JSON.stringify(created.payload)).toBe(201);
+        const id = created.payload.data!.id;
+        if (operation === 'move') {
+          expect(created.payload.data?.visibility).toBe('private');
+          const moved = await app.request(`/api/prompts/${id}`, {
+            method: 'PUT',
+            headers: authHeaders(token),
+            body: JSON.stringify({ folderId }),
+          });
+          expect(moved.status, await moved.clone().text()).toBe(200);
+        }
+        const mismatched = await createPrompt(app, token, {
+          title: 'Explicit mismatch', userPrompt: 'x', folderId, visibility: 'private',
+        });
+        expect(mismatched.response.status).toBe(422);
+        const forbidden = await createPrompt(app, member.data.accessToken, {
+          title: 'No elevated rights', userPrompt: 'x', folderId,
+        });
+        expect(forbidden.response.status).toBe(422);
+        expect(forbidden.payload.error?.code).toBe('VALIDATION_ERROR');
+
+        // Recreate route services and the database connection, retaining disk data and JWTs.
+        (await import('@prompthub/db')).closeDatabase();
+        vi.resetModules();
+        app = await createTestApp(dataDir);
+        const headers = authHeaders(member.data.accessToken);
+        const read = await app.request(`/api/prompts/${id}`, { headers });
+        expect(read.status).toBe(200);
+        expect(await read.json()).toMatchObject({ data: {
+          id, folderId, visibility: 'shared', title: 't', userPrompt: 'x',
+        } });
+        const listed = await app.request(`/api/prompts?folderId=${folderId}&scope=shared`, { headers });
+        expect(listed.status).toBe(200);
+        expect(await listed.json()).toMatchObject({ data: [{ id, folderId, visibility: 'shared' }] });
+        const deniedEdit = await app.request(`/api/prompts/${id}`, {
+          method: 'PUT', headers, body: JSON.stringify({ title: 'No permission' }),
+        });
+        expect(deniedEdit.status).toBe(403);
+      } finally {
+        (await import('@prompthub/db')).closeDatabase();
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
   it('duplicates prompts as a private copy owned by the caller', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-prompt-test-'));
 

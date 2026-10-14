@@ -97,6 +97,25 @@
   transaction. A missing or cyclic parent reference must fail without making a
   partial prompt hierarchy visible.
 
+### 9.1 Prompt Folder Visibility (#219)
+
+- When an administrator creates a Prompt in a folder or moves it to another
+  folder without explicit `visibility`, the destination folder determines
+  visibility. Edits that keep the folder unchanged keep the stored visibility.
+- Explicit mismatches still fail validation; inference never grants a normal
+  user permission to create or edit shared records. The existing non-admin
+  implicit mismatch remains a 422 response, not an elevated shared write.
+- The fix in `f783066e` changes no schema or data layout. HTTP regressions in
+  `apps/web/src/routes/prompts.test.ts` use the report's `{name, isPrivate:false}`
+  folder body and omitted Prompt visibility for both create and move, then
+  close/reopen SQLite and reconstruct routes before checking list/detail and
+  authorization. These sequential lifecycle tests intentionally exceed 50 lines.
+- 2026-10-14: reverting only the two inference expressions in an isolated
+  copy reproduces the exact 422 visibility error in both cases. Current code
+  passes both new HTTP regressions, the existing 17 route tests and 11 real
+  service tests; Web typecheck passes. This verifies authenticated Hono requests
+  and disk persistence, not browser interaction or the reporter's Docker image.
+
 ### 10. Web Skill Workspace Files
 
 - Skill workspace exports under `data/skills/` must publish complete
