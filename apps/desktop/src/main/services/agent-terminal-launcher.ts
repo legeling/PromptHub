@@ -103,13 +103,15 @@ function validateEnvironment(
   ) {
     throw new Error("AGENT_CONVERSATION_ENVIRONMENT_INVALID");
   }
-  const directory = environment.CLAUDE_CONFIG_DIR;
   if (
-    Object.keys(environment).some((key) => key !== "CLAUDE_CONFIG_DIR") ||
-    (directory !== null &&
-      (typeof directory !== "string" ||
-        !path.isAbsolute(directory) ||
-        directory.includes("\0")))
+    Object.entries(environment).some(
+      ([key, directory]) =>
+        !["CLAUDE_CONFIG_DIR", "KIMI_CODE_HOME", "QWEN_RUNTIME_DIR", "CODEX_HOME", "GROK_HOME", "PI_CODING_AGENT_DIR"].includes(key) ||
+        (directory !== null &&
+          (typeof directory !== "string" ||
+            !path.isAbsolute(directory) ||
+            directory.includes("\0"))),
+    )
   ) {
     throw new Error("AGENT_CONVERSATION_ENVIRONMENT_INVALID");
   }
@@ -140,13 +142,9 @@ function buildScript(root: string, command: AgentResumeCommand): string {
     'cleanup() { rm -rf -- "$PROMPTHUB_LAUNCH_ROOT"; }',
     "trap cleanup EXIT HUP INT TERM",
     `cd -- ${shellQuote(cwd)}`,
-    ...(command.environment
-      ? [
-          command.environment.CLAUDE_CONFIG_DIR === null
-            ? "unset CLAUDE_CONFIG_DIR"
-            : `export CLAUDE_CONFIG_DIR=${shellQuote(command.environment.CLAUDE_CONFIG_DIR)}`,
-        ]
-      : []),
+    ...Object.entries(command.environment ?? {}).map(([key, value]) =>
+      value === null ? `unset ${key}` : `export ${key}=${shellQuote(value)}`,
+    ),
     ...declarations,
     `${shellQuote(command.executable)} ${argumentsList.join(" ")}`.trim(),
     "status=$?",

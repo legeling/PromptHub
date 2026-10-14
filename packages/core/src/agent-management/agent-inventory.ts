@@ -101,7 +101,11 @@ export async function resolveAgentPlatformRoot(
     Boolean(platform.environmentRootRelativeToCwd),
     cwd,
   );
-  if (currentEnvironmentRoot) return currentEnvironmentRoot;
+  if (currentEnvironmentRoot) {
+    return path.join(
+      currentEnvironmentRoot, platform.rootEnvironmentSubdirectory ?? "",
+    );
+  }
   if (await pathExists(primary)) return primary;
 
   const legacyEnvironmentRoot = normalizeEnvironmentRoot(

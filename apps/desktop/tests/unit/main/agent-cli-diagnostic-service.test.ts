@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
+import { getPlatformById } from "@prompthub/shared/constants/platforms";
 import { diagnoseAgentCli } from "../../../src/main/services/agent-cli-diagnostic-service";
 
 const platform: SkillPlatform = {
@@ -35,6 +36,25 @@ function dependencies(
 }
 
 describe("Agent CLI diagnostic service", () => {
+  it("diagnoses the native Antigravity executable through the platform registry", async () => {
+    const antigravity = getPlatformById("antigravity");
+    if (!antigravity) throw new Error("Missing Antigravity platform");
+    const deps = dependencies({
+      run: vi.fn(async () => ({
+        stdout: "Antigravity CLI 2.0.0\n",
+        stderr: "",
+      })),
+    });
+    const result = await diagnoseAgentCli(antigravity, deps);
+    expect(result).toMatchObject({
+      agentId: "antigravity",
+      status: "installed",
+      executablePath: "/Users/test/.local/bin/agy",
+      version: "Antigravity CLI 2.0.0",
+      canUpdate: false,
+    });
+    expect(deps.resolve).toHaveBeenCalledWith("agy");
+  });
   it("returns a bounded public version result for the first resolved candidate", async () => {
     const deps = dependencies();
 

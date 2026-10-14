@@ -910,8 +910,7 @@ export function createAgentUsageService(
     }
   }
 
-  async function queryCodexUsage(agentId: string): Promise<AgentUsageQuota> {
-    const configRoot = resolveConfigRoot(agentId);
+  async function queryCodexUsage(agentId: string, configRoot: string): Promise<AgentUsageQuota> {
     const buildCodexQuota = (
       status: AgentUsageQuota["status"],
       overrides: Partial<AgentUsageQuota> = {},
@@ -1414,12 +1413,11 @@ export function createAgentUsageService(
 
   async function queryUsage(
     agentId: string,
-    claudeRoot?: string,
+    configRoot: string,
     credentialScope = "",
   ): Promise<AgentUsageQuota> {
     // Resolving the config root through the platform registry doubles as the
     // agentId allowlist check; unknown ids throw before any lookup happens.
-    const configRoot = claudeRoot ?? resolveConfigRoot(agentId);
     if (!isAgentDepthCapabilityAvailable(agentId, "usage")) {
       return buildQuota(agentId, "unavailable", now(), {
         adapter: "unsupported",
@@ -1433,7 +1431,7 @@ export function createAgentUsageService(
       });
     }
     if (agentId === "codex") {
-      return queryCodexUsage(agentId);
+      return queryCodexUsage(agentId, configRoot);
     }
     if (agentId === "kimi") {
       return queryKimiUsage(agentId, configRoot);
@@ -1506,11 +1504,9 @@ export function createAgentUsageService(
         throw new Error("Agent usage query requires a non-empty agentId");
       }
 
-      const claudeRoot =
-        agentId === "claude" ? resolveConfigRoot(agentId) : undefined;
-      const credentialScope = claudeRoot
-        ? claudeCredentialScope(claudeRoot)
-        : "";
+      const scopedRoot = resolveConfigRoot(agentId);
+      const credentialScope = agentId === "claude"
+        ? claudeCredentialScope(scopedRoot) : scopedRoot;
       const cached = cache.get(agentId);
       if (
         !getOptions.forceRefresh &&
@@ -1521,7 +1517,7 @@ export function createAgentUsageService(
         return cached.quota;
       }
 
-      const quota = await queryUsage(agentId, claudeRoot, credentialScope);
+      const quota = await queryUsage(agentId, scopedRoot, credentialScope);
       cache.set(agentId, { quota, storedAt: now(), credentialScope });
       return quota;
     },

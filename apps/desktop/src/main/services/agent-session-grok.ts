@@ -130,6 +130,7 @@ async function grokMetadata(
     resume: {
       executable: "grok",
       args: ["--resume", candidate.id],
+      environment: { GROK_HOME: root },
       ...(candidate.projectPath ? { cwd: candidate.projectPath } : {}),
     },
   };

@@ -78,6 +78,8 @@ vi.mock("../../../src/main/services/skill-installer-repo", () => ({
 }));
 
 vi.mock("../../../src/main/services/skill-installer-utils", () => ({
+  getPlatformRootDir: () => "/platform",
+  getBuiltinAgentOverride: () => undefined,
   getPlatformSkillsDir: utilsMocks.getPlatformSkillsDir,
   getCustomAgentPlatforms: utilsMocks.getCustomAgentPlatforms,
   getConfiguredBuiltinAgentPlatformIds:

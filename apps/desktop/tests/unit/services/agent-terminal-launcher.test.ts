@@ -4,6 +4,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAgentTerminalLauncher } from "../../../src/main/services/agent-terminal-launcher";
@@ -19,6 +21,42 @@ afterEach(async () => {
 });
 
 describe("createAgentTerminalLauncher", () => {
+  it("passes all declared native roots through a real shell without interpolation", async () => {
+    const tempRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "agent-resume-env-"),
+    );
+    createdRoots.push(tempRoot);
+    const environment = {
+      CODEX_HOME: "/fixture/a 'quoted' $(false)",
+      GROK_HOME: "/fixture/grok",
+      PI_CODING_AGENT_DIR: "/fixture/pi",
+      QWEN_RUNTIME_DIR: "/fixture/qwen",
+    };
+    let output = "";
+    const launcher = createAgentTerminalLauncher({
+      platform: "darwin",
+      tempRoot,
+      scheduleCleanup: () => undefined,
+      openPath: async (script) => {
+        output = (
+          await promisify(execFile)("/bin/sh", [script], {
+            timeout: 5000,
+            env: { PATH: "/usr/bin:/bin", CODEX_HOME: "/wrong" },
+          })
+        ).stdout;
+        return "";
+      },
+    });
+    await launcher.launch({
+      executable: "/usr/bin/env",
+      args: [],
+      environment,
+    });
+    for (const [key, value] of Object.entries(environment))
+      expect(output.split("\n")).toContain(`${key}=${value}`);
+    expect(await fs.readdir(tempRoot)).toEqual([]);
+  });
+
   it("stores arguments outside the macOS command script and opens it", async () => {
     const tempRoot = await fs.mkdtemp(
       path.join(os.tmpdir(), "prompthub-terminal-test-"),

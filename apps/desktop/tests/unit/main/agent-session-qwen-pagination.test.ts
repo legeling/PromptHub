@@ -225,6 +225,7 @@ describe("Qwen session deep-page continuity", () => {
           resume: {
             executable: "/usr/local/bin/qwen",
             args: ["--resume", "fallback-title"],
+            environment: { QWEN_RUNTIME_DIR: runtimeRoot },
           },
         },
       ],

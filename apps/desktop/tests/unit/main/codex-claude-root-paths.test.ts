@@ -4,8 +4,51 @@ import { expect, it } from "vitest";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
 import { getMcpTargetPresets, buildManagedAgents } from "@prompthub/core";
 import {
+  resolveAgentPlatformRoot,
   buildCliManagedAgentInventory,
 } from "@prompthub/core/agent-management/agent-inventory";
+import { getDefaultPlatformRootDir } from "@prompthub/core/platform-paths";
+
+it("uses native Codex and Claude configuration roots while preserving explicit overrides", async () => {
+  const home = path.resolve("/tmp/agent-native-home");
+  const environment = {
+    CODEX_HOME: path.join(home, "codex-work"),
+    CLAUDE_CONFIG_DIR: path.join(home, "claude-work"),
+  };
+  for (const id of ["codex", "claude"]) {
+    const platform = getPlatformById(id);
+    if (!platform) throw new Error("Missing platform");
+    const expected =
+      id === "codex" ? environment.CODEX_HOME : environment.CLAUDE_CONFIG_DIR;
+    expect(
+      getDefaultPlatformRootDir(platform, "darwin", environment, home),
+    ).toBe(expected);
+    expect(
+      await resolveAgentPlatformRoot(platform, undefined, {
+        environment,
+        platform: "darwin",
+      }),
+    ).toBe(expected);
+    expect(
+      await resolveAgentPlatformRoot(
+        platform,
+        { rootPath: path.join(home, "override") },
+        { environment },
+      ),
+    ).toBe(path.join(home, "override"));
+  }
+  const presets = getMcpTargetPresets(home, "darwin", environment);
+  expect(presets.find((p) => p.target === "codex")?.path).toBe(
+    path.join(environment.CODEX_HOME, "config.toml"),
+  );
+  expect(presets.find((p) => p.target === "claude")?.path).toBe(
+    path.join(environment.CLAUDE_CONFIG_DIR, ".claude.json"),
+  );
+  expect(
+    getMcpTargetPresets(home, "darwin", {}).find((p) => p.target === "claude")
+      ?.path,
+  ).toBe(path.join(home, ".claude.json"));
+});
 
 it("keeps CLI inventory and presets aligned for default, environment and explicit Claude roots", async () => {
   const platform = getPlatformById("claude");

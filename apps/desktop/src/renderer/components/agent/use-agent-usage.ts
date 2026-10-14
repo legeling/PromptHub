@@ -94,9 +94,14 @@ function isCachedMetric(value: unknown): value is AgentUsageMetric {
   );
 }
 
-export function readCachedAgentUsage(agentId: string): AgentUsageQuota | null {
+export function readCachedAgentUsage(
+  agentId: string,
+  rootPath: string,
+): AgentUsageQuota | null {
   try {
-    const raw = window.localStorage.getItem(`${CACHE_KEY_PREFIX}${agentId}`);
+    const raw = window.localStorage.getItem(
+      `${CACHE_KEY_PREFIX}${agentId}.${encodeURIComponent(rootPath)}`,
+    );
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (
@@ -131,11 +136,14 @@ export function readCachedAgentUsage(agentId: string): AgentUsageQuota | null {
   }
 }
 
-export function writeCachedAgentUsage(quota: AgentUsageQuota): void {
+export function writeCachedAgentUsage(
+  rootPath: string,
+  quota: AgentUsageQuota,
+): void {
   try {
     if (quota.status === "ok") {
       window.localStorage.setItem(
-        `${CACHE_KEY_PREFIX}${quota.agentId}`,
+        `${CACHE_KEY_PREFIX}${quota.agentId}.${encodeURIComponent(rootPath)}`,
         JSON.stringify(quota),
       );
     }
@@ -144,20 +152,29 @@ export function writeCachedAgentUsage(quota: AgentUsageQuota): void {
   }
 }
 
-export function useAgentUsage(agentId: string): AgentUsageState {
-  const [quota, setQuota] = useState<AgentUsageQuota | null>(() =>
-    readCachedAgentUsage(agentId),
-  );
+export function useAgentUsage(
+  agentId: string,
+  rootPath: string,
+): AgentUsageState {
+  const [stored, setStored] = useState(() => ({
+    agentId,
+    rootPath,
+    quota: readCachedAgentUsage(agentId, rootPath),
+  }));
+  const quota =
+    stored.agentId === agentId && stored.rootPath === rootPath
+      ? stored.quota
+      : null;
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [requestSeq, setRequestSeq] = useState(0);
 
   useEffect(() => {
     let active = true;
-    setQuota((previous) =>
-      previous && previous.agentId === agentId
+    setStored((previous) =>
+      previous.agentId === agentId && previous.rootPath === rootPath
         ? previous
-        : readCachedAgentUsage(agentId),
+        : { agentId, rootPath, quota: readCachedAgentUsage(agentId, rootPath) },
     );
     setHasError(false);
     setIsLoading(true);
@@ -168,8 +185,8 @@ export function useAgentUsage(agentId: string): AgentUsageState {
     request
       .then((result) => {
         if (!active) return;
-        setQuota(result);
-        writeCachedAgentUsage(result);
+        setStored({ agentId, rootPath, quota: result });
+        writeCachedAgentUsage(rootPath, result);
       })
       .catch(() => {
         if (active) setHasError(true);
@@ -180,7 +197,7 @@ export function useAgentUsage(agentId: string): AgentUsageState {
     return () => {
       active = false;
     };
-  }, [agentId, requestSeq]);
+  }, [agentId, rootPath, requestSeq]);
 
   const refresh = useCallback(() => setRequestSeq((value) => value + 1), []);
 

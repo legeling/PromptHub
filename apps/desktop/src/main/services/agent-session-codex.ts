@@ -327,6 +327,7 @@ async function readCodexThreadNames(
 
 async function metadata(
   file: CodexFile,
+  codexRoot: string,
   nativeTitle?: string,
 ): Promise<AgentSessionMetadata> {
   const { raw } = await readSessionPrefix(file.path, MAX_METADATA_BYTES);
@@ -348,6 +349,7 @@ async function metadata(
     resume: {
       executable: "codex",
       args: ["resume", meta.id],
+      environment: { CODEX_HOME: codexRoot },
       ...(meta.cwd ? { cwd: meta.cwd } : {}),
     },
   };
@@ -389,7 +391,7 @@ export function createCodexSessionAdapter(codexRoot: string) {
       const sessions = await Promise.all(
         files
           .slice(offset, offset + limit)
-          .map((file) => metadata(file, threadNames.get(file.id))),
+          .map((file) => metadata(file, codexRoot, threadNames.get(file.id))),
       );
       return {
         agentId: "codex",

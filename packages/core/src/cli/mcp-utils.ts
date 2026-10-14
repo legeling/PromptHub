@@ -1,4 +1,5 @@
 import path from "path";
+import type { BuiltinAgentOverrideConfig } from "@prompthub/shared/types";
 
 import { CoreMcpLibraryService, getMcpTargetPresets } from "../mcp-library";
 import {
@@ -354,13 +355,19 @@ export async function resolveMcpServerIds(
 
 export function resolveMcpApplyTarget(
   args: string[],
+  builtinOverrides: Record<string, BuiltinAgentOverrideConfig> = {},
 ): Omit<McpApplyTarget, "serverIds"> {
   const presetId = takeOption(args, "--preset");
   const targetOption = takeOption(args, "--target");
   const customPath = takeOption(args, "--path");
 
   if (presetId) {
-    const preset = getMcpTargetPresets().find((item) => item.id === presetId);
+    const preset = getMcpTargetPresets(
+      undefined,
+      undefined,
+      undefined,
+      builtinOverrides,
+    ).find((item) => item.id === presetId);
     if (!preset) {
       throw new CliError(
         "NOT_FOUND",

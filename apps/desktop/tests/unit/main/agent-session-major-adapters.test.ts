@@ -131,6 +131,7 @@ describe("major Agent session adapters", () => {
           resume: {
             executable: "codex",
             args: ["resume", sessionId],
+            environment: { CODEX_HOME: codexRootDir },
             cwd: "/workspace/current",
           },
         }),
@@ -445,6 +446,7 @@ describe("major Agent session adapters", () => {
         resume: {
           executable: "grok",
           args: ["--resume", sessionId],
+          environment: { GROK_HOME: grokRootDir },
           cwd: projectPath,
         },
       }),

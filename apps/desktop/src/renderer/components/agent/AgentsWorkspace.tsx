@@ -463,7 +463,7 @@ export function AgentsWorkspace() {
 
   useEffect(() => {
     setIsAssetDetailOpen(false);
-  }, [agent?.id, target.tab]);
+  }, [agent?.id, agent?.paths.root, target.tab]);
 
   if (!agent) {
     return (
@@ -496,6 +496,7 @@ export function AgentsWorkspace() {
         </header>
       ) : null}
       <AgentWorkspacePanel
+        key={JSON.stringify([agent.id, agent.paths.root])}
         target={target}
         agent={agent}
         agents={agents}

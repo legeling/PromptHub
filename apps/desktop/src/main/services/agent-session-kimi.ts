@@ -236,6 +236,7 @@ async function readMetadata(
     resume: {
       executable: "kimi",
       args: ["--session", candidate.id],
+      environment: { KIMI_CODE_HOME: path.dirname(sessionsRoot) },
       ...(workDir ? { cwd: workDir } : {}),
     },
   };

@@ -31,12 +31,12 @@ function isMcpTargetConflict(error: unknown) {
 function createTargetOverwriteConfirmation(bindings: McpManagerBindings) {
   return async (error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    return (await requestConfirmation({
+    return await requestConfirmation({
       message: bindings.t("mcp.confirmTargetOverwrite", {
         message,
         defaultValue: `${message}\n\nOverwrite the existing target MCP entry?`,
       }),
-    }));
+    });
   };
 }
 

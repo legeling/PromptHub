@@ -99,6 +99,8 @@ test("keeps path declarations and existing template consumers unchanged", () => 
   const codex = getPlatformById("codex");
   const antigravity = getPlatformById("antigravity");
   assert.ok(claude && codex && antigravity);
+  assert.equal(claude.rootEnvironmentVariable, "CLAUDE_CONFIG_DIR");
+  assert.equal(codex.rootEnvironmentVariable, "CODEX_HOME");
   assert.equal(claude.mcpRelativePath, "../.claude.json");
   assert.equal(codex.mcpRelativePath, "config.toml");
   assert.equal(getPlatformSkillsTemplate(codex, "darwin"), "~/.codex/skills");

@@ -232,6 +232,7 @@ async function scanPiFamilySessions(
 async function readMetadata(
   candidate: PiFamilyCandidate,
   options: PiFamilySessionAdapterOptions,
+  rootPath: string,
 ): Promise<AgentSessionMetadata> {
   const { raw, truncated } = await readSessionPrefix(
     candidate.path,
@@ -255,6 +256,7 @@ async function readMetadata(
     resume: {
       executable: options.executable,
       args: options.resumeArgs(candidate.id),
+      environment: { PI_CODING_AGENT_DIR: rootPath },
       ...(parsed.projectPath ? { cwd: parsed.projectPath } : {}),
     },
   };
@@ -339,7 +341,7 @@ function createPiFamilySessionAdapter(
       const candidates = await scanPiFamilySessions(sessionsRoot);
       const sessions: AgentSessionMetadata[] = [];
       for (const candidate of candidates.slice(offset, offset + limit)) {
-        sessions.push(await readMetadata(candidate, options));
+        sessions.push(await readMetadata(candidate, options, rootPath));
       }
       return {
         agentId: options.agentId,

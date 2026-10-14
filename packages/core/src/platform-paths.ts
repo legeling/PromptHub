@@ -15,7 +15,9 @@ function resolvePlatformPath(template: string, home = os.homedir()): string {
     .replace(/%APPDATA%/gi, path.join(home, "AppData", "Roaming"));
 }
 
-function getPlatformOsKey(platform: NodeJS.Platform = process.platform): SkillPlatformOsKey {
+function getPlatformOsKey(
+  platform: NodeJS.Platform = process.platform,
+): SkillPlatformOsKey {
   if (platform === "darwin" || platform === "win32") {
     return platform;
   }
@@ -37,7 +39,15 @@ export function getDefaultPlatformRootDir(
       : undefined);
   if (configured && !configured.includes("\0")) {
     const expanded = resolvePlatformPath(configured, homeDir);
-    if (path.isAbsolute(expanded)) return path.normalize(expanded);
+    if (path.isAbsolute(expanded)) {
+      return path.join(
+        expanded,
+        rootOverride?.trim() ? "" : platform.rootEnvironmentSubdirectory ?? "",
+      );
+    }
+    if (!rootOverride?.trim() && platform.environmentRootRelativeToCwd) {
+      return path.resolve(expanded, platform.rootEnvironmentSubdirectory ?? "");
+    }
   }
   return resolvePlatformPath(
     getPlatformRootTemplate(platform, getPlatformOsKey(targetPlatform)),
@@ -77,6 +87,14 @@ export function getDefaultPlatformGlobalRulePath(
   platform: SkillPlatform,
   targetPlatform: NodeJS.Platform = process.platform,
 ): string | null {
-  const template = getPlatformGlobalRuleTemplate(platform, getPlatformOsKey(targetPlatform));
+  const template = getPlatformGlobalRuleTemplate(
+    platform,
+    getPlatformOsKey(targetPlatform),
+  );
+  if (platform.rootEnvironmentVariable && platform.globalRuleFile)
+    return path.join(
+      getDefaultPlatformRootDir(platform, targetPlatform),
+      platform.globalRuleFile,
+    );
   return template ? resolvePlatformPath(template) : null;
 }

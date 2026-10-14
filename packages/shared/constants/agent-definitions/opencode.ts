@@ -5,6 +5,8 @@ export const opencodeAgentDefinition = {
     id: "opencode",
     name: "OpenCode",
     icon: "Terminal",
+    rootEnvironmentVariable: "XDG_CONFIG_HOME",
+    rootEnvironmentSubdirectory: "opencode",
     rootDir: {
       darwin: "~/.config/opencode",
       win32: "%USERPROFILE%\\.config\\opencode",

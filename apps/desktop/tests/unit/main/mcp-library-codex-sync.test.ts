@@ -1,3 +1,4 @@
+
 import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
 let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /**
@@ -447,7 +448,7 @@ describe("CoreMcpLibraryService", () => {
       path: "/Users/test/.grok/config.toml",
     });
     expect(byId.reasonix).toBeUndefined();
-    expect(byId.kimi.path).toBe("/Users/test/.kimi/mcp.json");
+    expect(byId.kimi.path).toBe("/Users/test/.kimi-code/mcp.json");
     expect(byId.augment.path).toBe("/Users/test/.augment/settings.json");
     expect(byId.qwen).toMatchObject({
       target: "qwen",

@@ -106,6 +106,7 @@ async function parseNativeRows(
       resume: {
         executable,
         args: ["--resume", id],
+        environment: { QWEN_RUNTIME_DIR: runtimeRoot },
         ...(projectPath ? { cwd: projectPath } : {}),
       },
     });
@@ -136,7 +137,7 @@ export function createQwenSessionAdapter(
     const result = await commandRunner.run(
       executable,
       ["sessions", "list", "--json", "--limit", String(limit)],
-      COMMAND_OPTIONS,
+      { ...COMMAND_OPTIONS, env: { ...process.env, QWEN_RUNTIME_DIR: runtimeRoot } },
     );
     const sessions = await parseNativeRows(
       result.stdout,

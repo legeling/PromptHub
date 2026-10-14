@@ -93,6 +93,7 @@ describe("Pi session adapter", () => {
           resume: {
             executable: "pi",
             args: ["--session", sessionId],
+            environment: { PI_CODING_AGENT_DIR: piRootDir },
             cwd: "/workspace/pi",
           },
         },

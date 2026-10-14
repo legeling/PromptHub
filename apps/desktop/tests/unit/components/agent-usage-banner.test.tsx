@@ -790,7 +790,7 @@ describe("AgentUsageBanner", () => {
 
   it("shows the cached quota immediately and replaces it with fresh data", async () => {
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(
         createQuota({
           metrics: [
@@ -831,7 +831,7 @@ describe("AgentUsageBanner", () => {
       }),
     ).toBeVisible();
     await waitFor(() => {
-      const raw = window.localStorage.getItem("prompthub.agent-usage.claude");
+      const raw = window.localStorage.getItem(`prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`);
       expect(raw).not.toBeNull();
       const cached = JSON.parse(raw as string) as AgentUsageQuota;
       const fiveHour = cached.metrics.find(
@@ -846,7 +846,7 @@ describe("AgentUsageBanner", () => {
 
   it("keeps cached quota visible and marks it stale when refresh fails", async () => {
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(createQuota()),
     );
     window.api.agent.getUsage = vi
@@ -867,11 +867,11 @@ describe("AgentUsageBanner", () => {
 
   it("ignores cached entries for other agents or non-ok statuses", async () => {
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(createQuota({ agentId: "codex" })),
     );
     window.localStorage.setItem(
-      "prompthub.agent-usage.codex",
+      `prompthub.agent-usage.codex.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(createQuota({ agentId: "codex", status: "expired" })),
     );
     let resolveUsage: (value: AgentUsageQuota) => void = () => undefined;
@@ -894,7 +894,7 @@ describe("AgentUsageBanner", () => {
 
   it("ignores caches written by the old fixed-window contract instead of crashing", async () => {
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify({
         agentId: "claude",
         adapter: "claude-oauth-v1",
@@ -922,21 +922,21 @@ describe("AgentUsageBanner", () => {
   });
 
   it("rejects malformed V2 cache payloads and tolerates storage failures", () => {
-    window.localStorage.setItem("prompthub.agent-usage.claude", "{");
-    expect(readCachedAgentUsage("claude")).toBeNull();
+    window.localStorage.setItem(`prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`, "{");
+    expect(readCachedAgentUsage("claude", agent.paths.root)).toBeNull();
 
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(createQuota({ metrics: {} as never })),
     );
-    expect(readCachedAgentUsage("claude")).toBeNull();
+    expect(readCachedAgentUsage("claude", agent.paths.root)).toBeNull();
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(createQuota({ metrics: [{ id: "broken" }] as never })),
     );
-    expect(readCachedAgentUsage("claude")).toBeNull();
+    expect(readCachedAgentUsage("claude", agent.paths.root)).toBeNull();
     window.localStorage.setItem(
-      "prompthub.agent-usage.claude",
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(
         createQuota({
           metrics: Array.from({ length: 65 }, (_, index) =>
@@ -948,7 +948,7 @@ describe("AgentUsageBanner", () => {
         }),
       ),
     );
-    expect(readCachedAgentUsage("claude")).toBeNull();
+    expect(readCachedAgentUsage("claude", agent.paths.root)).toBeNull();
 
     const invalidPayloads = [
       { ...createQuota(), adapter: "" },
@@ -967,25 +967,25 @@ describe("AgentUsageBanner", () => {
     ];
     for (const payload of invalidPayloads) {
       window.localStorage.setItem(
-        "prompthub.agent-usage.claude",
+        `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
         JSON.stringify(payload),
       );
-      expect(readCachedAgentUsage("claude")).toBeNull();
+      expect(readCachedAgentUsage("claude", agent.paths.root)).toBeNull();
     }
 
     const setItem = vi.spyOn(Storage.prototype, "setItem");
-    writeCachedAgentUsage(createQuota({ status: "expired" }));
+    writeCachedAgentUsage(agent.paths.root, createQuota({ status: "expired" }));
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockImplementationOnce(() => {
       throw new Error("quota exceeded");
     });
-    expect(() => writeCachedAgentUsage(createQuota())).not.toThrow();
+    expect(() => writeCachedAgentUsage(agent.paths.root, createQuota())).not.toThrow();
     setItem.mockRestore();
   });
 
   it("rejects cached Antigravity snapshots containing the retired credit total", () => {
     window.localStorage.setItem(
-      "prompthub.agent-usage.antigravity",
+      `prompthub.agent-usage.antigravity.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(
         createQuota({
           agentId: "antigravity",
@@ -1005,10 +1005,10 @@ describe("AgentUsageBanner", () => {
       ),
     );
 
-    expect(readCachedAgentUsage("antigravity")).toBeNull();
+    expect(readCachedAgentUsage("antigravity", agent.paths.root)).toBeNull();
 
     window.localStorage.setItem(
-      "prompthub.agent-usage.antigravity",
+      `prompthub.agent-usage.antigravity.${encodeURIComponent(agent.paths.root)}`,
       JSON.stringify(
         createQuota({
           agentId: "antigravity",
@@ -1029,7 +1029,7 @@ describe("AgentUsageBanner", () => {
         }),
       ),
     );
-    expect(readCachedAgentUsage("antigravity")?.metrics).toHaveLength(1);
+    expect(readCachedAgentUsage("antigravity", agent.paths.root)?.metrics).toHaveLength(1);
   });
 
   it("ignores a completed request after the banner unmounts", async () => {

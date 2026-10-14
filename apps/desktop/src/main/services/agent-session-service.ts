@@ -86,6 +86,7 @@ interface AgentSessionServiceOptions {
   copilotRootDir?: string;
   clineRootDir?: string;
   cursorRootDir?: string;
+  geminiRootDir?: string;
   antigravityRootDir?: string;
   augmentRootDir?: string;
   cherryStudioRootDir?: string;
@@ -897,7 +898,9 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
     );
   const cursorRoot =
     options.cursorRootDir || path.join(options.homeDir, ".cursor");
-  const geminiProjectsRoot = path.join(options.homeDir, ".gemini", "tmp");
+  const geminiProjectsRoot = path.join(
+    options.geminiRootDir || path.join(options.homeDir, ".gemini"), "tmp",
+  );
   const kimiRoot =
     options.kimiRootDir || path.join(options.homeDir, ".kimi-code");
   const codexRoot =

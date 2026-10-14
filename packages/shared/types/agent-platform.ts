@@ -32,6 +32,8 @@ export interface SkillPlatform {
     linux: string;
   };
   rootEnvironmentVariable?: string;
+  /** Subdirectory under an environment-owned base such as XDG_CONFIG_HOME. */
+  rootEnvironmentSubdirectory?: string;
   environmentRootRelativeToCwd?: boolean;
   legacyRootEnvironmentVariable?: string;
   rootDirFallbacks?: Partial<Record<SkillPlatformOsKey, string[]>>;

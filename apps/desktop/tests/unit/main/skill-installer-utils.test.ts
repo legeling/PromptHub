@@ -283,7 +283,7 @@ describe("skill-installer-utils", () => {
       expect(resolvedPath).toContain(".cline/skills");
     });
 
-    it("prefers current Kimi Code roots and falls back to legacy roots only when needed", () => {
+    it("uses current Kimi Code roots without reading legacy environment roots", () => {
       vi.mocked(getDatabase).mockReturnValue({
         prepare: vi
           .fn()
@@ -308,7 +308,7 @@ describe("skill-installer-utils", () => {
         environment: { KIMI_SHARE_DIR: "/tmp/kimi-legacy-env" },
         pathExists: (candidate) => candidate === "/tmp/kimi-legacy-env",
       });
-      expect(fromLegacyEnvironment).toBe("/tmp/kimi-legacy-env");
+      expect(fromLegacyEnvironment).toContain(".kimi-code");
 
       const freshTarget = getPlatformRootDir(platform!, undefined, {
         environment: {

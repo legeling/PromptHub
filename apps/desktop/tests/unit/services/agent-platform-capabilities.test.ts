@@ -345,6 +345,7 @@ describe("Agent platform capability inventory", () => {
       .sort();
 
     expect(diagnosticIds).toEqual([
+      "antigravity",
       "claude",
       "codex",
       "deepseek-harness",

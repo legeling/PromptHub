@@ -11,12 +11,6 @@ export const kimiAgentDefinition = {
       linux: "~/.kimi-code",
     },
     rootEnvironmentVariable: "KIMI_CODE_HOME",
-    legacyRootEnvironmentVariable: "KIMI_SHARE_DIR",
-    rootDirFallbacks: {
-      darwin: ["~/.kimi"],
-      win32: ["%USERPROFILE%\\.kimi"],
-      linux: ["~/.kimi"],
-    },
     skillsRelativePath: "skills",
     mcpRelativePath: "mcp.json",
     pluginsRelativePath: "plugins",

@@ -9,6 +9,7 @@ import {
   type CliContext,
   type CliDatabaseHooks,
 } from "./types";
+import { readAgentManagementSettings } from "../agent-management/agent-settings-repository";
 import { MCP_HELP } from "./help";
 import { emitSuccess } from "./io";
 import {
@@ -189,7 +190,11 @@ export async function handleMcpCommand(
       service,
       serverIdentifiers,
     );
-    const target = resolveMcpApplyTarget(targetArgs);
+    const target = resolveMcpApplyTarget(
+      targetArgs,
+      readAgentManagementSettings(databaseHooks.initDatabase())
+        .builtinAgentOverrides,
+    );
     ensureNoUnknownOptions(targetArgs);
     if (serverIds.length === 0) {
       throw new CliError(

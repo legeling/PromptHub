@@ -5,6 +5,7 @@ import {
   type McpTargetPreset,
 } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import { isMcpTargetKind } from "@prompthub/shared/types/mcp";
 import {
   mergeMcpLibraryFromTransport,
@@ -181,9 +182,9 @@ export function registerMcpIPC(
       replaceCustomMcpMarketSources(Array.isArray(sources) ? sources : []),
   );
   ipcMain.handle(IPC_CHANNELS.MCP_TARGET_PRESETS, async () =>
-    getMcpTargetPresets(undefined, undefined, undefined, {
-      claude: getBuiltinAgentOverride("claude") ?? {},
-    }),
+    getMcpTargetPresets(undefined, undefined, undefined, Object.fromEntries(
+      SKILL_PLATFORMS.map(({ id }) => [id, getBuiltinAgentOverride(id) ?? {}]),
+    )),
   );
   ipcMain.handle(
     IPC_CHANNELS.MCP_SERVER_CREATE,

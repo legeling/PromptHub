@@ -4,6 +4,7 @@ export const codexAgentDefinition = {
   platform: {
     id: "codex",
     name: "Codex",
+    rootEnvironmentVariable: "CODEX_HOME",
     icon: "Terminal",
     rootDir: {
       darwin: "~/.codex",

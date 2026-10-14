@@ -14,7 +14,7 @@ export const geminiAgentDefinition = {
     },
     skillsRelativePath: "skills",
     mcpRelativePath: "settings.json",
-    pluginsRelativePath: "config/plugins",
+    pluginsRelativePath: "extensions",
     commandsRelativePath: "commands",
     globalRuleFile: "GEMINI.md",
     configFiles: ["settings.json"],

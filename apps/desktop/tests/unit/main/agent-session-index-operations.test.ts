@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   createReader: vi.fn(),
   getContext: vi.fn(),
   getNativeDirectory: vi.fn(),
+  getOverride: vi.fn(),
   homedir: vi.fn(() => "/Users/test"),
 }));
 
@@ -21,6 +22,9 @@ vi.mock("../../../src/main/services/agent-platform-context", () => ({
   getAgentConfigContext: mocks.getContext,
   getClaudeNativeConfigDirectory: mocks.getNativeDirectory,
 }));
+vi.mock("../../../src/main/services/skill-installer-utils", () => ({
+  getBuiltinAgentOverride: mocks.getOverride,
+}));
 
 import {
   createAgentSessionIndexOperations,
@@ -32,6 +36,7 @@ describe("Agent session index operation factory", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getOverride.mockReturnValue(undefined);
     delete process.env.CLAUDE_CONFIG_DIR;
     mocks.getContext.mockImplementation((agentId: string) => ({
       rootPath: `/roots/${agentId}`,
@@ -64,6 +69,10 @@ describe("Agent session index operation factory", () => {
     ["pi", "piRootDir"],
     ["oh-my-pi", "ohMyPiRootDir"],
     ["kiro", "kiroRootDir"],
+    ["gemini", "geminiRootDir"],
+    ["augment", "augmentRootDir"],
+    ["cherry-studio", "cherryStudioRootDir"],
+    ["qoder", "qoderRootDir"],
   ])(
     "passes the verified %s root through its native option",
     (agentId, key) => {
@@ -109,6 +118,26 @@ describe("Agent session index operation factory", () => {
     });
   });
 
+  it.each([
+    ["antigravity", "antigravityRootDir"],
+    ["hermes", "hermesRootDir"],
+    ["reasonix", "reasonixStateRootDir"],
+    ["qwen", "qwenRuntimeDir"],
+    ["copaw", "copawRootDirs"],
+    ["nanoclaw", "nanoclawRootDirs"],
+  ])("preserves %s native defaults but honors an explicit root", (id, key) => {
+    createAgentSessionIndexOperations({} as never, id);
+    expect(mocks.createReader).toHaveBeenLastCalledWith({
+      homeDir: "/Users/test",
+    });
+    mocks.getOverride.mockReturnValue({ rootPath: `/roots/${id}` });
+    createAgentSessionIndexOperations({} as never, id);
+    expect(mocks.createReader).toHaveBeenLastCalledWith({
+      homeDir: "/Users/test",
+      [key]: key.endsWith("Dirs") ? [`/roots/${id}`] : `/roots/${id}`,
+    });
+  });
+
   it("resolves Claude backup descriptors through the same configured reader", () => {
     const descriptor = {
       platformId: "claude",
@@ -138,11 +167,12 @@ describe("Agent session index operation factory", () => {
     expect(resolveAgentSessionIndexSource("gemini")).toEqual(descriptor);
     expect(mocks.createReader).toHaveBeenLastCalledWith({
       homeDir: "/Users/test",
+      geminiRootDir: "/roots/gemini",
     });
-    expect(mocks.getContext).toHaveBeenCalledTimes(2);
+    expect(mocks.getContext).toHaveBeenCalledTimes(3);
 
     expect(resolveAgentSessionIndexSource("codex")).toBeNull();
     expect(mocks.createReader).toHaveBeenCalledTimes(3);
-    expect(mocks.getContext).toHaveBeenCalledTimes(2);
+    expect(mocks.getContext).toHaveBeenCalledTimes(3);
   });
 });

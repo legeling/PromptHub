@@ -105,6 +105,7 @@ describe("Agent session service", () => {
           resume: {
             executable: "/opt/homebrew/bin/qwen",
             args: ["--resume", "550e8400-e29b-41d4-a716-446655440000"],
+            environment: { QWEN_RUNTIME_DIR: runtimeRoot },
             cwd: "/workspace/project",
           },
         }),
@@ -113,7 +114,7 @@ describe("Agent session service", () => {
     expect(run).toHaveBeenCalledWith(
       "/opt/homebrew/bin/qwen",
       ["sessions", "list", "--json", "--limit", "21"],
-      expect.objectContaining({ maxBuffer: 2 * 1024 * 1024 }),
+      expect.objectContaining({ maxBuffer: 2 * 1024 * 1024, env: expect.objectContaining({ QWEN_RUNTIME_DIR: runtimeRoot }) }),
     );
 
     const detail = await service.read(
@@ -734,6 +735,7 @@ describe("Agent session service", () => {
         resume: {
           executable: "kimi",
           args: ["--session", sessionId],
+          environment: { KIMI_CODE_HOME: kimiRootDir },
           cwd: "/workspace/kimi-project",
         },
       }),

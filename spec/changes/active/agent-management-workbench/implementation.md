@@ -3936,3 +3936,108 @@ clientWidth`, the table wrapper owned horizontal overflow, and the inspected
   `website/public/imgs/` contain no Agent workspace, native quota menu or Agent
   config-editor counterpart. The task-owned E2E screenshots remain verification
   evidence rather than a mismatched replacement for an unrelated stable image.
+
+### 2026-10-14 — Kimi / OpenCode configuration audit corrections
+
+- OpenCode direct activation refuses a target OAuth/well-known credential collision,
+  including inactive providers. Imported native selections can be restored without
+  writing or backing up their credential bytes. JSON/JSONC sources are merged;
+  writes remain confined to the selected source, with all sources participating in
+  stale-plan detection. Encrypted v1 receipts retain a recovery-only digest conversion.
+- OpenCode XDG config roots flow through inventory, installer, rules and MCP presets.
+  Kimi no longer selects an old root automatically. Global MCP IPC now forwards its
+  configured root, session resume sets `KIMI_CODE_HOME`, and quota caching isolates roots.
+  No user config, native credential, historical directory or DB schema was migrated.
+- Regression files:
+  - `apps/desktop/tests/unit/main/agent-opencode-config-ownership.test.ts`: real-file
+    collision refusal, native selection/apply/rollback, merged inspection, reopen,
+    lower-source drift refusal and existing receipt recovery. Only OS encryption is
+    replaced by a fixture encoder; no real credential or provider network is used.
+  - `apps/desktop/tests/unit/main/kimi-opencode-root-consistency.test.ts`: current and
+    overridden roots, XDG paths, quota cache isolation (mock OAuth/network), and actual
+    execution of the generated shell resume script against a fixture executable.
+  - `apps/desktop/tests/integration/kimi-opencode-config-entrypoints.test.ts`: real
+    preload APIs, registered IPC handlers, runtime adapter registration, SQLite and
+    native files. Imports a native profile, activates a direct profile, closes/reopens
+    SQLite and reselects the native profile without changing OAuth bytes. The existing
+    integration fixture replaces Electron transport and OS encryption only.
+- Reproduce the new regressions from repository root:
+  `pnpm --dir apps/desktop exec vitest run tests/unit/main/agent-opencode-config-ownership.test.ts tests/unit/main/kimi-opencode-root-consistency.test.ts tests/integration/kimi-opencode-config-entrypoints.test.ts`
+- Verification: 27 focused test files / 392 distinct tests passed across bounded
+  runs (390 unit/service/component tests and 2 real-entrypoint integration tests).
+  The initial unsupported-protocol error classification was corrected; the legacy
+  Kimi-root expectation and resume metadata expectation were updated to the current
+  contract. The integration input strips the non-writable `secretRef`, as the renderer
+  does. No failed assertion was removed or relaxed to accept the audited defects.
+- `pnpm --dir apps/desktop exec tsc --noEmit -p tsconfig.test.json`, affected-file
+  ESLint, `git diff --check` and `pnpm build` passed, including renderer/main/preload.
+  GUI, Windows/Linux native execution, real-account networking and the full release
+  harness were not run. Tests use disposable roots and close their databases/processes;
+  no development server was started. Existing unrelated worktree edits remain intact.
+
+### 2026-10-14 — All registered Agent audit
+
+- Scanned all 37 registered identities and their enabled configuration, asset,
+  provider, session, quota and appearance boundaries. Eight confirmed defect
+  groups were repaired: registry-derived MCP roots, Qwen relative environment
+  roots, session factory/index roots, Qwen native list scope, scoped native resume,
+  main-process quota cache, renderer quota cache and root-sensitive workspace state.
+- Added registry-wide, real preload/IPC/SQLite/reopen and CLI/file-readback
+  regressions; extended session shell/environment and renderer root-switch tests.
+  No capability was enabled solely because a path was declared, and no user
+  configuration, credentials, existing MCP bindings or schema was migrated.
+- Consolidated verification: 2,796 distinct tests passed and 4 native-gated tests
+  skipped. Desktop/CLI TypeScript, affected-file ESLint, `git diff --check` and
+  renderer/main/preload production build passed. Initial failures and exact scope
+  are recorded in [the registered-Agent audit](registered-agent-audit.md).
+- Native GUI/client/installer, Windows/Linux, live accounts and the full release
+  harness remain unverified; source/isolated-fixture evidence does not certify all
+  vendor runtimes. Existing shared-checkout edits remain intact; no commit or push.
+
+### 2026-10-14 — Screenshot follow-up: quota proxy and clipped labels
+
+- The production usage singleton now receives `fetchWithNetworkProxy` explicitly,
+  instead of retaining the global Node fetch from before proxy initialization.
+  System mode uses the configured Electron default Session fetch; manual HTTP,
+  SOCKS and direct routing retain their existing implementations. No fallback,
+  retry, timeout or credential-writing policy was added. The network boundary is
+  consistent with [Electron Session fetch](https://www.electronjs.org/docs/latest/api/session#sesfetchinput-init).
+- Overview renders distinct localized messages for `network-error`, `timeout`
+  and `http-error`, with the existing generic message for unknown error codes.
+  All seven locales contain the new messages; raw exceptions remain private.
+- Shared Agent asset cards use a 232px minimum, not a fixed height; metadata wraps
+  without a 40px clipping region, content stays top-aligned and actions remain at
+  the bottom. Native provider titles wrap above their classification, with a
+  non-shrinking activation switch. These changes affect Skills/MCP/Plugins using
+  the same card component, not just the screenshot's Plugins tab.
+- Regression: `apps/desktop/tests/unit/main/agent-usage-runtime-network.test.ts`
+  imports the real production singleton before proxy configuration, initializes
+  a real temporary SQLite/profile and reads fixture native config/auth files.
+  It checks system/direct/system transitions, later manual HTTP configuration,
+  quota values, sanitized transport failure, explicit retry and unchanged auth
+  bytes. Only outbound transports/Electron Session are mocked; it does not prove
+  OS proxy/PAC execution or a live authenticated quota request.
+- Component regressions extend `agent-usage-banner.test.tsx` for four error/retry
+  cases, `agent-assets-workspace.test.tsx` for all three card domains, and
+  `agent-provider-profile-workbench.test.tsx` for the wrapping native title.
+  DOM/class assertions and component interactions do not prove pixel layout.
+- Verification: **11 files / 196 distinct tests passed**, consolidated from an
+  initial 121 passed / 3 fixture failures and a 75-test repair/consumer run. The
+  three failures were an uninitialized test DB; the fixture now uses the existing
+  real Agent-settings initializer instead of bypassing root resolution.
+  Desktop test TypeScript, affected-file ESLint, seven-locale message validation,
+  `git diff --check`, and renderer/main/preload production build passed.
+- Reproduce from repository root:
+
+  ```sh
+  pnpm --dir apps/desktop exec vitest run tests/unit/main/agent-usage-runtime-network.test.ts tests/unit/main/network-proxy.test.ts tests/unit/main/network-proxy-startup.test.ts tests/unit/main/agent-usage-service-codex.test.ts tests/unit/main/agent-usage-service.test.ts tests/unit/main/agent-usage-service-providers.test.ts tests/unit/main/ai-ipc.test.ts tests/unit/components/agent-assets-workspace.test.tsx tests/unit/components/agent-provider-profile-workbench.test.tsx tests/unit/components/agent-usage-banner.test.tsx tests/unit/components/renderer-i18n-smoke.test.tsx
+  pnpm --dir apps/desktop exec tsc --noEmit -p tsconfig.test.json
+  pnpm build
+  ```
+
+- No GUI automation was authorized or run. Real account quota recovery, native
+  OS proxy/PAC, visual layout at the screenshot's size, Windows/Linux and packaged
+  release acceptance remain unverified. Existing app processes were not restarted;
+  the new main-process code requires loading the new build. Tests removed their
+  temporary databases/native roots; no service or port was retained. No user
+  credentials/settings were edited, and no commit or push was performed.

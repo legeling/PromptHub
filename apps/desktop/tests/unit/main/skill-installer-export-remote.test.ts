@@ -24,7 +24,8 @@ import { parseSkillMd } from "../../../src/main/services/skill-validator";
 import { initDatabase } from "@/main/database";
 import { readGithubTokenSetting } from "@/main/settings/settings-readers";
 import { invalidateCustomPathsCache } from "../../../src/main/services/skill-installer-utils";
-import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
+import { SKILL_PLATFORMS, getPlatformMcpRelativePath } from "@prompthub/shared/constants/platforms";
+import { isPlatformRootConfigured } from "@prompthub/core/platform-paths";
 import * as remoteInstaller from "../../../src/main/services/skill-installer-remote";
 import * as skillInstallerUtils from "../../../src/main/services/skill-installer-utils";
 // Direct imports for real DB tests (these are NOT mocked)
@@ -959,7 +960,11 @@ describe("SkillInstaller.getSupportedPlatforms", () => {
     });
     invalidateCustomPathsCache();
     const platforms = SkillInstaller.getSupportedPlatforms();
-    expect(platforms).toStrictEqual(SKILL_PLATFORMS);
+    expect(platforms).toStrictEqual(SKILL_PLATFORMS.map((platform) => {
+      if (platform.id !== "claude") return platform;
+      const root = skillInstallerUtils.getPlatformRootDir(platform);
+      return { ...platform, resolvedRootPath: root, mcpRelativePath: getPlatformMcpRelativePath(platform, isPlatformRootConfigured(platform, root)) };
+    }));
     expect(platforms.length).toBeGreaterThan(0);
   });
 

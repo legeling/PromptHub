@@ -536,7 +536,11 @@ export function getPlatformRootDir(
     platform.environmentRootRelativeToCwd,
     options.cwd,
   );
-  if (currentEnvironmentRoot) return currentEnvironmentRoot;
+  if (currentEnvironmentRoot) {
+    return path.join(
+      currentEnvironmentRoot, platform.rootEnvironmentSubdirectory ?? "",
+    );
+  }
   if (pathExists(primaryRoot)) return primaryRoot;
 
   const legacyEnvironmentRoot = normalizeEnvironmentRoot(

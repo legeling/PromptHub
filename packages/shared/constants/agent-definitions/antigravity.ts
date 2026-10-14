@@ -15,6 +15,11 @@ export const antigravityAgentDefinition = {
     mcpRelativePath: "mcp_config.json",
     pluginsRelativePath: "plugins",
     globalRuleFile: "../GEMINI.md",
+    cli: {
+      executableCandidates: ["agy"],
+      versionArgs: ["--version"],
+      evidence: "https://antigravity.google/docs/cli/install/",
+    },
     launchPaths: {
       darwin: [
         "/Applications/Antigravity.app",

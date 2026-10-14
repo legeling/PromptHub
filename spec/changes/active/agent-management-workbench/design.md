@@ -2,6 +2,33 @@
 
 ## Design Summary
 
+2026-10-14 screenshot follow-up: the process-level usage singleton explicitly
+receives `fetchWithNetworkProxy`; system mode uses `session.defaultSession.fetch`
+so OS proxy/PAC resolution belongs to Electron, not a separately maintained
+parser. Manual HTTP/SOCKS and direct routing remain unchanged. Request-time
+selection follows current settings without an additional retry/timeout layer.
+Transport failures remain sanitized error codes and receive localized Overview
+messages. Asset cards use content-driven height with the existing minimum size;
+metadata wraps without clipping and the native provider classification occupies
+its own line. No persisted data/configuration or credential migration is involved;
+source rollback is sufficient. Per-request dispatch is O(1); layout remains
+linear in rendered cards/tags. Regression and acceptance evidence is recorded in
+`implementation.md`.
+
+2026-10-14 registered-Agent audit: the existing registry owns primary MCP path
+resolution; the verified writable target set is unchanged. Desktop and CLI feed
+the same persisted overrides into the resolver. Shared/application targets stay
+independent. Session factories forward selected roots without replacing distinct
+native runtime defaults unless the user explicitly configured a root. Resume
+environment values remain an allowlisted absolute-path contract, not arbitrary
+shell environment input. Usage captures its root once per request and uses it as
+the cache scope. Renderer caches use the same scope and workspace panel identity
+includes the root, so root changes invalidate child state without changing tabs.
+These changes are linear in the 37 registry entries, require no
+schema migration or user-file rewrite, and can be rolled back at source level.
+Existing MCP target bindings keep their persisted paths; no silent retargeting
+or migration of an existing deployment occurs.
+
 本轮确认的 Provider & Model 设计边界：系统级模型服务配置是跨 Agent 复用的统一 Provider Profile 层，Agent 原生配置是可验证的投影，不是第二个长期事实源。官方供应商/模型目录只读；系统级调用配置可编辑；Agent 自定义 provider/model 可完整编辑、复制和删除；内置模型仅允许官方支持的 override。系统级 Provider 引入 Agent 默认采用绑定继承，也可复制为独立配置。凭据通过安全引用跨 Agent 复用，由各 adapter 投影，明文不进入 SQLite、备份、导出或 renderer。统一模型允许按 Agent 做 model ID 映射；外部文件变更进入 drift/conflict 流程，不静默覆盖。
 
 Provider & Model 页面的左右分栏布局和 CC Switch 风格预制供应商数据/协议映射的细化设计见
@@ -1638,8 +1665,10 @@ copied or vendored.
 The current stable schema and installed OpenCode `1.18.3` use singular
 `provider`, `model`, and `small_model` in the global
 `~/.config/opencode/opencode.jsonc` or `opencode.json`. The adapter preserves
-JSONC comments and chooses the same `opencode.jsonc`, `opencode.json`,
-`config.json` precedence implemented upstream. The separate experimental v2
+JSONC comments and merges `config.json`, `opencode.json`, then `opencode.jsonc`,
+overriding conflicting keys only. The highest-priority existing file is the write
+target; every participating file, including absence, contributes to the digest.
+The separate experimental v2
 documentation uses a materially different plural `providers` contract;
 PromptHub detects but does not write that shape until it becomes the stable
 schema and has its own compatibility fixtures.
@@ -1668,6 +1697,31 @@ selects native model strings as `providerId/modelId`, and writes only
 provider's legacy inline `options.apiKey` only after an encrypted backup exists.
 Existing custom authorization headers block direct activation instead of being
 silently removed or combined with another credential source.
+
+Direct activation checks the target provider even when another provider is
+currently selected. Existing OAuth and well-known authentication block a direct
+write before backup or mutation. Native-import selection validates the existing
+provider identity, credential ownership and declared model, and changes only
+`model` / `small_model`; no credential is written or network-tested.
+
+The v2 adapter digest covers all user config sources plus auth. Existing v1
+receipts are interpreted only by rollback using their original single-file
+digest; no alternate normal read path is retained. Selection-only backup bundles
+mark `preserveAuth` so rollback cannot replace externally refreshed credentials.
+Lower-priority files are never rewritten or copied into the selected file as a
+whole. Reading and merging is linear in the three bounded configuration files.
+
+Kimi root resolution uses only the current root contract; historical files are
+left untouched. Explicit user root overrides still work, including an explicitly
+chosen historical directory. MCP presets, session resume environment and quota
+cache identity use that same selection. OpenCode declares its XDG subdirectory
+in the shared platform metadata so inventory, installer, rules and presets agree.
+No database schema or user-file migration is introduced by these corrections.
+The Provider adapter's existing plan/apply/rollback orchestration and native
+selection validation remain linear functions even when formatting exceeds 50
+lines; keeping the source check, write and recovery order visible is clearer than
+splitting transaction phases. `agent-opencode-config-ownership.test.ts` covers
+selection, collision refusal, merged reads, reopen, stale plans and receipt recovery.
 
 Built-in providers, unsupported npm packages, environment/file substitutions,
 OAuth, well-known auth, cloud identity and pre-existing API credentials are

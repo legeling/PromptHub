@@ -4,6 +4,7 @@ import type { AgentSessionIndexDB } from "@prompthub/db";
 import type { AgentSessionIndexOperations } from "../ipc/agent-session-index.ipc";
 import { createAgentSessionIndexService } from "./agent-session-index-service";
 import { createAgentSessionService } from "./agent-session-service";
+import { getBuiltinAgentOverride } from "./skill-installer-utils";
 import {
   getAgentConfigContext,
   getClaudeNativeConfigDirectory,
@@ -23,6 +24,14 @@ function rootOption(agentId: string, rootPath: string) {
       return { clineRootDir: rootPath };
     case "cursor":
       return { cursorRootDir: rootPath };
+    case "gemini":
+      return { geminiRootDir: rootPath };
+    case "augment":
+      return { augmentRootDir: rootPath };
+    case "cherry-studio":
+      return { cherryStudioRootDir: rootPath };
+    case "qoder":
+      return { qoderRootDir: rootPath };
     case "codex":
       return { codexRootDir: rootPath };
     case "grok":
@@ -37,6 +46,28 @@ function rootOption(agentId: string, rootPath: string) {
       return { ohMyPiRootDir: rootPath };
     case "kiro":
       return { kiroRootDir: rootPath };
+    default:
+      return explicitRuntimeRootOption(agentId, rootPath);
+  }
+}
+
+function explicitRuntimeRootOption(agentId: string, rootPath: string) {
+  // These native data roots have their own defaults/environment contracts,
+  // distinct from the asset root. Only a user override replaces them.
+  if (!getBuiltinAgentOverride(agentId)?.rootPath) return {};
+  switch (agentId) {
+    case "antigravity":
+      return { antigravityRootDir: rootPath };
+    case "hermes":
+      return { hermesRootDir: rootPath };
+    case "reasonix":
+      return { reasonixStateRootDir: rootPath };
+    case "qwen":
+      return { qwenRuntimeDir: rootPath };
+    case "copaw":
+      return { copawRootDirs: [rootPath] };
+    case "nanoclaw":
+      return { nanoclawRootDirs: [rootPath] };
     default:
       return {};
   }
@@ -61,11 +92,6 @@ function createAgentSessionReader(agentId: string) {
 export function resolveAgentSessionIndexSource(agentId: string) {
   if (agentId !== "claude" && agentId !== "gemini") return null;
 
-  const reader =
-    agentId === "claude"
-      ? createAgentSessionReader(agentId)
-      : createAgentSessionService({
-          homeDir: os.homedir(),
-        });
+  const reader = createAgentSessionReader(agentId);
   return reader.getIndexSource(agentId);
 }

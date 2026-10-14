@@ -521,6 +521,15 @@ The system MUST support a redacted provider connectivity test and, where the pro
 - And native activation may select only an already-valid current provider/model state
 - And the experimental v2 plural `providers` contract is not written while the stable schema and installed release still use singular `provider`
 
+#### Scenario: Keep configuration sources and selected identities consistent
+
+- OpenCode user JSON/JSONC files are merged in native order; inspection and verification use the merged state, while activation changes only the selected writable source.
+- A change to any participating file invalidates an earlier activation plan, including creation of a previously absent source.
+- Direct activation cannot replace a target provider's OAuth or well-known credential, even when that provider is not currently selected.
+- Selecting an imported, still-valid native provider changes only model selection and preserves credential bytes through apply and rollback.
+- OpenCode inventory, assets and global MCP presets honor `XDG_CONFIG_HOME/opencode`, with explicit PromptHub root overrides taking precedence.
+- Kimi global MCP, session resume and quota caching use the selected current root; resume sets `KIMI_CODE_HOME`, and changing roots invalidates the prior quota cache.
+
 ### `FR-AGENT-012`: Tray Quick Switching
 
 The system SHOULD expose supported Agents, current verified provider state, and a quick provider switch action in the system tray. Tray actions MUST call the same activation service as the Agent workspace.
@@ -3797,10 +3806,12 @@ capability. Its Agent summary MUST derive the primary user target from
 the owning MCP domain continues to expose the existing Pi user, shared-adapter,
 and project target presets independently.
 
-PromptHub MUST describe this as compatible configuration management rather
-than native MCP runtime support. It MUST NOT merge Pi with Oh My Pi, install an
-MCP extension into Pi, or claim that the base Pi executable loads these files
-without an adapter. A missing target MUST still leave Add MCP available through
+PromptHub MUST distinguish native Pi 1.2.0 user/project MCP configuration from
+adapter/shared candidates. Native Pi supports stdio/HTTP, not SSE; local 0.83.0
+does not prove native 1.2.0 consumption. Configuration writing MUST remain a
+partial capability until native runtime consumption is verified. PromptHub MUST
+NOT merge Pi with Oh My Pi or install an MCP extension into Pi.
+A missing target MUST still leave Add MCP available through
 the owning MCP workflow.
 
 #### Scenario: Open Pi MCP management

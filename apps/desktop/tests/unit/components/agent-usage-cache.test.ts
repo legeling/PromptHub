@@ -9,7 +9,7 @@ import {
   writeCachedAgentUsage,
 } from "../../../src/renderer/components/agent/use-agent-usage";
 
-const CACHE_KEY = "prompthub.agent-usage.claude";
+const CACHE_KEY = `prompthub.agent-usage.claude.${encodeURIComponent("/fixture/root")}`;
 
 function metric(overrides: Partial<AgentUsageMetric> = {}): AgentUsageMetric {
   return {
@@ -38,7 +38,7 @@ function quota(metrics: AgentUsageMetric[]): AgentUsageQuota {
 
 function read(payload: unknown): AgentUsageQuota | null {
   window.localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-  return readCachedAgentUsage("claude");
+  return readCachedAgentUsage("claude", "/fixture/root");
 }
 
 describe("agent usage renderer cache validation", () => {
@@ -221,7 +221,9 @@ describe("agent usage renderer cache validation", () => {
       value: failingStorage,
     });
     try {
-      expect(() => writeCachedAgentUsage(quota([]))).not.toThrow();
+      expect(() =>
+        writeCachedAgentUsage("/fixture/root", quota([])),
+      ).not.toThrow();
     } finally {
       Object.defineProperty(window, "localStorage", {
         configurable: true,

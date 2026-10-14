@@ -260,7 +260,7 @@ function CustomProviderState() {
 
 function AgentUsageBannerContent({ agent }: { agent: ManagedAgentSummary }) {
   const { t } = useTranslation();
-  const { quota, isLoading, hasError, refresh } = useAgentUsage(agent.id);
+  const { quota, isLoading, hasError, refresh } = useAgentUsage(agent.id, agent.paths.root);
   const hasCachedSuccess = quota?.status === "ok";
   const status = hasError && !hasCachedSuccess ? "unavailable" : quota?.status;
   const isCustomProviderActive =

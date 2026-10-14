@@ -126,6 +126,7 @@ describe("Oh My Pi session adapter", () => {
           resume: {
             executable: "omp",
             args: ["--resume", sessionId],
+            environment: { PI_CODING_AGENT_DIR: ohMyPiRootDir },
             cwd: "/workspace/oh-my-pi",
           },
         },

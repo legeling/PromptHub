@@ -452,8 +452,15 @@ export interface AgentResumeCommand {
   executable: string;
   args: string[];
   cwd?: string;
-  /** Null explicitly clears an inherited Claude scope for default-root sessions. */
-  environment?: { CLAUDE_CONFIG_DIR: string | null };
+  /** Null explicitly clears an inherited scope; only native data-root keys are accepted. */
+  environment?: {
+    CLAUDE_CONFIG_DIR?: string | null;
+    KIMI_CODE_HOME?: string | null;
+    QWEN_RUNTIME_DIR?: string | null;
+    CODEX_HOME?: string | null;
+    GROK_HOME?: string | null;
+    PI_CODING_AGENT_DIR?: string | null;
+  };
 }
 
 export type AgentSessionSourceScanStatus = "idle" | "ok" | "partial" | "error";

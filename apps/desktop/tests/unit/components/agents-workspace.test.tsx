@@ -1060,7 +1060,7 @@ describe("Agent workspace shell", () => {
     expect(screen.getByText("work-gateway")).toBeVisible();
   });
 
-  it("lists Agent sessions and lazily reads the selected transcript", async () => {
+  it("reads selected sessions and reloads them when the same Agent changes roots", async () => {
     const readSession = vi.fn().mockResolvedValue({
       agentId: "claude",
       adapter: "claude-jsonl-v1",
@@ -1118,6 +1118,36 @@ describe("Agent workspace shell", () => {
       await screen.findByText("Investigate the failing build"),
     ).toBeVisible();
     expect(readSession).toHaveBeenCalledWith("claude", "session-1");
+
+    const listSessions = vi.mocked(window.api.agent.listSessions);
+    const previousCalls = listSessions.mock.calls.length;
+    listSessions.mockResolvedValue({
+      agentId: "claude",
+      adapter: "claude-jsonl-v1",
+      sessions: [],
+      total: 0,
+      hasMore: false,
+    });
+    act(() => {
+      useAgentStore.setState({
+        agents: [
+          {
+            ...agents[0],
+            paths: { ...agents[0].paths, root: "/selected/other-root" },
+          },
+          agents[1],
+        ],
+      });
+    });
+    await waitFor(() =>
+      expect(listSessions.mock.calls.length).toBeGreaterThan(previousCalls),
+    );
+    expect(screen.queryByText("Investigate the failing build")).toBeNull();
+    expect(screen.queryByText("Build investigation")).toBeNull();
+    expect(screen.getByRole("tab", { name: /sessions/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("renders the usage banner on the overview when usage is supported", async () => {

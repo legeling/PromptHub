@@ -510,7 +510,10 @@ export async function detectInstalledPlatforms(
     options.resolveExecutable ?? createNativeCommandRunner().resolve;
 
   for (const platform of getSupportedPlatforms()) {
-    if (platform.assetModel === "plugin-harness") {
+    if (
+      platform.assetModel === "plugin-harness" ||
+      platform.id === "antigravity"
+    ) {
       const rootExists = await pathExists(getPlatformRootDir(platform));
       let cliExists = false;
       for (const candidate of platform.cli?.executableCandidates || []) {
