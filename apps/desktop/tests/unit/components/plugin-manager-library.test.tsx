@@ -637,7 +637,7 @@ describe("PluginManager", () => {
 
     const grid = await screen.findByTestId("plugin-library-grid");
     expect(grid).toHaveStyle({
-      gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 360px), 1fr))",
+      gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))",
     });
     expect(grid).not.toHaveClass("lg:grid-cols-2");
 

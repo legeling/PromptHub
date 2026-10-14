@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
 import type {
   PluginInventorySummary,
   PluginLibraryEntry,
@@ -36,7 +37,6 @@ export const MARKET_GRID_ROW_HEIGHT_PX = 132;
 export const MARKET_GRID_HEADER_HEIGHT_PX = 36;
 export const MARKET_GRID_BOTTOM_GUTTER_PX = 24;
 export const MARKET_CATALOG_VIRTUALIZE_THRESHOLD = 240;
-export const PLUGIN_LIBRARY_GALLERY_AUTO_MIN_WIDTH_PX = 360;
 export const PLUGIN_LIBRARY_GALLERY_MANUAL_MIN_WIDTH_PX = 280;
 export const PLUGIN_LIBRARY_GALLERY_COLUMNS: PluginLibraryGalleryColumnMode[] =
   ["auto", "2", "3", "4"];
@@ -186,9 +186,7 @@ export function getPluginLibraryGalleryGridStyle(
   columns: PluginLibraryGalleryColumnMode,
 ): CSSProperties {
   if (columns === "auto") {
-    return {
-      gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${PLUGIN_LIBRARY_GALLERY_AUTO_MIN_WIDTH_PX}px), 1fr))`,
-    };
+    return AUTO_GALLERY_GRID_STYLE;
   }
 
   const columnCount = Number(columns);

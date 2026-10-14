@@ -1,5 +1,6 @@
 import type { CSSProperties, HTMLAttributes } from "react";
 import type { TFunction } from "i18next";
+import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
 import type { McpTargetPreset } from "@prompthub/core";
 import type {
   McpServerConfig,
@@ -14,7 +15,6 @@ export const DEFAULT_MCP_LIST_PAGE_SIZE = 12;
 
 const MCP_VIEW_TRANSITION_CLASS =
   "h-full min-h-0 animate-in fade-in slide-in-from-right-3 duration-smooth";
-const MCP_GALLERY_AUTO_MIN_WIDTH_PX = 280;
 const MCP_GALLERY_MANUAL_MIN_WIDTH_PX = 240;
 
 export type McpLibraryFilter = "all" | "favorites" | "distributed" | "pending";
@@ -52,9 +52,7 @@ export function getMcpGalleryGridStyle(
   columns: McpGalleryColumnMode,
 ): CSSProperties {
   if (columns === "auto") {
-    return {
-      gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${MCP_GALLERY_AUTO_MIN_WIDTH_PX}px), 1fr))`,
-    };
+    return AUTO_GALLERY_GRID_STYLE;
   }
   const columnCount = Number(columns);
   const totalGapRem = columnCount - 1;

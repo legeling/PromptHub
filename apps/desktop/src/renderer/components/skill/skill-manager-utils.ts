@@ -1,10 +1,10 @@
 import type { SkillPlatformInstallStatusMap } from "@prompthub/shared/types";
+import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
 import type {
   SkillGalleryColumnMode,
   SkillStoreView,
 } from "../../stores/skill.store";
 
-const SKILL_GALLERY_AUTO_MIN_WIDTH_PX = 280;
 const SKILL_GALLERY_MANUAL_MIN_WIDTH_PX = 240;
 
 export const SKILL_GALLERY_COLUMNS: SkillGalleryColumnMode[] = [
@@ -68,9 +68,7 @@ export function getSkillGalleryGridStyle(
   columns: SkillGalleryColumnMode,
 ): React.CSSProperties {
   if (columns === "auto") {
-    return {
-      gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${SKILL_GALLERY_AUTO_MIN_WIDTH_PX}px), 1fr))`,
-    };
+    return AUTO_GALLERY_GRID_STYLE;
   }
 
   const columnCount = Number(columns);

@@ -16,6 +16,7 @@ import type {
 import type { McpTargetPreset } from "@prompthub/core";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { getDistributedPresets } from "./mcp-form-utils";
+import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
 
 export type McpServerViewMode = "gallery" | "list";
 
@@ -666,12 +667,7 @@ export function McpServerList({
   return (
     <div
       className="grid gap-4"
-      style={
-        gridStyle ?? {
-          gridTemplateColumns:
-            "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
-        }
-      }
+      style={gridStyle ?? AUTO_GALLERY_GRID_STYLE}
     >
       {items.map((item) => (
         <McpServerCard
