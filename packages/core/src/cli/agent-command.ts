@@ -1,3 +1,4 @@
+import path from "node:path";
 import type {
   BuiltinAgentOverrideConfig,
   CustomAgentConfig,
@@ -69,7 +70,7 @@ function toCliSettingsError(error: AgentSettingsError): CliError {
 }
 
 function validateRootPath(value: string, field = "--root"): string {
-  const normalized = value.trim().replace(/[\\/]+$/, "");
+  const normalized = value.trim();
   if (!normalized || normalized.includes("\0")) {
     throw new CliError(
       "INVALID_AGENT_PATH",
@@ -77,7 +78,7 @@ function validateRootPath(value: string, field = "--root"): string {
       EXIT_CODES.USAGE,
     );
   }
-  return normalized;
+  return path.resolve(normalized);
 }
 
 function parseRelativeOption(

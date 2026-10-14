@@ -6,10 +6,7 @@ import {
 import os from "os";
 import path from "path";
 
-import {
-  SKILL_PLATFORMS,
-  type SkillPlatform,
-} from "@prompthub/shared/constants/platforms";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import type {
   SkillLocalFileBufferEntry,
   SkillLocalFileEntry,
@@ -40,14 +37,6 @@ export function resolvePlatformPath(template: string): string {
     .replace(/^~/, home)
     .replace(/%USERPROFILE%/gi, home)
     .replace(/%APPDATA%/gi, path.join(home, "AppData", "Roaming"));
-}
-
-export function getPlatformSkillsDir(platform: SkillPlatform): string {
-  const osKey = process.platform as "darwin" | "win32" | "linux";
-  const rootDir = platform.rootDir[osKey] || platform.rootDir.linux;
-  return resolvePlatformPath(
-    [rootDir, platform.skillsRelativePath].filter(Boolean).join("/"),
-  );
 }
 
 export async function fileExists(targetPath: string): Promise<boolean> {

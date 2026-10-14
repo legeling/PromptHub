@@ -1,4 +1,8 @@
 import fs from "fs/promises";
+import {
+  getCliAgentAssetInventory,
+  getCliAgentSkillDirectory,
+} from "../agent-assets";
 import { scanSkillContent } from "@prompthub/shared/utils/skill-content-scan";
 import path from "path";
 import {
@@ -45,7 +49,6 @@ import {
 import {
   computeRepoDirectoryFingerprintByPath,
   fileExists,
-  getPlatformSkillsDir,
   isInternalSkillRepoEntry,
   isPathWithin,
   normalizeExistingPath,
@@ -541,12 +544,8 @@ export function createCliSkillService(
       });
       return;
     }
-    const platform = SKILL_PLATFORMS.find((item) => item.id === platformId);
-    if (!platform) {
-      throw new Error(`Unknown platform: ${platformId}`);
-    }
     const skillDir = path.join(
-      getPlatformSkillsDir(platform),
+      await getCliAgentSkillDirectory(platformId),
       validateSkillName(skillName),
     );
     await fs.mkdir(path.dirname(skillDir), { recursive: true });
@@ -648,12 +647,8 @@ export function createCliSkillService(
       });
       return;
     }
-    const platform = SKILL_PLATFORMS.find((item) => item.id === platformId);
-    if (!platform) {
-      throw new Error(`Unknown platform: ${platformId}`);
-    }
     const skillDir = path.join(
-      getPlatformSkillsDir(platform),
+      await getCliAgentSkillDirectory(platformId),
       validateSkillName(skillName),
     );
     if (await fileExists(skillDir)) {
@@ -667,8 +662,9 @@ export function createCliSkillService(
 
   async function detectInstalledPlatforms(): Promise<string[]> {
     const installed: string[] = [];
-    for (const platform of SKILL_PLATFORMS) {
-      const skillsDir = getPlatformSkillsDir(platform);
+    for (const platform of await getCliAgentAssetInventory()) {
+      const skillsDir = platform.paths.skills;
+      if (!skillsDir) continue;
       const parentDir = path.dirname(skillsDir);
       if (await fileExists(parentDir)) {
         installed.push(platform.id);
@@ -682,9 +678,10 @@ export function createCliSkillService(
     skillId?: string,
   ): Promise<Record<string, boolean>> {
     const status: Record<string, boolean> = {};
-    for (const platform of SKILL_PLATFORMS) {
+    for (const platform of await getCliAgentAssetInventory()) {
+      if (!platform.paths.skills) continue;
       const skillDir = path.join(
-        getPlatformSkillsDir(platform),
+        platform.paths.skills,
         validateSkillName(skillName),
       );
       status[platform.id] = await fileExists(skillDir);
@@ -808,10 +805,16 @@ export function createCliSkillService(
               .map((scanPath) => ({ path: scanPath, platformName: "Custom" }))
           : [
               { path: getSkillsDir(), platformName: "PromptHub" },
-              ...SKILL_PLATFORMS.map((platform) => ({
-                path: getPlatformSkillsDir(platform),
-                platformName: platform.name,
-              })),
+              ...(await getCliAgentAssetInventory()).flatMap((platform) =>
+                platform.paths.skills
+                  ? [
+                      {
+                        path: platform.paths.skills,
+                        platformName: platform.name,
+                      },
+                    ]
+                  : [],
+              ),
             ];
 
       await Promise.all(
