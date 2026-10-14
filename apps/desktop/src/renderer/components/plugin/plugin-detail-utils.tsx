@@ -207,8 +207,12 @@ export function getPluginSafetySourceUrl(plugin: PluginLibraryEntry): string {
   );
 }
 
-export function buildPluginSafetyScanContent(plugin: PluginLibraryEntry): string {
-  return [plugin.description, plugin.longDescription].filter(Boolean).join("\n\n");
+export function buildPluginSafetyScanContent(
+  plugin: PluginLibraryEntry,
+): string {
+  return [plugin.description, plugin.longDescription]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export function getPluginDescriptionText(
@@ -328,6 +332,13 @@ export function getPluginTargetMatrixForEntry(
         unsupportedReason: "invalid-native-manifest",
       };
     }
+    if (target.requiresNativeManifest && !nativeTargetIds.has(target.id)) {
+      return {
+        ...target,
+        enabled: false,
+        unsupportedReason: "native-manifest-required",
+      };
+    }
     return target.enabled &&
       target.status !== "native" &&
       nativeTargetIds.has(target.id)
@@ -340,12 +351,10 @@ export function getPluginTargetDescription(
   target: PluginTargetCompatibility,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
-  const localizedDescription = t(`plugin.targetDescriptions.${target.id}`, {
-    defaultValue: "",
-    name: target.displayName,
-  }).trim();
-  if (localizedDescription) {
-    return localizedDescription;
+  if (target.unsupportedReason === "native-manifest-required") {
+    return t("plugin.targetDescriptions.nativeManifestRequired", {
+      name: target.displayName,
+    });
   }
   if (target.unsupportedReason === "invalid-native-manifest") {
     return t("plugin.targetDescriptions.invalidNativeManifest", {
@@ -353,6 +362,13 @@ export function getPluginTargetDescription(
         "Invalid native manifest: {{marker}}. Fix or remove it before distribution.",
       marker: target.nativeMarker ?? target.id,
     });
+  }
+  const localizedDescription = t(`plugin.targetDescriptions.${target.id}`, {
+    defaultValue: "",
+    name: target.displayName,
+  }).trim();
+  if (localizedDescription) {
+    return localizedDescription;
   }
   if (!target.enabled) {
     return t("plugin.targetDescriptions.unsupportedBundle", {

@@ -1,4 +1,8 @@
 import path from "path";
+import {
+  isCodexPortablePluginManifest,
+  mergeCodexPortablePluginManifest,
+} from "@prompthub/shared/utils/codex-plugin";
 
 import type {
   PluginInventorySummary,
@@ -109,7 +113,9 @@ function enrichMarketEntry(
     author: normalizeAuthor(manifest.author) ?? entry.author,
     category: entry.category ?? safeString(interfaceRecord.category),
     inventory,
-    classification: classifyPluginInventory(inventory),
+    classification: safeString(manifest.name)
+      ? "bundle"
+      : classifyPluginInventory(inventory),
   };
 }
 
@@ -205,11 +211,16 @@ export class PluginMarketplaceClient {
     entry: PluginMarketEntry,
     sources = this.marketSources,
   ): Promise<PluginMarketPreview> {
-    const manifestUrl = this.getManifestUrlForEntry(entry, sources);
-    const manifest = await this.readManifest(manifestUrl, entry.displayName);
     const source = findMarketSource(entry, sources);
+    const { manifest, manifestUrl } = await this.readCodexManifest(
+      entry,
+      sources,
+      source,
+    );
     const inventory = await this.resolveInventory(entry, manifest, source);
-    const enriched = enrichMarketEntry(entry, manifest, inventory, source);
+    const resolvedEntry = isCodexPortablePluginManifest(manifest) && entry.source.packagePath
+      ? { ...entry, source: { ...entry.source, manifestPath: path.posix.join(entry.source.packagePath, "plugin.json") } } : entry;
+    const enriched = enrichMarketEntry(resolvedEntry, manifest, inventory, source);
     return createMarketPreview(enriched, manifest, manifestUrl);
   }
 
@@ -227,6 +238,22 @@ export class PluginMarketplaceClient {
     if (expandedSkills !== undefined) {
       inventory.skills = expandedSkills;
     }
+    if (isCodexPortablePluginManifest(manifest) && entry.source.packagePath) {
+      const mcpUrl = buildRawPluginFileUrl(
+        source,
+        path.posix.join(entry.source.packagePath, "mcp.json"),
+      );
+      const config = await this.readOptionalManifest(
+        mcpUrl,
+        "Portable MCP config",
+      );
+      const servers = config?.mcpServers;
+      if (servers && typeof servers === "object" && !Array.isArray(servers))
+        inventory.mcpServers = Math.max(
+          inventory.mcpServers,
+          Object.keys(servers).length,
+        );
+    }
     return inventory;
   }
 
@@ -235,7 +262,10 @@ export class PluginMarketplaceClient {
     manifest: RawRecord,
     source: PluginMarketSource,
   ): Promise<number | undefined> {
-    const skillPaths = manifestFieldStrings(manifest.skills);
+    const skillPaths = manifestFieldStrings(
+      manifest.skills ??
+        (isCodexPortablePluginManifest(manifest) ? "./skills" : undefined),
+    );
     if (!skillPaths.some(looksLikeDirectoryManifestPath)) {
       return undefined;
     }
@@ -352,13 +382,65 @@ export class PluginMarketplaceClient {
     return parseJsonObject(content, `${displayName} manifest`);
   }
 
+  private async readOptionalManifest(
+    url: string,
+    label: string,
+  ): Promise<RawRecord | undefined> {
+    try {
+      return await this.readManifest(url, label);
+    } catch (error) {
+      if (
+        error instanceof CorePluginError &&
+        error.code === "RESOURCE_NOT_FOUND"
+      )
+        return undefined;
+      throw error;
+    }
+  }
+
+  private async readCodexManifest(
+    entry: PluginMarketEntry,
+    sources: PluginMarketSource[],
+    source: PluginMarketSource,
+  ): Promise<{ manifest: RawRecord; manifestUrl: string }> {
+    const legacyUrl = this.getManifestUrlForEntry(entry, sources);
+    if (!entry.source.packagePath)
+      return {
+        manifest: await this.readManifest(legacyUrl, entry.displayName),
+        manifestUrl: legacyUrl,
+      };
+    const rootUrl = buildRawPluginFileUrl(
+      source,
+      path.posix.join(entry.source.packagePath, "plugin.json"),
+    );
+    const root = await this.readOptionalManifest(rootUrl, entry.displayName);
+    if (!root || !isCodexPortablePluginManifest(root))
+      return {
+        manifest: await this.readManifest(legacyUrl, entry.displayName),
+        manifestUrl: legacyUrl,
+      };
+    const extensions = root.extensions;
+    const inline: unknown =
+      extensions && typeof extensions === "object"
+        ? Reflect.get(extensions, "com.openai")
+        : undefined;
+    const legacy =
+      inline === undefined
+        ? await this.readOptionalManifest(legacyUrl, entry.displayName)
+        : undefined;
+    return {
+      manifest: mergeCodexPortablePluginManifest(root, legacy),
+      manifestUrl: rootUrl,
+    };
+  }
+
   private async fetchText(url: string): Promise<string> {
     const response = await this.fetchFn(url, {
       headers: { Accept: "application/json,text/plain,*/*" },
     });
     if (!response.ok) {
       throw new CorePluginError(
-        "FETCH_FAILED",
+        response.status === 404 ? "RESOURCE_NOT_FOUND" : "FETCH_FAILED",
         `读取 Plugin 资源失败 (${response.status} ${response.statusText}): ${url}`,
       );
     }

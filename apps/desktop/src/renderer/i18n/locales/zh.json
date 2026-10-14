@@ -4229,6 +4229,8 @@
       "pending": "待确认"
     },
     "targetDescriptions": {
+      "antigravity": "Antigravity 支持全局 plugins 目录中的原生 plugin.json 插件包。",
+      "nativeManifestRequired": "{{name}} 需要包含原生 plugin.json 的插件包，暂不支持自动格式转换。",
       "codex": "Codex 原生支持 PromptHub Plugin 能力包。",
       "claude-code": "Claude Code 可以接收由 PromptHub 生成的 Claude Code Plugin 包。",
       "cursor": "Cursor 可以接收由 PromptHub 生成的 Cursor Plugin 包。",

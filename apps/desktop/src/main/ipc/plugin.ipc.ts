@@ -8,6 +8,10 @@ import {
 } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
+import { isAntigravityPluginManifest } from "@prompthub/shared/utils/antigravity-plugin";
+import { isCodexPortablePluginManifest } from "@prompthub/shared/utils/codex-plugin";
+import { readLocalPluginManifest } from "@prompthub/core/plugin-library/package-validation";
+import { redactMcpServerConfig } from "@prompthub/shared/utils/mcp-config";
 import type {
   PluginCapabilityKind,
   PluginDeleteOptions,
@@ -32,48 +36,16 @@ import {
 } from "../services/agent-asset-file-snapshot";
 import { fetchWithNetworkProxy } from "../services/network-proxy";
 
-const PLUGIN_TARGET_PLATFORM_IDS: Record<string, string> = {
-  codex: "codex",
-  "claude-code": "claude",
-  cursor: "cursor",
-  "gemini-cli": "gemini",
-  kiro: "kiro",
-  "github-copilot": "copilot",
-};
-
-function normalizePluginDirectorySegment(value: string): string {
-  return (
-    value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 120) || "plugin"
-  );
-}
-
-function resolveAgentPluginTargetPath(
-  targetId: string,
-  plugin: PluginLibraryEntry,
-): string | undefined {
-  const platformId = PLUGIN_TARGET_PLATFORM_IDS[targetId];
-  if (!platformId) {
-    return undefined;
-  }
-  const platform = getPlatformById(platformId);
-  if (!platform) {
-    return undefined;
-  }
-
-  const pluginBaseDir = getPlatformPluginDir(platform);
-  const pluginName = normalizePluginDirectorySegment(
-    plugin.name || plugin.displayName || plugin.id,
-  );
-  const pluginVersion = normalizePluginDirectorySegment(
-    plugin.version || plugin.id.replace(/:/g, "-"),
-  );
-  return path.join(pluginBaseDir, pluginName, pluginVersion);
-}
+import {
+  normalizePluginDirectorySegment,
+  resolveAgentPluginTargetPath,
+} from "./plugin-target-paths";
+import { getDirectPluginScanEntries } from "./plugin-target-links";
+import {
+  distributeDesktopPlugin,
+  removeDesktopPluginDistribution,
+  deleteDesktopPlugin,
+} from "../services/desktop-plugin-distribution";
 
 const COMMON_ROOT_IGNORED_DIRS = new Set([
   ".git",
@@ -141,6 +113,7 @@ interface PluginTargetScanConfig {
     "platform-plugin-dir" | "root-plugin-cache" | "root-plugins"
   >;
   manualRoot?: boolean;
+  directPackages?: boolean;
   registry?: "claude-installed-plugins" | "oh-my-pi-installed-plugins";
 }
 
@@ -168,8 +141,15 @@ const PLUGIN_TARGET_SCAN_CONFIGS: PluginTargetScanConfig[] = [
   {
     targetId: "gemini-cli",
     platformId: "gemini",
-    markerPaths: ["gemini-extension.json", "plugin.json"],
+    markerPaths: ["gemini-extension.json"],
     recursiveRoots: ["platform-plugin-dir"],
+  },
+  {
+    targetId: "antigravity",
+    platformId: "antigravity",
+    markerPaths: ["plugin.json"],
+    recursiveRoots: [],
+    directPackages: true,
   },
   {
     targetId: "kiro",
@@ -463,7 +443,17 @@ function getPackageMarkerPath(
   packageDir: string,
   markerPaths: string[],
 ): string | null {
+  const portablePath = getContainedFilePath(
+    packageDir,
+    path.join(packageDir, "plugin.json"),
+  );
+  const portable = Boolean(
+    portablePath && isCodexPortablePluginManifest(readJsonObject(portablePath)),
+  );
+  if (portable && markerPaths.includes(".codex-plugin/plugin.json"))
+    return portablePath;
   for (const markerPath of markerPaths) {
+    if (portable && markerPath === "plugin.json") continue;
     const candidatePath = path.join(packageDir, ...markerPath.split("/"));
     const containedMarkerPath = getContainedFilePath(packageDir, candidatePath);
     if (containedMarkerPath) return candidatePath;
@@ -521,6 +511,31 @@ function getPluginInventory(
   if (getContainedFilePath(packageDir, path.join(packageDir, ".mcp.json"))) {
     inventory.mcpServers = Math.max(inventory.mcpServers, 1);
   }
+  if (isCodexPortablePluginManifest(manifest)) {
+    const mcp = getContainedFilePath(
+      packageDir,
+      path.join(packageDir, "mcp.json"),
+    );
+    const config = mcp ? readJsonObject(mcp) : null;
+    if (isRecord(config?.mcpServers))
+      inventory.mcpServers = Math.max(
+        inventory.mcpServers,
+        Object.keys(config.mcpServers).length,
+      );
+  }
+  if (
+    markerPath === path.join(packageDir, "plugin.json") &&
+    isAntigravityPluginManifest(manifest)
+  ) {
+    if (
+      getContainedFilePath(packageDir, path.join(packageDir, "mcp_config.json"))
+    ) {
+      inventory.mcpServers = Math.max(inventory.mcpServers, 1);
+    }
+    if (getContainedFilePath(packageDir, path.join(packageDir, "hooks.json"))) {
+      inventory.hooks = Math.max(inventory.hooks, 1);
+    }
+  }
   if (markerPath && path.basename(markerPath) === "POWER.md") {
     inventory.docs = Math.max(inventory.docs, 1);
   }
@@ -561,7 +576,9 @@ function buildTargetPlugin(
   const markerPath = getPackageMarkerPath(packageDir, markerPaths);
   const manifest =
     markerPath && path.basename(markerPath) !== "POWER.md"
-      ? readJsonObject(markerPath)
+      ? isCodexPortablePluginManifest(readJsonObject(markerPath))
+        ? readLocalPluginManifest(markerPath).manifest
+        : readJsonObject(markerPath)
       : null;
   const interfaceRecord = isRecord(manifest?.interface)
     ? manifest.interface
@@ -579,7 +596,9 @@ function buildTargetPlugin(
     safeString(manifest?.description);
   const inventory = getPluginInventory(packageDir, manifest, markerPath);
 
-  if (pluginInventoryTotal(inventory) === 0) return null;
+  if (targetId === "antigravity") {
+    if (!isAntigravityPluginManifest(manifest)) return null;
+  } else if (pluginInventoryTotal(inventory) === 0) return null;
 
   return {
     id: `${targetId}:${normalizePluginDirectorySegment(name)}:${normalizePluginDirectorySegment(packageDir)}`,
@@ -648,11 +667,12 @@ function addTargetPluginPackage(params: {
 }): void {
   const realPackageDir = safeRealPath(params.packageDir);
   if (!realPackageDir) return;
-  if (!isInsideDirectory(params.containmentRootDir, realPackageDir)) return;
+  if (!isInsideOrEqualDirectory(params.containmentRootDir, realPackageDir))
+    return;
   if (params.seenRealPaths.has(realPackageDir)) return;
   const plugin = buildTargetPlugin(
     params.targetId,
-    realPackageDir,
+    params.packageDir,
     params.fallbackName,
     params.markerPaths,
     params.allowManualPackage,
@@ -710,6 +730,28 @@ export function scanInstalledPluginsForTarget(
   if (!pluginDir) return [];
   const seenRealPaths = new Set<string>();
   const plugins: PluginTargetInstalledPlugin[] = [];
+  const hasClaudeInstalledRegistry =
+    config.registry === "claude-installed-plugins" &&
+    fs.existsSync(path.join(rootDir, "plugins", "installed_plugins.json"));
+
+  if (config.directPackages && fs.existsSync(pluginDir)) {
+    for (const entry of getDirectPluginScanEntries(
+      pluginDir,
+      rootDir,
+      targetId,
+    )) {
+      addTargetPluginPackage({
+        allowManualPackage: false,
+        containmentRootDir: entry.containmentRootDir,
+        fallbackName: entry.name,
+        markerPaths: config.markerPaths,
+        packageDir: path.join(pluginDir, entry.name),
+        plugins,
+        seenRealPaths,
+        targetId,
+      });
+    }
+  }
 
   if (config.registry === "claude-installed-plugins") {
     const installedRegistry = readJsonObject(
@@ -769,6 +811,12 @@ export function scanInstalledPluginsForTarget(
   }
 
   for (const rootKind of config.recursiveRoots) {
+    // Claude retains downloaded cache packages after uninstall; its registry owns installed state.
+    if (
+      hasClaudeInstalledRegistry &&
+      (rootKind === "root-plugin-cache" || rootKind === "platform-plugin-dir")
+    )
+      continue;
     const scanRoot = getScanRootPath(rootDir, pluginDir, rootKind);
     for (const packageDir of collectMarkerPackages(
       scanRoot,
@@ -912,18 +960,23 @@ export function registerPluginIPC(
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_DELETE,
     async (_event, id: string, options?: PluginDeleteOptions) =>
-      service.deletePlugin(id, options),
+      deleteDesktopPlugin(service, id, options),
   );
   ipcMain.handle(IPC_CHANNELS.PLUGIN_DISTRIBUTE, async (_event, request) =>
-    service.distributePlugin(request),
+    distributeDesktopPlugin(service, request),
   );
   ipcMain.handle(IPC_CHANNELS.PLUGIN_UNDISTRIBUTE, async (_event, request) =>
-    service.removePluginDistribution(request),
+    removeDesktopPluginDistribution(service, request),
   );
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_IMPORT_CHILD_MCP,
-    async (_event, pluginId: string) =>
-      importChildMcpServersForPlugin(service, pluginId),
+    async (_event, pluginId: string) => {
+      const result = importChildMcpServersForPlugin(service, pluginId);
+      return {
+        ...result,
+        imported: result.imported.map(redactMcpServerConfig),
+      };
+    },
   );
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_PACKAGE_HEALTH_CHECK,

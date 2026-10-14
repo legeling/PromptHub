@@ -4191,6 +4191,8 @@
       "pending": "保留中"
     },
     "targetDescriptions": {
+      "antigravity": "Antigravity はグローバル plugins ディレクトリ内のネイティブ plugin.json パッケージをサポートします。",
+      "nativeManifestRequired": "{{name}} にはネイティブ plugin.json パッケージが必要です。形式の自動変換には対応していません。",
       "codex": "Codex は PromptHub Plugin バンドルをネイティブにサポートしています。",
       "claude-code": "Claude Code は PromptHub が生成する Claude Code Plugin パッケージを受け取れます。",
       "cursor": "Cursor は PromptHub が生成する Cursor Plugin パッケージを受け取れます。",

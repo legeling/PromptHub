@@ -17,8 +17,10 @@ import {
 
 const PLAN_TTL_MS = 5 * 60 * 1_000;
 const MAX_PENDING_PLANS = 32;
-const UPDATE_TIMEOUT_MS = 120_000;
-const UPDATE_OUTPUT_LIMIT = 256 * 1024;
+import {
+  AGENT_CLI_MUTATION_TIMEOUT_MS,
+  AGENT_CLI_MUTATION_OUTPUT_BYTES,
+} from "./agent-native-command-policy";
 const SEMVER_PATTERN =
   /\bv?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)\b/;
 
@@ -194,8 +196,8 @@ export class AgentCliLifecycleService {
         pending.publicPlan.command.executable,
         pending.publicPlan.command.args,
         {
-          timeout: UPDATE_TIMEOUT_MS,
-          maxBuffer: UPDATE_OUTPUT_LIMIT,
+          timeout: AGENT_CLI_MUTATION_TIMEOUT_MS,
+          maxBuffer: AGENT_CLI_MUTATION_OUTPUT_BYTES,
         },
       );
     } catch {
@@ -249,8 +251,8 @@ export class AgentCliLifecycleService {
         pending.publicPlan.command.executable,
         pending.rollbackArgs,
         {
-          timeout: UPDATE_TIMEOUT_MS,
-          maxBuffer: UPDATE_OUTPUT_LIMIT,
+          timeout: AGENT_CLI_MUTATION_TIMEOUT_MS,
+          maxBuffer: AGENT_CLI_MUTATION_OUTPUT_BYTES,
         },
       );
       const restored = await this.safeDiagnostic(pending.platform);

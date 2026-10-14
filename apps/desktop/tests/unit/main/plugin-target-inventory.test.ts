@@ -464,7 +464,7 @@ describe("Agent Plugin target inventory scan", () => {
   });
 
   it("reads Gemini CLI extension packages", () => {
-    const geminiPlugin = path.join(agentRoot, "config", "plugins", "shipper");
+    const geminiPlugin = path.join(agentRoot, "extensions", "shipper");
     writeJson(path.join(geminiPlugin, "gemini-extension.json"), {
       name: "shipper",
       displayName: "Shipper",

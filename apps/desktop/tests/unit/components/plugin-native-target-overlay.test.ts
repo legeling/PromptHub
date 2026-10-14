@@ -32,6 +32,27 @@ const plugin = {
 } as PluginLibraryEntry;
 
 describe("Plugin native target overlay", () => {
+  it("requires an Antigravity native manifest before enabling distribution", () => {
+    const nativeTarget: PluginTargetCompatibility = {
+      id: "antigravity",
+      displayName: "Antigravity",
+      status: "native",
+      enabled: true,
+      requiresNativeManifest: true,
+    };
+    expect(
+      getPluginTargetMatrixForEntry([nativeTarget], plugin)[0],
+    ).toMatchObject({
+      enabled: false,
+      unsupportedReason: "native-manifest-required",
+    });
+    expect(
+      getPluginTargetMatrixForEntry([nativeTarget], {
+        ...plugin,
+        nativeTargetIds: ["antigravity"],
+      })[0],
+    ).toEqual(nativeTarget);
+  });
   it("marks valid package-native targets without enabling unsupported targets", () => {
     expect(getPluginTargetMatrixForEntry(targets, plugin)).toEqual([
       targets[0],

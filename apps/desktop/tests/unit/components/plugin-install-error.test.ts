@@ -39,6 +39,19 @@ describe("Plugin install error presentation", () => {
     );
   });
 
+  it("classifies the IPC Git clone timeout as a network failure", () => {
+    const message = getPluginInstallErrorMessage(
+      new Error(
+        "Error invoking remote method 'plugin:source:updateStatus': CorePluginError: Git clone timed out after 30s for URL: https://github.com/openai/plugins",
+      ),
+      t,
+    );
+    expect(message).toBe(
+      "Could not download the Plugin. Check the proxy mode in Settings > Network Settings, then try again.",
+    );
+    expect(message).not.toMatch(/CorePluginError|plugin:source|github.com/);
+  });
+
   it("explains package validation failures", () => {
     expect(
       getPluginInstallErrorMessage(new Error("Plugin manifest is invalid"), t),

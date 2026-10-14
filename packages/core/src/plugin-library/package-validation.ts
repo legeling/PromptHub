@@ -1,5 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { isAntigravityPluginManifest } from "@prompthub/shared/utils/antigravity-plugin";
+import {
+  isCodexPortablePluginManifest,
+  mergeCodexPortablePluginManifest,
+} from "@prompthub/shared/utils/codex-plugin";
 
 import type {
   PluginInventorySummary,
@@ -54,6 +59,12 @@ export function findLocalPluginMarkers(packagePath: string): string[] {
       markers.push(candidatePath);
     }
   }
+  const root = path.join(packagePath, "plugin.json");
+  if (
+    markers.includes(root) &&
+    isCodexPortablePluginManifest(readLocalPluginManifest(root).manifest)
+  )
+    return [root, ...markers.filter((marker) => marker !== root)];
   return markers;
 }
 
@@ -61,6 +72,16 @@ export function findLocalPluginMarkerForTarget(
   packagePath: string,
   targetId: string,
 ): string | null {
+  const root = path.join(packagePath, "plugin.json");
+  if (
+    ["codex", "antigravity", "github-copilot"].includes(targetId) &&
+    fs.existsSync(root)
+  ) {
+    const portable = isCodexPortablePluginManifest(
+      readLocalPluginManifest(root).manifest,
+    );
+    if (portable) return targetId === "codex" ? root : null;
+  }
   const markerPath = TARGET_PLUGIN_MARKER_PATHS[targetId];
   if (!markerPath) {
     return null;
@@ -73,7 +94,10 @@ export function getLocalPluginNativeTargetIds(packagePath: string): string[] {
   return inspectLocalPluginNativeTargets(packagePath).nativeTargetIds;
 }
 
-export function inspectLocalPluginNativeTargets(packagePath: string): {
+export function inspectLocalPluginNativeTargets(
+  packagePath: string,
+  validatePackageLinks = true,
+): {
   invalidNativeTargetIds: string[];
   nativeTargetIds: string[];
 } {
@@ -99,13 +123,22 @@ export function inspectLocalPluginNativeTargets(packagePath: string): {
         fs.realpathSync(markerPath),
       );
       const { manifest } = readLocalPluginManifest(markerPath);
+      if (
+        targetId === "antigravity" &&
+        !isAntigravityPluginManifest(manifest)
+      ) {
+        throw new CorePluginError(
+          "INVALID_MANIFEST",
+          "Invalid Antigravity native plugin.json",
+        );
+      }
       validateLocalPluginManifestPaths(packagePath, manifest);
       targetIds.push(targetId);
     } catch {
       invalidTargetIds.push(targetId);
     }
   }
-  if (foundTargetMarker) {
+  if (foundTargetMarker && validatePackageLinks) {
     validateLocalPluginSymlinkBoundaries(packagePath);
   }
   return {
@@ -151,12 +184,32 @@ export function readLocalPluginManifest(markerPath: string): {
       manifest: parsePowerManifest(fs.readFileSync(markerPath, "utf8")),
     };
   }
+  const manifest = parseJsonObject(
+    fs.readFileSync(markerPath, "utf8"),
+    "Local Plugin manifest",
+  );
+  if (
+    path.basename(markerPath) !== "plugin.json" ||
+    !isCodexPortablePluginManifest(manifest)
+  )
+    return { markerPath, manifest };
+  const extensions = manifest.extensions;
+  const inline =
+    extensions && typeof extensions === "object"
+      ? Reflect.get(extensions, "com.openai")
+      : undefined;
+  const legacy = path.join(
+    path.dirname(markerPath),
+    ".codex-plugin",
+    "plugin.json",
+  );
+  const overlay =
+    inline === undefined && fs.existsSync(legacy)
+      ? readLocalPluginManifest(legacy).manifest
+      : {};
   return {
     markerPath,
-    manifest: parseJsonObject(
-      fs.readFileSync(markerPath, "utf8"),
-      "Local Plugin manifest",
-    ),
+    manifest: mergeCodexPortablePluginManifest(manifest, overlay),
   };
 }
 
@@ -176,6 +229,32 @@ export function extractLocalPluginInventory(
   }
   if (fs.existsSync(path.join(packagePath, ".mcp.json"))) {
     inventory.mcpServers = Math.max(inventory.mcpServers, 1);
+  }
+  if (
+    isCodexPortablePluginManifest(manifest) &&
+    fs.existsSync(path.join(packagePath, "mcp.json"))
+  ) {
+    const config = parseJsonObject(
+      fs.readFileSync(path.join(packagePath, "mcp.json"), "utf8"),
+      "Portable MCP config",
+    );
+    const servers = config.mcpServers;
+    if (servers && typeof servers === "object" && !Array.isArray(servers))
+      inventory.mcpServers = Math.max(
+        inventory.mcpServers,
+        Object.keys(servers).length,
+      );
+  }
+  if (
+    markerPath === path.join(packagePath, "plugin.json") &&
+    isAntigravityPluginManifest(manifest)
+  ) {
+    if (fs.existsSync(path.join(packagePath, "mcp_config.json"))) {
+      inventory.mcpServers = Math.max(inventory.mcpServers, 1);
+    }
+    if (fs.existsSync(path.join(packagePath, "hooks.json"))) {
+      inventory.hooks = Math.max(inventory.hooks, 1);
+    }
   }
   if (path.basename(markerPath) === "POWER.md") {
     inventory.docs = Math.max(inventory.docs, 1);

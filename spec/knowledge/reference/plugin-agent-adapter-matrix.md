@@ -33,14 +33,15 @@ These do not qualify as first-version Plugin targets:
 
 ## Actionable Targets
 
-| Target                                | Status    | Target-native package concept  | Marker / config                                                             | Install or load surface                                                                            | PromptHub adapter output                                                                                                   |
-| ------------------------------------- | --------- | ------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Codex CLI / Codex app                 | `Native`  | Codex Plugin                   | `.codex-plugin/plugin.json`; marketplace `.agents/plugins/marketplace.json` | `codex plugin marketplace ...`; `codex plugin add ...`                                             | Preserve Codex package structure, read OpenAI/PromptHub marketplace entries, and install through PromptHub or Codex CLI.   |
-| Claude Code                           | `Adapter` | Claude Code Plugin             | `.claude-plugin/plugin.json`                                                | `/plugin`; `claude plugin ...`; `claude --plugin-dir`; `claude --plugin-url`; skills-dir loading   | Generate `.claude-plugin/plugin.json` plus root-level skills, agents, hooks, MCP/LSP configs, monitors, and assets.        |
-| Cursor                                | `Adapter` | Cursor Plugin                  | `.cursor-plugin/plugin.json`; marketplace `.cursor-plugin/marketplace.json` | Cursor Marketplace or verified `~/.cursor/plugins/local` workflow; direct distribution disabled    | Read installed Marketplace/local packages; package generation does not claim native installation or activation.            |
-| Gemini CLI                            | `Adapter` | Gemini Extension               | `gemini-extension.json`                                                     | `gemini extensions install <source>`; `gemini extensions link <path>`; `<home>/.gemini/extensions` | Generate one extension root with `gemini-extension.json`, context file, commands, hooks, skills/subagents, and MCP config. |
-| Kiro                                  | `Adapter` | Kiro Power                     | `POWER.md`; optional `mcp.json`; optional `steering/`                       | Native Kiro import from local folder or GitHub; direct distribution disabled                       | Read existing package structures; package generation does not claim registration, loading, or installation.                |
-| GitHub Copilot CLI / VS Code Agent UI | `Adapter` | Copilot / VS Code Agent Plugin | root `plugin.json`; `.plugin/plugin.json`; `.github/plugin/plugin.json`     | `copilot plugin ...`; VS Code Agent Plugins marketplace and local plugin locations                 | Package generation exists, but distribution remains disabled until PromptHub uses the native install/register workflow.    |
+| Target                                | Status                          | Target-native package concept  | Marker / config                                                             | Install or load surface                                                                            | PromptHub adapter output                                                                                                   |
+| ------------------------------------- | ------------------------------- | ------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Codex CLI / Codex app                 | `Native`                        | Codex Plugin                   | `.codex-plugin/plugin.json`; marketplace `.agents/plugins/marketplace.json` | `codex plugin marketplace ...`; `codex plugin add ...`                                             | Preserve Codex package structure, read OpenAI/PromptHub marketplace entries, and install through PromptHub or Codex CLI.   |
+| Claude Code                           | `Adapter`                       | Claude Code Plugin             | `.claude-plugin/plugin.json`                                                | `/plugin`; `claude plugin ...`; `claude --plugin-dir`; `claude --plugin-url`; skills-dir loading   | Generate `.claude-plugin/plugin.json` plus root-level skills, agents, hooks, MCP/LSP configs, monitors, and assets.        |
+| Cursor                                | `Adapter`                       | Cursor Plugin                  | `.cursor-plugin/plugin.json`; marketplace `.cursor-plugin/marketplace.json` | Cursor Marketplace or verified `~/.cursor/plugins/local` workflow; direct distribution disabled    | Read installed Marketplace/local packages; package generation does not claim native installation or activation.            |
+| Gemini CLI                            | `Adapter`                       | Gemini Extension               | `gemini-extension.json`                                                     | `gemini extensions install <source>`; `gemini extensions link <path>`; `<home>/.gemini/extensions` | Generate one extension root with `gemini-extension.json`, context file, commands, hooks, skills/subagents, and MCP config. |
+| Antigravity IDE                       | `Native` (native packages only) | Antigravity Plugin             | root `plugin.json`                                                          | `<home>/.gemini/config/plugins/<name>/`                                                            | Preserve native manifest and whole package; no version subdirectory or automatic conversion from other formats.            |
+| Kiro                                  | `Adapter`                       | Kiro Power                     | `POWER.md`; optional `mcp.json`; optional `steering/`                       | Native Kiro import from local folder or GitHub; direct distribution disabled                       | Read existing package structures; package generation does not claim registration, loading, or installation.                |
+| GitHub Copilot CLI / VS Code Agent UI | `Adapter`                       | Copilot / VS Code Agent Plugin | root `plugin.json`; `.plugin/plugin.json`; `.github/plugin/plugin.json`     | `copilot plugin ...`; VS Code Agent Plugins marketplace and local plugin locations                 | Package generation exists, but distribution remains disabled until PromptHub uses the native install/register workflow.    |
 
 ## Composite Or Disabled Targets
 
@@ -58,7 +59,7 @@ Runtime-only, composite, and pending targets should remain visible but disabled 
 
 ## Adapter Notes
 
-- Codex, Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot have package manifests that can carry or point to multiple child capabilities.
+- Codex, Claude Code, Cursor, Gemini CLI, Antigravity IDE, Kiro, and GitHub Copilot have package manifests that can carry or point to multiple child capabilities.
 - OpenCode is not a first-version PromptHub Plugin adapter under the strict semantic gate because its plugin mechanism is a JS/TS or npm hook module loaded from plugin directories or `opencode.json`.
 - Cline is not a first-version PromptHub Plugin adapter under the strict semantic gate because its plugin mechanism is an `AgentPlugin` runtime entrypoint package. It can still be useful later as a runtime wrapper target.
 - Cline support must remain scope-labeled. The official Cline plugin docs say the plugin feature applies to Cline SDK, CLI, and Kanban, not the VSCode or JetBrains extension runtime.
@@ -78,6 +79,8 @@ Runtime-only, composite, and pending targets should remain visible but disabled 
   distribution until a native import adapter can preview, confirm, verify
   registration, and roll back.
 
+- Antigravity IDE and Gemini CLI are separate targets. Antigravity loads root `plugin.json` packages with optional `mcp_config.json`, `hooks.json`, `skills/`, `agents/`, and `rules/`. Its manual global installation is supported without CLI registration; CLI staging/registry and workspace installation are separate surfaces.
+
 ## Evidence
 
 - Codex plugins: `https://developers.openai.com/codex/plugins`
@@ -87,6 +90,7 @@ Runtime-only, composite, and pending targets should remain visible but disabled 
 - Cursor official plugin repository: `https://github.com/cursor/plugins`
 - Cursor marketplace manifest: `https://raw.githubusercontent.com/cursor/plugins/main/.cursor-plugin/marketplace.json`
 - Cursor Plugin reference: `https://cursor.com/docs/reference/plugins`
+- Antigravity Plugins (IDE manual installation): `https://antigravity.google/docs/plugins?tab=ide`
 - Gemini CLI extensions reference: `https://geminicli.com/docs/extensions/reference/`
 - Kiro Powers creation docs: `https://kiro.dev/docs/powers/create/`
 - Kiro Powers installation docs: `https://kiro.dev/docs/powers/installation/`

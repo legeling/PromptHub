@@ -6,6 +6,7 @@ import {
   within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import type {
   PluginInventorySummary,
   PluginLibraryEntry,
@@ -14,6 +15,7 @@ import type {
   PluginMarketPreview,
   PluginMarketSource,
   PluginPackageHealthCheck,
+  PluginSourceUpdateCheck,
   PluginTargetCompatibility,
   PluginVersion,
 } from "@prompthub/shared/types/plugin";
@@ -568,6 +570,16 @@ async function renderPluginManager(language: "en" | "zh" = "en") {
   );
 }
 
+async function openInstalledPluginDetail() {
+  usePluginStore.setState({ selectedTab: "library" });
+  await renderPluginManager();
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Gmail. Read and manage Gmail",
+    }),
+  );
+}
+
 async function openPluginAddMenu() {
   document.dispatchEvent(new CustomEvent("open-add-plugin-modal"));
   return screen.findByRole("dialog", { name: "New Plugin" });
@@ -861,7 +873,10 @@ describe("PluginManager", () => {
   });
 
   it("runs AI safety assessments for installed Plugins and stores the report", async () => {
-    useSettingsStore.setState({ skillSafetyScanEnabled: true, skillSafetyScanMethod: "ai" });
+    useSettingsStore.setState({
+      skillSafetyScanEnabled: true,
+      skillSafetyScanMethod: "ai",
+    });
     const scannedAt = Date.parse("2026-06-21T10:00:00.000Z");
     vi.mocked(window.api.skill.scanSafety).mockResolvedValue({
       level: "warn",
@@ -914,7 +929,8 @@ describe("PluginManager", () => {
       expect(window.api.skill.scanSafety).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Gmail",
-          enabled: true, method: "ai",
+          enabled: true,
+          method: "ai",
           localRepoPath: "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
           aiConfig: {
             provider: "openai-compatible",
@@ -1191,6 +1207,117 @@ describe("PluginManager", () => {
     });
   });
 
+  it("does not clone remote sources when opening detail, including StrictMode remounts", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({ selectedTab: "library" });
+    await renderWithI18n(
+      <StrictMode>
+        <ToastProvider>
+          <PluginManager />
+        </ToastProvider>
+      </StrictMode>,
+      { language: "en" },
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Gmail. Read and manage Gmail",
+      }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Check updates" }),
+    ).toBeEnabled();
+    expect(
+      window.api.plugin.getPluginSourceUpdateStatus,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("checks only once per click burst and presents a retryable network failure", async () => {
+    installPluginApiMock(installedLibrary);
+    const pending = createDeferred<PluginSourceUpdateCheck>();
+    window.api.plugin.getPluginSourceUpdateStatus = vi
+      .fn()
+      .mockReturnValue(pending.promise);
+    await openInstalledPluginDetail();
+    const button = await screen.findByRole("button", { name: "Check updates" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(window.api.plugin.getPluginSourceUpdateStatus).toHaveBeenCalledTimes(
+      1,
+    );
+    await act(async () =>
+      pending.reject(
+        new Error(
+          "Error invoking remote method 'plugin:source:updateStatus': CorePluginError: Git clone timed out after 30s for URL: https://github.com/openai/plugins",
+        ),
+      ),
+    );
+    expect(
+      await screen.findByText(
+        "Could not download the Plugin. Check the proxy mode in Settings > Network Settings, then try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/CorePluginError/)).not.toBeInTheDocument();
+    window.api.plugin.getPluginSourceUpdateStatus = vi.fn().mockResolvedValue({
+      status: "up-to-date",
+      localModified: false,
+      remoteChanged: false,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check updates" }));
+    await waitFor(() =>
+      expect(screen.getAllByText("Up to date")).toHaveLength(2),
+    );
+    expect(window.api.plugin.updatePluginFromSource).not.toHaveBeenCalled();
+  });
+
+  it("does not show a late check failure after leaving the plugin detail", async () => {
+    installPluginApiMock(installedLibrary);
+    const pending = createDeferred<PluginSourceUpdateCheck>();
+    window.api.plugin.getPluginSourceUpdateStatus = vi
+      .fn()
+      .mockReturnValue(pending.promise);
+    await openInstalledPluginDetail();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Check updates" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    await screen.findByTestId("plugin-library-card-gmail");
+    await act(async () =>
+      pending.reject(new Error("Git clone timed out after 30s")),
+    );
+    expect(
+      screen.queryByText(/timed out|Could not download the Plugin/),
+    ).not.toBeInTheDocument();
+    expect(window.api.plugin.getPluginSourceUpdateStatus).toHaveBeenCalledTimes(
+      1,
+    );
+  });
+
+  it("does not offer a stale cached update when the current source check fails", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({
+      selectedTab: "library",
+      sourceUpdateChecks: {
+        gmail: {
+          status: "update-available",
+          localModified: false,
+          remoteChanged: true,
+        },
+      },
+    });
+    window.api.plugin.getPluginSourceUpdateStatus = vi
+      .fn()
+      .mockRejectedValue(new Error("Git clone timed out after 30s"));
+    await openInstalledPluginDetail();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Update available" }),
+    );
+    await screen.findByText(/Could not download the Plugin/);
+    expect(
+      screen.queryByRole("dialog", { name: "Review Plugin update" }),
+    ).not.toBeInTheDocument();
+    expect(window.api.plugin.updatePluginFromSource).not.toHaveBeenCalled();
+  });
+
   it("updates installed plugins from source when a source update is available", async () => {
     const currentPlugin = {
       ...installedGmailPlugin,
@@ -1248,10 +1375,9 @@ describe("PluginManager", () => {
       }),
     );
 
-    expect(
-      await screen.findByRole("button", { name: "Update available" }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Update available" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Check updates" }),
+    );
 
     expect(window.api.plugin.updatePluginFromSource).not.toHaveBeenCalled();
     const reviewDialog = await screen.findByRole("dialog", {
@@ -1290,6 +1416,9 @@ describe("PluginManager", () => {
       }),
     );
 
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Check updates" }),
+    );
     await waitFor(() => {
       expect(
         window.api.plugin.getPluginSourceUpdateStatus,

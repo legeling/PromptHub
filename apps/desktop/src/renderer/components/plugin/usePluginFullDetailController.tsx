@@ -42,6 +42,7 @@ import {
 } from "../skill/detail-utils";
 import { getSkillSafetyLevelLabel } from "../skill/safety-i18n";
 import { PluginVersionHistoryModal } from "./PluginVersionHistoryModal";
+import { getPluginInstallErrorMessage } from "./plugin-manager-utils";
 import { AgentPluginDetailActions } from "./AgentPluginDetailActions";
 import {
   DetailTabButton,
@@ -158,6 +159,7 @@ export function usePluginFullDetailController({
     (state) => state.checkInstalledPluginPackage,
   );
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const sourceCheckContextRef = useRef<{ inFlight: boolean } | null>(null);
   const [isUpdatingFromSource, setIsUpdatingFromSource] = useState(false);
   const [isCheckingPackage, setIsCheckingPackage] = useState(false);
   const [isScanningSafety, setIsScanningSafety] = useState(false);
@@ -208,27 +210,28 @@ export function usePluginFullDetailController({
     [descriptionFingerprint, getTranslationState, translationCacheKey],
   );
 
-  const checkSourceUpdate = async (
-    showSuccess = false,
-  ): Promise<PluginSourceUpdateCheck | null> => {
-    if (isCheckingUpdate) return null;
-    setIsCheckingUpdate(true);
-    try {
-      const check = await getPluginSourceUpdateStatus(plugin.id);
-      if (showSuccess && check.status === "up-to-date") {
-        showToast(t("plugin.upToDate", "Up to date"), "success");
+  const checkSourceUpdate =
+    async (): Promise<PluginSourceUpdateCheck | null> => {
+      const context = sourceCheckContextRef.current;
+      if (!context || context.inFlight) return null;
+      context.inFlight = true;
+      setIsCheckingUpdate(true);
+      try {
+        const check = await getPluginSourceUpdateStatus(plugin.id);
+        if (sourceCheckContextRef.current !== context) return null;
+        return check;
+      } catch (error) {
+        if (sourceCheckContextRef.current === context) {
+          showToast(getPluginInstallErrorMessage(error, t), "error");
+        }
+        return null;
+      } finally {
+        context.inFlight = false;
+        if (sourceCheckContextRef.current === context) {
+          setIsCheckingUpdate(false);
+        }
       }
-      return check;
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : String(error),
-        "error",
-      );
-      return null;
-    } finally {
-      setIsCheckingUpdate(false);
-    }
-  };
+    };
 
   const updateFromSource = async (overwriteLocalChanges = false) => {
     if (isUpdatingFromSource) return;
@@ -269,7 +272,12 @@ export function usePluginFullDetailController({
   };
 
   useEffect(() => {
-    void checkSourceUpdate(false);
+    const context = { inFlight: false };
+    sourceCheckContextRef.current = context;
+    setIsCheckingUpdate(false);
+    return () => {
+      sourceCheckContextRef.current = null;
+    };
   }, [plugin.id]);
 
   useEffect(() => {
@@ -352,7 +360,7 @@ export function usePluginFullDetailController({
   );
 
   const reviewSourceUpdate = async (overwriteLocalChanges = false) => {
-    const check = (await checkSourceUpdate(true)) ?? sourceUpdateCheck;
+    const check = await checkSourceUpdate();
     if (!check) return;
     if (check.status === "up-to-date") {
       showToast(t("plugin.upToDate", "Up to date"), "success");
@@ -549,7 +557,6 @@ export function usePluginFullDetailController({
     if (safetyScanInFlightRef.current) {
       return safetyScanInFlightRef.current;
     }
-
 
     const scanPromise = (async () => {
       setIsScanningSafety(true);

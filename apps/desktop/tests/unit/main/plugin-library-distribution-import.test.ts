@@ -1094,21 +1094,10 @@ describe("CorePluginLibraryService", () => {
     ).toEqual(["main", "next"]);
   });
 
-  it("rejects single-skill direct plugin sources without mutating the library", async () => {
+  it("rejects bare Skill sources without a native Plugin manifest without mutating the library", async () => {
     const repoRoot = path.join(userDataPath, "single-skill-source");
     const sourcePackagePath = path.join(repoRoot, "solo-skill");
-    fs.mkdirSync(path.join(sourcePackagePath, ".codex-plugin"), {
-      recursive: true,
-    });
-    fs.writeFileSync(
-      path.join(sourcePackagePath, ".codex-plugin", "plugin.json"),
-      JSON.stringify({
-        name: "solo-skill",
-        version: "1.0.0",
-        skills: "./SKILL.md",
-      }),
-      "utf8",
-    );
+    fs.mkdirSync(sourcePackagePath, { recursive: true });
     fs.writeFileSync(
       path.join(sourcePackagePath, "SKILL.md"),
       "---\nname: solo-skill\n---\nSolo",
@@ -1127,7 +1116,7 @@ describe("CorePluginLibraryService", () => {
       service.importSourcePlugin({
         url: "https://github.com/example/solo-skill.git",
       }),
-    ).rejects.toThrow(/只有单个 Skill/);
+    ).rejects.toThrow(/Plugin manifest/);
     expect(service.read().plugins).toEqual([]);
   });
 });

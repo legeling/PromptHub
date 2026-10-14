@@ -55,6 +55,7 @@ it("imports plugin child MCP via IPC, skips duplicate names, reports invalid con
     sourcePath: runtime.source,
   });
   expect(fileInventory(installed.plugin.localPackagePath)).toEqual(inventory);
+  const packagePath = fs.realpathSync(installed.plugin.localPackagePath);
   const result = await pluginApi.importChildMcpServers(installed.plugin.id);
   expect(result.imported).toHaveLength(1);
   expect(result.imported[0]).toMatchObject({
@@ -62,17 +63,12 @@ it("imports plugin child MCP via IPC, skips duplicate names, reports invalid con
     command: "node",
     args: ["fixture.mjs"],
   });
-  expect(
-    result.scannedFiles.map((f) =>
-      path.relative(installed.plugin.localPackagePath, f),
-    ),
-  ).toEqual(["config/invalid-server.json", "config/nested/mcp.json"]);
+  expect(result.scannedFiles.map((f) => path.relative(packagePath, f))).toEqual(
+    ["config/invalid-server.json", "config/nested/mcp.json"],
+  );
   expect(result.failedFiles).toEqual([
     {
-      path: path.join(
-        installed.plugin.localPackagePath,
-        "config/invalid-server.json",
-      ),
+      path: path.join(packagePath, "config/invalid-server.json"),
       error: expect.any(String),
     },
   ]);

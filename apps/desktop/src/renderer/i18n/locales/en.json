@@ -4231,6 +4231,8 @@
       "pending": "Pending"
     },
     "targetDescriptions": {
+      "antigravity": "Antigravity supports native plugin.json packages in its global plugins directory.",
+      "nativeManifestRequired": "{{name}} requires a native plugin.json package. Automatic format conversion is unavailable.",
       "codex": "Codex supports native PromptHub Plugin bundles.",
       "claude-code": "Claude Code can receive PromptHub Plugins as generated Claude Code plugin packages.",
       "cursor": "Cursor can receive PromptHub Plugins as generated Cursor plugin packages.",

@@ -191,6 +191,7 @@ export interface PluginTargetCompatibility {
   status: PluginTargetStatus;
   enabled: boolean;
   nativeMarker?: string;
+  requiresNativeManifest?: boolean;
   installSurface?: string;
   adapterOutput?: string;
   unsupportedReason?: string;

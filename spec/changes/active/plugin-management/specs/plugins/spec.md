@@ -8,6 +8,15 @@ PromptHub MUST model Plugin as a first-class distribution surface beside Skill a
 
 Plugin is a higher-level installable bundle. It may contain one or more Skills, MCP server definitions, Apps/connectors, commands, hooks, assets, templates, documentation, and marketplace metadata.
 
+#### Scenario: Antigravity IDE native Plugin identity (#226)
+
+- **GIVEN** a local package has a valid root `plugin.json` matching the Antigravity IDE name/description contract
+- **WHEN** PromptHub scans or imports it
+- **THEN** the native manifest defines Plugin identity even when child components are optional or absent
+- **AND** the independent Antigravity target preserves the whole native package at the platform registry's global `plugins/<name>/` directory without a version layer
+- **AND** packages without an Antigravity native manifest cannot be selected or converted for this target
+- **AND** Gemini CLI remains a separate `gemini-extension.json` target; IDE global-file verification does not prove CLI registration or native loader acceptance
+
 #### Scenario: Distinguish plugin from skill
 
 - **GIVEN** a package contains multiple Skills plus MCP configuration
@@ -21,12 +30,30 @@ Plugin is a higher-level installable bundle. It may contain one or more Skills, 
 - **WHEN** users view it in PromptHub
 - **THEN** PromptHub presents it as a Plugin with an inventory of included capabilities
 
-#### Scenario: Single-skill package is not a plugin bundle
+#### Scenario: A bare single-skill package is not a plugin bundle
 
-- **GIVEN** a source contains only one `SKILL.md` and no package-level inventory, scripts, MCP config, commands, hooks, app/connectors, assets, or other child capability groups
+- **GIVEN** a source contains only one `SKILL.md` and no valid native Plugin manifest, package-level inventory, scripts, MCP config, commands, hooks, app/connectors, assets, or other child capability groups
 - **WHEN** PromptHub scans the source
 - **THEN** PromptHub classifies it as a Skill package rather than a Plugin bundle
 - **AND** Plugin Store does not present it as a full Plugin
+
+#### Scenario: Codex / Claude native single-Skill packages
+
+- **GIVEN** a package has a valid `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, or Codex portable root `plugin.json`
+- **WHEN** it contains one Skill
+- **THEN** it remains a native Plugin package; no minimum number of child capabilities is required
+- **AND** portable root identity and version are canonical; inline `extensions["com.openai"]` replaces the entire legacy Codex overlay when present
+- **AND** root `mcp.json` and the complete package remain preserved
+
+#### Scenario: Native desktop Plugin installation and removal
+
+- **WHEN** users distribute to Codex or Claude Code
+- **THEN** desktop stages the complete package under the resolved Agent root's `plugins/prompthub-sources/<owned-marketplace>/<name>/<version>` and registers a PromptHub-owned local marketplace through the native CLI
+- **AND** the CLI installs/enables the Plugin; distributed state is persisted per target only after native config confirms enabled state
+- **AND** removal uses the native uninstall command before deleting staged package files
+- **AND** a failed target does not become distributed; already successful targets remain recorded and usable
+- **AND** generic core folder projection remains distinct from native desktop installation
+- **AND** derived staging directories are keyed by the existing Plugin id; same-name packages from different sources do not overwrite one another. Staging is regeneratable from managed packages, not a second canonical store. Previously copied packages can be registered by redistributing; existing unrelated caches are not deleted during upgrade.
 
 #### Scenario: Runtime hook module is not a plugin bundle
 
@@ -249,6 +276,10 @@ PromptHub MUST separate plugin installation from child capability distribution.
 - **AND** source checks that are up-to-date or blocked by local-change conflicts do not create new snapshots
 
 #### Scenario: Detect content-only source updates
+
+- Installed detail opens from the managed package and cached source status, without automatically cloning the source repository. The user starts a source check with the existing Check updates action.
+- Only one check for the active detail request may run at a time. Leaving the detail or switching Plugin identity invalidates its UI result: late success/failure must not open a review dialog or display a toast on another page.
+- A failed current check must not reuse a cached update result to offer an overwrite. Git clone timeouts use the existing localized network-error guidance rather than raw IPC/command diagnostics. Checks do not change installed files or create snapshots.
 
 - **GIVEN** an installed local, Git, SSH, HTTPS, or marketplace Plugin source changes a child Skill, MCP config, command, hook, asset, or documentation file without changing the Plugin manifest or inventory counts
 - **WHEN** PromptHub checks the installed Plugin source

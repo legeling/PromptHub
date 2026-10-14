@@ -51,6 +51,7 @@ function isPluginDownloadNetworkError(message: string): boolean {
     /failed to connect/i.test(message) ||
     /network is unreachable/i.test(message) ||
     /connection (?:reset|timed out)/i.test(message) ||
+    /Git (?:clone|command).*timed out/i.test(message) ||
     /proxy(?:connect| connection)?[^.]{0,80}(?:502|503|504)/i.test(message)
   );
 }

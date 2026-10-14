@@ -17,6 +17,7 @@ import type {
 import { Modal } from "../ui/Modal";
 import { useToast } from "../ui/Toast";
 import { getPluginInstallErrorMessage } from "./plugin-manager-utils";
+import { getPluginTargetMatrixForEntry } from "./plugin-detail-utils";
 
 interface PluginLibraryDeployDialogProps {
   agentName: string;
@@ -76,6 +77,11 @@ export function PluginLibraryDeployDialog({
   );
   const targetIdSet = useMemo(() => new Set(targetIds), [targetIds]);
   const hasInstallTarget = targetIds.length > 0;
+  const canInstallPlugin = (plugin: PluginLibraryEntry): boolean =>
+    hasInstallTarget &&
+    getPluginTargetMatrixForEntry(targets, plugin)
+      .filter((target) => targetIdSet.has(target.id))
+      .every((target) => target.enabled);
   const filteredPlugins = useMemo(
     () =>
       plugins.filter((plugin) =>
@@ -100,6 +106,7 @@ export function PluginLibraryDeployDialog({
   const togglePlugin = (plugin: PluginLibraryEntry): void => {
     if (
       !hasInstallTarget ||
+      !canInstallPlugin(plugin) ||
       isInstalledOnTargets(plugin, targetIdSet) ||
       isApplying
     ) {
@@ -117,7 +124,8 @@ export function PluginLibraryDeployDialog({
     if (
       applyingRef.current ||
       selectedPlugins.length === 0 ||
-      targetIds.length === 0
+      targetIds.length === 0 ||
+      selectedPlugins.some((plugin) => !canInstallPlugin(plugin))
     ) {
       return;
     }
@@ -289,13 +297,14 @@ export function PluginLibraryDeployDialog({
                 {filteredPlugins.map((plugin) => {
                   const installed = isInstalledOnTargets(plugin, targetIdSet);
                   const selected = selectedIds.has(plugin.id);
+                  const compatible = canInstallPlugin(plugin);
                   return (
                     <button
                       key={plugin.id}
                       type="button"
                       aria-label={plugin.displayName || plugin.name}
                       aria-pressed={installed ? undefined : selected}
-                      disabled={installed || isApplying || !hasInstallTarget}
+                      disabled={installed || isApplying || !compatible}
                       onClick={() => togglePlugin(plugin)}
                       className={`flex min-h-36 flex-col justify-between rounded-md border p-4 text-left transition-colors ${
                         selected
@@ -319,6 +328,17 @@ export function PluginLibraryDeployDialog({
                             </span>
                           ) : null}
                         </span>
+                        {!compatible &&
+                        targets.some(
+                          (target) => target.requiresNativeManifest,
+                        ) ? (
+                          <span className="mt-2 block text-xs text-muted-foreground">
+                            {t(
+                              "plugin.targetDescriptions.nativeManifestRequired",
+                              { name: agentName },
+                            )}
+                          </span>
+                        ) : null}
                         <span className="mt-2 line-clamp-3 text-xs leading-5 text-muted-foreground">
                           {plugin.description || plugin.name}
                         </span>
@@ -362,7 +382,10 @@ export function PluginLibraryDeployDialog({
                 type="button"
                 onClick={() => void apply()}
                 disabled={
-                  selectedIds.size === 0 || isApplying || !hasInstallTarget
+                  selectedIds.size === 0 ||
+                  isApplying ||
+                  !hasInstallTarget ||
+                  selectedPlugins.some((plugin) => !canInstallPlugin(plugin))
                 }
                 className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
               >

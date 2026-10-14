@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { isAntigravityPluginManifest } from "@prompthub/shared/utils/antigravity-plugin";
 
 import type {
   PluginDistributeMode,
@@ -423,6 +424,12 @@ function canPassthroughNativePluginPackage(
     return false;
   }
   const { manifest } = readLocalPluginManifest(markerPath);
+  if (targetId === "antigravity" && !isAntigravityPluginManifest(manifest)) {
+    throw new CorePluginError(
+      "INVALID_MANIFEST",
+      "Invalid Antigravity native plugin.json",
+    );
+  }
   validateLocalPluginPackage(sourcePath, manifest);
   return true;
 }
@@ -437,6 +444,15 @@ export function writePluginPackageToAgentTarget(
   if (canPassthroughNativePluginPackage(sourcePath, targetId)) {
     writePluginPackageToTarget(sourcePath, targetPath, mode);
     return mode;
+  }
+  if (
+    getPluginTargetMatrix().find((target) => target.id === targetId)
+      ?.requiresNativeManifest
+  ) {
+    throw new CorePluginError(
+      "UNSUPPORTED_TARGET",
+      "Antigravity requires a native plugin.json package; automatic conversion is not supported.",
+    );
   }
   if (!targetPath.trim()) {
     throw new CorePluginError("MISSING_TARGET_PATH", "Plugin 目标目录为空");
@@ -503,6 +519,17 @@ const PLUGIN_TARGET_MATRIX: PluginTargetCompatibility[] = [
     nativeMarker: "gemini-extension.json",
     installSurface: "gemini extensions install",
     adapterOutput: "Generate Gemini extension package from inventory.",
+  },
+  {
+    id: "antigravity",
+    displayName: "Antigravity",
+    status: "native",
+    enabled: true,
+    requiresNativeManifest: true,
+    nativeMarker: "plugin.json",
+    installSurface: "~/.gemini/config/plugins/<name>/plugin.json",
+    description:
+      "Copy native Antigravity IDE Plugin packages without manifest conversion.",
   },
   {
     id: "kiro",
@@ -690,6 +717,7 @@ function resolveDistributionTargets(
 export function distributePlugin(
   context: DistributionContext,
   request: PluginDistributeRequest,
+  persist = true,
 ): PluginDistributeResult {
   const targetIds = normalizeDistributedTargetIds(request.targetIds);
   if (targetIds.length === 0) {
@@ -726,7 +754,9 @@ export function distributePlugin(
   };
   return {
     plugin: nextPlugin,
-    library: persistDistributedPlugin(context, library, nextPlugin),
+    library: persist
+      ? persistDistributedPlugin(context, library, nextPlugin)
+      : library,
     targets,
   };
 }

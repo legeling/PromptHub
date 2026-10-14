@@ -47,6 +47,7 @@ import {
   getPluginLocalPackagePath,
   isGitTransportSourceKind,
   normalizeRelativePosixPath,
+  normalizeDistributedTargetIds,
   nowIso,
   nowMs,
   parseJsonObject,
@@ -85,6 +86,7 @@ import {
   readLocalPluginManifest,
   validateLocalPluginPackage,
 } from "./package-validation";
+import { isAntigravityPluginManifest } from "@prompthub/shared/utils/antigravity-plugin";
 import {
   buildUpdatedPluginFromPreview,
   computePluginEntryManifestFingerprint,
@@ -166,7 +168,12 @@ function scanLocalPluginPackage(
     manifest,
     markerPath,
   );
-  const classification = classifyPluginInventory(inventory);
+  const classification = classifyLocalPluginInventory(
+    inventory,
+    manifest,
+    markerPath,
+    sourcePath,
+  );
   const name = safeString(manifest.name) ?? path.basename(sourcePath);
   assertBundlePlugin(classification, name);
   const nativeTargets = inspectLocalPluginNativeTargets(sourcePath);
@@ -178,6 +185,22 @@ function scanLocalPluginPackage(
     ...nativeTargets,
     sourcePath,
   };
+}
+
+function classifyLocalPluginInventory(
+  inventory: PluginInventorySummary,
+  manifest: RawRecord,
+  markerPath: string,
+  packagePath: string,
+): PluginSemanticClassification {
+  // Native manifests define a Plugin package regardless of its component count.
+  return markerPath ===
+    path.join(packagePath, ".codex-plugin", "plugin.json") ||
+    markerPath === path.join(packagePath, ".claude-plugin", "plugin.json") ||
+    (markerPath === path.join(packagePath, "plugin.json") &&
+      isAntigravityPluginManifest(manifest))
+    ? "bundle"
+    : classifyPluginInventory(inventory);
 }
 
 function buildInstalledPlugin(
@@ -459,7 +482,19 @@ export class CorePluginLibraryService {
   }
 
   read(): PluginLibraryFile {
-    return this.storage.read();
+    const library = this.storage.read();
+    return {
+      ...library,
+      plugins: library.plugins.map((plugin) => {
+        const packagePath = getPluginLocalPackagePath(plugin);
+        if (!packagePath || !fs.existsSync(packagePath)) return plugin;
+        // Compatibility is derived from current markers; full package validation belongs to import/distribution.
+        return {
+          ...plugin,
+          ...inspectLocalPluginNativeTargets(packagePath, false),
+        };
+      }),
+    };
   }
 
   write(library: PluginLibraryFile): PluginLibraryFile {
@@ -823,7 +858,12 @@ export class CorePluginLibraryService {
       manifest,
       markerPath,
     );
-    const classification = classifyPluginInventory(inventory);
+    const classification = classifyLocalPluginInventory(
+      inventory,
+      manifest,
+      markerPath,
+      sourcePath,
+    );
     return this.buildPreviewForLocalPackage(
       sourcePath,
       manifest,
@@ -847,7 +887,12 @@ export class CorePluginLibraryService {
       manifest,
       markerPath,
     );
-    const classification = classifyPluginInventory(inventory);
+    const classification = classifyLocalPluginInventory(
+      inventory,
+      manifest,
+      markerPath,
+      sourcePackage.sourcePath,
+    );
     return this.buildPreviewForSourcePackage(
       sourcePackage.sourcePath,
       manifest,
@@ -886,7 +931,12 @@ export class CorePluginLibraryService {
         manifest,
         markerPath,
       );
-      const classification = classifyPluginInventory(inventory);
+      const classification = classifyLocalPluginInventory(
+        inventory,
+        manifest,
+        markerPath,
+        sourcePackage.sourcePath,
+      );
       return this.buildPreviewForSourcePackage(
         sourcePackage.sourcePath,
         manifest,
@@ -1001,6 +1051,53 @@ export class CorePluginLibraryService {
       },
       request,
     );
+  }
+
+  preparePluginDistribution(
+    request: PluginDistributeRequest,
+  ): PluginDistributeResult {
+    return distributePlugin(
+      {
+        readLibrary: () => this.read(),
+        persistLibrary: (library) => this.write(library),
+        resolveTargetPath: this.resolvePluginTargetPath,
+      },
+      request,
+      false,
+    );
+  }
+
+  completePluginDistribution(
+    prepared: PluginDistributeResult,
+  ): PluginDistributeResult {
+    const library = this.read();
+    const current = library.plugins.find(
+      (plugin) => plugin.id === prepared.plugin.id,
+    );
+    if (!current)
+      throw new CorePluginError(
+        "NOT_FOUND",
+        `Plugin does not exist: ${prepared.plugin.id}`,
+      );
+    const plugin = {
+      ...current,
+      distributedTargetIds: normalizeDistributedTargetIds([
+        ...(current.distributedTargetIds ?? []),
+        ...prepared.targets.map((target) => target.targetId),
+      ]),
+      updatedAt: nowMs(),
+    };
+    return {
+      ...prepared,
+      plugin,
+      library: this.write({
+        ...library,
+        updatedAt: nowIso(),
+        plugins: library.plugins.map((entry) =>
+          entry.id === plugin.id ? plugin : entry,
+        ),
+      }),
+    };
   }
 
   removePluginDistribution(

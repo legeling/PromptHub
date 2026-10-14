@@ -14,6 +14,7 @@ import type {
   PluginTargetCompatibility,
   PluginTargetStatus,
 } from "@prompthub/shared/types/plugin";
+import { getPluginTargetMatrixForEntry } from "./plugin-detail-utils";
 import { Modal } from "../ui/Modal";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { useToast } from "../ui/Toast";
@@ -64,6 +65,11 @@ function getTargetDescription(
   target: PluginTargetCompatibility,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
+  if (target.unsupportedReason === "native-manifest-required") {
+    return t("plugin.targetDescriptions.nativeManifestRequired", {
+      name: target.displayName,
+    });
+  }
   const localizedDescription = t(`plugin.targetDescriptions.${target.id}`, {
     defaultValue: "",
     name: target.displayName,
@@ -352,7 +358,7 @@ export function PluginAgentTargetPicker({
   onDistribute,
   plugin,
   plugins,
-  targetMatrix,
+  targetMatrix: unscopedTargetMatrix,
 }: PluginAgentTargetPickerProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -362,16 +368,24 @@ export function PluginAgentTargetPicker({
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(
     () => new Set(initialTargetIds ?? EMPTY_TARGET_IDS),
   );
-  const enabledTargets = useMemo(
-    () => targetMatrix.filter((target) => target.enabled),
-    [targetMatrix],
-  );
   const selectedPlugins = useMemo(() => {
     if (plugins && plugins.length > 0) {
       return plugins;
     }
     return plugin ? [plugin] : [];
   }, [plugin, plugins]);
+  const targetMatrix = useMemo(
+    () =>
+      selectedPlugins.reduce(
+        (targets, entry) => getPluginTargetMatrixForEntry(targets, entry),
+        unscopedTargetMatrix,
+      ),
+    [selectedPlugins, unscopedTargetMatrix],
+  );
+  const enabledTargets = useMemo(
+    () => targetMatrix.filter((target) => target.enabled),
+    [targetMatrix],
+  );
   const primaryPlugin = selectedPlugins[0] ?? null;
   const isBatchDistribution = selectedPlugins.length > 1;
   const selectedAll =

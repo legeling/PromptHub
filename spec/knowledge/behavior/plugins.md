@@ -28,6 +28,7 @@ Official references:
 - Plugin UI 必须展示 child inventory，不能把多能力包误展示成一个 Skill。
 - 只有一个 `SKILL.md`、没有额外 inventory / scripts / MCP config / commands / hooks / assets 的来源，应按 Skill package 处理，不应作为完整 Plugin 展示。
 - 只有单个 JS/TS hook、function、tool entrypoint 的 runtime plugin，不满足 PromptHub Plugin bundle 语义。
+- Antigravity IDE 原生包以包根目录 `plugin.json` 定义身份，组件可选；合法原生 manifest 即可作为 Plugin 导入，不以 child inventory 数量拒绝。IDE 未声明 `name` 时使用目录名；声明的名称只允许字母、数字、连字符和下划线。扫描保留源 manifest 的扩展元数据，不把字段删除当作格式转换。
 - Plugin 安装只表示能力包进入 My Plugins；子能力是否导入 My Skills / My MCP 或分发到 agent target，必须由用户明确选择。
 
 ### 2. Store and Source Contract
@@ -51,6 +52,9 @@ Official references:
 
 ### 4. Distribution Contract
 
+- Native target compatibility is derived from current managed-package manifests when reading My Plugins, including packages imported before a target was supported. This refresh reads the finite marker set and referenced manifest paths, without rescanning the whole package tree or rewriting version history. Import/distribution still validate the package boundary.
+- Direct Agent inventory includes a distributed symlink only when its path matches the existing target resolver, its real destination matches the recorded My Plugins package, and its binding includes that target. Inventory retains the Agent-side path; removal unlinks the distribution without removing the source package. Unknown links outside the Agent root are not imported into inventory.
+
 - Plugin 内的 Skill child asset 应复用 Skill package contract 和 Skill 分发流程。
 - Plugin 内的 MCP child asset 应复用 MCP library、preview、backup、conflict 和 apply/remove 流程。
 - Plugin 内的 App/connector child asset 只能进入待配置/待授权状态，不能自动获得用户账户权限。
@@ -59,6 +63,12 @@ Official references:
 ### 5. Agent Plugin Adapter Contract
 
 - “Agent 支持 Plugin”在 PromptHub 中表示 PromptHub 能把一个整合包安装为该 Agent 的原生整合包或等价组合，而不是要求该 Agent 直接读取 Codex `.codex-plugin`。
+- 合法 Codex / Claude 原生 manifest 定义 Plugin 身份，单 Skill 也可作为 Plugin 导入。
+  Codex portable 根 manifest 按 schema 识别，保留根身份、`com.openai` 覆盖优先级和根 MCP 清单。
+  桌面 Codex / Claude 分发必须调用官方 CLI 注册、安装和启用，不能由复制目录推断安装成功；
+  原生配置确认启用后才记为已分发，移除时先卸载。具体合同见 Plugin Management Spec。
+  Claude 存在原生安装注册表时，以注册表枚举已安装包，不把卸载后保留的缓存重新显示为
+  已安装；独立手动目录仍按既有入口扫描。
 - Codex CLI / Codex app 是 native target，因为它直接支持 Codex plugin package 和 marketplace。
 - Claude Code、Cursor、Gemini CLI、Kiro、GitHub Copilot / VS Code Agent Plugins 应建模为 adapter target，因为它们存在自己的插件、扩展、power 或 agent plugin bundle 机制。
 - OpenCode 和 Cline SDK / CLI / Kanban 当前应建模为 runtime-only target，因为它们的官方插件语义主要是 JS/TS hook module、npm plugin、`AgentPlugin` entrypoint、tools/hooks/commands runtime，而不是多子资产 bundle inventory。
@@ -69,6 +79,10 @@ Official references:
 - 第一版只启用 `Native` 和满足 bundle 语义的 `Adapter`；`RuntimeOnly`、`Composite`、`Pending` 目标可见但置灰，并明确显示“不支持 PromptHub 插件整合包”，等后续设计 wrapper/composite installer 或有新证据后再重新评估。
 - 分发到 Adapter 目标时，PromptHub 必须复制 Plugin package 并生成目标 Agent 的原生 package marker，例如 `.claude-plugin/plugin.json`、`.cursor-plugin/plugin.json`、`gemini-extension.json`、`POWER.md` 或 `plugin.json`；不得只把 Codex `.codex-plugin` 原包软链到非 Codex Agent。
 - 当用户对 Adapter 目标选择 symlink 模式时，PromptHub 应落成生成后的 copy package 并在结果中报告实际 copy 写入，因为 marker 转换不能通过原包软链接真实表达。
+- Antigravity 是独立的原生格式目标（#226），只分发已包含合法根级 `plugin.json` 的包。没有该 manifest 时在目标选择器禁用，并在 Core 写入前拒绝；不生成包含 Codex/Gemini 字段的伪 Antigravity manifest。
+- Antigravity IDE 全局目录来自 platform registry：macOS/Linux 为 `~/.gemini/config/plugins/<name>/`，Windows 为 `%USERPROFILE%\.gemini\config\plugins\<name>\`，不增加版本子目录。Gemini CLI 使用独立的 `~/.gemini/extensions/` 与 `gemini-extension.json`，不能代替 Antigravity 的插件目标。
+- Antigravity 扫描只检查全局 plugins 目录的直接子包；静态 inventory 包括原生 `mcp_config.json`、`hooks.json`，完整包分发保留 `skills/`、`agents/`、`rules/` 和所有资源。采用已有 package copy/symlink 与移除流程；不启动 MCP 或 hooks。
+- 本次没有 DB/schema 变更，也不自动移动先前 Gemini 目标的目录或修改用户配置。本次新导入的原生包可选择 Antigravity 分发；先前误放在 Gemini config/plugins 下的目录保持原状，用户需在原目标中显式处理遗留包。项目级安装与 Antigravity CLI 注册不在此 IDE 全局路径边界内。
 - 详细目标矩阵和证据源见 `spec/knowledge/reference/plugin-agent-adapter-matrix.md`。
 
 ### 6. Stable Internal Sources
@@ -93,6 +107,7 @@ Official references:
 - Marketplace install validates the selected package manifest and downloads Git-backed packages into PromptHub's managed plugin directory before writing My Plugins metadata.
 - Plugin Store batch mode supports Skill Store-style batch install, update, and remove actions. Install applies to selected store entries that are not in My Plugins. Update applies to selected entries already installed in My Plugins and calls the same source-update flow used by installed Plugin detail. Remove applies to selected installed store entries and removes those Plugin records from My Plugins; it does not remove imported child Skills/MCP entries and does not remove distributed Agent Plugin packages unless the user uses the My Plugins delete cleanup flow.
 - My Plugins entries open as full detail pages rather than modal dialogs. The detail page shows Plugin description, inventory, source metadata, local package path, source/manifest content, a Files tab backed by the installed local package path, and an Agent Plugin target-selection entry point.
+- Opening installed detail does not automatically check or clone its source. Check updates explicitly refreshes the source status; a failed refresh cannot open a review from stale cached status, and results from a detail that has been left cannot display notifications on another page. Git clone timeouts use localized network guidance. The current-check and package-fingerprint contract is owned by the Plugin Management Spec.
 - Installed Plugin detail page render failures are contained with the same recoverable boundary pattern as My Skills: the Plugin module stays usable, users can go back to the list, and retry reloads Plugin data.
 - Installed Plugin detail pages show a Skill-style Back to Top action on long non-files tabs after scrolling. The Files tab hides the floating action because it owns its own editor scroll area.
 - My Plugins supports Skill-style installed-library controls where applicable: gallery/list view toggle, persisted gallery column preference, shared page-size pagination, previous/next page controls, and right-click context menu actions for detail, favorite, user tags, Agent target selection, opening the package folder, and delete.
@@ -122,7 +137,7 @@ Official references:
 - Uninstall removes My Plugins metadata and PromptHub-managed plugin package files. Distributed Agent Plugin package copies/symlinks are preserved by default, but single and batch delete confirmations may explicitly remove the resolved Agent Plugin package paths for recorded `distributedTargetIds`. Plugin uninstall never removes imported child Skills/MCP entries, App authorizations, user-owned external source packages, or unrelated Agent folders.
 - Single-skill packages and single runtime hook/module packages fail the Plugin semantic gate and are not installed as Plugin bundles.
 - Plugin Targets render enabled `Native` / `Adapter` targets and disabled `RuntimeOnly` / `Composite` / `Pending` targets. Disabled targets remain visible with an explicit reason.
-- Agent Plugin reads target-native installed Plugin inventory for enabled bundle targets without importing it into My Plugins. Current target-native inventory detection covers Codex `.codex-plugin/plugin.json` cache packages, Claude Code registry/manual packages, Cursor `.cursor-plugin/plugin.json` packages, Gemini CLI extension packages, Kiro `POWER.md` powers, and GitHub Copilot / VS Code Agent Plugin `plugin.json` packages. Runtime-only, composite, and pending targets remain disabled and are not scanned as separate skill/MCP folders.
+- Agent Plugin reads target-native installed Plugin inventory for enabled bundle targets without importing it into My Plugins. Current target-native inventory detection covers Codex `.codex-plugin/plugin.json` cache packages, Claude Code registry/manual packages, Cursor `.cursor-plugin/plugin.json` packages, Gemini CLI extension packages, Antigravity IDE root `plugin.json` packages, Kiro `POWER.md` powers, and GitHub Copilot / VS Code Agent Plugin `plugin.json` packages. Runtime-only, composite, and pending targets remain disabled and are not scanned as separate skill/MCP folders.
 - Agent Plugin target descriptions are localized UI copy keyed by target ID. Disabled runtime-only or composite targets must clearly say the Agent does not support PromptHub Plugin bundles, instead of surfacing raw adapter metadata or opaque internal status labels.
 - Plugin Store cards do not show child inventory count chips. Source, category, provenance, install state, icon, and description stay on the card; complete child inventory remains visible in detail and preview surfaces.
 - Agent-installed Plugin inventory chips use direct capability counts, such as `1 Skill`, `2 Hooks`, or `1 个 Skill`; they do not prefix the count with `Includes` / `包含`.
@@ -166,3 +181,16 @@ When the future Agent Assistant handles a natural-language request such as “in
 ## Current Verification Gap (2026-10-12)
 
 The real renderer child-Skill import in `release-acceptance-agents-assets-skill-combinations.test.tsx` still produces zero independent library imports where one is required. The failing assertion remains; encoded Plugin bundle paths and their migration passing do not establish this import workflow.
+
+### Antigravity native Plugin verification (#226)
+
+- Contract source: [Google Antigravity Plugins](https://antigravity.google/docs/plugins?tab=ide), checked 2026-10-13.
+- Regression boundary: synthetic Agent roots and real Core/desktop IPC filesystem workflows cover the reported Zotero manifest, metadata-only packages, IDE folder-name identity, malformed manifests, target separation, flat target layout, exact-byte package preservation, library reopen, explicit removal, and unsupported conversion before target mutation.
+- Read-only discovery is linear in direct package count and existing bounded inventory scans; it does not recursively traverse Antigravity version directories or call network services.
+- Windows path-template verification is distinct from a Windows packaged-app or Antigravity loader run; native GUI/loader and release acceptance remain pending.
+
+Focused checks (2026-10-13):
+
+- Desktop Vitest: 106 distinct cases passed across 11 related files. The corrected IPC removal-method test and accessible-name assertion were rerun at the affected scope; unchanged passing suites were not repeated. Coverage includes Plugin distribution/import/version validation, native target overlays, target picker/Agent installation, i18n, platform capabilities and child MCP import. Existing React `act(...)` warnings in PluginManager tests do not constitute native GUI evidence.
+- `pnpm --filter @prompthub/core typecheck`, `pnpm --filter @prompthub/desktop typecheck`, and `pnpm --filter @prompthub/desktop typecheck:tests`: passed.
+- ESLint for touched desktop source/tests, `pnpm lint:file-size`, and `git diff --check`: passed. No build, packaged Windows run, Antigravity loader run, or release harness was performed.

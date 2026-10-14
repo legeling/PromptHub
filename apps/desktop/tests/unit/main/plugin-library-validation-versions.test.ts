@@ -231,15 +231,13 @@ describe("CorePluginLibraryService", () => {
     warnSpy.mockRestore();
   });
 
-  it("rejects single-skill and runtime-module sources without mutating the library", async () => {
+  it("rejects capability-only metadata without native Plugin identity without mutating the library", async () => {
     const fetchFn = createFetchMock({
       [marketplaceUrl]: createMarketplaceFixture(),
       [singleSkillManifestUrl]: JSON.stringify({
-        name: "single-skill",
         skills: "./SKILL.md",
       }),
       [runtimeManifestUrl]: JSON.stringify({
-        name: "runtime",
         hooks: "./plugin.ts",
       }),
     });

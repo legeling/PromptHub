@@ -4191,6 +4191,8 @@
       "pending": "Pendiente"
     },
     "targetDescriptions": {
+      "antigravity": "Antigravity admite paquetes nativos plugin.json en su directorio global plugins.",
+      "nativeManifestRequired": "{{name}} requiere un paquete nativo plugin.json. La conversión automática de formato no está disponible.",
       "codex": "Codex admite bundles PromptHub Plugin de forma nativa.",
       "claude-code": "Claude Code puede recibir paquetes Claude Code Plugin generados por PromptHub.",
       "cursor": "Cursor puede recibir paquetes Cursor Plugin generados por PromptHub.",

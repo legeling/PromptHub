@@ -7,6 +7,7 @@ import type {
 } from "@prompthub/shared/types/plugin";
 
 import { PluginAgentTargetPicker } from "../../../src/renderer/components/plugin/PluginAgentTargetPicker";
+import { PluginLibraryDeployDialog } from "../../../src/renderer/components/plugin/PluginLibraryDeployDialog";
 import { renderWithI18n } from "../../helpers/i18n";
 
 const showToastMock = vi.fn();
@@ -83,7 +84,9 @@ function hasHiddenSvgAncestor(element: Element): boolean {
 
 function getExposedButtonMedia(): string[] {
   return Array.from(
-    document.body.querySelectorAll('button svg, button img, button [role="img"]'),
+    document.body.querySelectorAll(
+      'button svg, button img, button [role="img"]',
+    ),
   )
     .filter((element) => !hasHiddenSvgAncestor(element))
     .map((element) => element.outerHTML);
@@ -92,6 +95,76 @@ function getExposedButtonMedia(): string[] {
 describe("PluginAgentTargetPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("disables Antigravity for a package without its native manifest", async () => {
+    await renderWithI18n(
+      <PluginAgentTargetPicker
+        isOpen
+        plugin={gmailPlugin}
+        initialTargetIds={["antigravity"]}
+        targetMatrix={[
+          {
+            id: "antigravity",
+            displayName: "Antigravity",
+            enabled: true,
+            status: "native",
+            requiresNativeManifest: true,
+          },
+        ]}
+        onClose={vi.fn()}
+        onDistribute={vi.fn()}
+      />,
+      { language: "en" },
+    );
+    expect(screen.getByRole("button", { name: /^Antigravity/ })).toBeDisabled();
+    expect(getSubmitButton()).toBeDisabled();
+    expect(
+      screen.getByText(/requires a native plugin.json package/),
+    ).toBeVisible();
+  });
+
+  it("offers only compatible native packages in the Antigravity Agent install dialog", async () => {
+    const native = {
+      ...gmailPlugin,
+      id: "zotero",
+      name: "zotero",
+      displayName: "Zotero",
+      nativeTargetIds: ["antigravity"],
+    };
+    const onDistribute = vi.fn().mockResolvedValue(undefined);
+    await renderWithI18n(
+      <PluginLibraryDeployDialog
+        isOpen
+        agentName="Antigravity"
+        plugins={[gmailPlugin, native]}
+        targets={[
+          {
+            id: "antigravity",
+            displayName: "Antigravity",
+            enabled: true,
+            status: "native",
+            requiresNativeManifest: true,
+          },
+        ]}
+        onClose={vi.fn()}
+        onRefresh={vi.fn().mockResolvedValue(undefined)}
+        onDistribute={onDistribute}
+      />,
+      { language: "en" },
+    );
+    expect(screen.getByRole("button", { name: "Gmail" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Zotero" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Install 1 selected Plugin/ }),
+    );
+    await waitFor(() =>
+      expect(onDistribute).toHaveBeenCalledWith(
+        native,
+        ["antigravity"],
+        "copy",
+      ),
+    );
   });
 
   it("distributes the selected plugin to selected Agent targets with the selected mode", async () => {

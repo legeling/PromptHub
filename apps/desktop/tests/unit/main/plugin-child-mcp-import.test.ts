@@ -14,6 +14,13 @@ import {
   resetRuntimePaths,
 } from "@prompthub/core";
 import { importChildMcpServersForPlugin } from "../../../src/main/ipc/plugin.ipc";
+import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
+
+let mcpStorage: ReturnType<typeof createMcpTestStorage>;
+vi.mock("../../../src/main/services/desktop-mcp-library", () => ({
+  createDesktopMcpLibraryService: () =>
+    new CoreMcpLibraryService(mcpStorage.options),
+}));
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -33,6 +40,7 @@ describe("Plugin child MCP import", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-child-mcp-"));
     configureRuntimePaths({ userDataPath });
+    mcpStorage = createMcpTestStorage();
     pluginPackagePath = path.join(
       userDataPath,
       "data",
@@ -90,8 +98,45 @@ describe("Plugin child MCP import", () => {
   });
 
   afterEach(() => {
+    mcpStorage.dispose();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
+  });
+
+  it("imports a native Antigravity remote MCP child and retains its authentication options", () => {
+    writeJson(path.join(pluginPackagePath, "mcp_config.json"), {
+      mcpServers: {
+        remote: {
+          serverUrl: "https://example.test/mcp",
+          authProviderType: "google_credentials",
+          disabledTools: ["delete"],
+        },
+      },
+    });
+    const result = importChildMcpServersForPlugin(
+      new CorePluginLibraryService(),
+      "gmail",
+    );
+    expect(result.imported).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "remote",
+          url: "https://example.test/mcp",
+          authProviderType: "google_credentials",
+          disabledTools: ["delete"],
+        }),
+      ]),
+    );
+    expect(
+      new CoreMcpLibraryService(mcpStorage.options).read().servers,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "remote",
+          authProviderType: "google_credentials",
+        }),
+      ]),
+    );
   });
 
   it("imports MCP configs through the MCP library and skips symlink escapes", () => {
@@ -121,7 +166,9 @@ describe("Plugin child MCP import", () => {
     expect(result.imported.map((server) => server.name)).toEqual(["gmail"]);
     expect(result.failedFiles).toEqual([]);
     expect(
-      new CoreMcpLibraryService().read().servers.map((server) => server.name),
+      new CoreMcpLibraryService(mcpStorage.options)
+        .read()
+        .servers.map((server) => server.name),
     ).toEqual(["gmail"]);
   });
 

@@ -65,6 +65,19 @@ it("Plugin canonical local import/full package/version/reopen/update/distribute/
       );
       continue;
     }
+    if (target.requiresNativeManifest) {
+      expect(() =>
+        service.distributePlugin({
+          pluginId: id,
+          targetIds: [target.id],
+          mode: "copy",
+        }),
+      ).toThrow(/requires a native plugin\.json package/);
+      expect(fs.existsSync(options.resolvePluginTargetPath(target.id))).toBe(
+        false,
+      );
+      continue;
+    }
     const result = service.distributePlugin({
       pluginId: id,
       targetIds: [target.id],
