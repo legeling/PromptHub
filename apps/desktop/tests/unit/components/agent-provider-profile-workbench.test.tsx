@@ -189,6 +189,10 @@ describe("AgentProviderProfileWorkbench", () => {
     expect(screen.getByText("Configured auth token")).toBeVisible();
     expect(screen.queryByText(/sk-|agent-provider:/i)).not.toBeInTheDocument();
     const nativeRow = screen.getByTestId("provider-native-card");
+    const nativeTitle = within(nativeRow).getByText("Current native configuration");
+    expect(nativeTitle).not.toHaveClass("truncate");
+    expect(nativeTitle).toHaveClass("break-words");
+    expect(nativeTitle.parentElement).toHaveClass("flex-col", "items-start");
     expect(nativeRow).toHaveClass("rounded-lg", "border", "bg-card");
     expect(nativeRow).not.toHaveClass("m-1", "w-[calc(100%-0.5rem)]");
     expect(nativeRow.parentElement).toHaveClass("p-1");

@@ -84,6 +84,7 @@
 
 ### 5.1 Agent Provider And Model Configuration
 
+- Agent 原生供应商列表项的标题与分类状态分行展示，标题允许换行，激活开关不得挤掉标题。
 - Agent 资产卡片及标签区随内容增高，不得用固定高度与溢出裁切隐藏换行后的标签。
 - Agent 资产卡片的正文宽度必须受卡片约束；长路径在卡片内省略并可悬停读取全文，状态徽标可换行，标签包括连续长名称均须在卡片内换行，不能撑出列表横向滚动条。工具栏中独立滚动的筛选条不受此限制。
 - Agent 的 Provider & Model 页面必须复用同一套供应商 workbench 布局和 normalized model contract；平台差异只能存在于 main-process native adapter，不得为每个 Agent 复制 renderer 页面。

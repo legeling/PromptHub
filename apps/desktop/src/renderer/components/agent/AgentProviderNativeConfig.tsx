@@ -57,8 +57,8 @@ export function AgentProviderNativeListItem({
             <CheckCircle2Icon className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2">
-              <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+            <span className="flex flex-col items-start gap-1">
+              <span className="min-w-0 break-words text-sm font-semibold text-foreground">
                 {t("agents.providerProfiles.currentNative.title")}
               </span>
               <span
@@ -74,7 +74,7 @@ export function AgentProviderNativeListItem({
             </span>
           </span>
         </button>
-        <div className="pr-3">
+        <div className="shrink-0 pr-3">
           <AgentProviderActivationSwitch
             checked
             disabled
