@@ -833,10 +833,15 @@ export function deleteDistributedPluginTargets(
     return;
   }
   const targetResolver = requireTargetResolver(resolver);
-  for (const targetId of targetIds) {
+  const targetPaths = targetIds.map((targetId) => {
     const targetPath = targetResolver(targetId, plugin);
-    if (targetPath) {
-      deletePluginPackageTarget(targetPath);
-    }
-  }
+    if (!targetPath)
+      throw new CorePluginError(
+        "MISSING_TARGET_PATH",
+        `Cannot resolve Plugin target: ${targetId}`,
+      );
+    assertSafeExistingPluginTarget(targetPath, "remove");
+    return targetPath;
+  });
+  for (const targetPath of targetPaths) deletePluginPackageTarget(targetPath);
 }

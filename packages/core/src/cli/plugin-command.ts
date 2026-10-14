@@ -1,4 +1,53 @@
 import { CorePluginError, CorePluginLibraryService } from "../plugin-library";
+import {
+  getPluginTargetPlatformId,
+  resolvePluginPackageTargetPath,
+} from "../plugin-target-paths";
+import type { PluginTargetPathResolver } from "../plugin-library/shared";
+import { getCliAgentAssetInventory } from "./agent-assets";
+import type { CliDatabaseHooks } from "./types";
+import {
+  uninstallNativePlugin,
+  type PluginNativeInstallationOptions,
+} from "../plugin-native-installation";
+
+async function createTargetResolver(databaseHooks: CliDatabaseHooks): Promise<{
+  resolvePath: PluginTargetPathResolver;
+  nativeOptions: PluginNativeInstallationOptions;
+}> {
+  const agents = new Map(
+    (await getCliAgentAssetInventory(databaseHooks.initDatabase())).map(
+      (agent) => [agent.id, agent],
+    ),
+  );
+  const resolvePath: PluginTargetPathResolver = (targetId, plugin) => {
+    const platformId = getPluginTargetPlatformId(targetId);
+    const agent = platformId ? agents.get(platformId) : undefined;
+    if (!agent?.paths.plugins)
+      throw new CorePluginError(
+        "UNSUPPORTED_TARGET",
+        `Cannot resolve Plugin target: ${targetId}`,
+      );
+    return resolvePluginPackageTargetPath(targetId, plugin, {
+      root: agent.paths.root,
+      plugins: agent.paths.plugins,
+    });
+  };
+  return {
+    resolvePath,
+    nativeOptions: {
+      getRoot: (id) => {
+        const agent = agents.get(id);
+        if (!agent)
+          throw new CorePluginError(
+            "UNSUPPORTED_TARGET",
+            `Cannot resolve Plugin Agent: ${id}`,
+          );
+        return agent.paths.root;
+      },
+    },
+  };
+}
 
 export type PluginCliIO = {
   stdout: (message: string) => void;
@@ -134,6 +183,7 @@ export async function handlePluginCommand(
   args: string[],
   io: PluginCliIO,
   output: OutputFormat,
+  databaseHooks: CliDatabaseHooks,
 ): Promise<number> {
   try {
     if (args.length === 0 || takeFlag(args, "--help") || takeFlag(args, "-h")) {
@@ -141,8 +191,14 @@ export async function handlePluginCommand(
       return EXIT_CODES.OK;
     }
 
-    const service = new CorePluginLibraryService();
     const action = requirePositional(args, 0, "plugin 子命令");
+    const targets =
+      action === "delete" && args.includes("--remove-targets")
+        ? await createTargetResolver(databaseHooks)
+        : undefined;
+    const service = new CorePluginLibraryService({
+      resolvePluginTargetPath: targets?.resolvePath,
+    });
 
     if (action === "list") {
       ensureNoUnknownOptions(args.slice(1));
@@ -244,6 +300,12 @@ export async function handlePluginCommand(
       const removeTargets = takeFlag(deleteArgs, "--remove-targets");
       ensureNoUnknownOptions(deleteArgs);
       const plugin = resolvePlugin(service, identifier);
+      if (removeTargets && targets) {
+        for (const targetId of plugin.distributedTargetIds ?? [])
+          targets.resolvePath(targetId, plugin);
+        for (const targetId of plugin.distributedTargetIds ?? [])
+          await uninstallNativePlugin(plugin, targetId, targets.nativeOptions);
+      }
       const library = service.deletePlugin(plugin.id, {
         removeDistributedTargets: removeTargets,
       });

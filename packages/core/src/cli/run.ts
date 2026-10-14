@@ -232,6 +232,7 @@ async function runCliOperation(
         commandArgs,
         commandIo,
         configured.output,
+        databaseHooks,
       );
     }
     if (resource === "ai") {
