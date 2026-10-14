@@ -90,7 +90,7 @@ export function AgentAssetManagementSurface<T>({
     <div
       data-testid="agent-asset-management-surface"
       data-domain={domain}
-      className="relative flex min-h-0 flex-1 flex-col"
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col"
     >
       {alert}
       <div
@@ -145,7 +145,7 @@ export function AgentAssetManagementSurface<T>({
 
       <div
         data-testid={listTestId}
-        className="min-h-0 flex-1 overflow-y-auto p-5"
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5"
       >
         {isLoading && page.total === 0 ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
@@ -176,7 +176,10 @@ export function AgentAssetManagementSurface<T>({
         ) : isEmpty ? (
           emptyState
         ) : (
-          <div data-testid={gridTestId} className="grid gap-3 sm:grid-cols-2">
+          <div
+            data-testid={gridTestId}
+            className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2"
+          >
             {children}
           </div>
         )}
@@ -206,19 +209,19 @@ export function AgentAssetCard({
   return (
     <article
       data-testid={testId}
-      className="group flex h-[232px] flex-col rounded-md border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
+      className="group flex min-h-[232px] min-w-0 flex-col rounded-md border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
     >
       <button
         type="button"
         onClick={onOpen}
         aria-label={openLabel}
-        className="min-h-0 min-w-0 flex-1 overflow-hidden text-left"
+        className="flex w-full min-w-0 flex-1 flex-col text-left"
       >
         {children}
       </button>
       <div
         data-testid={actionsTestId}
-        className="mt-3 flex items-center justify-end gap-2 border-t border-border/60 pt-3"
+        className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-border/60 pt-3"
       >
         {actions}
       </div>
@@ -250,7 +253,7 @@ export function AgentAssetCardContent({
   return (
     <div
       data-testid="agent-asset-card-content"
-      className="flex h-full min-w-0 items-start gap-3 overflow-hidden"
+      className="flex w-full min-w-0 items-start gap-3"
     >
       <div data-testid="agent-asset-card-avatar" className="shrink-0">
         <span
@@ -260,31 +263,36 @@ export function AgentAssetCardContent({
           {icon}
         </span>
       </div>
-      <div className="min-w-0 flex-1 overflow-hidden">
+      <div className="min-w-0 flex-1">
         <div
           data-testid="agent-asset-card-title-row"
-          className="flex h-6 min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap"
+          className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
         >
-          <span className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+          <span className="min-w-0 max-w-full truncate text-base font-semibold text-foreground">
             {title}
           </span>
-          {status ? <span className="shrink-0">{status}</span> : null}
+          {status ? (
+            <span className="min-w-0 max-w-full [overflow-wrap:anywhere] [&>*]:max-w-full">
+              {status}
+            </span>
+          ) : null}
         </div>
         <div
           data-testid="agent-asset-card-description"
-          className="mt-1 line-clamp-2 h-10 text-sm leading-5 text-muted-foreground"
+          className="mt-1 line-clamp-2 h-10 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]"
         >
           {description}
         </div>
         <div
           data-testid="agent-asset-card-source"
+          title={typeof source === "string" ? source : undefined}
           className="mt-1.5 h-4 truncate font-mono text-[11px] text-muted-foreground"
         >
           {source}
         </div>
         <div
           data-testid="agent-asset-card-metadata"
-          className="mt-2 flex h-10 flex-wrap content-start items-start gap-1.5 overflow-hidden"
+          className="mt-2 flex min-w-0 flex-wrap content-start items-start gap-1.5 [&>*]:min-w-0 [&>*]:max-w-full [&>*]:[overflow-wrap:anywhere]"
         >
           {metadata}
           {supplementary}

@@ -544,14 +544,16 @@ describe("AgentAssetsWorkspace", () => {
 
     const skillCard = screen.getAllByTestId("agent-skill-asset-card")[0];
     const skillAnatomy = readAnatomy(skillCard);
-    expect(skillCard).toHaveClass("h-[232px]");
-    expect(skillAnatomy.contentClass).toContain("h-full");
-    expect(skillAnatomy.titleClass).toContain("h-6");
-    expect(skillAnatomy.titleClass).toContain("overflow-hidden");
+    expect(skillCard).toHaveClass("min-h-[232px]");
+    expect(skillCard).not.toHaveClass("h-[232px]");
+    expect(skillAnatomy.contentClass).not.toContain("h-full");
+    expect(skillAnatomy.titleClass).toContain("min-h-6");
+    expect(skillAnatomy.titleClass).toContain("flex-wrap");
     expect(skillAnatomy.descriptionClass).toContain("h-10");
     expect(skillAnatomy.sourceClass).toContain("h-4");
-    expect(skillAnatomy.metadataClass).toContain("h-10");
-    expect(skillAnatomy.metadataClass).toContain("overflow-hidden");
+    expect(skillAnatomy.metadataClass).toContain("flex-wrap");
+    expect(skillAnatomy.metadataClass).not.toContain("h-10");
+    expect(skillAnatomy.metadataClass).not.toContain("overflow-hidden");
     expect(
       within(skillCard).getByTestId("agent-skill-asset-icon"),
     ).toBeVisible();

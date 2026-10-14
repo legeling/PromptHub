@@ -84,6 +84,8 @@
 
 ### 5.1 Agent Provider And Model Configuration
 
+- Agent 资产卡片及标签区随内容增高，不得用固定高度与溢出裁切隐藏换行后的标签。
+- Agent 资产卡片的正文宽度必须受卡片约束；长路径在卡片内省略并可悬停读取全文，状态徽标可换行，标签包括连续长名称均须在卡片内换行，不能撑出列表横向滚动条。工具栏中独立滚动的筛选条不受此限制。
 - Agent 的 Provider & Model 页面必须复用同一套供应商 workbench 布局和 normalized model contract；平台差异只能存在于 main-process native adapter，不得为每个 Agent 复制 renderer 页面。
 - 用户侧统一使用“供应商”术语；内部 `ProviderProfile` 类型、存储和 IPC 名称仅作为兼容合同保留，不得直接成为界面文案。
 - Agent 当前原生配置是只读投影，不得提供“导入当前配置”或“转为可编辑配置”入口。供应商侧栏保留“从 PromptHub 导入”和新增供应商操作；两者必须显示图标与本地化文字，固定宽度侧栏允许纵向滚动，但列表行、内边距和 focus state 不得制造横向滚动条。
