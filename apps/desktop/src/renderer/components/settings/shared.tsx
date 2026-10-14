@@ -236,10 +236,10 @@ export const ShortcutItem = memo(function ShortcutItem({
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-5 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/10">
-      <div className="flex-1 min-w-0 mr-8">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-3 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/10">
+      <div className="flex-1 min-w-[12rem]">
         <div className="text-sm font-medium text-foreground">{label}</div>
-        <div className="text-xs text-muted-foreground mt-1.5 leading-normal">
+        <div className="text-xs text-muted-foreground mt-0.5 leading-normal">
           {description}
         </div>
         {conflict && (
@@ -249,9 +249,9 @@ export const ShortcutItem = memo(function ShortcutItem({
           </div>
         )}
       </div>
-      <div className="flex items-center gap-4 flex-shrink-0">
+      <div className="ml-auto flex items-center gap-2 flex-shrink-0">
         {mode && onModeChange && (
-          <div className="w-[110px]">
+          <div className="w-24">
             <Select
               value={mode}
               onChange={(value) => onModeChange(value as "global" | "local")}
@@ -259,7 +259,8 @@ export const ShortcutItem = memo(function ShortcutItem({
                 { value: "global", label: t("settings.shortcutModeGlobal") },
                 { value: "local", label: t("settings.shortcutModeLocal") },
               ]}
-              className="h-9 text-xs"
+              ariaLabel={t("settings.shortcutMode")}
+              triggerClassName="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-muted px-2.5 text-xs text-left transition-colors hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
         )}
@@ -278,7 +279,7 @@ export const ShortcutItem = memo(function ShortcutItem({
           onFocus={() => setRecording(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className={`w-40 h-9 px-3 text-center text-xs font-medium rounded-md border shadow-sm cursor-pointer transition-all ${
+          className={`w-36 h-9 px-2.5 text-center text-xs font-medium rounded-md border cursor-pointer transition-colors ${
             recording
               ? "border-primary ring-2 ring-primary/20 bg-primary/5 text-primary"
               : "app-settings-input hover:bg-accent/70 hover:text-accent-foreground"

@@ -111,7 +111,7 @@ export function ShortcutsSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <SettingSection title={t("settings.shortcutOptions")}>
         <div>
           <ShortcutItem
@@ -170,7 +170,7 @@ export function ShortcutsSettings() {
       </SettingSection>
 
       <SettingSection title={t("settings.shortcutTips")}>
-        <div className="p-4 text-sm text-muted-foreground space-y-2">
+        <div className="p-4 text-xs leading-relaxed text-muted-foreground space-y-1.5">
           <p>• {t("settings.shortcutTip1")}</p>
           <p>• {t("settings.shortcutTip2")}</p>
           <p>• {t("settings.shortcutTip3")}</p>
