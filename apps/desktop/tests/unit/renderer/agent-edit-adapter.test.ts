@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
+import { parseAgentManagementSettings } from "@prompthub/core/agent-management/agent-settings-contract";
 import {
   ALL_AGENT_EDIT_PATH_FIELDS,
   buildBuiltinAgentPathOverride,
@@ -8,6 +9,42 @@ import {
 } from "../../../src/renderer/services/agent-edit-adapter";
 
 describe("Agent edit adapter", () => {
+  it("uses the configured-root MCP declaration when saving Claude's root", () => {
+    const platform = SKILL_PLATFORMS.find(({ id }) => id === "claude")!;
+    const values = {
+      skillsPath: "skills",
+      rulesPath: "CLAUDE.md",
+      mcpPath: platform.mcpRelativePath!,
+      pluginsPath: "plugins/cache/prompthub",
+      agentsPath: "",
+      commandsPath: "",
+      configPaths: "settings.json",
+    };
+    const override = buildBuiltinAgentPathOverride(
+      platform,
+      "/isolated/custom-claude",
+      values,
+    );
+    expect(override.mcpRelativePath).toBe(
+      platform.configuredRootMcpRelativePath,
+    );
+    expect(() =>
+      parseAgentManagementSettings({
+        builtinAgentOverrides: { claude: override },
+      }),
+    ).not.toThrow();
+    const unsafe = buildBuiltinAgentPathOverride(
+      platform,
+      "/isolated/custom-claude",
+      { ...values, mcpPath: "../other.json" },
+    );
+    expect(() =>
+      parseAgentManagementSettings({
+        builtinAgentOverrides: { claude: unsafe },
+      }),
+    ).toThrow("safe relative path");
+  });
+
   it("maps every built-in Agent to exactly its canonical path declarations", () => {
     for (const platform of SKILL_PLATFORMS) {
       const expected = [

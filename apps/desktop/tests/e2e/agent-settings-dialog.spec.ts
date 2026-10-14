@@ -140,9 +140,10 @@ test.describe("E2E: Agent settings dialog", () => {
         page.getByText(replacementClaudeDir, { exact: true }).first(),
       ).toBeVisible();
       await expect
-        .poll(async () =>
-          (await page.evaluate(() => window.api.settings.get()))
-            .builtinAgentOverrides?.claude?.rootPath,
+        .poll(
+          async () =>
+            (await page.evaluate(() => window.api.settings.get()))
+              .builtinAgentOverrides?.claude?.rootPath,
         )
         .toBe(replacementClaudeDir);
 
@@ -178,10 +179,8 @@ test.describe("E2E: Agent settings dialog", () => {
         .getByRole("list")
         .getByRole("button", { name: /^(Codex|Claude Code)$/ });
       await expect(agentButtons).toHaveCount(2);
-      expect(await agentButtons.allTextContents()).toEqual([
-        "Codex",
-        "Claude Code",
-      ]);
+      await expect(agentButtons.nth(0)).toHaveAccessibleName("Codex");
+      await expect(agentButtons.nth(1)).toHaveAccessibleName("Claude Code");
       await expect(
         page
           .getByRole("button", { name: "Codex", exact: true })

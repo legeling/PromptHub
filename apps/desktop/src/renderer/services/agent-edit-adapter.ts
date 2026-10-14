@@ -1,4 +1,7 @@
-import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
+import {
+  getPlatformMcpRelativePath,
+  type SkillPlatform,
+} from "@prompthub/shared/constants/platforms";
 import type { BuiltinAgentOverrideConfig } from "@prompthub/shared/types";
 
 export const ALL_AGENT_EDIT_PATH_FIELDS = [
@@ -78,7 +81,13 @@ export function buildBuiltinAgentPathOverride(
   if (visible.has("skillsPath"))
     override.skillsRelativePath = values.skillsPath;
   if (visible.has("rulesPath")) override.rulesRelativePath = values.rulesPath;
-  if (visible.has("mcpPath")) override.mcpRelativePath = values.mcpPath;
+  if (visible.has("mcpPath")) {
+    // An explicit root uses the platform's configured-root layout, not its home-relative default.
+    override.mcpRelativePath =
+      values.mcpPath === platform.mcpRelativePath
+        ? getPlatformMcpRelativePath(platform, true)
+        : values.mcpPath;
+  }
   if (visible.has("pluginsPath")) {
     override.pluginsRelativePath = values.pluginsPath;
   }
