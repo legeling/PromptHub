@@ -16,6 +16,7 @@ import type {
 import {
   getElectronLaunchArgs,
   getElectronLaunchEnvironment,
+  isElectronHeaded,
 } from "./electron-launch-options";
 import { isolateMcpKeyring } from "./isolated-keyring";
 
@@ -26,6 +27,7 @@ export interface LaunchedElectronApp {
 }
 
 interface LaunchOptions {
+  headed?: boolean;
   env?: Record<string, string>;
   userDataDir?: string;
 }
@@ -95,7 +97,12 @@ export async function launchPromptHub(
   fs.mkdirSync(env.HOME, { recursive: true });
 
   const app = await electron.launch({
-    args: getElectronLaunchArgs(mainEntry),
+    args: getElectronLaunchArgs(
+      mainEntry,
+      process.platform,
+      Boolean(process.env.CI),
+      options.headed,
+    ),
     env: {
       ...env,
       ...(seedPath ? { PROMPTHUB_E2E_SEED_PATH: seedPath } : {}),
@@ -178,6 +185,9 @@ export async function isAppWindowVisible(app: ElectronApplication) {
 }
 
 export async function showAppWindow(app: ElectronApplication) {
+  if (!isElectronHeaded()) {
+    throw new Error("Native window display requires PROMPTHUB_E2E_HEADED=1");
+  }
   await app.evaluate(({ BrowserWindow }) => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) {

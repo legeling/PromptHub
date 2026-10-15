@@ -30,6 +30,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run release verification
+        env:
+          PROMPTHUB_E2E_HEADED: "1"
         run: xvfb-run -a pnpm verify:release
 
   build:

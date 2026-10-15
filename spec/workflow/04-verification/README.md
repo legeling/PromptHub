@@ -25,6 +25,20 @@ Skill 领域入口为 [缺陷分类](../../knowledge/reference/skill-defect-taxo
 
 根级 `test`、`test:run`、`typecheck` 和 `build` 默认转发桌面命令，不能称为全仓验证。共享包、自部署 Web、CLI 和 Worker 使用各自命令，由根级 registry 组织；不能用多个重复嵌套的聚合脚本扩大“通过数量”。
 
+### Electron 隐藏运行与原生窗口专项
+
+桌面 E2E 默认使用隔离 profile 和应用已有的 `--hidden` 启动路径；macOS 的 E2E 进程使用 accessory 激活策略，不出现在 Dock。真实 renderer/preload/IPC/持久化仍运行，不等于浏览器的 headless 引擎，也不修改日常应用设置。`hidden-launch.spec.ts` 检查真实窗口 show/focus 事件均为零，并验证设置导航和重载仍可操作。
+
+显隐快捷键、隐藏启动后恢复 WebDAV 同步、可见启动后自动创建远端备份三项用例带 `@native-window` 标签，默认不选中，断言不改写或伪造。启动自动备份按现行合同要求活跃窗口；手动远端备份/恢复仍在隐藏集合中。需要原生可见窗口的验收必须在用户允许后显式执行：
+
+```sh
+PROMPTHUB_E2E_HEADED=1 pnpm --dir apps/desktop exec playwright test --grep @native-window
+```
+
+`PROMPTHUB_E2E_HEADED=1 pnpm test:e2e` 选择完整套件并允许显示窗口；普通 `pnpm test:e2e` 的通过结果仅覆盖隐藏运行集合，不能作为这三项原生窗口验收证据。Playwright 的浏览器 `--headed` 参数不控制 Electron 启动方式。撤销隐藏执行可使用上述显式环境变量，无数据迁移或偏好回滚。
+
+发布 CI 的既有 Linux `xvfb-run` 步骤显式设置 `PROMPTHUB_E2E_HEADED=1`，在虚拟显示器中保留原生窗口门禁；本地默认隐藏不会缩减该 CI 步骤的选择范围。
+
 `pnpm --filter @prompthub/desktop perf:budget` 使用项目已有的 `tsx` loader 执行 `scripts/check-large-data-budgets.ts`，遵循 Desktop 当前模块格式并解析被测模块的扩展名省略 import；脚本同时进入 `typecheck:tests`。不改变业务模块或预算阈值。它测量本地 Prompt/Skill selector 的固定数据集，不证明真实窗口滚动或大型 SQLite 工作流。
 
 ## 功能基线入口与证据边界

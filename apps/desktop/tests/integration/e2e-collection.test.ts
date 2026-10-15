@@ -12,9 +12,9 @@ const desktopRoot = fileURLToPath(new URL("../../", import.meta.url));
 const collectionTimeoutMs = 30_000;
 const collectionOutputBytes = 1024 * 1024;
 
-it(
-  "collects every Electron E2E file through the real Playwright entrypoint without launching an app",
-  async () => {
+it.each([false, true])(
+  "collects every Electron E2E file with headed=%s without launching an app",
+  async (headed) => {
     const directory = path.join(desktopRoot, "tests/e2e");
     const files = fs
       .readdirSync(directory, { recursive: true })
@@ -28,10 +28,22 @@ it(
         cwd: desktopRoot,
         timeout: collectionTimeoutMs,
         maxBuffer: collectionOutputBytes,
-        env: { ...process.env, FORCE_COLOR: "0" },
+        env: {
+          ...process.env,
+          FORCE_COLOR: "0",
+          PROMPTHUB_E2E_HEADED: headed ? "1" : "0",
+        },
       },
     );
     for (const file of files) expect(stdout).toContain(`${file}:`);
+    for (const title of [
+      "delays startup WebDAV sync until a hidden launch becomes visible",
+      "toggles app visibility from the local showApp shortcut",
+      "creates an immutable remote backup on startup without replacing the local workspace",
+    ]) {
+      if (headed) expect(stdout).toContain(title);
+      else expect(stdout).not.toContain(title);
+    }
     expect(stdout).toMatch(
       new RegExp(`Total: [1-9]\\d* tests in ${files.length} files`),
     );

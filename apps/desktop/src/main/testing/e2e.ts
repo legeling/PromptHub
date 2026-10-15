@@ -35,6 +35,7 @@ interface E2ESeedDocument {
 }
 
 interface E2EStats {
+  window: { show: number; focus: number };
   webdav: {
     testConnection: number;
     ensureDirectory: number;
@@ -45,6 +46,7 @@ interface E2EStats {
 }
 
 const e2eStats: E2EStats = {
+  window: { show: 0, focus: 0 },
   webdav: {
     testConnection: 0,
     ensureDirectory: 0,
@@ -56,6 +58,7 @@ const e2eStats: E2EStats = {
 
 function createEmptyE2EStats(): E2EStats {
   return {
+    window: { show: 0, focus: 0 },
     webdav: {
       testConnection: 0,
       ensureDirectory: 0,
@@ -157,6 +160,18 @@ export function configureE2ETestProfile(
   fs.mkdirSync(resolvedDir, { recursive: true });
   app.setName("PromptHub E2E");
   app.setPath("userData", resolvedDir);
+  // Hidden test windows still render, but must not join the user's Dock or activate on launch.
+  if (process.platform === "darwin" && process.argv.includes("--hidden")) {
+    app.setActivationPolicy("accessory");
+  }
+  app.on("browser-window-created", (_event, window) => {
+    window.on("show", () => {
+      e2eStats.window.show += 1;
+    });
+    window.on("focus", () => {
+      e2eStats.window.focus += 1;
+    });
+  });
   return resolvedDir;
 }
 

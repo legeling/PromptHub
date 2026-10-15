@@ -765,6 +765,7 @@ declare global {
       };
       e2e?: {
         getStats: () => Promise<{
+          window: { show: number; focus: number };
           webdav: {
             testConnection: number;
             ensureDirectory: number;

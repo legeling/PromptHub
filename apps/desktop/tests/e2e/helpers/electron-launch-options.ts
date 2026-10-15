@@ -1,5 +1,13 @@
 import path from "node:path";
 
+export const nativeWindowTestTag = "@native-window";
+
+export function isElectronHeaded(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return env.PROMPTHUB_E2E_HEADED === "1";
+}
+
 export function getElectronLaunchEnvironment(
   userDataDir: string,
   overrides: Record<string, string> = {},
@@ -46,8 +54,11 @@ export function getElectronLaunchArgs(
   mainEntry: string,
   platform = process.platform,
   isCi = Boolean(process.env.CI),
+  headed = isElectronHeaded(),
 ): string[] {
-  return platform === "linux" && isCi
-    ? ["--no-sandbox", "--password-store=basic", mainEntry]
-    : [mainEntry];
+  const args =
+    platform === "linux" && isCi
+      ? ["--no-sandbox", "--password-store=basic", mainEntry]
+      : [mainEntry];
+  return headed ? args : [...args, "--hidden"];
 }

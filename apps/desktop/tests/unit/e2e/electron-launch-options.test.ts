@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   getElectronLaunchArgs,
   getElectronLaunchEnvironment,
+  isElectronHeaded,
 } from "../../e2e/helpers/electron-launch-options";
 
 describe("Electron E2E launch options", () => {
@@ -62,19 +63,26 @@ describe("Electron E2E launch options", () => {
   });
 
   it("uses headless-safe Chromium services only on hosted Linux CI", () => {
-    expect(getElectronLaunchArgs("/app/main.js", "linux", true)).toEqual([
-      "--no-sandbox",
-      "--password-store=basic",
-      "/app/main.js",
-    ]);
-    expect(getElectronLaunchArgs("/app/main.js", "linux", false)).toEqual([
-      "/app/main.js",
-    ]);
-    expect(getElectronLaunchArgs("/app/main.js", "darwin", true)).toEqual([
-      "/app/main.js",
-    ]);
-    expect(getElectronLaunchArgs("C:\\app\\main.js", "win32", true)).toEqual([
-      "C:\\app\\main.js",
-    ]);
+    expect(getElectronLaunchArgs("/app/main.js", "linux", true, false)).toEqual(
+      ["--no-sandbox", "--password-store=basic", "/app/main.js", "--hidden"],
+    );
+    expect(
+      getElectronLaunchArgs("/app/main.js", "linux", false, false),
+    ).toEqual(["/app/main.js", "--hidden"]);
+    expect(
+      getElectronLaunchArgs("/app/main.js", "darwin", true, false),
+    ).toEqual(["/app/main.js", "--hidden"]);
+    expect(
+      getElectronLaunchArgs("C:\\app\\main.js", "win32", true, false),
+    ).toEqual(["C:\\app\\main.js", "--hidden"]);
+  });
+
+  it("requires explicit opt-in for native visible windows", () => {
+    expect(isElectronHeaded({})).toBe(false);
+    expect(isElectronHeaded({ PROMPTHUB_E2E_HEADED: "0" })).toBe(false);
+    expect(isElectronHeaded({ PROMPTHUB_E2E_HEADED: "1" })).toBe(true);
+    expect(
+      getElectronLaunchArgs("/app/main.js", "darwin", false, true),
+    ).toEqual(["/app/main.js"]);
   });
 });

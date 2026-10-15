@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import rootPackage from "../../../../package.json";
+import { nativeWindowTestTag } from "./helpers/electron-launch-options";
 
 import {
   closePromptHub,
@@ -46,7 +47,7 @@ async function readLatestSelfHostedHistory(
 }
 
 test.describe("E2E: desktop self-hosted sync", () => {
-  test("creates an immutable remote backup on startup without replacing the local workspace", async () => {
+  test("creates an immutable remote backup on startup without replacing the local workspace", { tag: nativeWindowTestTag }, async () => {
     const server = await startSelfHostedTestServer();
     const firstLaunch = await launchPromptHub("prompt-workspace.seed.json");
     let app = firstLaunch.app;

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
+import { nativeWindowTestTag } from "./helpers/electron-launch-options";
 
 import {
   closePromptHub,
@@ -76,7 +77,7 @@ test.describe("E2E: Skill smoke", () => {
     }
   });
 
-  test("delays startup WebDAV sync until a hidden launch becomes visible", async () => {
+  test("delays startup WebDAV sync until a hidden launch becomes visible", { tag: nativeWindowTestTag }, async () => {
     const { app, page, userDataDir } = await launchPromptHub(
       "background-sync.seed.json",
       {
@@ -155,7 +156,7 @@ test.describe("E2E: Skill smoke", () => {
     }
   });
 
-  test("toggles app visibility from the local showApp shortcut", async () => {
+  test("toggles app visibility from the local showApp shortcut", { tag: nativeWindowTestTag }, async () => {
     const { app, page, userDataDir } = await launchPromptHub(
       "skills-smoke.seed.json",
     );
