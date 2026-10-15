@@ -6,6 +6,28 @@
 
 ## Stable Requirements
 
+### skills.sh Directory Search
+
+- A non-empty search uses the official `/api/search?q=...&limit=...` endpoint,
+  not a filter over the HTML leaderboard. The existing store page size bounds
+  the ranked result request and detail hydration; no extra retry or network policy
+  is introduced. Browse categories apply only when the query is empty.
+- Search results retain the API repository and Skill selector through the existing
+  detail parser and whole-package installer. Remote ranking is authoritative;
+  local substring filtering must not hide semantic matches.
+- The search response has no supported cursor or whole-directory total contract.
+  Display the returned result count, not the homepage's directory count; do not
+  fabricate further pages. Invalid responses surface as load failures, and stale
+  requests must not overwrite newer search results or errors.
+- Empty queries retain existing leaderboard browsing. API failure does not silently
+  fall back to searching that partial leaderboard. No stored data migration is needed.
+- The existing package installer supports repository-backed directory results, not
+  domain-only hosted catalogs. Mixed search responses retain supported repositories
+  and report the skipped hosted-result count in diagnostics; hosted-only responses
+  produce an explicit unsupported-source error. Never invent a GitHub repository
+  or downgrade a hosted package to a single `SKILL.md` file.
+- Contract evidence: [official skills CLI search](https://github.com/vercel-labs/skills/blob/main/src/find.ts).
+
 ### 1. Skill Package Contract
 
 - Skill 是目录级 package；`SKILL.md` 是 package 内的必需入口文件，不是 Skill 的完整边界。

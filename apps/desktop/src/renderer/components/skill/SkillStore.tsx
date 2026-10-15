@@ -283,7 +283,9 @@ export function SkillStore() {
     // by slug, install_name, or author, nor when the user typed
     // "hello world" for a slug called "hello-world" (issue #88).
     const searchQueryForLocalFilter =
-      selectedStoreSourceId === "clawhub" && storeSearchQuery.trim()
+      (selectedStoreSourceId === "clawhub" ||
+        selectedStoreSourceId === "community") &&
+      storeSearchQuery.trim()
         ? ""
         : storeSearchQuery;
 

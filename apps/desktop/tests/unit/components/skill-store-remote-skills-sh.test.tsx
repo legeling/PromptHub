@@ -773,78 +773,101 @@ describe("SkillStore remote loading", () => {
     ).toBeInTheDocument();
   });
 
-  it("searches the skills.sh lightweight index before fetching detail pages", async () => {
-    const fetchRemoteContent = vi.fn(async (url: string) => {
-      if (url === "https://skills.sh") {
-        return makeSkillsShLeaderboard(60);
-      }
+  it.each(["skill-40", "semantic lookup"])(
+    "searches the remote skills.sh directory beyond the browse index: %s (#238)",
+    async (query) => {
+      const fetchRemoteContent = vi.fn(async (url: string) => {
+        if (url === "https://skills.sh") return makeSkillsShLeaderboard(3);
+        if (new URL(url).pathname === "/api/search") {
+          expect(new URL(url).searchParams.get("q")).toBe(query);
+          return JSON.stringify({
+            skills: [
+              {
+                id: "demo/skills/skill-40",
+                source: "demo/skills",
+                skillId: "skill-40",
+                name: "skill-40",
+                installs: 42,
+              },
+            ],
+          });
+        }
 
-      const match = url.match(
-        /^https:\/\/skills\.sh\/demo\/skills\/(skill-\d+)$/,
+        const match = url.match(
+          /^https:\/\/skills\.sh\/demo\/skills\/(skill-\d+)$/,
+        );
+        if (match) {
+          return makeSkillsShDetail(match[1]);
+        }
+
+        throw new Error(`Unexpected URL: ${url}`);
+      });
+
+      installWindowMocks({
+        api: {
+          settings: {
+            get: vi.fn().mockResolvedValue({
+              device: {
+                storeAutoSync: false,
+                storeSyncCadence: "manual",
+              },
+            }),
+          },
+          skill: {
+            fetchRemoteContent,
+            scanLocalPreview: vi.fn().mockResolvedValue([]),
+            scanSafety: vi.fn().mockResolvedValue({
+              level: "safe",
+              summary: "safe",
+              findings: [],
+              recommendedAction: "allow",
+              scannedAt: Date.now(),
+              checkedFileCount: 1,
+              scanMethod: "ai",
+            }),
+          },
+        },
+      });
+
+      useSkillStore.setState({
+        selectedStoreSourceId: "community",
+        storeSearchQuery: query,
+      });
+
+      await act(async () => {
+        await renderWithI18n(<SkillStore />, { language: "en" });
+      });
+
+      await waitFor(() => {
+        expect(
+          useSkillStore.getState().remoteStoreEntries.community?.skills,
+        ).toHaveLength(1);
+      });
+
+      expect(useSkillStore.getState().remoteStoreEntries.community).toEqual(
+        expect.objectContaining({
+          matchedCount: 1,
+          nextCursor: null,
+          query: `all:${query}`,
+          totalCount: 1,
+        }),
       );
-      if (match) {
-        return makeSkillsShDetail(match[1]);
-      }
-
-      throw new Error(`Unexpected URL: ${url}`);
-    });
-
-    installWindowMocks({
-      api: {
-        settings: {
-          get: vi.fn().mockResolvedValue({
-            device: {
-              storeAutoSync: false,
-              storeSyncCadence: "manual",
-            },
-          }),
-        },
-        skill: {
-          fetchRemoteContent,
-          scanLocalPreview: vi.fn().mockResolvedValue([]),
-          scanSafety: vi.fn().mockResolvedValue({
-            level: "safe",
-            summary: "safe",
-            findings: [],
-            recommendedAction: "allow",
-            scannedAt: Date.now(),
-            checkedFileCount: 1,
-            scanMethod: "ai",
-          }),
-        },
-      },
-    });
-
-    useSkillStore.setState({
-      selectedStoreSourceId: "community",
-      storeSearchQuery: "skill-40",
-    });
-
-    await act(async () => {
-      await renderWithI18n(<SkillStore />, { language: "en" });
-    });
-
-    await waitFor(() => {
+      expect(fetchRemoteContent).toHaveBeenCalledWith(
+        "https://skills.sh/demo/skills/skill-40",
+      );
+      expect(fetchRemoteContent).not.toHaveBeenCalledWith(
+        "https://skills.sh/demo/skills/skill-1",
+      );
+      expect(fetchRemoteContent).not.toHaveBeenCalledWith("https://skills.sh");
+      expect(screen.getAllByText("skill-40").length).toBeGreaterThan(0);
       expect(
-        useSkillStore.getState().remoteStoreEntries.community?.skills,
-      ).toHaveLength(1);
-    });
-
-    expect(useSkillStore.getState().remoteStoreEntries.community).toEqual(
-      expect.objectContaining({
-        matchedCount: 1,
-        nextCursor: null,
-        query: "all:skill-40",
-        totalCount: 60,
-      }),
-    );
-    expect(fetchRemoteContent).toHaveBeenCalledWith(
-      "https://skills.sh/demo/skills/skill-40",
-    );
-    expect(fetchRemoteContent).not.toHaveBeenCalledWith(
-      "https://skills.sh/demo/skills/skill-1",
-    );
-  });
+        useSkillStore.getState().remoteStoreEntries.community?.skills[0],
+      ).toMatchObject({
+        source_url: "https://github.com/demo/skills",
+        install_name: "skill-40",
+      });
+    },
+  );
 
   it("refreshes stale skills.sh cache entries that predate pagination metadata", async () => {
     const fetchRemoteContent = vi.fn(async (url: string) => {

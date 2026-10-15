@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   filterSkillsShLeaderboardEntries,
@@ -7,10 +7,84 @@ import {
   parseSkillsShDetail,
   parseSkillsShLeaderboard,
   parseSkillsShTotalCount,
+  getSkillsShSearchUrl,
+  parseSkillsShSearch,
 } from "../../../src/renderer/services/skills-sh-store";
 import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
 
 describe("skills-sh-store", () => {
+  it("encodes remote queries and preserves canonical package selectors (#238)", () => {
+    const url = new URL(getSkillsShSearchUrl(" 数据 & SQL ", 24));
+    expect(url.pathname).toBe("/api/search");
+    expect(url.searchParams.get("q")).toBe("数据 & SQL");
+    expect(url.searchParams.get("limit")).toBe("24");
+    const entry = {
+      id: "lancedb/lancedb/lancedb",
+      source: "lancedb/lancedb",
+      skillId: "lancedb",
+      name: "LanceDB",
+      installs: 99,
+    };
+    expect(
+      parseSkillsShSearch(JSON.stringify({ skills: [entry, entry] })),
+    ).toEqual([
+      expect.objectContaining({
+        owner: "lancedb",
+        repo: "lancedb",
+        skillName: "lancedb",
+        detailUrl: "https://skills.sh/lancedb/lancedb/lancedb",
+      }),
+    ]);
+    expect(parseSkillsShSearch('{"skills":[]}')).toEqual([]);
+  });
+
+  it.each([
+    "<html>failure</html>",
+    "{}",
+    '{"skills":[{}]}',
+    '{"skills":[{"source":"../escape","skillId":"safe"}]}',
+    '{"skills":[{"source":"owner/repo","skillId":"../escape"}]}',
+  ])(
+    "rejects malformed search payloads instead of reporting an empty directory: %s",
+    (payload) => {
+      expect(() => parseSkillsShSearch(payload)).toThrow();
+    },
+  );
+
+  it("isolates hosted sources without inventing GitHub repositories (#238)", () => {
+    const hosted = {
+      source: "skills.volces.com",
+      skillId: "memory-lancedb-pro",
+    };
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    try {
+      expect(
+        parseSkillsShSearch(
+          JSON.stringify({
+            skills: [hosted, { source: "lancedb/lancedb", skillId: "lancedb" }],
+          }),
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          owner: "lancedb",
+          repo: "lancedb",
+          skillName: "lancedb",
+        }),
+      ]);
+      expect(warning).toHaveBeenCalledWith(
+        "Skipped skills.sh hosted-source results without a package adapter",
+        { count: 1 },
+      );
+      expect(() =>
+        parseSkillsShSearch(JSON.stringify({ skills: [hosted] })),
+      ).toThrow("Unsupported skills.sh hosted-source results");
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
   it("maps skills.sh source-specific filters to official browse URLs", () => {
     expect(getSkillsShIndexUrl("all")).toBe("https://skills.sh");
     expect(getSkillsShIndexUrl("official")).toBe("https://skills.sh/official");

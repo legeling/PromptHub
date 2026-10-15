@@ -54,6 +54,91 @@ export interface SkillsShLeaderboardEntry {
   weeklyInstalls?: string;
 }
 
+export function getSkillsShSearchUrl(query: string, limit: number): string {
+  const url = new URL("/api/search", SKILLS_SH_BASE_URL);
+  url.searchParams.set("q", query.trim());
+  url.searchParams.set("limit", String(limit));
+  return url.toString();
+}
+
+function parseSearchEntry(value: unknown): SkillsShLeaderboardEntry | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("source" in value) ||
+    !("skillId" in value)
+  ) {
+    throw new Error("Invalid skills.sh search entry");
+  }
+  const { source, skillId } = value;
+  const safeSegment = (segment: string): boolean =>
+    Boolean(segment.trim()) &&
+    segment !== "." &&
+    segment !== ".." &&
+    !/[\\/\x00-\x1f?#%]/.test(segment);
+  if (
+    typeof source !== "string" ||
+    typeof skillId !== "string" ||
+    !safeSegment(skillId)
+  ) {
+    throw new Error("Invalid skills.sh search identity");
+  }
+  const segments = source.split("/");
+  // Hosted catalogs have no repository package contract in the current installer.
+  if (
+    segments.length === 1 &&
+    safeSegment(source) &&
+    source.includes(".") &&
+    new URL(`https://${source}`).hostname === source.toLowerCase()
+  )
+    return null;
+  if (segments.length !== 2 || !segments.every(safeSegment)) {
+    throw new Error("Invalid skills.sh search repository");
+  }
+  const [owner, repo] = segments;
+  const detailPath = `/${[owner, repo, skillId].map(encodeURIComponent).join("/")}`;
+  return {
+    owner,
+    repo,
+    skillName: skillId,
+    detailPath,
+    detailUrl: new URL(detailPath, SKILLS_SH_BASE_URL).toString(),
+  };
+}
+
+export function parseSkillsShSearch(
+  content: string,
+): SkillsShLeaderboardEntry[] {
+  const payload: unknown = JSON.parse(content);
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("skills" in payload) ||
+    !Array.isArray(payload.skills)
+  ) {
+    throw new Error("Invalid skills.sh search response");
+  }
+  const entries = new Map<string, SkillsShLeaderboardEntry>();
+  let hostedCount = 0;
+  for (const value of payload.skills) {
+    const entry = parseSearchEntry(value);
+    if (!entry) {
+      hostedCount += 1;
+      continue;
+    }
+    entries.set(entry.detailPath, entry);
+  }
+  if (hostedCount > 0) {
+    if (entries.size === 0)
+      throw new Error("Unsupported skills.sh hosted-source results");
+    console.warn(
+      "Skipped skills.sh hosted-source results without a package adapter",
+      { count: hostedCount },
+    );
+  }
+  return Array.from(entries.values());
+}
+
 export function normalizeSkillsShFilterKey(
   value?: string | null,
 ): SkillsShFilterKey {

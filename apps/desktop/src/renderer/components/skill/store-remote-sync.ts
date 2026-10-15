@@ -21,7 +21,8 @@ import {
 } from "../../services/github-skill-store";
 import {
   parseSkillsShDetail,
-  filterSkillsShLeaderboardEntries,
+  getSkillsShSearchUrl,
+  parseSkillsShSearch,
   parseSkillsShLeaderboard,
   parseSkillsShTotalCount,
   SKILLS_SH_BASE_URL,
@@ -671,11 +672,21 @@ export function useSkillStoreRemoteSync(
       filterKey = "all",
     ): Promise<StoreLoadResult> => {
       const normalizedFilterKey = normalizeSkillsShFilterKey(filterKey);
-      const index = await loadSkillsShIndex(normalizedFilterKey);
-      const filteredEntries = filterSkillsShLeaderboardEntries(
-        index.entries,
-        searchQuery,
-      );
+      const normalizedSearchQuery = searchQuery.trim();
+      const index = normalizedSearchQuery
+        ? {
+            entries: parseSkillsShSearch(
+              await window.api.skill.fetchRemoteContent(
+                getSkillsShSearchUrl(
+                  normalizedSearchQuery,
+                  PRECONFIGURED_STORE_PAGE_SIZE,
+                ),
+              ),
+            ),
+            totalCount: undefined,
+          }
+        : await loadSkillsShIndex(normalizedFilterKey);
+      const filteredEntries = index.entries;
       const offset = getOffsetFromCursor(cursor);
       const pageEntries = filteredEntries.slice(
         offset,
@@ -691,7 +702,6 @@ export function useSkillStoreRemoteSync(
       );
 
       const nextOffset = offset + PRECONFIGURED_STORE_PAGE_SIZE;
-      const normalizedSearchQuery = searchQuery.trim();
       const pageIndex = Math.floor(offset / PRECONFIGURED_STORE_PAGE_SIZE);
       const indexedResultCount =
         normalizedFilterKey === "all"
@@ -711,8 +721,9 @@ export function useSkillStoreRemoteSync(
         ),
         pageIndex,
         skills: dedupeRegistrySkills(skillsFromDetails),
-        totalCount:
-          normalizedFilterKey === "all"
+        totalCount: normalizedSearchQuery
+          ? filteredEntries.length
+          : normalizedFilterKey === "all"
             ? index.totalCount
             : filteredEntries.length,
         nextCursor:
@@ -864,7 +875,14 @@ export function useSkillStoreRemoteSync(
           cachedEntry !== undefined &&
           (cachedEntry.pageSize !== PRECONFIGURED_STORE_PAGE_SIZE ||
             cachedEntry.query !== expectedClawHubQuery));
-      if (!forceRefresh && !pageDirection && hasCachedFailure) return;
+      if (
+        !forceRefresh &&
+        !pageDirection &&
+        hasCachedFailure &&
+        (source.type !== "skills-sh" ||
+          cachedEntry?.query === expectedSkillsShQuery)
+      )
+        return;
       if (
         !forceRefresh &&
         !pageDirection &&
@@ -965,6 +983,13 @@ export function useSkillStoreRemoteSync(
             totalCount: result.totalCount ?? cachedEntry?.totalCount,
           });
         } catch (error) {
+          if (
+            source.type === "skills-sh" &&
+            (normalizedSearchQuery !== storeSearchQueryRef.current.trim() ||
+              skillsShFilterKey !==
+                normalizeSkillsShFilterKey(String(storeCategoryRef.current)))
+          )
+            return;
           console.error(`Failed to load remote store ${sourceId}:`, error);
           setRemoteStoreEntry(sourceId, {
             loadedAt: cachedEntry?.loadedAt || 0,
@@ -987,8 +1012,15 @@ export function useSkillStoreRemoteSync(
             pageIndex: cachedEntry?.pageIndex,
             pageSize: cachedEntry?.pageSize,
             matchedCount: cachedEntry?.matchedCount,
-            query: cachedEntry?.query,
-            skills: cachedEntry?.skills || [],
+            query:
+              source.type === "skills-sh"
+                ? expectedSkillsShQuery
+                : cachedEntry?.query,
+            skills:
+              source.type === "skills-sh" &&
+              cachedEntry?.query !== expectedSkillsShQuery
+                ? []
+                : cachedEntry?.skills || [],
             totalCount: cachedEntry?.totalCount,
           });
         } finally {

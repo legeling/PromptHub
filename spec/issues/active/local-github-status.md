@@ -29,6 +29,91 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### #237 / #238 local fixes — 2026-10-15
+
+| Issue | Local status | Verified scope / remaining boundary |
+| --- | --- | --- |
+| #238 | local_done | Remote skills.sh search replaces partial-leaderboard filtering; ranked matches remain visible, errors and stale requests are isolated, repository + selector installation is retained. Domain-only hosted catalogs still have no package installer: mixed responses diagnose omitted hosted results; hosted-only responses fail explicitly. |
+| #237 | local_done | Plugins list/count/detail/picker share the enabled-Agent selection; capability flags remain unchanged. Antigravity reads independent IDE and CLI inventories without creating directories or changing distribution paths. Native CLI registration/install remains outside this fix. |
+| #236 | untriaged | Left open as requested; this change neither fixes nor closes the Windows prompt-crash report. |
+
+These issues were open at the targeted remote check on 2026-10-15. The fixes
+are submitted as separate local issue commits; no remote issue changes, push
+or release are included. #236 remains open. The older aggregate snapshot below
+remains dated independently.
+
+Behavior owners: [skills.sh search](../../knowledge/behavior/skills.md#skillssh-directory-search)
+and [Agent assets](../../knowledge/reference/agent-platforms.md). The added
+`pluginDiscoveryRootRelativePaths` registry field is read-only configuration,
+not persisted user state; no schema or data migration is introduced. Reverting
+the scoped source changes removes discovery/search behavior without moving or
+deleting user files. Search is linear in the bounded API results, detail requests
+reuse the existing page-size/concurrency policy, and inventory scans add one
+direct CLI directory pass rather than recursive home scanning.
+
+Verification: 163 distinct unit/component cases and 3 integration cases passed
+across 14 files. Source and test TypeScript checking plus scoped ESLint passed.
+Before submission, index-only source snapshots excluded all unrelated working
+changes: #237 passed 82 unit/component plus 3 integration cases; #238 passed
+81 unit/component cases. Both snapshots passed source/test TypeScript checks,
+reusing existing dependencies (including the Web dependencies needed by tests).
+The regression helper restores four pre-fix implementations from `30d9a628` in
+an isolated source copy: 5 unit/component and 1 integration assertions fail
+with exit 1 for the actual missing results/visible disabled targets/absent CLI
+inventory. The helper's single invocation-and-report validation function keeps
+its bounded subprocess and expected failure audit together; its longer body is
+intentional and was executed successfully. Temporary sources/reports are removed.
+
+- `plugin-manager-distribution.test.tsx`: disabled Claude is absent from list and
+  picker, settings changes apply immediately, OpenCode capability stays disabled,
+  and distribution requests contain only selected visible targets. Plugin API is
+  mocked; this verifies renderer behavior, not native application loading.
+- `skill-store-remote-skills-sh.test.tsx`: `searches the remote skills.sh directory
+  beyond the browse index` covers exact and semantic matches, real component
+  cards and repository/selector output, using a mocked HTTP boundary.
+- `skills-sh-search-state.test.tsx`: malformed response, query recovery and old
+  success/failure races; `skills-sh-store.test.ts` covers URL encoding, payload
+  validation and mixed hosted sources. Existing package resolver/installer cases
+  retain directory inventory and explicit-selector behavior.
+- `plugin-antigravity.test.ts`: CLI-only custom root, invalid manifests and
+  unregistered symlinks. `antigravity-plugin-entrypoints.test.ts` runs the real
+  preload/registered IPC/business/SQLite/filesystem chain, substituting Electron
+  transport and isolating HOME; checks IDE+CLI same-name inventories after reopen,
+  unchanged source bytes, and existing copy/symlink distribution/removal.
+
+Re-run from the repository root:
+
+```sh
+pnpm --filter @prompthub/desktop exec vitest run --project unit --minWorkers=1 --maxWorkers=1 \
+  tests/unit/components/plugin-manager-distribution.test.tsx \
+  tests/unit/components/plugin-manager-detail.test.tsx \
+  tests/unit/components/plugin-manager-library.test.tsx \
+  tests/unit/components/plugin-manager-store.test.tsx \
+  tests/unit/components/plugin-agent-target-picker.test.tsx \
+  tests/unit/components/skill-store-remote-skills-sh.test.tsx \
+  tests/unit/components/skills-sh-search-state.test.tsx \
+  tests/unit/services/skills-sh-store.test.ts \
+  tests/unit/services/skill-source-resolver.test.ts \
+  tests/unit/stores/skill-store-package-install.test.ts \
+  tests/unit/main/skill-installer-remote-git-package.test.ts \
+  tests/unit/main/plugin-target-inventory.test.ts \
+  tests/unit/main/plugin-antigravity.test.ts
+pnpm --filter @prompthub/desktop exec vitest run --project integration --minWorkers=1 --maxWorkers=1 \
+  tests/integration/antigravity-plugin-entrypoints.test.ts
+pnpm --filter @prompthub/desktop exec tsx tests/helpers/reproduce-store-plugin-issues.mts 30d9a628
+pnpm --filter @prompthub/desktop exec tsc --noEmit -p tsconfig.test.json
+```
+
+Live network check used the actual search/detail parsers with HTTP fetched by
+curl: `lancedb`, requested limit 24, yielded 19 repository entries and 5 explicitly
+diagnosed hosted entries; one `lancedb/lancedb` detail resolved to the GitHub
+repository plus `lancedb` install selector. This is not a live install test.
+GUI automation was not authorized; Electron GUI, Windows/native loader and full
+release acceptance were not run. Existing capability switches and user data remain
+unchanged.
+
+### Earlier aggregate snapshot
+
 Remote state refreshed on 2026-10-14 (36 open / 173 closed; 209 issues).
 The six-issue review below closed #226, #224, #220, #219 and #217 after scoped
 reproduction and verification; #221 remains open. All six independent commits
