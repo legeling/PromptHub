@@ -4,6 +4,25 @@ Status: local-fixes-verified; coordinator-accepted; release-not-verified
 
 本批修复、测试契约与分层验证证据已由主协调接受；整体发布仍待综合门禁。以下当前覆盖矩阵反映已完成修复，首轮失败仅作为历史缺陷与命令证据保留。
 
+## 2026-10-15 隔离 Electron AI 全流程
+
+新增 `apps/desktop/tests/e2e/prompt-ai-lifecycle.spec.ts`：通过 Settings 表单配置供应商和模型、测试连接，使用 Quick Add 的 AI Generate 生成并保存 Prompt，核对列表、详情和持久化字段，关闭并重新启动 Electron 后再次读取并使用原模型生成。HTTP 401 与非结构化响应检查输入及已有记录保全，并通过同一窗口重试。
+
+边界：只以临时 loopback HTTP 服务替换外部模型；真实窗口、renderer、preload、IPC、设置和 Prompt SQLite 持久化保持真实。无日常 profile、凭据或付费模型调用。fixture 仅保存有限的六次小请求，空间与 I/O 均随请求数线性增长；单个 Electron 窗口串行运行并清理 profile 和监听连接。顺序验收测试保留超过 50 行的相邻操作/断言，以明确跨失败、重试、关闭重开的状态连续性；协议 fixture 的请求状态和关闭方法保留在同一生命周期闭包，不增加产品抽象。
+
+定向 E2E 首轮 1/1 通过（9.3 秒），`typecheck:tests`、两份新增测试文件的 ESLint/Prettier 和三段桌面构建通过。隔离副本将 Quick Add 保存中的 `systemPrompt` 改为 `undefined`，构建仍通过，E2E 退出 1，命中 `expectDraft` 的系统提示词详情断言；这证明生成字段丢失不能假通过。变异已撤销并重新构建，没有改动共享工作区产品代码。本轮未发现需修复的产品缺陷。
+
+执行命令（从仓库根运行；构建和窗口测试实际位于隔离源码副本，复用已有依赖）：
+
+```sh
+pnpm --filter @prompthub/desktop build
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --dir apps/desktop exec eslint tests/e2e/prompt-ai-lifecycle.spec.ts tests/e2e/helpers/prompt-ai-server.ts --max-warnings 0
+pnpm --dir apps/desktop exec playwright test tests/e2e/prompt-ai-lifecycle.spec.ts --workers=1 --retries=0 --trace=retain-on-failure
+```
+
+最初可见窗口回归因干扰用户工作而主动停止：19 pass、1 interrupted、25 did not run，退出 130。调整为默认隐藏运行后，新增 AI 流程与窗口 show/focus 零事件检查均通过；最终隐藏集合 43/43 pass，0 skipped / 0 flaky，零重试、268.562 秒。三项必须可见的启动同步/窗口专项保留为显式开启，未在本轮运行；不声明全部 46 项通过。实际命令、选择范围与资源回收见 [桌面验收记录](desktop-release-results.md#2026-10-15-隐藏运行与-ai-界面闭环)。本节只证明文本 Prompt 生成与配置/持久化闭环；不代表真实供应商、图像生成、所有 AI Workbench 模式或发行包通过。
+
 ## 2026-10-09 现有导入覆盖补齐
 
 新增 `apps/desktop/tests/integration/release-acceptance-prompts-ai-import.test.tsx`，测试入口为当前App的focus事件→合成clipboard readText→App自身JSON解析/字段判断→EditPromptModal→真实Zustand createPrompt→renderer database service→preload→注册Prompt IPC→磁盘SQLite及正常关闭重开。只替换系统clipboard/窗口能力、与本场景无关的工作区shell和启动IndexedDB/renderer偏好迁移；业务表单、store动作、注册handler和持久化均不替换。ImportPromptModal无App运行时调用，不另建伪造解析链，既有组件测试保留。

@@ -1,5 +1,23 @@
 # 桌面体验、Mobile 与发布覆盖：分轮结果
 
+## 2026-10-15 隐藏运行与 AI 界面闭环
+
+- 默认 Electron E2E 使用现有 `--hidden` 路径；macOS 仅在 E2E profile 中使用 accessory 激活策略。未改变日常配置、业务持久化或窗口显隐合同。`hidden-launch.spec.ts` 在真实设置导航、重载之后检查原生窗口不可见且 show/focus 事件均为 0；定向 2/2 通过，同时包含 AI 全流程。
+- 三项 `@native-window` 场景必须显式设置 `PROMPTHUB_E2E_HEADED=1`：本地显隐快捷键、隐藏启动后恢复 WebDAV 同步、可见启动后创建 self-hosted 自动备份。当前默认选中 43 项，完整集合为 46 项、31 个 spec；两种模式的收集检查均通过。原生专项本轮未执行，不能声称全部 46 项通过。发布 CI 已在既有 `xvfb-run` 步骤显式启用它们；未实际运行远端 CI。
+- 新增 `prompt-ai-lifecycle.spec.ts`：通过界面配置供应商/模型、测试连接、生成并保存文本 Prompt，检查 HTTP 401 和无效 JSON 响应的数据保全与重试，关闭重开后读取结果并复用模型再次生成。模型服务是临时 loopback HTTP fixture，真实 renderer/preload/IPC/SQLite 保持不变；没有调用真实供应商或付费模型。详细证据见 [Prompt 与 AI 记录](prompts-ai-results.md#2026-10-15-隔离-electron-ai-全流程)。
+- 启动选项单元 4/4、两种模式收集 integration 2/2、Desktop `typecheck:tests`、触及文件 ESLint、相关格式检查、三段生产构建通过。收集检查首轮误以为文本 `--list` 会输出标签，修正为检查具体用例名称后通过，没有放宽筛选边界。发布 workflow 已解析核对 Xvfb 命令和显式 headed 环境变量。
+- 首轮隐藏集合 43 pass / 1 fail：自动备份正确记录 `Skipped because the app window is not active.`，而该旧用例要求可见启动后成功；将其保留为原生专项，不修改产品或业务断言。校正后默认集合最终 43/43 pass，0 fail / 0 skipped / 0 flaky、零重试，31 个 spec，268.562 秒（北京时间 2026-10-15 11:05:49 开始）。测试进程及 AI profile 已释放；未保留服务。
+- 验证使用脏工作区的隔离源码副本，复用现有依赖；最终运行前，1,396 个产品源码/共享包/E2E 文件与当时工作区逐一一致，SHA-256 为 `55418f40d5dfde9be4f7a5ca8d971201e40b569c8b5ef1d194a838cee9f3d167`。既有其他改动只作为验证基线，不纳入本批提交；运行期间新出现的 MCP 并行改动未同步到副本，也不属于本轮验证结果。
+- 隐藏执行支持独立提交 `096d3770`，AI 界面流程独立提交 `e03fedee`，均未推送。共享 `app.spec.ts` 只提交本次三处窗口标记差异，保留已有持久化测试修改。临时源码副本和日志已移入废纸篓，可恢复；测试 profile 已清理，没有保留窗口、监听服务或测试进程。
+
+重跑默认隐藏集合（隔离源码副本中的 desktop 目录；已完成构建）：
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome pnpm exec playwright test --workers=1 --retries=0 --global-timeout=900000 --trace=retain-on-failure
+```
+
+`PLAYWRIGHT_CHANNEL=chrome` 仅让两个普通浏览器布局测试复用已安装 Chrome 的临时会话，不访问日常浏览器 profile。这里的隐藏集合不覆盖原生可见窗口、真实供应商、跨平台、安装包及根 release harness。
+
 ## 2026-10-14 全量 E2E 补充（44/44 通过）
 
 本节优先于下方 2026-10-09 的历史 GUI blocked 矩阵。当前授权仅覆盖隔离测试窗口；不操作日常 profile、Agent 配置、凭据或原有服务。
