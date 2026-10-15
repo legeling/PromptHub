@@ -420,6 +420,7 @@ function resetUiStore() {
 function resetSettingsStore() {
   useSettingsStore.setState({
     skillListPageSize: 10,
+    disabledPlatformIds: [],
   });
 }
 
@@ -586,6 +587,57 @@ describe("PluginManager", () => {
     resetUiStore();
     resetSettingsStore();
     installPluginApiMock();
+  });
+
+  it("reacts to disabled Agent settings without changing capability switches (#237)", async () => {
+    useSettingsStore.setState({ disabledPlatformIds: ["claude"] });
+    usePluginStore.setState({ selectedTab: "targets" });
+    await renderPluginManager();
+    expect(
+      await screen.findByRole("heading", { name: "Codex" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Claude Code")).not.toBeInTheDocument();
+    expect(screen.getByText("OpenCode")).toBeInTheDocument();
+    expect(
+      usePluginStore
+        .getState()
+        .targetMatrix.find((target) => target.id === "opencode")?.enabled,
+    ).toBe(false);
+    act(() => useSettingsStore.setState({ disabledPlatformIds: ["opencode"] }));
+    expect(await screen.findByText("Claude Code")).toBeInTheDocument();
+    expect(screen.queryByText("OpenCode")).not.toBeInTheDocument();
+  });
+
+  it("excludes disabled Agents from the distribution picker (#237)", async () => {
+    installPluginApiMock(installedLibrary);
+    useSettingsStore.setState({ disabledPlatformIds: ["claude"] });
+    usePluginStore.setState({ selectedTab: "library" });
+    await renderPluginManager();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select Agent targets for Gmail",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Select Agent targets",
+    });
+    expect(
+      within(dialog).queryByRole("button", { name: "Claude Code" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: /^OpenCode\b/ }),
+    ).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Codex" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Distribute to selected Agents",
+      }),
+    );
+    await waitFor(() =>
+      expect(window.api.plugin.distributePlugin).toHaveBeenCalledWith(
+        expect.objectContaining({ targetIds: ["codex"] }),
+      ),
+    );
   });
 
   it("distributes directly from the installed plugin detail after selecting Agents", async () => {

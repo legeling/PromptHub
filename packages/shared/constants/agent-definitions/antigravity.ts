@@ -1,5 +1,7 @@
 import type { AgentPlatformDefinition } from "@prompthub/shared/types/agent-platform";
 
+const CLI_ROOT_RELATIVE_PATH = "../antigravity-cli";
+
 export const antigravityAgentDefinition = {
   platform: {
     id: "antigravity",
@@ -14,6 +16,7 @@ export const antigravityAgentDefinition = {
     skillsRelativePath: "skills",
     mcpRelativePath: "mcp_config.json",
     pluginsRelativePath: "plugins",
+    pluginDiscoveryRootRelativePaths: [CLI_ROOT_RELATIVE_PATH],
     globalRuleFile: "../GEMINI.md",
     cli: {
       executableCandidates: ["agy"],
@@ -30,7 +33,7 @@ export const antigravityAgentDefinition = {
   modelConfig: {
     format: "json",
     relativePaths: ["settings.json"],
-    defaultRootRelativePath: "../antigravity-cli",
+    defaultRootRelativePath: CLI_ROOT_RELATIVE_PATH,
   },
   capabilities: {
     providerModel: {

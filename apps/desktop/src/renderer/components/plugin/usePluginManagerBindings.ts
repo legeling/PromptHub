@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { getPluginTargetPlatformId } from "./plugin-detail-utils";
 import { useMcpStore } from "../../stores/mcp.store";
 import { usePluginStore } from "../../stores/plugin.store";
 import {
@@ -62,7 +64,17 @@ function usePluginManagerSettingsBindings() {
 }
 
 export function usePluginManagerBindings() {
-  const pluginStore = usePluginStore();
+  const rawPluginStore = usePluginStore();
+  const disabledPlatformIds = useSettingsStore(
+    (state) => state.disabledPlatformIds,
+  );
+  const targetMatrix = useMemo(() => {
+    const disabled = new Set(disabledPlatformIds);
+    return rawPluginStore.targetMatrix.filter(
+      (target) => !disabled.has(getPluginTargetPlatformId(target.id)),
+    );
+  }, [disabledPlatformIds, rawPluginStore.targetMatrix]);
+  const pluginStore = { ...rawPluginStore, targetMatrix };
   const skillBindings = usePluginManagerSkillBindings();
   const mcpBindings = usePluginManagerMcpBindings();
   const settingsBindings = usePluginManagerSettingsBindings();

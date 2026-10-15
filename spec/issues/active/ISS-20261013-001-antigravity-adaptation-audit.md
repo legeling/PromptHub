@@ -355,6 +355,19 @@ evidence above is historical and was not repeated in this cycle.
 
 ## 时效与实施顺序
 
+### #237 Plugin discovery follow-up — 2026-10-15
+
+CLI Plugin inventory discovery is locally implemented independently of the IDE
+root. The registry declares the additional read-only root; configured IDE roots
+resolve the CLI sibling within the same configured tree. Native files remain
+unchanged, same-name IDE/CLI packages remain separate, and invalid/unregistered
+symlink packages remain excluded. Existing native capability switches and IDE
+distribution destinations are preserved. No database/layout migration is required.
+See the [local #237/#238 verification record](local-github-status.md) for actual
+pre-fix failures, 166 passing cases, commands and replacement boundaries. This
+does not complete CLI registration/install, per-client Skill selection, GUI,
+Windows or native-loader acceptance listed above.
+
 最新打开的 [Workflows 页面](https://antigravity.google/docs/ide/workflows/) 和 [迁移指南](https://antigravity.google/docs/migration/workflows-to-skills/) 都明确写明 2026-10-19 停止旧 Workflow 行为。搜索缓存仍有 2026-11-01 的旧文本，不能按缓存日期安排验收。
 
 建议顺序：OAuth 脱敏和原生选项保全 → 三入口导入统一 → 客户端路径/识别与 Plugin 软链/旧元数据 → Rules 来源矩阵 → 原生 CLI/IDE/Windows 验收。独立 Subagents/Hooks 管理和 Workflow 转换按增量功能评估。历史 Skill 链接迁移复用现有 [记录](ISS-20260928-001-skill-platform-management.md)；未安装额度查询保护复用 [已有问题记录](ISS-20260825-003-agent-usage-undetected-side-effect.md)，不重建并行所有者。

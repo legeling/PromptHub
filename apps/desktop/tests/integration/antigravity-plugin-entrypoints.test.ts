@@ -18,6 +18,54 @@ beforeEach(async () => {
 
 afterEach(() => runtime?.dispose());
 
+it("discovers CLI plugins without an IDE root and preserves both inventories after reopen (#237)", async () => {
+  const ideRoot = runtime.platformRoot("antigravity");
+  const cliPlugin = path.resolve(ideRoot, "../antigravity-cli/plugins/zotero");
+  fs.mkdirSync(cliPlugin, { recursive: true });
+  fs.writeFileSync(
+    path.join(cliPlugin, "plugin.json"),
+    JSON.stringify({ name: "zotero", description: "CLI Zotero" }),
+  );
+  const original = fileInventory(cliPlugin);
+  expect(fs.existsSync(ideRoot)).toBe(false);
+  const cliTarget = (await pluginApi.getTargetMatrix()).find(
+    (target) => target.id === "antigravity",
+  );
+  expect(cliTarget?.installedPlugins).toEqual([
+    expect.objectContaining({
+      name: "zotero",
+      sourcePath: fs.realpathSync(cliPlugin),
+    }),
+  ]);
+  const idePlugin = path.join(ideRoot, "plugins/zotero");
+  fs.mkdirSync(idePlugin, { recursive: true });
+  fs.writeFileSync(
+    path.join(idePlugin, "plugin.json"),
+    JSON.stringify({ name: "zotero", description: "IDE Zotero" }),
+  );
+  await runtime.reopen();
+  registerPluginIPC();
+  const targets = await pluginApi.getTargetMatrix();
+  const target = targets.find((entry) => entry.id === "antigravity");
+  expect(
+    target?.installedPlugins
+      ?.map((entry) => fs.realpathSync(entry.sourcePath))
+      .sort(),
+  ).toEqual(
+    [cliPlugin, idePlugin]
+      .map((directory) => fs.realpathSync(directory))
+      .sort(),
+  );
+  expect(target?.enabled).toBe(true);
+  expect(new Set(target?.installedPlugins?.map((entry) => entry.id)).size).toBe(
+    2,
+  );
+  expect(
+    targets.find((entry) => entry.id === "gemini-cli")?.installedPlugins,
+  ).toBeUndefined();
+  expect(fileInventory(cliPlugin)).toEqual(original);
+});
+
 it.each(["copy", "symlink"] as const)(
   "preserves the reported Zotero package at the registered Antigravity root using %s (#226)",
   async (mode) => {

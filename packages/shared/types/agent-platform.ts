@@ -46,6 +46,8 @@ export interface SkillPlatform {
   /** Native MCP location when the user configuration root is explicitly set. */
   configuredRootMcpRelativePath?: string;
   pluginsRelativePath?: string;
+  /** Additional read-only Plugin roots relative to the configured platform root. */
+  pluginDiscoveryRootRelativePaths?: string[];
   agentsRelativePath?: string;
   commandsRelativePath?: string;
   globalRuleFile?: string;

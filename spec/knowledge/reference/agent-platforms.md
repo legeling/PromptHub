@@ -862,7 +862,7 @@ Current support boundary:
   - Antigravity 2.0 runtime data under `~/.gemini/antigravity/` contains artifacts and knowledge items and is not a generic Skill distribution target.
   - Legacy desktop conversation `.pb` files are not parsed or projected by the CLI History adapter.
 - PromptHub modeling note:
-  - built-in id `antigravity` uses the display name `Antigravity`. Current registry paths represent the Antigravity 2.0 / IDE global asset surface. Official CLI Skills and staged Plugins instead use `~/.gemini/antigravity-cli/skills/` and `~/.gemini/antigravity-cli/plugins/`; MCP remains shared. The missing per-client asset selection and discovery contract is tracked in [the Antigravity audit](../../issues/active/ISS-20261013-001-antigravity-adaptation-audit.md).
+  - built-in id `antigravity` uses the display name `Antigravity`. Writable registry paths represent the Antigravity 2.0 / IDE global asset surface. Official CLI Skills and staged Plugins instead use `~/.gemini/antigravity-cli/skills/` and `~/.gemini/antigravity-cli/plugins/`; MCP remains shared. Plugin inventory reads both IDE and CLI roots independently, including CLI-only installations, deduplicating by real package path rather than name. The registry owns the additional read-only root relative to the configured IDE root, so custom roots stay within the corresponding configured directory tree. This does not enable CLI installation/registration, change the writable Plugin path, or merge Gemini extensions. Remaining per-client asset selection is tracked in [the Antigravity audit](../../issues/active/ISS-20261013-001-antigravity-adaptation-audit.md).
   - built-in id `gemini` uses the display name `Gemini`, remains independent as an enterprise/legacy compatibility target, and keeps the Gemini CLI configuration/session adapters
   - both built-in display names omit the `CLI` suffix; lifecycle badges carry availability differences
   - PromptHub uses a dedicated Antigravity MCP adapter for global and workspace targets: remote entries write `serverUrl`, while secret-bearing headers are redacted from previews and preserved only in native configuration
@@ -1473,6 +1473,12 @@ Current support boundary:
   conservative application-data templates rather than locally verified paths.
 
 ## Agent Edit Contract
+
+- Plugins list, counts, detail targets, and distribution pickers derive from the
+  same `disabledPlatformIds` settings selection, including canonical platform
+  aliases for Claude, Gemini, and Copilot. Changing visibility never changes
+  target capability `enabled` flags or removes existing distributions. Native
+  inventory remains read-only; re-enabling an Agent exposes its existing state.
 
 - Built-in Agent path editing is registry-driven. `skillsRelativePath`,
   `globalRuleFile`, `mcpRelativePath`, `pluginsRelativePath`,

@@ -717,6 +717,35 @@ export function scanInstalledPluginsForTarget(
   if (!config) return [];
   const platform = getPlatformById(config.platformId);
   if (!platform) return [];
+  const rootDir = rootPathOverride ?? getPlatformRootDir(platform);
+  const plugins = scanInstalledPluginsAtRoot(targetId, rootPathOverride);
+  const seen = new Set(
+    plugins.map((plugin) => safeRealPath(plugin.sourcePath)),
+  );
+  for (const relativeRoot of platform.pluginDiscoveryRootRelativePaths ?? []) {
+    for (const plugin of scanInstalledPluginsAtRoot(
+      targetId,
+      path.resolve(rootDir, relativeRoot),
+    )) {
+      const realPath = safeRealPath(plugin.sourcePath);
+      if (seen.has(realPath)) continue;
+      seen.add(realPath);
+      plugins.push(plugin);
+    }
+  }
+  return plugins;
+}
+
+function scanInstalledPluginsAtRoot(
+  targetId: string,
+  rootPathOverride?: string,
+): PluginTargetInstalledPlugin[] {
+  const config = PLUGIN_TARGET_SCAN_CONFIGS.find(
+    (entry) => entry.targetId === targetId,
+  );
+  if (!config) return [];
+  const platform = getPlatformById(config.platformId);
+  if (!platform) return [];
   const resolvedRootDir = safeRealPath(
     rootPathOverride ?? getPlatformRootDir(platform),
   );

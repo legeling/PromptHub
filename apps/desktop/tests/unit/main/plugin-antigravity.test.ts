@@ -158,6 +158,29 @@ describe("Antigravity native Plugin workflow (#226)", () => {
     ).toEqual(["folder-name"]);
   });
 
+  it("keeps CLI discovery scoped and rejects invalid manifests and unregistered links (#237)", () => {
+    const root = path.join(fixture.root, "custom", "config");
+    const cliPlugins = path.resolve(root, "../antigravity-cli/plugins");
+    writeJson(path.join(cliPlugins, "valid", "plugin.json"), { name: "valid" });
+    writeJson(path.join(cliPlugins, "invalid", "plugin.json"), {
+      name: "../escape",
+    });
+    writeJson(path.join(fixture.root, "outside", "plugin.json"), {
+      name: "outside",
+    });
+    fs.symlinkSync(
+      path.join(fixture.root, "outside"),
+      path.join(cliPlugins, "link"),
+      "dir",
+    );
+    expect(
+      scanInstalledPluginsForTarget("antigravity", root).map(
+        (plugin) => plugin.name,
+      ),
+    ).toEqual(["valid"]);
+    expect(fs.existsSync(root)).toBe(false);
+  });
+
   it("rejects a corrupted native manifest before replacing a distributed package", () => {
     const source = path.join(fixture.root, "source", "safe");
     writeJson(path.join(source, "plugin.json"), { name: "safe" });
