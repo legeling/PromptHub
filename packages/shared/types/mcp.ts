@@ -2,6 +2,7 @@ export type McpTransport = "stdio" | "streamable-http" | "sse";
 
 export const MCP_TARGET_KINDS = [
   "codex",
+  "copilot",
   "claude",
   "claude-desktop",
   "cursor",

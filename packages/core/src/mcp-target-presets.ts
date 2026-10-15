@@ -18,6 +18,7 @@ export type { McpTargetPreset } from "@prompthub/shared/types/mcp";
 const PRIMARY_TARGET_IDS = [
   "claude",
   "codex",
+  "copilot",
   "grok",
   "openclaw",
   "qoder",
@@ -136,7 +137,6 @@ function sharedApplicationTargets(
       scope: "global",
       label: "VS Code",
       path: path.join(applicationRoot, "Code", "User", "mcp.json"),
-      platformId: "copilot",
     },
   ];
 }

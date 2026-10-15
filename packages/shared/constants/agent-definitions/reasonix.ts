@@ -12,9 +12,6 @@ export const reasonixAgentDefinition = {
     },
     skillsRelativePath: "skills",
     commandsRelativePath: "commands",
-    // Reasonix stores MCP/plugin declarations in TOML, but its schema is not
-    // compatible with the Codex TOML writer. Keep this path discovery-only.
-    mcpRelativePath: "config.toml",
     configFiles: ["config.toml", "settings.json", "trust.json"],
   },
   capabilities: {

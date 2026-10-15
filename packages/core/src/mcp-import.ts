@@ -53,6 +53,8 @@ function importServerEntry(
       name,
       ...normalizeMcpNativeOptions({
         ...record,
+        // Copilot's native tool selection maps to the canonical allowlist.
+        ...(record.tools !== undefined && { enabledTools: record.tools }),
         ...(target === "codex" && {
           bearerTokenEnvVar: record.bearer_token_env_var,
           enabledTools: record.enabled_tools,

@@ -26,6 +26,7 @@ export class McpConfigError extends Error {
 }
 
 export const MCP_JSON_TARGETS: McpTargetKind[] = [
+  "copilot",
   "claude",
   "claude-desktop",
   "cursor",
@@ -904,6 +905,18 @@ export function getMcpTargetEntryObject(
   server: McpServerConfig,
   options: { redactValues?: boolean } = {},
 ): Record<string, unknown> {
+  if (target === "copilot") {
+    return {
+      ...toMcpServerEntry(server, target, options),
+      type:
+        server.transport === "stdio"
+          ? "local"
+          : server.transport === "sse"
+            ? "sse"
+            : "http",
+      tools: server.enabledTools ?? ["*"],
+    };
+  }
   if (target === "qwen-work") {
     return {
       ...toMcpServerEntry(server, target, options),

@@ -13,7 +13,7 @@
 
 ## Stable Asset Rules
 
-- MCP 的 22 个已支持 Agent 主预设从注册表取得路径，Desktop 与 CLI 均传入
+- MCP 的已支持 Agent 主预设从注册表取得路径，Desktop 与 CLI 均传入
   SQLite 的 `builtinAgentOverrides`；显式根和 MCP 相对路径覆盖优先。
   Claude Desktop、VS Code 与 Pi 共享目标保持独立，不随 Agent 主根迁移。
   注册表仅声明用于发现的路径不会因此新增为可写预设。
@@ -216,6 +216,7 @@ PromptHub MCP 管理第一版建模为“配置库 + 目标文件投影”，不
 | Codex       | `codex`             | `~/.codex/config.toml`; project `.codex/config.toml`                         | TOML `[mcp_servers.<name>]`             | Officially documented                                                        |
 | Claude Code | `claude`            | `~/.claude.json`; project `.mcp.json`                                        | JSON `mcpServers`                       | Officially documented; scopes include user/project                           |
 | Cursor      | `cursor`            | `~/.cursor/mcp.json`; project `.cursor/mcp.json`                             | JSON `mcpServers`                       | Officially documented                                                        |
+| Copilot CLI | `copilot`           | `<COPILOT_HOME or ~/.copilot>/mcp-config.json`                               | JSON `mcpServers`; `local` / `http` / `sse`, `tools` | Independent of VS Code; explicit root/path overrides remain authoritative |
 | VS Code     | `vscode`            | project `.vscode/mcp.json`; user profile path varies by VS Code UI           | JSON `servers`                          | Officially documented                                                        |
 | Cline       | `cline`             | `~/.cline/data/settings/cline_mcp_settings.json`                             | JSON `mcpServers`-style settings        | Officially documented                                                        |
 | WorkBuddy   | `workbuddy`         | `~/.workbuddy/mcp.json`; project `.workbuddy/mcp.json`                       | JSON `mcpServers`                       | Officially documented                                                        |
@@ -234,6 +235,11 @@ PromptHub MCP 管理第一版建模为“配置库 + 目标文件投影”，不
 Stable product rule:
 
 - PromptHub's internal MCP source of truth is a normalized local library, not any one agent config file.
+- Copilot Agent MCP actions select only the `copilot` CLI target. VS Code remains an independent `vscode` target with its own `servers` format; it is not a Copilot CLI preset or hidden by the Copilot platform switch. Copilot native `tools` imports normalize to `enabledTools` and project back unchanged, including empty selections; newly authored servers use the native `["*"]` default.
+- Reasonix global `config.toml` remains discoverable through Config Files, but is not declared as a writable MCP path. Its global MCP tab is unavailable until a native writer exists; the existing project `.mcp.json` target remains available in project MCP management. Provider, Sessions, Usage, and other existing capability switches are unchanged.
+- This correction changes target selection/projection only: no storage schema or layout migration is needed. Previously written VS Code files are not moved or deleted automatically. To undo an unwanted old deployment, explicitly remove it through the VS Code target; reverting code preserves all native files. Work remains linear in preset/server counts and adds no network calls or background processes.
+- Regression coverage joins real Agent definitions, workspace-tab state and target matching, then exercises preload/IPC, SQLite reopen, native Copilot JSON, unrelated-entry preservation, independent VS Code bytes, removal and malformed-file refusal. The lifecycle test stays together to retain identity and state-transition evidence; its length exceeds the usual 50-line preference for that reason. These checks do not prove GUI behavior or native Copilot/Reasonix runtime loading.
+- 2026-10-15 verification on committed baseline `525938aa` plus this correction: 10 directly related Desktop test files / 123 tests passed (including 30 new assertions/cases), shared definition/product-scope tests 7/7, Desktop test TypeScript and scoped ESLint passed. The additional legacy capability-inventory suite retains two baseline failures: its fixed count/list still omit Qwen Work; the same two failures reproduce with the original Reasonix definition. No unrelated pending test changes were included. No GUI, native-client runtime, cross-platform or release acceptance is claimed.
 - Applying MCP config must preserve unrelated target config and create a backup before overwriting an existing file.
 - PromptHub records a per-target projected-entry digest when an MCP server is applied. Later "sync distributed targets" compares baseline, current PromptHub projection, and target entry before writing.
 - Target-side MCP sync digests are computed from the raw server entry in the target config file, not by round-tripping through PromptHub's import model; extra fields on a target entry therefore count as external modifications.
@@ -1574,6 +1580,7 @@ Current support boundary:
 - Roo Code checkpoints: `https://docs.roocode.com/features/checkpoints`
 - GitHub Copilot repository custom instructions: `https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot`
 - GitHub Copilot CLI configuration directory: `https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference`
+- GitHub Copilot CLI MCP configuration: `https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers`
 - GitHub Copilot CLI command reference: `https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference`
 - GitHub Copilot CLI plugin reference: `https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference`
 - VS Code Agent Plugins: `https://code.visualstudio.com/docs/agent-customization/agent-plugins`
