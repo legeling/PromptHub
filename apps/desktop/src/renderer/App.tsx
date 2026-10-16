@@ -1,4 +1,5 @@
 import { ConfirmationHost } from "./components/ui/ConfirmationHost";
+import { getShortcutKey } from "./services/shortcut-key";
 import { migrateLegacyIndexedDbToMainProcess } from "./services/migrations/indexeddb";
 import {
   useCallback,
@@ -297,12 +298,10 @@ function App() {
       if (e.altKey) parts.push("Alt");
       if (e.shiftKey) parts.push("Shift");
 
-      let key = e.key;
+      const key = getShortcutKey(e);
       // Ignore modifier keys events
-      if (["Control", "Alt", "Shift", "Meta"].includes(key)) return;
-
-      if (key === " ") key = "Space";
-      parts.push(key.toUpperCase());
+      if (["CONTROL", "ALT", "SHIFT", "META"].includes(key)) return;
+      parts.push(key);
 
       const pressed = parts.join("+");
 

@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ShortcutsSettings } from "../../../src/renderer/components/settings/ShortcutsSettings";
@@ -30,6 +30,17 @@ function hasHiddenSvgAncestor(element: Element): boolean {
 }
 
 describe("ShortcutsSettings", () => {
+  it("records an Option-modified letter instead of the macOS text symbol", async () => {
+    window.electron.getShortcuts = vi.fn().mockResolvedValue({ newPrompt: "Alt+Shift+N" });
+    window.electron.setShortcuts = vi.fn().mockResolvedValue(undefined);
+    await renderShortcutsSettings();
+    const input = await screen.findByLabelText("Shortcut for New Prompt");
+    await userEvent.click(input);
+    fireEvent.keyDown(input, { key: "Ô", code: "KeyJ", altKey: true, shiftKey: true });
+    await waitFor(() => expect(window.electron.setShortcuts).toHaveBeenCalledWith({ newPrompt: "Alt+Shift+J" }));
+    expect(input).toHaveValue("Alt + Shift + J");
+  });
+
   beforeEach(() => {
     installWindowMocks();
     const settings = useSettingsStore.getState();

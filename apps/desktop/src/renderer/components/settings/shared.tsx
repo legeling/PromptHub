@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { EyeIcon, EyeOffIcon, XIcon, AlertTriangleIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Select } from "../ui/Select";
+import { getShortcutKey } from "../../services/shortcut-key";
 
 // Settings section component - flattened design
 // 设置区块组件 - 扁平化设计
@@ -210,7 +211,7 @@ export const ShortcutItem = memo(function ShortcutItem({
     if (e.altKey) keys.push("Alt");
     if (e.shiftKey) keys.push("Shift");
 
-    const key = e.key.toUpperCase();
+    const key = getShortcutKey(e);
     if (!["CONTROL", "ALT", "SHIFT", "META"].includes(key)) {
       keys.push(key === " " ? "Space" : key);
     }

@@ -445,3 +445,7 @@ When a user needs installation or usage help:
 
 - the public entry remains `README.md` and localized docs under `docs/`
 - internal architecture and implementation history remain in `spec/`
+
+### Shortcut key identity
+
+快捷键录入和局部触发共用按键识别：Option/Alt 修饰的字母和数字使用 KeyboardEvent.code，避免 macOS 把 J、N 等转换为符号或 dead key 后保存错误 accelerator。没有 Alt 的普通按键保留键盘布局的 key 语义。快捷键设置仍为既有持久配置，不迁移或猜测已保存的符号快捷键；受影响的用户可重新录入。
