@@ -8,6 +8,10 @@ import {
 } from "../../e2e/helpers/electron-launch-options";
 
 describe("Electron E2E launch options", () => {
+  const keyringPreload = [
+    "-r",
+    expect.stringMatching(/[/\\]helpers[/\\]isolated-keyring\.cjs$/),
+  ];
   it("isolates home and data roots without inheriting native account configuration", () => {
     const profile = path.resolve("isolated-profile");
     const env = getElectronLaunchEnvironment(
@@ -64,17 +68,23 @@ describe("Electron E2E launch options", () => {
 
   it("uses headless-safe Chromium services only on hosted Linux CI", () => {
     expect(getElectronLaunchArgs("/app/main.js", "linux", true, false)).toEqual(
-      ["--no-sandbox", "--password-store=basic", "/app/main.js", "--hidden"],
+      [
+        ...keyringPreload,
+        "--no-sandbox",
+        "--password-store=basic",
+        "/app/main.js",
+        "--hidden",
+      ],
     );
     expect(
       getElectronLaunchArgs("/app/main.js", "linux", false, false),
-    ).toEqual(["/app/main.js", "--hidden"]);
+    ).toEqual([...keyringPreload, "/app/main.js", "--hidden"]);
     expect(
       getElectronLaunchArgs("/app/main.js", "darwin", true, false),
-    ).toEqual(["/app/main.js", "--hidden"]);
+    ).toEqual([...keyringPreload, "/app/main.js", "--hidden"]);
     expect(
       getElectronLaunchArgs("C:\\app\\main.js", "win32", true, false),
-    ).toEqual(["C:\\app\\main.js", "--hidden"]);
+    ).toEqual([...keyringPreload, "C:\\app\\main.js", "--hidden"]);
   });
 
   it("requires explicit opt-in for native visible windows", () => {
@@ -83,6 +93,6 @@ describe("Electron E2E launch options", () => {
     expect(isElectronHeaded({ PROMPTHUB_E2E_HEADED: "1" })).toBe(true);
     expect(
       getElectronLaunchArgs("/app/main.js", "darwin", false, true),
-    ).toEqual(["/app/main.js"]);
+    ).toEqual([...keyringPreload, "/app/main.js"]);
   });
 });

@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -29,10 +31,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Linux credential service
+        run: |
+          if ! command -v gnome-keyring-daemon >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y gnome-keyring
+          fi
+
       - name: Run release verification
         env:
           PROMPTHUB_E2E_HEADED: "1"
-        run: xvfb-run -a pnpm verify:release
+        run: |
+          dbus-run-session -- bash -euo pipefail -c '
+            printf "\n" | gnome-keyring-daemon --unlock --components=secrets
+            xvfb-run -a pnpm verify:release --concurrency 1 --report output/release-verification.json
+          '
+
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-verification
+          path: |
+            output/release-verification.json
+            apps/desktop/test-results/
+          if-no-files-found: ignore
 
   build:
     needs: verify

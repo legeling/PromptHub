@@ -1,5 +1,10 @@
 import path from "node:path";
 
+const isolatedKeyringPreload = path.join(
+  process.cwd(),
+  "tests/e2e/helpers/isolated-keyring.cjs",
+);
+
 export const nativeWindowTestTag = "@native-window";
 
 export function isElectronHeaded(
@@ -60,5 +65,10 @@ export function getElectronLaunchArgs(
     platform === "linux" && isCi
       ? ["--no-sandbox", "--password-store=basic", mainEntry]
       : [mainEntry];
-  return headed ? args : [...args, "--hidden"];
+  return [
+    "-r",
+    isolatedKeyringPreload,
+    ...args,
+    ...(headed ? [] : ["--hidden"]),
+  ];
 }

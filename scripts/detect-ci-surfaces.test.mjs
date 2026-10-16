@@ -108,3 +108,27 @@ test("draft version tags cannot publish the self-hosted image", () => {
   assert.match(workflow, /^  pull_request:/m);
   assert.match(workflow, /^  workflow_dispatch:/m);
 });
+
+test("release verification provisions historical sources and Linux credential storage", () => {
+  const workflow = fs.readFileSync(
+    path.join(rootDir, ".github/workflows/release.yml"),
+    "utf8",
+  );
+  const verification = workflow.split("  build:")[0];
+  assert.match(verification, /fetch-depth: 0/);
+  assert.match(
+    verification,
+    /apt-get install --no-install-recommends -y gnome-keyring/,
+  );
+  assert.match(verification, /dbus-run-session --/);
+  assert.match(
+    verification,
+    /gnome-keyring-daemon --unlock --components=secrets/,
+  );
+  assert.match(verification, /xvfb-run -a pnpm verify:release --concurrency 1/);
+  assert.match(verification, /PROMPTHUB_E2E_HEADED: "1"/);
+  assert.doesNotMatch(
+    verification,
+    /PROMPTHUB_CLI_TEST_MAX_MS|--exclude-layer/,
+  );
+});

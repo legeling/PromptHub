@@ -18,7 +18,6 @@ import {
   getElectronLaunchEnvironment,
   isElectronHeaded,
 } from "./electron-launch-options";
-import { isolateMcpKeyring } from "./isolated-keyring";
 
 export interface LaunchedElectronApp {
   app: ElectronApplication;
@@ -110,7 +109,6 @@ export async function launchPromptHub(
   });
 
   try {
-    await isolateMcpKeyring(app);
     const page = await app.firstWindow();
     await waitForRendererReady(page);
     return { app, page, userDataDir };
