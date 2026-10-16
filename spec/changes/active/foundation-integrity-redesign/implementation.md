@@ -1350,3 +1350,48 @@ policy, timeout or runtime budget changed between that run and this passing gate
 only the two obsolete test contracts were corrected. GitHub cross-platform
 packaging, macOS notarization and Windows packaged upgrade checks remain pending
 at this point. The authorized distribution state is Draft only.
+
+Five scoped commits separate Agent parser extraction, Option shortcuts, private
+Favorites filtering, the shared storage/sync boundary, and draft preparation.
+Main and annotated tag v0.6.0 were pushed atomically at candidate 46c4d1ff.
+GitHub Draft creation is confirmed with isDraft=true and isPrerelease=false;
+assets remain pending after release workflow 38872008360 failed its Linux gate.
+Existing issue fix commits automatically closed #237/#238; live GitHub state
+confirms #236 remains open. Snapshots were refreshed from all 213 issues.
+Temporary files and verification logs were excluded from every commit.
+
+Linux CI exposed missing historical Git objects, an unavailable Secret Service,
+a CLI runtime of 76.7 seconds against the existing 75-second budget and four
+Electron smoke failures. CI preparation now fetches complete history, provisions
+GNOME Keyring inside D-Bus and runs the unchanged full gate serially. The isolated
+E2E keyring moves from post-launch evaluation to Node preloading so cold startup
+and later mutations use the same test credentials. Product source is unchanged.
+The repaired workflow must pass all checks and packaging jobs before artifacts
+are uploaded to the existing Draft; the v0.6.0 tag is not moved.
+
+The second Linux run (38873982980) passes 36/40 checks in 1,564.5 seconds,
+including historical upgrades, Desktop integration and eight of nine E2E cases.
+Two default-path unit fixtures inherited the runner's XDG configuration; their
+expected platform environments are now explicit. Hidden-startup WebDAV used an
+old IPC mock that does not intercept the current main-process transport; it now
+shares the real local HTTP fixture with causal-sync acceptance. All 165 CLI
+tests passed but the suite took 92.5 seconds against 75 seconds; subprocess
+acceptance now builds one fresh production CJS bundle instead of recompiling
+the TypeScript graph for every command. The build remains inside the budget,
+README dev invocation remains covered, and all persistence assertions remain.
+These are test-only repairs; another complete Linux gate remains required.
+
+The complete Linux rerun (38878434851, e1665573) passes all 40 checks in
+1,160.6 seconds. All 165 CLI tests pass in 49.5 seconds, within the unchanged
+75-second budget. All nine built Electron cases pass, including hidden-startup
+WebDAV and two cold reopens. The original
+tag still resolves to 46c4d1ff; product source, package versions, lockfile and
+Electron packaging configuration match the build commit.
+
+macOS ARM64 packaging is blocked by Apple's HTTP 403 notarization response:
+a required developer agreement is missing or expired. The other four matrix
+jobs were cancelled. The Account Holder must handle the agreement before
+macOS packaging can resume; signing/notarization checks are not bypassed.
+The Windows x64-only rerun is immediately cancelled by the matrix state;
+its packaged two-launch upgrade smoke remains unverified.
+The GitHub release remains Draft with no assets; public stable remains 0.5.9.

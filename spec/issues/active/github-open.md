@@ -3,20 +3,22 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-14`
+- Snapshot date: `2026-10-16`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Open issues captured: `36`
+- Open issues captured: `38`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `local-github-status.md`.
-- The shared capture contains 209 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 213 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
 ## Open Issues
 
 | # | 标题 | 标签 | 创建时间 | 更新时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #239 | [Bug]: window系统mcp下载异常 | bug, version: 0.6.0-beta.2 | 2026-10-15 | 2026-10-15 | [#239](https://github.com/legeling/PromptHub/issues/239) |
+| #236 | [Bug]: 新建 Prompt会软件崩溃，再次添加也不能录入 | bug, version: 版本: 0.6.0-beta.2 · 稳定版通道 | 2026-10-14 | 2026-10-14 | [#236](https://github.com/legeling/PromptHub/issues/236) |
 | #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-14 | [#221](https://github.com/legeling/PromptHub/issues/221) |
 | #216 | [Bug]: 更新新版之后开启APP就显示Loading一直卡着 | bug, version: 0.6.0-beta.2 (0.6.0-beta.2) | 2026-09-11 | 2026-09-11 | [#216](https://github.com/legeling/PromptHub/issues/216) |
 | #215 | [Feature]: 使用部分克隆、稀疏检出减少克隆内容 | enhancement, version: new release | 2026-09-07 | 2026-09-07 | [#215](https://github.com/legeling/PromptHub/issues/215) |

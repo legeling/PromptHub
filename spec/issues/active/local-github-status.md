@@ -44,10 +44,11 @@ corresponding commits reach the default branch.
 | #237 | release_pending | Plugins list/count/detail/picker share the enabled-Agent selection; capability flags remain unchanged. Antigravity reads independent IDE and CLI inventories without creating directories or changing distribution paths. Native CLI registration/install remains outside this fix. |
 | #236 | untriaged | Left open as requested; this change neither fixes nor closes the Windows prompt-crash report. |
 
-These issues were open at the targeted remote check on 2026-10-15. The fixes
-are submitted as separate local issue commits; no remote issue changes, push
-or release are included. #236 remains open. The older aggregate snapshot below
-remains dated independently.
+These issues were open at the targeted remote check on 2026-10-15. Their
+separate fix commits reached the default branch on 2026-10-16, and GitHub
+confirmed #237/#238 closed at 08:11 UTC. #236 remains open. The fixes are assigned
+to the unpublished 0.6.0 draft; remote closure does not establish publication.
+The aggregate snapshots are refreshed from the same live issue capture.
 
 Behavior owners: [skills.sh search](../../knowledge/behavior/skills.md#skillssh-directory-search)
 and [Agent assets](../../knowledge/reference/agent-platforms.md). The added

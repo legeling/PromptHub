@@ -3,20 +3,22 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-14`
+- Snapshot date: `2026-10-16`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Closed issues captured: `173`
+- Closed issues captured: `175`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `../active/local-github-status.md`.
-- The shared capture contains 209 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 213 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
 ## Closed Issues Archive
 
 | # | 标题 | 标签 | 创建时间 | 关闭时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #238 | [Feature]: 内置 `skills.sh 商店` 仅缓存 9892 个静态技能，无法检索 skills.sh 全量库。 | enhancement, version: 版本: 0.6.0-beta.2 | 2026-10-14 | 2026-10-16 | [#238](https://github.com/legeling/PromptHub/issues/238) |
+| #237 | [Feature]: Plugins优化，agent的配置能否和设置保持一致。同时，目前Antigravity的Plugins并不能识别出他的插件。 | enhancement, version: 版本: 0.6.0-beta.2 | 2026-10-14 | 2026-10-16 | [#237](https://github.com/legeling/PromptHub/issues/237) |
 | #235 | [Bug]: MCP 版本弹窗的 Tab 焦点能移出当前弹窗 | bug | 2026-10-13 | 2026-10-14 | [#235](https://github.com/legeling/PromptHub/issues/235) |
 | #234 | [Feature]: 补齐 My MCP 与 CLI 的正式版本管理入口 |  | 2026-10-13 | 2026-10-14 | [#234](https://github.com/legeling/PromptHub/issues/234) |
 | #233 | [Bug]: 卸载 Codex MCP 后管理区注释不成对 |  | 2026-10-13 | 2026-10-14 | [#233](https://github.com/legeling/PromptHub/issues/233) |

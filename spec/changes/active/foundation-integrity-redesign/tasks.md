@@ -183,4 +183,6 @@ Findings and required conversions are maintained in
 - [x] Align shipped version identities, multilingual development labels and unreleased notes; preserve published stable links and website metadata.
 - [x] Prevent version-tag creation from automatically publishing GHCR images before the GitHub Release is public.
 - [x] Complete fresh frozen release verification for the startup-repaired 0.6.0 candidate: the repaired rerun passes all 40 checks; diagnostic failures and focused checks remain recorded.
-- [ ] Create the v0.6.0 tag and upload release artifacts while retaining GitHub Draft status.
+- [x] Create the v0.6.0 tag and GitHub Draft at commit 46c4d1ff; isDraft=true and isPrerelease=false are confirmed.
+- [x] Repair Linux CI preparation failures: workflow 38878434851 passes the complete 40-check gate, including all nine built Electron cases.
+- [ ] Complete five packaging jobs and verify uploaded artifacts while retaining GitHub Draft status and the existing tag. macOS notarization is blocked by Apple HTTP 403 until the Account Holder handles the missing/expired agreement.
