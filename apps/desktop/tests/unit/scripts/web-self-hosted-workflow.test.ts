@@ -15,9 +15,10 @@ const webPackage = JSON.parse(
 ) as { version: string };
 
 describe("self-hosted Web release workflow", () => {
-  it("publishes versioned Web images from release tags without moving stable latest for prereleases", () => {
+  it("publishes versioned Web images after release publication without moving stable latest for prereleases", () => {
     expect(workflowSource).toContain('- "packages/core/**"');
-    expect(workflowSource).toContain('- "v*"');
+    expect(workflowSource).toMatch(/^  release:\n    types: \[published\]/m);
+    expect(workflowSource).not.toMatch(/^  push:/m);
     expect(workflowSource).toContain("type=semver,pattern={{version}}");
     expect(workflowSource).toContain("type=semver,pattern=v{{version}}");
     expect(workflowSource).toContain(

@@ -97,3 +97,14 @@ test("Cloudflare Worker workflow has an independent bounded gate", () => {
     /--profile quick --surface web-cloudflare --exclude-layer governance/,
   );
 });
+
+test("draft version tags cannot publish the self-hosted image", () => {
+  const workflow = fs.readFileSync(
+    path.join(rootDir, ".github/workflows/web-self-hosted.yml"),
+    "utf8",
+  );
+  assert.doesNotMatch(workflow, /^  push:/m);
+  assert.match(workflow, /^  release:\n    types: \[published\]/m);
+  assert.match(workflow, /^  pull_request:/m);
+  assert.match(workflow, /^  workflow_dispatch:/m);
+});

@@ -1,11 +1,15 @@
 ## [Unreleased]
 
-主线继续准备 `0.6.0`，当前构建身份为 `0.6.0-beta.2`。以下改动尚未随新发行包发布，不属于已发布 beta.2 的历史内容，也不代表主线发布了贡献分支的 `0.6.4`。
+当前构建身份为 `0.6.0`，仅准备 Draft，尚未正式公开发布。以下改动不属于已发布 beta.2 的历史内容；最新公开稳定版仍为 `0.5.9`。
 
-Main continues to prepare `0.6.0` with the current build identity `0.6.0-beta.2`. The changes below are not yet included in a new published package, do not amend the historical beta.2 release, and do not establish a mainline `0.6.4` release.
+The current build identity is `0.6.0`, prepared only as a draft and not publicly released. The changes below do not amend the historical beta.2 release; the latest published stable remains `0.5.9`.
 
 ### 新功能 / Features
 
+- **完整数据同步与冲突处理**：WebDAV/S3 自动同步使用共同基线和条件发布，保留冲突审阅、加密与可恢复的数据和文件写入
+  - **Complete Data Sync And Conflict Handling**: Automatic WebDAV/S3 sync uses common baselines and conditional publication with conflict review, encryption, and recoverable record/file writes
+- **统一结构化存储**：Prompt、Skill、Plugin、Rules、生成记录与设置使用 SQLite 管理结构化数据，完整 Skill/Plugin 包、媒体与历史文件由对应文件存储保留
+  - **Unified Structured Storage**: SQLite owns structured Prompt, Skill, Plugin, Rules, generation and settings records, while dedicated file storage preserves complete packages, media and historical contents
 - **快捷与批量标签**：右键菜单可直接添加、选择或移除标签；批量编辑展示共同标签、保留每条 Prompt 的其他标签，并反馈部分保存失败。标签管理器增加使用次数、排序和按标签查看 Prompt 的入口
   - **Quick And Batch Tagging**: The context menu opens direct tag editing; batch edits show shared tags, preserve each Prompt's other tags, and report partial save failures. The tag manager adds usage counts, sorting, and a jump to matching Prompts
 - **多视图批量操作**：表格、卡片和画廊复用批量操作栏，提供收藏、移动文件夹、删除、标签和取消选择，并显示选中数量；画廊增加选择复选框
@@ -19,6 +23,12 @@ Main continues to prepare `0.6.0` with the current build identity `0.6.0-beta.2`
 
 ### 问题修复 / Fixes
 
+- **Skill 商店搜索与 Plugin 可见性**：skills.sh 搜索使用远程目录检索；Plugin 列表、数量、详情和选择器遵循已启用 Agent，Antigravity 分别发现 IDE 与 CLI 插件
+  - **Skill Store Search And Plugin Visibility**: skills.sh search queries the remote directory; Plugin lists, counts, details and pickers follow enabled Agents, with separate Antigravity IDE and CLI discovery
+- **快捷键与私有内容筛选**：macOS Option 组合键按实际字母或数字识别；收藏视图与全部、搜索共享私有文件夹及其子目录的排除规则
+  - **Shortcuts And Private Content Filtering**: macOS Option shortcuts identify the underlying letter or digit; Favorites shares private-folder and descendant exclusion with All and search
+- **历史数据启动迁移**：保留来源标识冲突的 Skill 及其完整包和历史；处理 Plugin 过期目录引用；把父 Prompt 已删除的旧历史完整保存在恢复目录，避免阻断启动
+  - **Historical Startup Migration**: Preserves Skills with conflicting source identities together with their packages and history, handles stale Plugin paths, and retains orphaned Prompt history in recovery without blocking startup
 - **多词全文搜索**：空格分隔的搜索词按 AND 匹配，允许分别命中标题和正文，不再要求整串词连续出现，并保留特殊字符转义
   - **Multi-Term Full-Text Search**: Whitespace-separated terms use AND matching across title and body instead of requiring one contiguous phrase, while preserving special-character escaping
 - **Prompt 层级与文件夹一致性**：顶栏新建不再自动成为选中节点的子项；移动节点到新父级时，整棵子树采用父级文件夹；选中或重复选中节点会展开自身及祖先并收起其他父分支
@@ -30,6 +40,8 @@ Main continues to prepare `0.6.0` with the current build identity `0.6.0-beta.2`
 
 ### 维护 / Maintenance
 
+- **Draft 发布边界**：版本 tag 只准备桌面草稿；自部署 Web 镜像的自动发布改为在 GitHub Release 正式公开后触发，Draft 不更新公开镜像和稳定版下载入口
+  - **Draft Release Boundary**: Version tags prepare desktop drafts; automatic self-hosted image publication now waits for a published GitHub Release, keeping draft artifacts out of public images and stable download entrypoints
 - **主线版本与发布边界**：整合贡献改动时保留 `0.6.0` 版本线、主线签名与完整产物门禁，以及 Rules 只恢复管理副本的既有行为；默认下载仍指向已发布稳定版，不引入贡献分支专用发布脚本或旧 IndexedDB 路径
   - **Mainline Version And Release Boundaries**: Contribution integration retains the `0.6.0` line, mainline signing and complete-asset gates, and managed-copy-only Rules restore. Default downloads remain on the published stable release; fork-specific release scripts and obsolete IndexedDB paths are not introduced
 

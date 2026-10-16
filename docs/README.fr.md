@@ -11,7 +11,7 @@ Un espace de travail local-first pour les prompts, les skills et les assets de c
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![Développement](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![Développement](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -214,8 +214,8 @@ Vous voulez tester la prochaine version d'aperçu ? Ouvrez _Paramètres → À p
 
 ### 🔐 Confidentialité et sécurité
 
-- Mot de passe maître protégeant l'accès à l'application, chiffrement AES-256-GCM
-- Dossiers privés chiffrés au repos (Beta)
+- Le mot de passe maître déverrouille le contenu privé dans l’application
+- Les dossiers privés masquent le contenu dans l’application ; les fichiers locaux ne sont pas chiffrés
 - Multiplateforme et utilisable hors-ligne : macOS / Windows / Linux
 - 7 langues d'interface : 简体中文, 繁體中文, English, 日本語, Deutsch, Español, Français
 
@@ -334,7 +334,9 @@ Journal complet : **[CHANGELOG.md](../CHANGELOG.md)**
 
 ### v0.6.0 (en développement, non publié)
 
-La version du code reste `0.6.0-beta.2`. Ces améliorations sont intégrées à la branche principale sans être publiées dans un nouveau paquet ; le téléchargement beta.2 publié ne contient pas toutes les modifications ultérieures.
+La version du code est `0.6.0`, préparée uniquement en brouillon et pas encore publiée. Ces améliorations sont intégrées à la branche principale. La dernière version stable publiée reste `0.5.9` ; le téléchargement beta.2 ne contient pas toutes les modifications ultérieures.
+
+- **Stockage, synchronisation et mises à niveau** : SQLite gère les données structurées ; les paquets complets et leur historique restent récupérables. La synchronisation automatique WebDAV/S3 ajoute des bases communes et un examen des conflits, avec des corrections de migration au démarrage.
 
 - Édition des tags depuis le menu contextuel, tags par lot, compteurs d'utilisation, tri et accès au filtre par tag
 - Actions par lot de favoris, déplacement, suppression et tags dans les vues tableau/cartes/galerie, restauration du dossier initial et recherche Ctrl+F / Cmd+F

@@ -78,6 +78,15 @@
 - A startup failure blocks release publication even when all installers and
   update manifests were generated successfully.
 
+### 11. Draft Distribution Boundary
+
+- Preparing a version tag must not publish self-hosted container images or
+  update public stable download channels while its GitHub Release is a draft.
+- Automatic self-hosted image publication is triggered by `release.published`;
+  the explicit manual workflow remains a separate maintainer action.
+- Desktop draft creation and asset upload do not authorize promotion, Homebrew
+  updates, or the stable R2 mirror. Their published-release checks remain required.
+
 ## Stable Scenarios
 
 ### Scenario: Contributor prepares a release-impacting change

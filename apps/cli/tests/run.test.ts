@@ -46,10 +46,13 @@ describe("standalone cli wiring", () => {
   });
 
   it("shows the cli version", async () => {
+    const manifest: { version: string } = JSON.parse(
+      fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    );
     const result = await execCli(["--version"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.joinedStdout.trim()).toBe("0.6.0-beta.2");
+    expect(result.joinedStdout.trim()).toBe(manifest.version);
     expect(result.stderr).toEqual([]);
   });
 

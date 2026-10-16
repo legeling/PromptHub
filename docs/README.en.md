@@ -11,7 +11,7 @@ A local-first workspace for prompts, skills, and AI coding assets.
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![Development](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![Development](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -214,8 +214,8 @@ Want to try the next dev preview? Open _Settings → About_ and toggle the previ
 
 ### 🔐 Privacy & security
 
-- Master password gate with AES-256-GCM encryption
-- Private folders encrypted at rest (Beta)
+- Master password unlocks private content in the app
+- Private folders hide content in the app; local files are not encrypted
 - Cross-platform offline-friendly: macOS / Windows / Linux
 - 7 UI languages: Simplified Chinese, Traditional Chinese, English, Japanese, German, Spanish, French
 
@@ -351,7 +351,9 @@ Full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
 ### v0.6.0 (in development, unreleased)
 
-The source version remains `0.6.0-beta.2`. These mainline improvements have not shipped in a new package; the published beta.2 download does not include all subsequent changes.
+The source version is `0.6.0`, prepared as a draft and not publicly released. These improvements are on main; the latest published stable remains `0.5.9`, and the beta.2 download does not include all subsequent changes.
+
+- **Storage, sync and upgrades**: SQLite owns structured records while complete packages and history remain recoverable. Automatic WebDAV/S3 sync adds common baselines and conflict review, with fixes for historical startup migrations.
 
 - Context-menu quick tagging, batch tags, and tag usage counts, sorting, and filter jumps
 - Batch favorite, move, delete, and tag actions in table/card/gallery views, startup-folder restoration, and Ctrl+F / Cmd+F search

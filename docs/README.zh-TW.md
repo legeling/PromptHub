@@ -11,7 +11,7 @@
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![開發版本](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![開發版本](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -214,8 +214,8 @@ sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
 
 ### 🔐 隱私與安全
 
-- 主密碼保護應用入口，AES-256-GCM 加密
-- 私密資料夾內容加密儲存（Beta）
+- 主密碼用於解鎖應用內的私密內容
+- 私密資料夾僅提供應用內隱藏，本機檔案不加密
 - 跨平台離線執行：macOS / Windows / Linux
 - 7 種介面語言：簡體中文、繁體中文、English、日本語、Deutsch、Español、Français
 
@@ -334,7 +334,9 @@ Skill 匯入、版本快照與分發會統一套用內建忽略規則和根目�
 
 ### v0.6.0（開發中，尚未發布）
 
-目前原始碼版本仍為 `0.6.0-beta.2`。以下是合入主線但尚未隨新套件發布的改進；已發布的 beta.2 下載不包含之後的全部修改。
+目前原始碼版本為 `0.6.0`，僅準備 Draft，尚未正式發布。以下改進已合入主線；最新公開穩定版仍為 `0.5.9`，已發布的 beta.2 下載不包含之後的全部修改。
+
+- **儲存、同步與升級**：SQLite 統一管理結構化記錄，完整套件與歷史檔案保持可恢復；WebDAV/S3 自動同步加入共同基線與衝突檢視，並修復舊資料啟動遷移。
 
 - 右鍵快捷標籤、批次標籤，以及標籤使用次數、排序與篩選跳轉
 - 表格、卡片、圖庫的批次收藏、移動、刪除與標籤操作；啟動資料夾還原及 Ctrl+F / Cmd+F 搜尋

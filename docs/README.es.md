@@ -11,7 +11,7 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![Desarrollo](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![Desarrollo](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -214,8 +214,8 @@ Vuelve a abrir la app. Sustituye la ruta si la instalaste en otro sitio.
 
 ### 🔐 Privacidad y seguridad
 
-- Contraseña maestra para acceder a la app, cifrado AES-256-GCM
-- Carpetas privadas cifradas en reposo (Beta)
+- La contraseña maestra desbloquea el contenido privado en la app
+- Las carpetas privadas ocultan contenido en la app; los archivos locales no se cifran
 - Multiplataforma y apto para uso offline: macOS / Windows / Linux
 - 7 idiomas de interfaz: 简体中文, 繁體中文, English, 日本語, Deutsch, Español, Français
 
@@ -334,7 +334,9 @@ Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
 
 ### v0.6.0 (en desarrollo, sin publicar)
 
-La versión del código sigue siendo `0.6.0-beta.2`. Estas mejoras están integradas en la rama principal, pero no se han publicado en un paquete nuevo; la descarga publicada de beta.2 no incluye todos los cambios posteriores.
+La versión del código es `0.6.0`, preparada solo como borrador y aún sin publicación pública. Estas mejoras están integradas en la rama principal. La última versión estable publicada sigue siendo `0.5.9`; la descarga de beta.2 no incluye todos los cambios posteriores.
+
+- **Almacenamiento, sincronización y actualizaciones**: SQLite gestiona los datos estructurados y conserva paquetes e historiales recuperables. La sincronización automática WebDAV/S3 incorpora bases comunes y revisión de conflictos, con correcciones en la migración de datos antiguos al iniciar.
 
 - Etiquetas desde el menú contextual, etiquetas por lotes y recuentos de uso, ordenación y acceso al filtro por etiqueta
 - Acciones por lotes de favoritos, mover, eliminar y etiquetas en tabla/tarjetas/galería, restauración de carpeta inicial y búsqueda con Ctrl+F / Cmd+F

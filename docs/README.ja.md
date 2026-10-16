@@ -11,7 +11,7 @@
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![開発版](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![開発版](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -214,8 +214,8 @@ sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
 
 ### 🔐 プライバシーとセキュリティ
 
-- マスターパスワードによるアプリ入口の保護、AES-256-GCM 暗号化
-- プライベートフォルダの暗号化保存（Beta）
+- マスターパスワードでアプリ内のプライベートな内容を表示
+- プライベートフォルダはアプリ内で内容を非表示にします。ローカルファイルは暗号化されません
 - クロスプラットフォームでオフライン利用可能：macOS / Windows / Linux
 - 7 言語の UI：簡体中文、繁體中文、English、日本語、Deutsch、Español、Français
 
@@ -334,7 +334,9 @@ Skill のインポート、バージョンスナップショット、配布で�
 
 ### v0.6.0（開発中・未公開）
 
-ソースのバージョンは引き続き `0.6.0-beta.2` です。以下は主線に統合済みですが新しい配布パッケージには未収録で、公開済み beta.2 には以後の変更すべてが含まれるわけではありません。
+ソースのバージョンは `0.6.0` です。ドラフトとして準備中で、正式公開はしていません。以下の改善は主線に統合済みです。最新の公開安定版は `0.5.9` のままで、公開済み beta.2 には以後の変更すべてが含まれるわけではありません。
+
+- **保存・同期・アップグレード**：SQLite が構造化データを管理し、完全なパッケージと履歴は復元可能な状態で保持します。WebDAV/S3 自動同期に共通ベースラインと競合確認を追加し、旧データの起動時移行を修正しました。
 
 - 右クリックからのタグ編集、一括タグ操作、使用件数・並べ替え・タグ絞り込みへの移動
 - 表・カード・ギャラリーの一括お気に入り、移動、削除、タグ操作、起動フォルダーの復元と Ctrl+F / Cmd+F 検索

@@ -11,7 +11,7 @@ Ein Local-First-Arbeitsbereich für Prompts, Skills und KI-Coding-Assets.
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![Entwicklung](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![Entwicklung](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -214,8 +214,8 @@ Nächste Entwicklungs-Vorschau testen? _Einstellungen → Über_ öffnen und den
 
 ### 🔐 Datenschutz und Sicherheit
 
-- Master-Passwort-Schutz für die App, AES-256-GCM-Verschlüsselung
-- Private Ordner werden im Ruhezustand verschlüsselt (Beta)
+- Das Master-Passwort entsperrt private Inhalte in der App
+- Private Ordner verbergen Inhalte in der App; lokale Dateien werden nicht verschlüsselt
 - Plattformübergreifend offline nutzbar: macOS / Windows / Linux
 - 7 Oberflächensprachen: 简体中文, 繁體中文, English, 日本語, Deutsch, Español, Français
 
@@ -334,7 +334,9 @@ Vollständiges Changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
 ### v0.6.0 (in Entwicklung, unveröffentlicht)
 
-Die Quellversion bleibt `0.6.0-beta.2`. Diese Änderungen sind im Hauptzweig integriert, aber noch nicht als neues Paket veröffentlicht; der veröffentlichte beta.2-Download enthält nicht alle späteren Änderungen.
+Die Quellversion ist `0.6.0` und wird nur als Entwurf vorbereitet, nicht öffentlich veröffentlicht. Diese Verbesserungen sind im Hauptzweig integriert. Die aktuelle veröffentlichte Stable bleibt `0.5.9`; der beta.2-Download enthält nicht alle späteren Änderungen.
+
+- **Speicherung, Synchronisierung und Upgrades**: SQLite verwaltet strukturierte Daten; vollständige Pakete und Historien bleiben wiederherstellbar. Automatische WebDAV/S3-Synchronisierung erhält gemeinsame Ausgangsstände und Konfliktprüfung; die Startmigration älterer Daten wurde korrigiert.
 
 - Tags direkt im Kontextmenü, Stapel-Tags sowie Nutzungszahlen, Sortierung und Sprünge zum Tag-Filter
 - Stapelaktionen für Favoriten, Verschieben, Löschen und Tags in Tabellen-, Karten- und Galerieansichten, Startordner-Wiederherstellung und Ctrl+F / Cmd+F-Suche

@@ -128,7 +128,7 @@ Before any commit, split commit, history rewrite, or push operation:
 
 - **Type:** Local-first monorepo with desktop, CLI, web, and worker distributions
 - **License:** AGPL-3.0
-- **Version:** 0.6.0-beta.2
+- **Version:** 0.6.0
 
 ### Tech Stack
 
