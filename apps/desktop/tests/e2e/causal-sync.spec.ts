@@ -1,9 +1,7 @@
-import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { once } from "node:events";
-import { createHash } from "node:crypto";
 import { test, expect } from "@playwright/test";
+import { createWebDAVFixture } from "./helpers/webdav-fixture";
 import {
   launchPromptHub,
   closePromptHub,
@@ -15,54 +13,15 @@ import {
 // The protocol server is controlled; Electron, startup, preload, SQL and UI are real.
 test("startup sync reviews a nonempty baseline and retains the chosen library across two cold reopens", async () => {
   test.setTimeout(120000);
-  const objects = new Map<string, { data: string; etag: string }>();
-  const server = http.createServer((request, response) => {
-    void (async () => {
-      const key = request.url ?? "/",
-        prior = objects.get(key);
-      if (request.method === "PROPFIND") {
-        response.writeHead(207).end();
-        return;
-      }
-      if (request.method === "GET") {
-        if (prior)
-          response.writeHead(200, { ETag: prior.etag }).end(prior.data);
-        else response.writeHead(404).end();
-        return;
-      }
-      if (
-        (request.headers["if-none-match"] === "*" && prior) ||
-        (request.headers["if-match"] &&
-          request.headers["if-match"] !== prior?.etag)
-      ) {
-        response.writeHead(412).end();
-        return;
-      }
-      if (request.method === "DELETE") {
-        objects.delete(key);
-        response.writeHead(204).end();
-        return;
-      }
-      const chunks: Buffer[] = [];
-      for await (const chunk of request) chunks.push(Buffer.from(chunk));
-      const data = Buffer.concat(chunks).toString("utf8"),
-        etag = `"${createHash("sha256").update(data).digest("hex")}"`;
-      objects.set(key, { data, etag });
-      response.writeHead(200, { ETag: etag }).end();
-    })().catch(() => response.writeHead(500).end());
-  });
-  server.listen(0, "127.0.0.1");
-  await once(server, "listening");
-  const address = server.address();
-  if (!address || typeof address === "string")
-    throw new Error("Missing fixture port");
+  const remote = await createWebDAVFixture();
+  const { objects } = remote;
   const settings = {
     minimizeOnLaunch: false,
     language: "en",
     autoCheckUpdate: false,
     syncProvider: "webdav",
     webdavEnabled: true,
-    webdavUrl: `http://127.0.0.1:${address.port}/dav`,
+    webdavUrl: remote.url,
     webdavUsername: "fixture",
     webdavPassword: "fixture",
     webdavSyncOnStartup: true,
@@ -182,11 +141,12 @@ test("startup sync reviews a nonempty baseline and retains the chosen library ac
     }
     throw error;
   } finally {
-    if (active) await closePromptHub(active.app, active.userDataDir);
-    server.closeAllConnections();
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
-    for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
+    try {
+      if (active) await closePromptHub(active.app, active.userDataDir);
+    } finally {
+      await remote.close();
+      for (const root of roots)
+        fs.rmSync(root, { recursive: true, force: true });
+    }
   }
 });

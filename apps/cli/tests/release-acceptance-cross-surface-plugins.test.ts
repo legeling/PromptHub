@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { closeDatabase, configureRuntimePaths, CorePluginLibraryService, initDatabase, resetRuntimePaths } from "@prompthub/core";
+import { getCliProcessEntry } from "./helpers/cli-process";
 
 const CLI_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const CHILD_TIMEOUT_MS = 10_000;
@@ -27,7 +28,7 @@ function string(value: unknown): string {
 }
 
 function invoke(args: string[], status = 0): unknown {
-  const result = spawnSync(process.execPath, ["--import", "tsx", "src/index.ts", "--data-dir", profile, "plugin", ...args], {
+  const result = spawnSync(process.execPath, [getCliProcessEntry(), "--data-dir", profile, "plugin", ...args], {
     cwd: CLI_ROOT, env: { ...process.env, NODE_NO_WARNINGS: "1" }, encoding: "utf8",
     timeout: CHILD_TIMEOUT_MS, maxBuffer: CHILD_OUTPUT_BYTES,
   });

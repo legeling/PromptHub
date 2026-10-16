@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
 import { AgentSettingsRepository, closeDatabase, configureRuntimePaths, initDatabase, resetRuntimePaths } from "@prompthub/core";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
+import { getCliProcessEntry } from "./helpers/cli-process";
 
 const execute = promisify(execFile);
 const CLI_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -36,7 +37,7 @@ export async function invoke(profile: string, args: string[], status = 0): Promi
   let stderr = "";
   let exitCode = 0;
   try {
-    ({ stdout, stderr } = await execute(process.execPath, ["--import", "tsx", "src/index.ts", "--data-dir", profile, ...args], {
+    ({ stdout, stderr } = await execute(process.execPath, [getCliProcessEntry(), "--data-dir", profile, ...args], {
       cwd: CLI_ROOT, env: { ...process.env, NODE_NO_WARNINGS: "1" },
       encoding: "utf8", timeout: CHILD_TIMEOUT_MS, maxBuffer: CHILD_OUTPUT_BYTES,
     }));

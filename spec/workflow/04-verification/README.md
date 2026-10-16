@@ -43,6 +43,8 @@ PROMPTHUB_E2E_HEADED=1 pnpm --dir apps/desktop exec playwright test --grep @nati
 
 Electron E2E 通过 `-r tests/e2e/helpers/isolated-keyring.cjs` 在产品入口执行前替换操作系统凭据运输，密钥写入隔离 profile。应用重开时必须先恢复同一测试凭据，再执行真实设置解密和启动；不能在 `electron.launch()` 返回后才注入，否则启动读取与后续写入会使用不同存储。该文件只由测试命令预加载，不进入生产启动流程。
 
+隐藏启动恢复 WebDAV 同步与共同基线重开用例共用本地 HTTP WebDAV fixture，保留 GET/PUT、条件写入、目录创建及真实 head 发布；旧 WebDAV IPC mock 不覆盖主进程当前共同基线同步入口，不能用于该启动验收。
+
 `pnpm --filter @prompthub/desktop perf:budget` 使用项目已有的 `tsx` loader 执行 `scripts/check-large-data-budgets.ts`，遵循 Desktop 当前模块格式并解析被测模块的扩展名省略 import；脚本同时进入 `typecheck:tests`。不改变业务模块或预算阈值。它测量本地 Prompt/Skill selector 的固定数据集，不证明真实窗口滚动或大型 SQLite 工作流。
 
 ## 功能基线入口与证据边界
@@ -151,6 +153,7 @@ pnpm verify:release:quick --list --format json
 - [Skill runtime helper](../../../apps/desktop/tests/integration/helpers/skill-runtime.ts) 使用临时 profile、真实初始化/authority 启动路径、磁盘 SQLite 与隔离平台目录；只替换 Electron 运输和用户目录边界。
 - 本地 Git/文件包夹具在临时目录中构建，保留实际分支、目录层级、文件清单和字节。远端在线验收独立记录，不能由本地 fixture 推断。
 - CLI 的 [global setup](../../../apps/cli/tests/global-setup.ts) 创建已关闭的 SQLite 模板，由 [CLI harness](../../../apps/cli/tests/helpers/cli-harness.ts) 复制到独立数据目录。初始化、迁移和并发测试须绕过模板。完整 CLI suite 默认预算 75 秒，本地诊断可通过 `PROMPTHUB_CLI_TEST_MAX_MS` 临时调整。
+- CLI 独立进程验收在 global setup 中按正式 Vite 配置构建一次临时 CJS 产物，由各子进程启动该产物，避免每条命令重复装载和编译整个 TypeScript 图；构建耗时仍计入同一 75 秒预算。README 的 `pnpm dev` 用例继续验证源码入口，数据库并发 fixture 仍使用独立进程。临时构建目录和环境变量在 teardown 中回收，不复用可能过期的已有产物。
 - Self-Hosted Web 的 [global setup](../../../apps/web/tests/global-setup.ts) 创建已迁移并关闭的模板，测试目录复制使用；新库、损坏、锁与恢复场景自行构造前置状态。
 
 ## Pull Request 安全扫描

@@ -1,6 +1,6 @@
 import * as childProcess from "child_process";
 import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("child_process", async () => {
   const actual =
@@ -36,6 +36,7 @@ import {
 } from "../../../src/main/services/skill-installer-utils";
 
 describe("skill-installer-utils", () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
     invalidateCustomPathsCache();
@@ -576,6 +577,7 @@ describe("skill-installer-utils", () => {
     });
 
     it("uses %USERPROFILE%\\.config\\opencode as the default OpenCode root on Windows", () => {
+      vi.stubEnv("XDG_CONFIG_HOME", undefined);
       const originalPlatform = process.platform;
       const originalHome = process.env.HOME;
       const originalUserProfile = process.env.USERPROFILE;

@@ -2,17 +2,17 @@ import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
 import { nativeWindowTestTag } from "./helpers/electron-launch-options";
+import { createWebDAVFixture } from "./helpers/webdav-fixture";
 
 import {
   closePromptHub,
-  getE2EStats,
   isAppWindowVisible,
   launchPromptHub,
-  resetE2EStats,
   sendAppCommand,
   setAppSettings,
   setAppLanguage,
   showAppWindow,
+  type LaunchedElectronApp,
 } from "./helpers/electron";
 
 test.describe("E2E: Skill smoke", () => {
@@ -81,25 +81,17 @@ test.describe("E2E: Skill smoke", () => {
     "delays startup WebDAV sync until a hidden launch becomes visible",
     { tag: nativeWindowTestTag },
     async () => {
-      const { app, page, userDataDir } = await launchPromptHub(
-        "background-sync.seed.json",
-        {
-          env: {
-            PROMPTHUB_E2E_WEBDAV_MODE: "remote-empty",
-          },
-        },
-      );
-
+      const remote = await createWebDAVFixture();
+      let active: LaunchedElectronApp | undefined;
       try {
+        active = await launchPromptHub("background-sync.seed.json");
+        const { app, page } = active;
         await expect(page).toHaveTitle(/PromptHub/);
-        await expect
-          .poll(async () => Boolean((await getE2EStats(page))?.webdav))
-          .toBe(true);
         await expect.poll(() => isAppWindowVisible(app)).toBe(false);
         await setAppSettings(page, {
           syncProvider: "webdav",
           webdavEnabled: true,
-          webdavUrl: "https://e2e.example.com/dav",
+          webdavUrl: remote.url,
           webdavUsername: "e2e-user",
           webdavPassword: "e2e-pass",
           webdavSyncOnStartup: true,
@@ -108,16 +100,12 @@ test.describe("E2E: Skill smoke", () => {
           autoCheckUpdate: false,
         });
         await expect.poll(() => isAppWindowVisible(app)).toBe(false);
-        await resetE2EStats(page);
+        remote.requests.splice(0);
 
         await page.waitForTimeout(1500);
 
-        await expect
-          .poll(async () => (await getE2EStats(page))?.webdav.upload ?? -1)
-          .toBe(0);
-        await expect
-          .poll(async () => (await getE2EStats(page))?.webdav.stat ?? -1)
-          .toBe(0);
+        expect(remote.requests).toEqual([]);
+        expect(remote.objects.size).toBe(0);
 
         await page.evaluate(() => window.electron?.toggleVisibility());
         await expect.poll(() => isAppWindowVisible(app)).toBe(true);
@@ -146,16 +134,19 @@ test.describe("E2E: Skill smoke", () => {
             }),
           );
 
-        await expect
-          .poll(async () => (await getE2EStats(page))?.webdav.upload ?? 0)
-          .toBeGreaterThan(0);
-        await expect
-          .poll(
-            async () => (await getE2EStats(page))?.webdav.ensureDirectory ?? 0,
-          )
-          .toBeGreaterThan(0);
+        expect(remote.requests).toEqual(
+          expect.arrayContaining([
+            { method: "PUT", path: "/dav/prompthub-sync/head.json" },
+            { method: "MKCOL", path: "/dav/prompthub-sync" },
+          ]),
+        );
+        expect(remote.objects.has("/dav/prompthub-sync/head.json")).toBe(true);
       } finally {
-        await closePromptHub(app, userDataDir);
+        try {
+          if (active) await closePromptHub(active.app, active.userDataDir);
+        } finally {
+          await remote.close();
+        }
       }
     },
   );

@@ -434,7 +434,7 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("exposes platform-scoped global target presets", () => {
-    const presets = getMcpTargetPresets("/Users/test", "darwin");
+    const presets = getMcpTargetPresets("/Users/test", "darwin", {});
     const byId = Object.fromEntries(
       presets.map((preset) => [preset.id, preset]),
     );

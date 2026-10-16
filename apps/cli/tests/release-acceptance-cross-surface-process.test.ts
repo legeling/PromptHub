@@ -5,6 +5,7 @@ import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseAdapter } from "@prompthub/db";
+import { getCliProcessEntry } from "./helpers/cli-process";
 
 const CLI_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const CHILD_TIMEOUT_MS = 10_000;
@@ -14,7 +15,7 @@ let root = "";
 function invoke(args: string[], runtimeArgs = ["--data-dir", root]): SpawnSyncReturns<string> {
   const result = spawnSync(
     process.execPath,
-    ["--import", "tsx", "src/index.ts", ...runtimeArgs, ...args],
+    [getCliProcessEntry(), ...runtimeArgs, ...args],
     {
       cwd: CLI_ROOT,
       env: { ...process.env, NODE_NO_WARNINGS: "1" },
