@@ -54,6 +54,7 @@ import {
 } from "./agent-session-roots";
 import {
   boundedText,
+  getNestedValue,
   isRecord,
   normalizeRole,
   normalizeTimestamp,
@@ -677,15 +678,6 @@ function parseOpenCodeDetail(
   };
 }
 
-function getNestedValue(value: unknown, keys: string[]): unknown {
-  let current = value;
-  for (const key of keys) {
-    if (!isRecord(current)) return undefined;
-    current = current[key];
-  }
-  return current;
-}
-
 function isMissing(error: unknown): boolean {
   return (
     Boolean(error) &&
@@ -899,7 +891,8 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
   const cursorRoot =
     options.cursorRootDir || path.join(options.homeDir, ".cursor");
   const geminiProjectsRoot = path.join(
-    options.geminiRootDir || path.join(options.homeDir, ".gemini"), "tmp",
+    options.geminiRootDir || path.join(options.homeDir, ".gemini"),
+    "tmp",
   );
   const kimiRoot =
     options.kimiRootDir || path.join(options.homeDir, ".kimi-code");

@@ -1,3 +1,10 @@
+import {
+  isRecord,
+  toFiniteNumber,
+  toNonEmptyString,
+  parseResetTime,
+  parseJsonObject,
+} from "./agent-usage-parsers";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -163,37 +170,6 @@ const WINDOW_METRIC_META = {
   },
 } as const;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function toNonEmptyString(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-// Accepts ISO strings or epoch numbers; values below 1e12 are treated as
-// epoch seconds, anything larger as epoch milliseconds.
-function parseResetTime(value: unknown): number | null {
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Date.parse(value);
-    if (Number.isFinite(parsed)) return parsed;
-    return parseResetTime(Number(value));
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value < 1_000_000_000_000 ? value * 1000 : value;
-  }
-  return null;
-}
-
 function toWindowMetric(
   key: keyof typeof WINDOW_METRIC_META,
   window: UsageWindow | null,
@@ -232,16 +208,6 @@ async function defaultPathExists(candidate: string): Promise<boolean> {
 function hashedKeychainService(configRoot: string): string {
   const digest = createHash("sha256").update(configRoot).digest("hex");
   return `${LEGACY_KEYCHAIN_SERVICE}-${digest.slice(0, 8)}`;
-}
-
-function parseJsonObject(raw: string): Record<string, unknown> | null {
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  return isRecord(value) ? value : null;
 }
 
 function parseCredentials(raw: string): ClaudeCredentials | null {
@@ -826,7 +792,9 @@ export function createAgentUsageService(
     configRoot: string,
   ): Promise<string | null> {
     try {
-      const raw = await readFile(path.join(configRoot, getAgentPrimaryModelConfigPath("codex")));
+      const raw = await readFile(
+        path.join(configRoot, getAgentPrimaryModelConfigPath("codex")),
+      );
       const parsed: unknown = parseToml(raw);
       if (!isRecord(parsed)) return null;
       const provider = parsed.model_provider;
@@ -910,7 +878,10 @@ export function createAgentUsageService(
     }
   }
 
-  async function queryCodexUsage(agentId: string, configRoot: string): Promise<AgentUsageQuota> {
+  async function queryCodexUsage(
+    agentId: string,
+    configRoot: string,
+  ): Promise<AgentUsageQuota> {
     const buildCodexQuota = (
       status: AgentUsageQuota["status"],
       overrides: Partial<AgentUsageQuota> = {},
@@ -1505,8 +1476,8 @@ export function createAgentUsageService(
       }
 
       const scopedRoot = resolveConfigRoot(agentId);
-      const credentialScope = agentId === "claude"
-        ? claudeCredentialScope(scopedRoot) : scopedRoot;
+      const credentialScope =
+        agentId === "claude" ? claudeCredentialScope(scopedRoot) : scopedRoot;
       const cached = cache.get(agentId);
       if (
         !getOptions.forceRefresh &&

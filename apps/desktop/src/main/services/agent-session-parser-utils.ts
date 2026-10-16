@@ -57,3 +57,12 @@ export function normalizeRole(value: unknown): AgentSessionEntry["role"] {
   }
   return "unknown";
 }
+
+export function getNestedValue(value: unknown, keys: string[]): unknown {
+  let current = value;
+  for (const key of keys) {
+    if (!isRecord(current)) return undefined;
+    current = current[key];
+  }
+  return current;
+}
