@@ -13,17 +13,15 @@ function createPrompt(index: number, overrides: Partial<Prompt> = {}): Prompt {
   return {
     id: `prompt-${index}`,
     title: `Prompt ${String(index).padStart(4, "0")}`,
-    description: index === 777 ? "Special release note" : `Description ${index}`,
+    description:
+      index === 777 ? "Special release note" : `Description ${index}`,
     promptType: index % 5 === 0 ? "image" : "text",
     systemPrompt: `System ${index}`,
     systemPromptEn: `System EN ${index}`,
     userPrompt: `User ${index} batch import`,
     userPromptEn: `User EN ${index} batch import`,
     variables: [],
-    tags: [
-      `group-${index % 10}`,
-      ...(index === 777 ? ["focus-tag"] : []),
-    ],
+    tags: [`group-${index % 10}`, ...(index === 777 ? ["focus-tag"] : [])],
     folderId: index % 2 === 0 ? "folder-a" : "folder-b",
     isFavorite: index % 8 === 0,
     isPinned: index === 999,
@@ -56,6 +54,46 @@ const folders: Folder[] = [
 const prompts = Array.from({ length: 1000 }, (_, index) => createPrompt(index));
 
 describe("prompt-filter large dataset", () => {
+  it("hides private descendants in All, search and Favorites, and reveals them only in an unlocked folder", () => {
+    const privateFolders = [
+      { ...folders[0], isPrivate: true },
+      { ...folders[1], parentId: folders[0].id },
+    ];
+    const privatePrompt = createPrompt(1, { isFavorite: true });
+    const publicPrompt = createPrompt(2, { folderId: null, isFavorite: true });
+    const options = {
+      prompts: [privatePrompt, publicPrompt],
+      folders: privateFolders,
+      unlockedFolderIds: new Set<string>(),
+      promptTypeFilter: "all" as const,
+    };
+    for (const selectedFolderId of [null, "favorites"]) {
+      expect(filterVisiblePrompts({ ...options, selectedFolderId })).toEqual([
+        publicPrompt,
+      ]);
+      expect(
+        filterVisiblePrompts({
+          ...options,
+          selectedFolderId,
+          searchQuery: privatePrompt.title,
+        }),
+      ).toEqual([]);
+    }
+    expect(
+      filterVisiblePrompts({ ...options, selectedFolderId: folders[0].id }),
+    ).toEqual([]);
+    const unlocked = {
+      ...options,
+      unlockedFolderIds: new Set([folders[0].id]),
+    };
+    expect(
+      filterVisiblePrompts({ ...unlocked, selectedFolderId: folders[0].id }),
+    ).toEqual([privatePrompt]);
+    expect(
+      filterVisiblePrompts({ ...unlocked, selectedFolderId: "favorites" }),
+    ).toEqual([publicPrompt]);
+  });
+
   it("builds aggregate stats for 1000 prompts in one pass", () => {
     const stats = buildPromptStats(prompts);
 

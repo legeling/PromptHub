@@ -67,9 +67,7 @@ export function filterVisiblePrompts({
 }: FilterVisiblePromptsOptions): PromptSummary[] {
   let result = prompts;
 
-  if (selectedFolderId === "favorites") {
-    result = result.filter((prompt) => prompt.isFavorite);
-  } else if (selectedFolderId) {
+  if (selectedFolderId && selectedFolderId !== "favorites") {
     const visibleFolderIds = collectDescendantFolderIds(folders, [selectedFolderId]);
     const lockedFolderIds = collectDescendantFolderIds(
       folders,
@@ -90,6 +88,9 @@ export function filterVisiblePrompts({
         (prompt) =>
           !prompt.folderId || !privateFolderIds.has(prompt.folderId),
       );
+    }
+    if (selectedFolderId === "favorites") {
+      result = result.filter((prompt) => prompt.isFavorite);
     }
   }
 
