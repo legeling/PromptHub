@@ -18,7 +18,7 @@
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
 | `0.6.0-beta.2` | published prerelease                              | `spec/releases/0.6.0-beta.2.md` | 2026-09-03 |
 | `0.6.0-beta.1` | published prerelease; Skill mutation fix replaced | `spec/releases/0.6.0-beta.1.md` | 2026-08-21 |
-| `0.6.0`        | draft; packaging verification pending              | `spec/releases/0.6.0.md`        | 2026-10-16 |
+| `0.6.0`        | draft; macOS ticket network blocks completion      | `spec/releases/0.6.0.md`        | 2026-10-16 |
 | `0.5.9`        | stable record                                     | `spec/releases/0.5.9.md`        | 2026-08-19 |
 | `0.5.9-beta.2` | published beta                                    | `spec/releases/0.5.9-beta.2.md` | 2026-07-10 |
 | `0.5.9-beta.1` | published beta                                    | `spec/releases/0.5.9-beta.1.md` | 2026-07-10 |

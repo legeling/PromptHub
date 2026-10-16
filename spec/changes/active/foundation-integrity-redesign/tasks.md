@@ -185,4 +185,5 @@ Findings and required conversions are maintained in
 - [x] Complete fresh frozen release verification for the startup-repaired 0.6.0 candidate: the repaired rerun passes all 40 checks; diagnostic failures and focused checks remain recorded.
 - [x] Create the v0.6.0 tag and GitHub Draft at commit 46c4d1ff; isDraft=true and isPrerelease=false are confirmed.
 - [x] Repair Linux CI preparation failures: workflow 38878434851 passes the complete 40-check gate, including all nine built Electron cases.
-- [ ] Complete five packaging jobs and verify uploaded artifacts while retaining GitHub Draft status and the existing tag. Apple agreement is resolved; rerun after aligning the Windows second-start smoke expectation with the current already-canonical contract.
+- [x] Align Windows second-start smoke with already-canonical: workflow 38888080707 passes the full 40-check gate, all nine Electron cases, Windows x64 two-launch upgrade startup, Windows ARM64 and Linux packaging.
+- [ ] Complete macOS packaging and verify the full uploaded artifact set while retaining Draft and the existing tag. Agreement is resolved; three attempts are blocked by Apple ticket-service network loss (-1005 / stapler 68). No assets uploaded.

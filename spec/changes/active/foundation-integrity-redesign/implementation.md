@@ -1404,3 +1404,15 @@ states before the smoke-only clean exit. The assertion and workflow regression
 are aligned with the startup owner; no product source changes. A fresh complete
 gate and packaging run remain required. The matrix cancellation means the final
 macOS artifact verification has not yet completed.
+
+Workflow 38888080707 at 445672c8 passes all 40 checks in 1,500.2 seconds,
+including all nine built Electron cases. Windows x64's packaged upgrade smoke
+passes two launches; Windows ARM64 and Linux packaging also pass. Apple
+notarization succeeds, but the first macOS attempt loses the network connection
+during DMG ticket validation after the ZIP passes architecture, signature,
+ticket and Gatekeeper checks. Two macOS-only reruns hit the same CloudKit
+ticket-delivery network loss during stapling (-1005 / 68), cancelling Intel
+jobs. These external failures do not justify changing signing requirements.
+The full asset gate remains incomplete: Draft is retained with zero uploaded
+assets, stable stays at 0.5.9, and the original tag is unchanged. Further
+identical reruns are stopped until ticket-service connectivity recovers.
