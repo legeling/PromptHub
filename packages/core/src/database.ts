@@ -1,3 +1,11 @@
+import { migrateSkillPayloadFilesV1 } from "./migrations/skill-payload-files-v1";
+import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
+import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
+import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
+import { migratePromptWorkspaceV1 } from "./migrations/prompt-workspace-v1";
+import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
+import { migrateAgentProviderSqliteV1 } from "./migrations/agent-provider-sqlite-v1";
+import { migratePromptSqliteV1 } from "./migrations/prompt-sqlite-v1";
 import { migrateAgentSettingsV1 } from "./migrations/agent-settings-v1";
 import { migrateGeminiDefaultDisabled } from "./migrations/gemini-default-disabled-v1";
 import {
@@ -13,20 +21,13 @@ import {
 } from "@prompthub/db";
 import type { InitDatabaseHooks } from "@prompthub/db";
 
-import { getDataDir, getDatabasePath, getUserDataPath } from "./runtime-paths";
+import { getDataDir, getDatabasePath, getSkillsDir, getUserDataPath } from "./runtime-paths";
 import { recoverCanonicalResourcePublications } from "./resource-bundle-publication";
-import { recoverCanonicalEntryPublications } from "./canonical-entry-publication";
+import { recoverStorageEntryPublications } from "./sqlite-entry-publication";
 import { assertStorageMaintenanceAvailable } from "./storage-maintenance-intent";
 import { reconcileCanonicalStorageCatalog } from "./canonical-catalog-reconciliation";
-import { CanonicalSkillDB } from "./canonical-skill-db";
-import { CanonicalRuleDB } from "./canonical-rule-db";
-import {
-  CanonicalFolderDB,
-  CanonicalPromptDB,
-  CanonicalPromptOutputFormatDB,
-  CanonicalPromptRelationDB,
-  assertCanonicalPromptCatalogCurrent,
-} from "./canonical-prompt-graph-db";
+import { SkillStorageDB } from "./skill-storage";
+import { RuleStorageDB } from "./rule-storage";
 import { getRuntimeStorageContext } from "./runtime-paths";
 import { initializeMcpStorage } from "./mcp-storage-migration";
 import type { McpStorageOptions } from "./mcp-storage";
@@ -48,21 +49,34 @@ export function initDatabase(
       databasePath: getDatabasePath(),
     });
   } else {
-    recoverCanonicalEntryPublications(getUserDataPath());
+    recoverStorageEntryPublications(getUserDataPath());
     recoverCanonicalResourcePublications(getDataDir());
   }
   const database = dbInit(getDatabasePath(), hooks);
-  if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-    try {
-      assertCanonicalPromptCatalogCurrent(database);
-      new CanonicalSkillDB(database).reconcileCanonicalWorkspaces();
-      new CanonicalRuleDB(database).reconcileCanonicalWorkspaces();
-    } catch (error) {
-      closeDatabase();
-      throw error;
-    }
-  }
   try {
+    migrateSkillSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migrateSkillPayloadFilesV1(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath(), skillsRoot: getSkillsDir() });
+    migrateAgentProviderSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migratePromptSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migratePromptWorkspaceV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migrateGenerationSqliteV1(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath() });
+    migrateRuleMetadataV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migratePluginSqliteV1(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath() });
     initializeMcpStorage({ ...mcpOptions, database });
     migrateAgentSettingsV1(database, getUserDataPath());
     migrateGeminiDefaultDisabled(database);
@@ -83,9 +97,11 @@ export {
   SCHEMA_TABLES,
 };
 
-export { CanonicalSkillDB as SkillDB };
-export { CanonicalRuleDB as RuleDB };
-export { CanonicalPromptDB as PromptDB };
-export { CanonicalFolderDB as FolderDB };
-export { CanonicalPromptRelationDB as PromptRelationDB };
-export { CanonicalPromptOutputFormatDB as PromptOutputFormatDB };
+export { SkillStorageDB as SkillDB };
+export { RuleStorageDB as RuleDB };
+export {
+  PromptDB,
+  FolderDB,
+  PromptRelationDB,
+  PromptOutputFormatDB,
+} from "@prompthub/db";

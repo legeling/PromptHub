@@ -54,7 +54,7 @@ function sortSnapshot(snapshot: PromptCanonicalGraphSnapshot) {
   };
 }
 
-function normalizeSnapshotForCatalog(
+export function normalizePromptGraphForDatabase(
   snapshot: PromptCanonicalGraphSnapshot,
 ): PromptCanonicalGraphSnapshot {
   return {
@@ -169,28 +169,42 @@ function orderParentsFirst<T extends { id: string; parentId?: string | null }>(
   return ordered;
 }
 
-function populatePromptCatalog(
+/** Append verified missing identities without REPLACE cascading existing history. */
+export function insertMissingPromptGraphRows(
   database: Database.Database,
   snapshot: PromptCanonicalGraphSnapshot,
 ): void {
+  const current = collectPromptCanonicalGraph(
+    new PromptDB(database),
+    new FolderDB(database),
+    database,
+  );
+  const known = {
+    folders: new Set(current.folders.map((entry) => entry.id)),
+    prompts: new Set(current.prompts.map((entry) => entry.id)),
+    versions: new Set(current.promptVersions.map((entry) => entry.id)),
+    relations: new Set(current.promptRelations.map((entry) => entry.id)),
+    formats: new Set(current.outputFormatItems.map((entry) => entry.id)),
+  };
   const folderDb = new FolderDB(database);
   const promptDb = new PromptDB(database);
   const relationDb = new PromptRelationDB(database);
   const outputFormatDb = new PromptOutputFormatDB(database);
   for (const folder of orderParentsFirst(snapshot.folders, "folder")) {
-    folderDb.insertFolderDirect(folder);
+    if (!known.folders.has(folder.id)) folderDb.insertFolderDirect(folder);
   }
   for (const prompt of orderParentsFirst(snapshot.prompts, "prompt")) {
-    promptDb.insertPromptDirect(prompt);
+    if (!known.prompts.has(prompt.id)) promptDb.insertPromptDirect(prompt);
   }
   for (const version of snapshot.promptVersions) {
-    promptDb.insertVersionDirect(version);
+    if (!known.versions.has(version.id)) promptDb.insertVersionDirect(version);
   }
   for (const relation of snapshot.promptRelations) {
-    relationDb.insertRelationDirect(relation);
+    if (!known.relations.has(relation.id))
+      relationDb.insertRelationDirect(relation);
   }
   for (const item of snapshot.outputFormatItems) {
-    outputFormatDb.insertItemDirect(item);
+    if (!known.formats.has(item.id)) outputFormatDb.insertItemDirect(item);
   }
 }
 
@@ -213,7 +227,7 @@ function createStageDatabase(
       database.exec(SCHEMA_INDEXES);
       recordCurrentLegacySchemaMigrations(database);
       recordCurrentDatabaseMigration(database, 0);
-      populatePromptCatalog(database, snapshot);
+      insertMissingPromptGraphRows(database, snapshot);
       quickCheck(database);
     });
     create();
@@ -268,13 +282,25 @@ export function stagePromptCanonicalDatabase(
   canonicalRoot: string,
   targetDatabasePath: string,
 ): PromptCanonicalCatalogBuildResult {
+  const source = readPromptCanonicalGraph(canonicalRoot);
+  return stagePromptSnapshotDatabase(
+    source.snapshot,
+    targetDatabasePath,
+    source.manifest.createdAt,
+  );
+}
+
+export function stagePromptSnapshotDatabase(
+  snapshot: PromptCanonicalGraphSnapshot,
+  targetDatabasePath: string,
+  sourceCatalogCreatedAt: string,
+): PromptCanonicalCatalogBuildResult {
   if (fs.existsSync(targetDatabasePath)) {
     throw new Error(
       `canonical catalog destination already exists: ${targetDatabasePath}`,
     );
   }
-  const source = readPromptCanonicalGraph(canonicalRoot);
-  const normalizedSnapshot = normalizeSnapshotForCatalog(source.snapshot);
+  const normalizedSnapshot = normalizePromptGraphForDatabase(snapshot);
   assertLocalOwnership(normalizedSnapshot);
   const graphHash = calculatePromptCanonicalGraphHash(normalizedSnapshot);
   const parentPath = path.dirname(targetDatabasePath);
@@ -294,7 +320,7 @@ export function stagePromptCanonicalDatabase(
     fs.renameSync(stagePath, targetDatabasePath);
     return {
       databasePath: targetDatabasePath,
-      sourceCatalogCreatedAt: source.manifest.createdAt,
+      sourceCatalogCreatedAt,
       counts: counts(rebuilt),
       graphHash,
     };

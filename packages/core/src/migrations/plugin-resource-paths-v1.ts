@@ -81,8 +81,18 @@ function collectRelocations(root: string): Relocation[] {
       throw new Error("Plugin path migration recovery backup mismatch");
     moves.push({ source, target, backup, contentHash });
   }
-  const declared = readPromptCanonicalGraph(path.join(root, "data")).manifest
-    .files;
+  assertRelocationsOutsidePromptGraph(root, moves);
+  return moves;
+}
+
+function assertRelocationsOutsidePromptGraph(
+  root: string,
+  moves: Relocation[],
+): void {
+  const data = path.join(root, "data");
+  // Prompt's SQLite migration retires this optional cross-domain inventory.
+  if (!fs.existsSync(path.join(data, "catalog.json"))) return;
+  const declared = readPromptCanonicalGraph(data).manifest.files;
   for (const move of moves) {
     const prefix = `plugins/${path.basename(move.source)}/`;
     if (declared.some((file) => file.path.startsWith(prefix)))
@@ -90,7 +100,6 @@ function collectRelocations(root: string): Relocation[] {
         "Plugin path migration requires explicit repair of a graph-declared legacy directory",
       );
   }
-  return moves;
 }
 
 function copyVerified(source: string, destination: string, hash: string): void {
@@ -165,7 +174,8 @@ export function migratePluginResourcePathsV1(
             "Plugin path migration published bundle verification failed",
           );
       }
-      readPromptCanonicalGraph(path.join(root, "data"));
+      if (fs.existsSync(path.join(root, "data", "catalog.json")))
+        readPromptCanonicalGraph(path.join(root, "data"));
     },
   });
   return moves.length;

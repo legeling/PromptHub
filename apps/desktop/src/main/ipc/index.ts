@@ -54,11 +54,9 @@ import { createAgentProviderOfficialProfileService } from "../services/agent-pro
 import {
   coreAIConfigService,
   createRendererPersistenceStore,
-  type CoreAIConfigFile,
   type RendererPersistenceMigrationResult,
 } from "@prompthub/core";
 import { getUserDataPath } from "../runtime-paths";
-import { configureCanonicalGithubTokenReader } from "../settings/settings-readers";
 
 const REBINDABLE_DB_CHANNELS = [
   IPC_CHANNELS.PROMPT_CREATE,
@@ -412,22 +410,13 @@ function registerAllIpcGroups(
   const folderDB = new FolderDB(db);
   const skillDB = new SkillDB(db);
   const rendererPersistence = createRendererPersistenceStore({
+    database: db,
     rootPath: getUserDataPath(),
     encryption: safeStorage,
   });
-  configureCanonicalGithubTokenReader(() => {
-    const state = rendererPersistence.readHydratedStateSync();
-    const token = state.settings.githubToken;
-    return state.migrationComplete &&
-      typeof token === "string" &&
-      token.trim() &&
-      !/[\r\n\x00-\x1f\x7f]/.test(token)
-      ? token.trim()
-      : null;
-  });
 
   registerIpcGroup("prompt", () => registerPromptIPC(promptDB, folderDB, db));
-  registerIpcGroup("folder", () => registerFolderIPC(folderDB, promptDB));
+  registerIpcGroup("folder", () => registerFolderIPC(folderDB));
   registerIpcGroup("rules", () => registerRulesIPC());
   registerIpcGroup("settings", () =>
     registerSettingsIPC(db, {
@@ -552,26 +541,7 @@ function registerAllIpcGroups(
     registerAgentProviderProfileIPC(runtime.profileService);
     registerAgentCodexAccountIPC(runtime.codexAccountService);
     const providerSourceService = createAgentProviderSourceService({
-      readConfig: () => {
-        const state = rendererPersistence.readHydratedStateSync();
-        if (!state.migrationComplete) return coreAIConfigService.read();
-        return {
-          kind: "prompthub-ai-config",
-          version: 1,
-          updatedAt: new Date().toISOString(),
-          providers: Array.isArray(state.settings.aiProviders)
-            ? state.settings.aiProviders
-            : [],
-          models: Array.isArray(state.settings.aiModels)
-            ? state.settings.aiModels
-            : [],
-          modelRouteDefaults:
-            state.settings.modelRouteDefaults &&
-            typeof state.settings.modelRouteDefaults === "object"
-              ? state.settings.modelRouteDefaults
-              : {},
-        } as CoreAIConfigFile;
-      },
+      readConfig: () => coreAIConfigService.read(),
       createProfile: (request) => runtime.profileService.create(request),
       importPiProvider: ({ provider, secret }) => {
         const context = getAgentConfigContext("pi");

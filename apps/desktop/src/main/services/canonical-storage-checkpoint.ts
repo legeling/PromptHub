@@ -175,6 +175,7 @@ export function verifyCanonicalStorageCheckpointContent(
   canonicalPathValue: string,
   manifestValue: unknown,
   catalogPath?: string,
+  metadataSource: "portable-bundles" | "local-sqlite" = "portable-bundles",
 ): CanonicalStorageCheckpointManifest {
   const canonicalPath = path.resolve(canonicalPathValue);
   const manifest = parseManifest(manifestValue);
@@ -186,13 +187,28 @@ export function verifyCanonicalStorageCheckpointContent(
       throw new Error("Canonical MCP snapshot digest mismatch");
     readMcpStorageSnapshotLibrary(mcpImage);
   }
-  readCanonicalStorageShadow(canonicalPath);
+  if (metadataSource === "local-sqlite" && !catalogPath)
+    throw new Error(
+      "Local SQLite checkpoint verification requires its catalog",
+    );
+  if (metadataSource === "portable-bundles")
+    readCanonicalStorageShadow(canonicalPath);
   const rebuiltPath = createOwnedTemporaryDatabasePath(
     path.dirname(canonicalPath),
     "catalog-verify",
   );
   try {
     const rebuilt = stageCanonicalStorageDatabase(canonicalPath, rebuiltPath, {
+      agentProviderSourceDatabasePath: catalogPath,
+      ...(metadataSource === "local-sqlite"
+        ? {
+            operationalSourceDatabasePath: catalogPath,
+            skillSourceDatabasePath: catalogPath,
+            ruleSourceDatabasePath: catalogPath,
+            generationSourceDatabasePath: catalogPath,
+            pluginSourceDatabasePath: catalogPath,
+          }
+        : {}),
       mcpSourceDatabasePath:
         manifest.mcpStateSha256 === undefined ? catalogPath : mcpImage,
     });

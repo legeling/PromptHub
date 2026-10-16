@@ -188,8 +188,15 @@ applyBackgroundImageVars(useSettingsStore.getState());
 /** Load settings owned by the Electron main process into the renderer store. */
 export async function loadSettingsFromMainProcess(): Promise<void> {
   if (typeof window === "undefined") return;
-  const settings = await window.api?.settings?.get?.();
-  if (!settings) return;
+  if (typeof window.api?.settings?.get !== "function") {
+    throw new Error("Current settings bridge is unavailable");
+  }
+  const settings = await window.api.settings.get();
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    throw new Error(
+      "Invalid settings snapshot from the current settings bridge",
+    );
+  }
   const aiSettings = settings as Settings & {
     aiProvider?: string;
     aiApiProtocol?: AIProtocol;

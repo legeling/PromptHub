@@ -11,20 +11,21 @@ import { config } from './config.js';
  * <DATA_ROOT>/
  *   data/
  *     prompthub.db          SQLite 数据库
- *     prompts/              共享文件投影，记录 ownerUserId / visibility
- *     skills/               共享文件投影，记录 ownerUserId / visibility
- *     rules/<userId>/       用户隔离的 Rule 文件与版本
+ *     prompts/              历史升级输入，由启动迁移保全后退役
+ *     skill-files/          Skill 实际包，元数据和归属在 SQLite
+ *     skills/               历史镜像，启动迁移后退役
+ *     rule-files/<userId>/  用户隔离的 Rule 正文与历史（元数据在 SQLite）
  *     assets/<userId>/{images,videos}/   用户媒体
+ *   cache/prompt-workspace/  显式导出的 Prompt Markdown，不参与启动或 CRUD
  *   config/
- *     settings/<userId>.json   用户设置镜像
+ *     settings/<userId>.json   历史设置迁移输入，完成后退役
  *     devices/<userId>.json    设备注册表
  *   logs/                   日志（预留）
  *   backups/                升级/手动备份（预留）
  * ```
  *
- * 本模块是**纯派生**的——没有 legacy fallback、没有自动迁移，因为 Web
- * 服务进程独占文件系统，用户不会手动动这些文件。兼容旧路径的工作由
- * 运维侧的卷挂载迁移完成（参考 README / docker-compose）。
+ * 本模块只派生当前路径。历史 Prompt Markdown 的一次性迁移由数据库
+ * 初始化调用 Core 迁移执行；缓存导出不参与启动读取。
  */
 
 export type MediaKind = 'images' | 'videos';
@@ -67,16 +68,16 @@ export function getDatabasePath(): string {
   return path.join(getDataDir(), 'prompthub.db');
 }
 
-export function getPromptsDir(): string {
-  return path.join(getDataDir(), 'prompts');
+export function getPromptWorkspaceExportDir(): string {
+  return path.join(getRootDir(), "cache", "prompt-workspace");
 }
 
 export function getSkillsDir(): string {
-  return path.join(getDataDir(), 'skills');
+  return path.join(getDataDir(), 'skill-files');
 }
 
 export function getRulesDir(): string {
-  return path.join(getDataDir(), 'rules');
+  return path.join(getDataDir(), 'rule-files');
 }
 
 export function getAssetsDir(): string {
@@ -125,14 +126,13 @@ export function getWebStorageTopology(userId: string) {
     kind: 'self-hosted-multi-user' as const,
     databasePath: getDatabasePath(),
     shared: {
-      promptsPath: getPromptsDir(),
+      promptWorkspaceExportPath: getPromptWorkspaceExportDir(),
       skillsPath: getSkillsDir(),
     },
     user: {
       rulesPath: getUserRulesDir(userId),
       imagesPath: getMediaDir(userId, 'images'),
       videosPath: getMediaDir(userId, 'videos'),
-      settingsPath: getUserSettingsPath(userId),
       devicesPath: getUserDevicesPath(userId),
     },
   };

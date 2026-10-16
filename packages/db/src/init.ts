@@ -1,7 +1,11 @@
+import { migrateGenerationMetadata } from "./generation-schema";
+import { migrateRuleOwnership } from "./rule-schema";
 import Database from "./adapter";
 import path from "path";
 import fs from "fs";
 import { SCHEMA_TABLES, SCHEMA_INDEXES } from "./schema";
+import { STORAGE_PUBLICATION_SCHEMA } from "./storage-publication";
+import { PLUGIN_SCHEMA } from "./plugin";
 import {
   acquireDatabaseClientLease,
   inspectDatabaseClientLeases,
@@ -438,6 +442,9 @@ export function initDatabase(
   // Run all migrations in a single transaction to avoid lock contention.
   // Each table's column list is fetched exactly once and reused.
   const runMigrations = () => {
+    db!.exec(PLUGIN_SCHEMA);
+    // Schema v5 adds only operational receipts; existing business rows stay intact.
+    db!.exec(STORAGE_PUBLICATION_SCHEMA);
     // ── schema_migrations table ───────────────────────────────────────────────
     db!.exec(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -549,13 +556,8 @@ export function initDatabase(
       markMigration("agent_conversation_handoff_launch_v2");
     }
 
-    if (
-      !hasMigration("drop_agent_conversation_metadata_deleted_at_v1")
-    ) {
-      const metadataColumns = columnNames(
-        db!,
-        "agent_conversation_metadata",
-      );
+    if (!hasMigration("drop_agent_conversation_metadata_deleted_at_v1")) {
+      const metadataColumns = columnNames(db!, "agent_conversation_metadata");
       if (metadataColumns?.has("deleted_at")) {
         db!.exec(`
           ALTER TABLE agent_conversation_metadata
@@ -1054,6 +1056,8 @@ export function initDatabase(
     const initializeSchema = db.transaction(() => {
       db!.exec(SCHEMA_TABLES);
       runMigrations();
+      migrateRuleOwnership(db!);
+      migrateGenerationMetadata(db!);
       db!.exec(SCHEMA_INDEXES);
       hooks?.beforeMigrationCommit?.();
       recordCurrentDatabaseMigration(db!, Date.now() - migrationStartedAt);
@@ -1132,3 +1136,56 @@ export function isDatabaseEmpty(database: Database.Database): boolean {
 }
 
 export { db };
+
+/** File migration calls this in its publication transaction, after durable payload staging. */
+export function completeSkillPayloadMigration(
+  database: Database.Database,
+  migrationName: string,
+): void {
+  database.run("UPDATE skills SET content = NULL");
+  database.run(
+    "UPDATE skill_versions SET content = NULL, files_snapshot = NULL",
+  );
+  database.run(
+    "INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+    migrationName,
+    Date.now(),
+  );
+  ensureSkillPayloadGuards(database);
+}
+
+export function ensureSkillPayloadGuards(database: Database.Database): void {
+  const guardNames = [
+    "skills_reject_sql_payload_insert",
+    "skills_reject_sql_payload_update",
+    "skill_versions_reject_sql_payload_insert",
+    "skill_versions_reject_sql_payload_update",
+  ];
+  // A preserved SQL catalog may lack triggers; normal opens need only a metadata lookup.
+  const count = database.get(
+    `SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'trigger' AND name IN (${guardNames.map(() => "?").join(",")})`,
+    ...guardNames,
+  );
+  if (
+    count &&
+    typeof count === "object" &&
+    "count" in count &&
+    count.count === guardNames.length
+  )
+    return;
+
+  // Retired columns remain solely for opening pre-migration databases and portable staging.
+  // Runtime writers must use SkillMetadataDB; fail visibly if an old writer bypasses it.
+  database.exec(`
+    CREATE TRIGGER IF NOT EXISTS skills_reject_sql_payload_insert BEFORE INSERT ON skills
+      WHEN NEW.content IS NOT NULL BEGIN SELECT RAISE(ABORT, 'Skill content must be stored in files'); END;
+    CREATE TRIGGER IF NOT EXISTS skills_reject_sql_payload_update BEFORE UPDATE OF content ON skills
+      WHEN NEW.content IS NOT NULL BEGIN SELECT RAISE(ABORT, 'Skill content must be stored in files'); END;
+    CREATE TRIGGER IF NOT EXISTS skill_versions_reject_sql_payload_insert BEFORE INSERT ON skill_versions
+      WHEN NEW.content IS NOT NULL OR NEW.files_snapshot IS NOT NULL
+      BEGIN SELECT RAISE(ABORT, 'Skill history must be stored in files'); END;
+    CREATE TRIGGER IF NOT EXISTS skill_versions_reject_sql_payload_update BEFORE UPDATE OF content, files_snapshot ON skill_versions
+      WHEN NEW.content IS NOT NULL OR NEW.files_snapshot IS NOT NULL
+      BEGIN SELECT RAISE(ABORT, 'Skill history must be stored in files'); END;
+  `);
+}

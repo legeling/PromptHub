@@ -102,7 +102,6 @@ function escapeLikePattern(value: string): string {
 export class PromptService {
   private readonly db = getServerDatabase();
   private readonly promptDb = new PromptDB(this.db);
-  private readonly folderDb = new FolderDB(this.db);
   private readonly relationDb = new PromptRelationDB(this.db);
   private readonly outputFormatDb = new PromptOutputFormatDB(this.db);
 
@@ -113,21 +112,20 @@ export class PromptService {
     // permissions: a non-admin targeting a shared folder keeps the original
     // 422 validation failure instead of surfacing a different error class.
     const visibility =
-      data.visibility ??
-      this.resolveInferredVisibility(actor, data.folderId, 'private', 'create');
+      data.visibility ?? this.resolveInferredVisibility(actor, data.folderId, 'private', 'create');
     this.assertCanCreate(actor, visibility);
     this.assertFolderAllowed(actor, data.folderId ?? undefined, visibility);
     this.assertMediaReferencesAllowed(data.images, 'image');
     this.assertMediaReferencesAllowed(data.videos, 'video');
 
-    const prompt = this.promptDb.create(data);
-    this.db
-      .prepare('UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?')
-      .run(actor.userId, visibility, prompt.id);
+    return this.db.transaction(() => {
+      const prompt = this.promptDb.create(data);
+      this.db
+        .prepare('UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?')
+        .run(actor.userId, visibility, prompt.id);
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
-    return this.getById(actor, prompt.id);
+      return this.getById(actor, prompt.id);
+    })();
   }
 
   list(actor: PromptActor, query: SearchQuery): PromptListResult {
@@ -192,25 +190,29 @@ export class PromptService {
         ? this.resolveInferredVisibility(actor, nextFolderId, row.visibility, 'update')
         : row.visibility);
     if (nextVisibility !== row.visibility && actor.role !== 'admin') {
-      throw new PromptServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can change shared visibility');
+      throw new PromptServiceError(
+        403,
+        ErrorCode.FORBIDDEN,
+        'Only admin can change shared visibility',
+      );
     }
 
     this.assertFolderAllowed(actor, nextFolderId ?? undefined, nextVisibility);
     this.assertMediaReferencesAllowed(data.images, 'image');
     this.assertMediaReferencesAllowed(data.videos, 'video');
 
-    const prompt = this.promptDb.update(id, data);
-    if (!prompt) {
-      throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt not found');
-    }
+    return this.db.transaction(() => {
+      const prompt = this.promptDb.update(id, data);
+      if (!prompt) {
+        throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt not found');
+      }
 
-    if (nextVisibility !== row.visibility) {
-      this.db.prepare('UPDATE prompts SET visibility = ? WHERE id = ?').run(nextVisibility, id);
-    }
+      if (nextVisibility !== row.visibility) {
+        this.db.prepare('UPDATE prompts SET visibility = ? WHERE id = ?').run(nextVisibility, id);
+      }
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
-    return this.getById(actor, id);
+      return this.getById(actor, id);
+    })();
   }
 
   delete(actor: PromptActor, id: string): void {
@@ -221,8 +223,6 @@ export class PromptService {
     if (!deleted) {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt not found');
     }
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
   move(actor: PromptActor, id: string, parentId: string | null, order: number): Prompt {
@@ -245,7 +245,6 @@ export class PromptService {
       );
     }
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
     return this.getById(actor, id);
   }
 
@@ -313,15 +312,14 @@ export class PromptService {
     const visibility = prompt.visibility ?? 'private';
     this.assertCanCreate(actor, visibility);
 
+    const existing = this.getRow(prompt.id);
+    if (existing) this.assertCanWrite(actor, existing);
+    this.assertFolderAllowed(actor, prompt.folderId ?? undefined, visibility);
     this.promptDb.insertPromptDirect({
       ...prompt,
+      ownerUserId: actor.userId,
       visibility,
     });
-    this.db
-      .prepare('UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?')
-      .run(actor.userId, visibility, prompt.id);
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
 
     return this.getById(actor, prompt.id);
   }
@@ -351,8 +349,6 @@ export class PromptService {
       .prepare('UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?')
       .run(actor.userId, 'private', duplicated.id);
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
     return this.getById(actor, duplicated.id);
   }
 
@@ -370,8 +366,6 @@ export class PromptService {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt not found');
     }
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
     return version;
   }
 
@@ -379,10 +373,7 @@ export class PromptService {
     const row = this.getRequiredRow(version.promptId);
     this.assertCanWrite(actor, row);
 
-    this.promptDb.insertVersionDirect(version);
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
-    return version;
+    return this.promptDb.insertVersionDirect(version);
   }
 
   deleteVersionById(actor: PromptActor, versionId: string): void {
@@ -405,16 +396,13 @@ export class PromptService {
     if (!deleted) {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt version not found');
     }
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
   deleteVersion(actor: PromptActor, id: string, versionId: string): void {
     const row = this.getRequiredRow(id);
     this.assertCanWrite(actor, row);
 
-    const versionRow = this.db.prepare('SELECT prompt_id FROM prompt_versions WHERE id = ?').get(versionId) as
-      | { prompt_id: string }
+    const versionRow = this.db.prepare('SELECT prompt_id FROM prompt_versions WHERE id = ?').get(versionId) as { prompt_id: string }
       | undefined;
     if (!versionRow || versionRow.prompt_id !== id) {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt version not found');
@@ -424,8 +412,6 @@ export class PromptService {
     if (!deleted) {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt version not found');
     }
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
   rollback(actor: PromptActor, id: string, version: number): Prompt {
@@ -436,8 +422,6 @@ export class PromptService {
     if (!prompt) {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt version not found');
     }
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
 
     return this.getById(actor, id);
   }
@@ -489,7 +473,6 @@ export class PromptService {
 
       return Array.from(new Set(tags.map((tag) => (tag === oldTag ? newTag : tag))));
     });
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
   deleteTag(actor: PromptActor, tag: string): PromptTagDeleteResult {
@@ -502,7 +485,7 @@ export class PromptService {
   }
 
   syncWorkspace(): void {
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
+    syncPromptWorkspaceFromDatabase(this.promptDb, new FolderDB(this.db));
   }
 
   private getVisibleRows(actor: PromptActor, query: SearchQuery, paginateInSql: boolean): PromptListRow[] {
@@ -758,7 +741,9 @@ export class PromptService {
   }
 
   private canReadRelation(actor: PromptActor, relation: PromptRelation): boolean {
-    return this.canReadPrompt(actor, relation.sourcePromptId) && this.canReadPrompt(actor, relation.targetPromptId);
+    return (
+      this.canReadPrompt(actor, relation.sourcePromptId) && this.canReadPrompt(actor, relation.targetPromptId)
+    );
   }
 
   private canReadOutputFormat(actor: PromptActor, item: OutputFormatItem): boolean {
@@ -770,7 +755,9 @@ export class PromptService {
 
   private canReadPrompt(actor: PromptActor, id: string): boolean {
     const row = this.getRow(id);
-    return row !== null && (row.visibility === 'shared' || row.owner_user_id === actor.userId);
+    return (
+      row !== null && (row.visibility === 'shared' || row.owner_user_id === actor.userId)
+    );
   }
 
   private runRelationMutation(mutation: () => PromptRelation | null): PromptRelation {
@@ -812,8 +799,7 @@ export class PromptService {
   }
 
   private getRow(id: string): PromptRow | null {
-    const row = this.db.prepare('SELECT id, owner_user_id, visibility FROM prompts WHERE id = ?').get(id) as
-      | PromptRow
+    const row = this.db.prepare('SELECT id, owner_user_id, visibility FROM prompts WHERE id = ?').get(id) as PromptRow
       | undefined;
     return row ?? null;
   }
@@ -867,8 +853,7 @@ export class PromptService {
   }
 
   private getFolderRow(id: string): FolderRow | null {
-    const row = this.db.prepare('SELECT id, owner_user_id, visibility FROM folders WHERE id = ?').get(id) as
-      | FolderRow
+    const row = this.db.prepare('SELECT id, owner_user_id, visibility FROM folders WHERE id = ?').get(id) as FolderRow
       | undefined;
     return row ?? null;
   }
@@ -959,10 +944,14 @@ export class PromptService {
       }
 
       if (sortBy === 'createdAt') {
-        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * direction;
+        return (
+          (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * direction
+        );
       }
 
-      return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * direction;
+      return (
+        (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * direction
+      );
     });
 
     return copy;

@@ -83,6 +83,7 @@ Agent 分发的当前契约以 [FR-AGENT-138](../../changes/active/agent-managem
 - 删除链接导入的 My Skills 记录时，只能删除 PromptHub 记录和 PromptHub 拥有的分发链接；不得删除外部源目录。
 - 通过 backup/restore 恢复 Skill 时，`local_repo_path` 属于机器本地的写入目标，不能作为可移植数据回放。恢复必须从备份的内容和文件树重建当前机器的 PromptHub 托管 package，同时保留来源标识、来源地址和 package 对账基线。
 - Desktop 自部署 Web 备份和兼容期 live-sync 必须在发送前移除 `local_repo_path` 以及非 HTTP(S) 的 `source_url`、`content_url` 和本地 icon 路径；Skill 正文、文件树和可移植的远程来源元数据必须保留。旧 live-sync 拉取合并不能只按数据库 ID 判断同一 Skill，必须优先按 `source_id`、package/content fingerprint 或旧记录规范化名称对齐，并同步重映射版本与文件快照，避免重复名称和孤儿文件写入。
+- Web 服务器的备份恢复只按稳定 Skill ID 选择现有记录，不得通过名称认领其他用户的 Skill；元数据、版本和实际包统一接受或跳过。服务器存储和旧镜像迁移见 [Web 存储约定](web.md#10-web-skill-package-storage)。
 - Agent Skills 页的 inventory 以当前 Agent 原生 Skill 目录为事实来源。
   `agentScanState` 只允许作为当前 renderer session 的派生缓存，不得跨应用重启
   持久化后阻止新的文件扫描。直接打开 Agent Skills 且本 session 尚无结果时，
@@ -150,16 +151,16 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - Cloud release 的 `store-package-sha256-v1` 只用于远程交付 intent 的版本期望；桌面本地 package 仍必须计算并持久化 `skill-package-sha256-v1`，不得把两种 fingerprint 直接比较或互相标记。
 - Cloud 多文件 package 写入失败时必须恢复已写入文件并清理新建文件；安装失败不得留下半成品 Skill，更新失败不得提前刷新来源基线。
 - 扫描导入统一使用 package lifecycle，不先调用 content-only create 再复制或更新路径。只有完整 package、来源基线与库记录提交后才计为成功；失败与补偿由生命周期所有者报告，renderer 不执行第二次回滚。Copy 与 Link 均先暂存完整有效目录验证，来源元数据取实际入口而非陈旧扫描结果；用户标签与来源标签分开。
-- Link 的 `local_repo_path` 保持外部目录。设备来源绑定的可选 `localRepoPath` 只记录外部目录，缺省表示托管副本；与 portable bundle 一次发布/删除，本机启动对账恢复该路径，跨设备不套用。现有缺省绑定不改变语义，无 SQLite schema 变化；历史已丢失的 Link 身份不能猜测恢复，需要重新选择目录。回退前保留 data/config 备份；旧程序不支持新 Link 记录，不得继续写入该 profile。外部包仍遵守同一 ignore/路径/容量校验，不删除外部来源。
+- Link 的 `source_url` 与 `local_repo_path` 由本机 SQLite 保存，portable 导出排除本机路径。旧设备绑定只由 `skill-sqlite-v1` 在升级时读取、核对设备身份并保全到 recovery，然后退出正常路径；不能从缓存猜测 Link 身份。外部来源不删除。升级前保留独立备份，旧程序不得写入升级后的 profile。
 - Link 元数据编辑从实际外部包暂存完整 inventory，仅原子替换外部 `SKILL.md`，在同一 finalize 发布元数据、包和历史；失败恢复原入口，已提交错误不再回滚。外部辅助文件不被替换，用户标签仍不进入来源 frontmatter。入口改动检测防止覆盖陈旧编辑；无 schema 或新目录布局。`commitLinkedSkillEdit` 顺序保留文件核验、发布及补偿，允许超过 50 行以一起审查提交边界。
 
 ### 2.1.1 Library CRUD command boundary
 
-- Desktop 创建、编辑、改名和删除只使用已迁移完成的 canonical 文件权威。移除 CRUD 中旧式按名称移动托管目录、独立 frontmatter 补写、renderer 再写 SKILL.md 和忽略失败的路径；未完成迁移明确报错，不启动第二套存储逻辑。
+- Desktop 与 CLI 的库元数据由 SQLite 持有，完整受管包位于 `data/skills/<encoded-id>/files/`。创建、编辑、改名和删除使用 Core 的同一 SQL/文件发布边界，不按 authority marker 切换业务实现。Web 镜像与历史正文/快照的后续转换状态见 Foundation 计划。
 - 首启等待 renderer persistence 时，迁移 IPC 必须等待主进程接续已有 authority 发布和数据库/IPC 重新绑定完成后再确认；失败明确返回且允许重试，不要求用户重启，不移除写入保护。CLI/Web 没有 renderer 迁移前置条件。
-- 创建先准备入口文件，再一次发布完整 bundle。编辑从 canonical inventory 暂存完整包，正文、元数据、fingerprint 和修改前版本在一次 finalize 中发布；用户 tags 不写入来源 frontmatter，未知 YAML 字段和二进制资源保留。仅收藏/用户标签等修改不复制暂存包。源布局和 schema 不变，缓存仍使用稳定 Skill ID。
+- 创建先准备入口文件；编辑从实际包目录暂存完整包，入口正文、元数据、fingerprint 和修改前版本通过 SQLite receipt journal 一起提交。用户 tags 不写入来源 frontmatter，未知 YAML 字段、二进制及受管包原有 sidecar 保留；导入与分发继续排除来源 sidecar。仅收藏/用户标签等修改不复制包。不再生成 `skill.json` 或可写缓存副本。
 - 改名只迁移明确安装的目标，不传旧名/新名兼容清理列表；目标冲突提前失败。原分发副本暂存用于失败恢复，符号链接保持模式。全部目标处理完才提交库内名称；失败保留旧名称并恢复分发，恢复失败明确报告保留的临时备份位置。备份、分发和清理按目标顺序执行，有界占用为本次包和已部署副本总大小。
-- 删除先撤回指定分发，再由 canonical 层删除 bundle 和缓存。任何前置撤回失败保留库内记录供重试，不显示完成；外部来源不删除。调用者可保留 copy，symlink 必须撤回。canonical 提交后缓存清理失败沿用已提交错误语义，不能伪装为未提交或完整成功。
+- 删除先撤回指定分发，再由 Core 一起删除 SQLite 记录与受管包。前置撤回失败保留库内记录供重试；外部来源不删除。调用者可保留 copy，symlink 必须撤回。提交回执用于判断中断后的完成或回滚，不以失败后的 SQL 补偿模拟原子性。
 - Desktop 和 CLI 使用同一份 Skill 目标替换函数：在同级暂存复制/链接完成后移动旧目标并发布新目标；发布前失败恢复旧目标。发布后的备份清理失败明确报错且保留新目标，不用可能已部分删除的备份覆盖它。
 - 来源更新携带检查时的完整 package fingerprint，暂存结果不匹配时在写入前返回 conflict。预览只包含有界文本和摘要，不能用预览重建二进制包；检查和实际获取仍各执行一次，避免另建长期暂存缓存及其过期协议。
 - 暂存与历史快照成本为 O(package bytes + file count)，分发为 O(sum of target package bytes)，无递归请求或无界并发。已有 canonical 发布失败恢复仍适用；回退程序前应保留独立备份，不改写用户源目录。
@@ -175,9 +176,9 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - `apps/desktop/tests/integration/skill-public-workflow.test.ts` 从生产 preload API 和完整 IPC 注册入口执行真实服务、磁盘 SQLite、首次 canonical 迁移与关闭重开。正常流程覆盖手工创建、元数据和嵌套文件编辑、版本、完整目录导入、二进制、copy/symlink 分发、改名、来源更新、卸载和删除；之后从同一 IPC 边界验证非法输入、路径穿越、缺失入口和陈旧来源，检查错误类型与持久化结果。Electron 消息运输及隔离 home 属于测试环境边界，不替换业务服务。
 - 该功能用例由现有 desktop integration shards 自动纳入。真实按钮流程 `agent-skill-lifecycle.spec.ts` 纳入既有 E2E smoke；`skill-create-structure.spec.ts` 检查当前 canonical bundle 和 workspace，移除过期 variant container 断言。接口流程与 E2E 证据分别记录，mock 组件/store 测试只证明局部交互。
 - 多步骤正常流程测试保留顺序断言，允许超过 50 行以直接呈现输入、结果和关闭重开边界；文件 inventory 一次线性遍历，只在临时小包上比较完整字节。此前 170 项聚焦测试与覆盖率仅证明各自局部边界，不作为完整功能可用的结论。
-- 首轮真实流程发现本地导入的 `source_url` 在 catalog 重建后丢失。`config/devices/skill-sources/<skill-id>.json` 现在持有本设备的本地来源地址，portable bundle 仍不保存本机路径；设备标识不匹配时不应用该路径。来源记录与 Skill bundle 在同一 canonical publication 内新增、更新和删除，失败一起回滚。启动投影通过设备记录恢复来源，不从 workspace 猜测来源。
+- 本地来源和 Link 身份由 SQLite 保存。旧 `config/devices/skill-sources/<skill-id>.json` 是一次性迁移输入，不再正常新增或更新。checkpoint 的设备字段从其 SQL 操作源保全，portable 包不携带设备路径。
 - 升级在首次 authority 发布或首次 catalog 对账之前，一次性将现有 SQLite 本地来源移交给设备配置，完成标记位于 `data/operations/migrations/skill-source-bindings-v1.json`；标记和来源记录原子发布，之后不再保留 SQLite 回退读取路径。已被旧程序丢失的来源不可凭包内容恢复，需要重新选择来源；回退旧程序前保留完整 data/config 备份，旧程序不能消费新设备记录。单条绑定读取上限 16 KiB，迁移一次 O(skill count)，正常修改仅写本 Skill 的小型绑定。
-- 包操作必须等待启动恢复完成后再执行，恢复失败明确拒绝写入；IPC 注册返回就绪 Promise，隔离测试在关闭数据库前等待该任务。缓存标记 `.canonical-bundle-hash` 仅属于 workspace，不能进入包快照、导出或平台 copy。
+- 包操作等待启动恢复完成，恢复失败明确拒绝写入；IPC 注册返回就绪 Promise。旧缓存标记 `.canonical-bundle-hash` 只在升级边界处理，不进入当前包、导出或分发。
 - 2026-09-12 非 GUI 验证：两条正常公共接口流程和 14 组黑盒异常输入通过，实际检查完整字节、版本、安装状态、关闭重开及外部来源保留。相关目录操作、authority/startup、IPC 与功能用例 7 文件 131 项通过；另有 canonical lifecycle 5 项、Core 来源绑定/Skill DB/catalog 对账 43 项通过。Desktop TypeScript、额外将本次桌面测试纳入 compiler program 的类型检查、相关 ESLint、文件大小门禁和 Desktop main/preload/renderer 构建通过。没有以覆盖率数字证明功能；GUI 实际点击、真实网络来源、跨设备备份恢复、跨平台及完整发布 harness 未执行，不能据此宣称全部应用功能可用。临时测试目录和进程已回收。
 
 ### 2.2 Standalone Content Safety Scan Contract
@@ -255,12 +256,9 @@ My Skills 批量入口必须明确包含安装与卸载；商店批量导入入�
 - 翻译是否仍然有效必须基于当前 `SKILL.md` 内容 fingerprint 判断，而不是仅凭页面内存态。
 - 当 `SKILL.md` 变化导致旧译文失效时，UI 必须回退原文并提供明确的重翻入口。
 - `.prompthub/` 目录属于 PromptHub 内部文件空间，默认不参与普通文件树、导出和分发流程。
-- canonical file authority 启用后，`data/skills/<skill-id>/` 只允许保存可验证的
-  canonical Skill bundle；安装/更新暂存必须位于 `operations/`，不得在该目录旁创建
-  legacy managed container 或把 `.prompthub` 管理元数据混入 package payload。
-- canonical 安装/更新直接从已验证的暂存 package 原子发布 bundle，再物化
-  `cache/skill-workspaces/<skill-id>` 可写工作区。SQLite finalize、版本快照和 bundle
-  发布任一步失败时必须恢复旧状态，暂存目录由生命周期清理。
+- 当前完整受管包固定在 `data/skills/<skill-id>/files/`；安装与更新暂存在
+  `data/operations/`，不再生成 `cache/skill-workspaces/`。SQLite finalize 与文件
+  由同一次发布协调，失败恢复旧状态；生命周期清理暂存，旧安装恢复记录只在升级读取。
 
 ### 5. Stable Internal Sources
 
@@ -293,10 +291,18 @@ When historical Skill plans or test rounds are still useful but no longer curren
 
 ## Lossless package snapshots
 
-Canonical Skill bundles own package bytes; working caches are rebuildable. Metadata
-updates retain canonical files when a cache is missing, and managed edits publish a
-validated complete package before replacing the cache. An explicitly invalid source
-is an error, not an empty package. Concurrent stale edits require reload/retry.
+SQLite owns Skill metadata and version identities. The managed package is the single
+current filesystem copy; there is no writable cache to reconstruct. Metadata-only edits
+do not rewrite package bytes. Reads never fabricate missing files from SQL content.
+Explicit import/restore may publish a supplied complete package into an existing
+SQL record without a package path; it validates the supplied entrypoint and bytes.
+An explicitly invalid replacement source fails without changing the prior package.
+Concurrent stale edits require reload/retry.
+
+CLI deletion uses the same SQL/package publication boundary. An explicit
+`--purge-managed-repo` request must not remove files before SQL commits; a failed
+delete retains both the row and managed bytes. Managed packages are removed with
+their library record, while external source directories remain intact.
 
 Persistence snapshots are separate from file previews. Text remains the historical
 `{ relativePath, content }` shape; non-text bytes carry `encoding: "base64"`. All
@@ -309,3 +315,59 @@ and sync capability 2. Raw WebDAV/S3 binary snapshots have a non-JSON version pr
 so old readers fail before restoration. Do not use an old client with a writable
 upgraded root; downgrade from an independently retained pre-upgrade backup. Package
 limits remain the shared Skill limits; byte snapshots do not inherit preview limits.
+
+### Current and historical payload ownership (2026-10-16)
+
+Core `SkillStorageDB` is the Desktop/CLI file owner and is also used by Web with
+its server root. SQLite owns Skill metadata, source bindings, version IDs,
+ordinals, notes and counters. Current text is read from the registered package's
+`SKILL.md`. Managed packages use `data/skills/<encoded-id>/files/` on Desktop/CLI
+and `data/skill-files/<encoded-id>/files/` on Web. Explicit linked Desktop packages
+remain external; migration does not write to those external directories.
+
+Historical payloads use `<skills-root>/.prompthub/versions/<encoded-skill-id>/<encoded-version-id>/`, outside discoverable package directories:
+`content.md` holds optional historical text, `files/` holds exact snapshot bytes,
+and `index.json` records only content presence and snapshot file paths/encodings.
+An absent file snapshot and an empty file snapshot remain distinct. Missing current packages retain metadata and annotations with absent content; body reads, edits and distribution fail without reconstructing files. Version
+metadata is not mirrored into this index. Missing or invalid referenced history
+fails visibly; it is never replaced with empty content or a SQL fallback.
+
+`skill-payload-files-v1` follows the existing metadata/package migration, preserves
+a database safety point, stages and validates the history files, and clears
+`skills.content`, `skill_versions.content` and `skill_versions.files_snapshot`
+inside the same receipt transaction as file publication. These nullable columns
+are retained only for historical import/staging; runtime triggers reject payload
+writes after migration. The current runtime uses `SkillMetadataDB` through Core.
+Fresh and upgraded roots run the same migration. A failed publication retains or
+restores the old SQL and files; reopening recovers its receipt before retrying.
+Downgrade requires the paired pre-upgrade database safety point and package files;
+do not delete the migration marker or re-enable old SQL writers in place.
+
+Normal reads, version save/delete/rollback, portable export/restore, Web backup
+and causal Skill sync include these payloads. Portable staging may use its
+explicit legacy SQL codec while building a verified transport artifact; accepted
+runtime roots convert it before opening normal operations. History migration
+retains only version identities and stages one decoded snapshot at a time.
+
+Upgrade, injected failure recovery and two-reopen checks pass against real SQLite
+and files, including binary history and linked-package preservation. The affected
+check results are recorded in the Foundation implementation record; these checks
+do not establish native GUI, remote-provider or release acceptance.
+
+The Desktop initializer must run `skill-payload-files-v1` immediately after
+`skill-sqlite-v1`, before exposing Skill IPC. Omitting this step creates file
+history without its migration marker and breaks checkpoint export or reopen.
+The full release gate exposed this entrypoint gap; portable recovery acceptance
+also asserts the marker and empty SQL payload columns. The corrected candidate
+passes all 40 release checks in 1,543.2 seconds with
+2,612 selected source/test/configuration hashes unchanged. Real-provider and
+signed/notarized cross-platform upgrade acceptance remain separate.
+
+Historical Skill bundles may contain distinct resource IDs with the same source
+binding. Adoption preserves every ID, package and history. An existing SQL binding
+keeps its owner; other colliding records become `detached` with no active
+`source_id`. If SQL has no owner, all ambiguous bindings are detached rather than
+choosing one by directory order. Exact original metadata, including source IDs,
+remains in the migration recovery bundles. Runtime source uniqueness is unchanged.
+The local native startup exposed this previously unresolved legacy-profile case;
+the prior 40-check result did not cover that actual profile.

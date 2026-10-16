@@ -10,7 +10,7 @@ import {
   computeSkillPackageFingerprintV1Sync,
   SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
 } from "@prompthub/shared/utils/skill-source-update";
-import { getSkillsDir } from "../../runtime-paths";
+import { getOperationsDir } from "../../runtime-paths";
 import {
   parseSkillMd,
   sanitizeProtocolType,
@@ -212,24 +212,6 @@ export async function linkRepoToTarget(
   );
 }
 
-export async function saveRepo(
-  skillName: string,
-  sourceDir: string,
-): Promise<string> {
-  const managedSkillsDir = getSkillsDir();
-  const destinationDir = path.join(
-    managedSkillsDir,
-    validateSkillName(skillName),
-  );
-  await fs.mkdir(managedSkillsDir, { recursive: true });
-
-  await validateRepoPackageInventory(sourceDir);
-  const shouldIgnore = await loadSkillPackageIgnoreMatcher(sourceDir);
-  await replaceSkillRepo(sourceDir, destinationDir, shouldIgnore);
-
-  return destinationDir;
-}
-
 export async function copyRepoToPlatform(
   sourceDir: string,
   destinationDir: string,
@@ -240,20 +222,6 @@ export async function copyRepoToPlatform(
   }
   const shouldIgnore = await loadSkillPackageIgnoreMatcher(sourceDir);
   await replaceSkillRepo(sourceDir, destinationDir, shouldIgnore);
-}
-
-export async function saveContent(
-  skillName: string,
-  content: string,
-): Promise<string> {
-  const managedSkillsDir = getSkillsDir();
-  const destinationDir = path.join(
-    managedSkillsDir,
-    validateSkillName(skillName),
-  );
-  await fs.mkdir(destinationDir, { recursive: true });
-  await fs.writeFile(path.join(destinationDir, "SKILL.md"), content, "utf-8");
-  return destinationDir;
 }
 
 export function buildCliFingerprintFields(
@@ -303,44 +271,66 @@ export async function installFromSkillContent(
   }
 
   const normalizedName = validateSkillName(skillName);
-  const localRepoPath = options?.repoSourceDir
-    ? await saveRepo(normalizedName, options.repoSourceDir)
-    : await saveContent(normalizedName, skillContent);
-  const directoryFingerprint =
-    await computeRepoDirectoryFingerprintByPath(localRepoPath);
+  await fs.mkdir(getOperationsDir(), { recursive: true });
+  const stagingRoot = await fs.mkdtemp(
+    path.join(getOperationsDir(), "skill-import-"),
+  );
+  const localRepoPath = path.join(stagingRoot, "files");
+  try {
+    if (options?.repoSourceDir) {
+      await validateRepoPackageInventory(options.repoSourceDir);
+      const ignore = await loadSkillPackageIgnoreMatcher(options.repoSourceDir);
+      await copySkillRepoToNewDestination(
+        options.repoSourceDir,
+        localRepoPath,
+        ignore,
+      );
+    } else {
+      await fs.mkdir(localRepoPath);
+      await fs.writeFile(
+        path.join(localRepoPath, "SKILL.md"),
+        skillContent,
+        "utf8",
+      );
+    }
+    const directoryFingerprint =
+      await computeRepoDirectoryFingerprintByPath(localRepoPath);
 
-  return skillDb.create({
-    name: normalizedName,
-    description:
-      sanitizeString(
-        parsed?.frontmatter.description,
+    return skillDb.create({
+      name: normalizedName,
+      description:
         sanitizeString(
-          manifest.description,
-          `Installed from ${options?.sourceUrl ?? "local source"}`,
-        ),
-      ) || `Installed from ${options?.sourceUrl ?? "local source"}`,
-    instructions: skillContent,
-    content: skillContent,
-    protocol_type: "skill",
-    version:
-      sanitizeString(
-        parsed?.frontmatter.version,
-        sanitizeString(manifest.version, "1.0.0"),
-      ) || "1.0.0",
-    author:
-      sanitizeString(
-        parsed?.frontmatter.author,
-        sanitizeString(manifest.author, "Local"),
-      ) || "Local",
-    tags: [],
-    original_tags: sanitizeTags(parsed?.frontmatter.tags, manifest.tags),
-    is_favorite: false,
-    source_url: options?.sourceUrl,
-    local_repo_path: localRepoPath,
-    ...buildCliFingerprintFields(directoryFingerprint, {
-      bindSource: Boolean(options?.sourceUrl),
-    }),
-  }).id;
+          parsed?.frontmatter.description,
+          sanitizeString(
+            manifest.description,
+            `Installed from ${options?.sourceUrl ?? "local source"}`,
+          ),
+        ) || `Installed from ${options?.sourceUrl ?? "local source"}`,
+      instructions: skillContent,
+      content: skillContent,
+      protocol_type: "skill",
+      version:
+        sanitizeString(
+          parsed?.frontmatter.version,
+          sanitizeString(manifest.version, "1.0.0"),
+        ) || "1.0.0",
+      author:
+        sanitizeString(
+          parsed?.frontmatter.author,
+          sanitizeString(manifest.author, "Local"),
+        ) || "Local",
+      tags: [],
+      original_tags: sanitizeTags(parsed?.frontmatter.tags, manifest.tags),
+      is_favorite: false,
+      source_url: options?.sourceUrl,
+      local_repo_path: localRepoPath,
+      ...buildCliFingerprintFields(directoryFingerprint, {
+        bindSource: Boolean(options?.sourceUrl),
+      }),
+    }).id;
+  } finally {
+    await fs.rm(stagingRoot, { recursive: true, force: true });
+  }
 }
 
 export async function installFromGithub(
@@ -359,36 +349,6 @@ export async function installFromGithub(
 
   const owner = matches[1];
   const repoName = matches[2];
-  const installDir = path.join(getSkillsDir(), `${owner}-${repoName}`);
-  const checkoutDir = `${installDir}.checkout-${process.pid}-${randomUUID()}`;
-  const relative = path.relative(
-    path.resolve(getSkillsDir()),
-    path.resolve(installDir),
-  );
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error(
-      "Path traversal detected: installDir is outside skills directory",
-    );
-  }
-
-  try {
-    await fs.access(installDir);
-    throw new Error(
-      `Skill ${owner}/${repoName} already exists. Please delete it first.`,
-    );
-  } catch (error) {
-    const errorCode =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      typeof error.code === "string"
-        ? error.code
-        : undefined;
-    if (errorCode !== "ENOENT") {
-      throw error;
-    }
-  }
-
   const existingByName = skillDb.getByName(repoName);
   if (existingByName) {
     throw new Error(
@@ -396,9 +356,12 @@ export async function installFromGithub(
     );
   }
 
-  let managedPackageCreated = false;
+  await fs.mkdir(getOperationsDir(), { recursive: true });
+  const stagingRoot = await fs.mkdtemp(
+    path.join(getOperationsDir(), "skill-git-"),
+  );
+  const checkoutDir = path.join(stagingRoot, "checkout");
   try {
-    await fs.mkdir(path.dirname(installDir), { recursive: true });
     await gitCloneImpl(sourceUrl, checkoutDir);
     const skillDir = await resolveSingleSkillDirFromRepo(checkoutDir);
     const manifest = await readManifest(skillDir);
@@ -426,11 +389,8 @@ export async function installFromGithub(
     }
 
     await validateRepoPackageInventory(skillDir);
-    const shouldIgnore = await loadSkillPackageIgnoreMatcher(skillDir);
-    await copySkillRepoToNewDestination(skillDir, installDir, shouldIgnore);
-    managedPackageCreated = true;
     const directoryFingerprint =
-      await computeRepoDirectoryFingerprintByPath(installDir);
+      await computeRepoDirectoryFingerprintByPath(skillDir);
     return skillDb.create({
       name: manifest.name || repoName,
       description: manifest.description || `Installed from ${sourceUrl}`,
@@ -440,23 +400,14 @@ export async function installFromGithub(
       instructions: manifest.instructions || "",
       protocol_type: "skill",
       source_url: sourceUrl,
-      local_repo_path: installDir,
+      local_repo_path: skillDir,
       ...buildCliFingerprintFields(directoryFingerprint, { bindSource: true }),
       is_favorite: false,
       tags: [],
       original_tags: manifest.tags || ["github"],
     }).id;
-  } catch (error) {
-    if (managedPackageCreated) {
-      await fs
-        .rm(installDir, { recursive: true, force: true })
-        .catch(() => undefined);
-    }
-    throw error;
   } finally {
-    await fs
-      .rm(checkoutDir, { recursive: true, force: true })
-      .catch(() => undefined);
+    await fs.rm(stagingRoot, { recursive: true, force: true });
   }
 }
 

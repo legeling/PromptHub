@@ -39,6 +39,7 @@ interface RulesState {
   isRewriting: boolean;
   error: string | null;
   hasLoadedFiles: boolean;
+  refreshFromSync: () => Promise<void>;
   loadFiles: (options?: {
     force?: boolean;
     selectInitial?: boolean;
@@ -144,6 +145,19 @@ export const useRulesStore = create<RulesState>((set, get) => ({
   isRewriting: false,
   error: null,
   hasLoadedFiles: false,
+
+  refreshFromSync: async () => {
+    const before = get();
+    const allFiles = await window.api.rules.list();
+    set({availableFiles:allFiles,files:filterVisibleRuleFiles(allFiles),hasLoadedFiles:true});
+    if (get().selectedRuleId !== before.selectedRuleId || get().draftContent !== before.draftContent) return;
+    // Preserve an unsaved editor draft while refreshing the committed inventory.
+    if (before.currentFile && before.draftContent !== before.currentFile.content) return;
+    if (before.selectedRuleId && allFiles.some(file => file.id === before.selectedRuleId)) {
+      set({currentFile:null});
+      await get().selectRule(before.selectedRuleId);
+    } else set({selectedRuleId:null,currentFile:null,draftContent:""});
+  },
 
   loadFiles: async (options) => {
     if ((get().hasLoadedFiles || get().isLoading) && !options?.force) {

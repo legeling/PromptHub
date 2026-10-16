@@ -10,10 +10,13 @@ import {
 import { readSkillResourceBundle } from "../src/skill-resource-schema";
 import { migrateSkillPackageInternalsV1 } from "../src/migrations/skill-package-internals-v1";
 import { reconcileCanonicalStorageCatalog } from "../src/canonical-catalog-reconciliation";
-import { materializeCanonicalStorageShadow } from "../src/canonical-storage-shadow";
+import {
+  materializeCanonicalStorageShadow,
+  stageCanonicalStorageDatabase,
+} from "../src/canonical-storage-shadow";
 import { collectPromptCanonicalGraph } from "../src/prompt-canonical-export";
 import { FolderDB, PromptDB } from "@prompthub/db";
-import { CanonicalSkillDB } from "../src/canonical-skill-db";
+import { SkillStorageDB } from "../src/skill-storage";
 import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
 import {
   writeCanonicalStorageAuthority,
@@ -42,6 +45,7 @@ function fixture(): { root: string; bundle: string } {
   } finally {
     db.close();
   }
+  stageCanonicalStorageDatabase(data, path.join(data, "prompthub.db"));
   const sources = path.join(root, "sources");
   fs.mkdirSync(sources);
   const skill = {
@@ -126,20 +130,11 @@ it("upgrades historical packages through startup catalog reconciliation and reop
   const databasePath = path.join(root, "data", "prompthub.db");
   expect(
     reconcileCanonicalStorageCatalog({ activeRoot: root, databasePath }).status,
-  ).toBe("rebuilt");
-  const current = readSkillResourceBundle(bundle);
-  expect(current.packageFiles.map((file) => file.path).sort()).toEqual([
-    "SKILL.md",
-    "assets/icon.bin",
-  ]);
-  expect(current.versions[0]).toMatchObject({
-    id: "version-1",
-    note: "preserve",
-  });
-  expect(current.bundleManifest).toMatchObject({
-    revision: 4,
-    retainedField: "keep",
-  });
+  ).toBe("current");
+  expect(fs.readFileSync(path.join(bundle, "files", "SKILL.md"), "utf8")).toBe(
+    "# Writer",
+  );
+  expect(fs.existsSync(path.join(bundle, "manifest.json"))).toBe(false);
   const archive = path.join(
     root,
     "recovery",
@@ -159,10 +154,13 @@ it("upgrades historical packages through startup catalog reconciliation and reop
   });
   const database = new DatabaseAdapter(databasePath);
   try {
-    const skills = new CanonicalSkillDB(database);
-    skills.reconcileCanonicalWorkspaces();
+    const skills = new SkillStorageDB(database);
     const loaded = skills.getById("writer");
     expect(loaded?.is_favorite).toBe(true);
+    expect(skills.getVersions("writer")[0]).toMatchObject({
+      id: "version-1",
+      note: "preserve",
+    });
     expect(
       fs.readFileSync(path.join(loaded!.local_repo_path!, "assets/icon.bin")),
     ).toEqual(Buffer.from([0, 255, 128]));

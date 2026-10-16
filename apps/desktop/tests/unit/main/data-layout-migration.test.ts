@@ -12,6 +12,7 @@ import {
   SCHEMA_INDEXES,
 } from "../../../src/main/database/schema";
 import { SkillDB } from "../../../src/main/database/skill";
+import { closeDatabase, initDatabase } from "../../../src/main/database";
 import {
   getDataLayoutMigrationMarkerPath,
   migrateLegacyDataLayout,
@@ -48,6 +49,7 @@ describe("data-layout-migration", () => {
   });
 
   afterEach(() => {
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(tmpBase, { recursive: true, force: true });
   });
@@ -301,8 +303,8 @@ describe("data-layout-migration", () => {
     expect(result.movedEntries).toContain("prompthub.db");
     expect(fs.existsSync(path.join(userDataPath, "prompthub.db"))).toBe(false);
 
-    const migratedDbPath = path.join(userDataPath, "data", "prompthub.db");
-    const migratedDb = createTestDatabase(migratedDbPath);
+    configureRuntimePaths({ userDataPath });
+    const migratedDb = initDatabase();
     const migratedSkillDb = new SkillDB(migratedDb);
 
     const skills = migratedSkillDb.getAll();
@@ -331,7 +333,28 @@ describe("data-layout-migration", () => {
       }),
     );
 
-    migratedDb.close();
+    expect(versions[1].filesSnapshot).toEqual([
+      { relativePath: "SKILL.md", content: "# guard v1" },
+    ]);
+    expect(
+      migratedDb
+        .prepare("SELECT content FROM skills WHERE id = ?")
+        .get(skillId),
+    ).toEqual({ content: null });
+    expect(
+      migratedDb
+        .prepare(
+          "SELECT content, files_snapshot FROM skill_versions WHERE skill_id = ?",
+        )
+        .all(skillId),
+    ).toEqual([
+      { content: null, files_snapshot: null },
+      { content: null, files_snapshot: null },
+    ]);
+    closeDatabase();
+    const reopenedSkillDb = new SkillDB(initDatabase());
+    expect(reopenedSkillDb.getAll()).toEqual(skills);
+    expect(reopenedSkillDb.getVersions(skillId)).toEqual(versions);
   });
 
   it("preserves the source directory when the target already has conflicting files", async () => {

@@ -1,6 +1,8 @@
+import { migratePluginSqliteV1 } from "@prompthub/core/migrations/plugin-sqlite-v1";
 /**
  * @vitest-environment node
  */
+import { initDatabase, closeDatabase, getDatabase } from "@prompthub/db";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -127,13 +129,8 @@ function createInstalledPluginLibrary(userDataPath: string): {
     updatedAt: "2026-06-16T00:00:00.000Z",
     plugins: [plugin],
   };
-  fs.mkdirSync(path.dirname(getPluginLibraryFilePath()), { recursive: true });
-  fs.writeFileSync(
-    getPluginLibraryFilePath(),
-    `${JSON.stringify(library, null, 2)}\n`,
-    "utf8",
-  );
-  return { library, plugin, packagePath };
+  const stored = new CorePluginLibraryService().write(library);
+  return { library: stored, plugin: stored.plugins[0], packagePath: stored.plugins[0].localPackagePath! };
 }
 
 function writePluginSourcePackage(options: {
@@ -182,9 +179,11 @@ describe("CorePluginLibraryService", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-"));
     configureRuntimePaths({ userDataPath });
+    initDatabase(path.join(userDataPath, "data", "prompthub.db"));
   });
 
   afterEach(() => {
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
@@ -267,7 +266,7 @@ describe("CorePluginLibraryService", () => {
     expect(fetchFn).toHaveBeenCalledWith(bundleManifestUrl, expect.any(Object));
   });
 
-  it("migrates legacy config plugin libraries to data on first read", async () => {
+  it("migrates legacy config plugin libraries during startup before normal reads", async () => {
     const legacyPath = getLegacyPluginLibraryFilePath();
     const legacyPackagePath = path.join(
       userDataPath,
@@ -308,14 +307,17 @@ describe("CorePluginLibraryService", () => {
       )}\n`,
       "utf8",
     );
+    fs.mkdirSync(legacyPackagePath, { recursive: true });
+    fs.writeFileSync(path.join(legacyPackagePath, "README.md"), "legacy package");
+    migratePluginSqliteV1(getDatabase(), { rootPath: userDataPath, databasePath: path.join(userDataPath,"data","prompthub.db") });
     const service = new CorePluginLibraryService();
 
     expect(service.read().plugins.map((plugin) => plugin.name)).toEqual([
       "legacy",
     ]);
 
-    expect(fs.existsSync(getPluginLibraryFilePath())).toBe(true);
-    expect(fs.existsSync(legacyPath)).toBe(true);
+    expect(fs.existsSync(getPluginLibraryFilePath())).toBe(false);
+    expect(fs.existsSync(legacyPath)).toBe(false);
     expect(service.read().plugins.map((plugin) => plugin.name)).toEqual([
       "legacy",
     ]);
@@ -567,7 +569,7 @@ describe("CorePluginLibraryService", () => {
   });
 
   it("records materialized package paths and removes only the managed plugin directory", async () => {
-    const managedPath = path.join(userDataPath, "data", "plugins", "bundle");
+    const managedPath = path.join(userDataPath, "cache", "plugin-materializations", "bundle");
     const localRepositoryPath = path.join(managedPath, "repo");
     const localPackagePath = path.join(
       localRepositoryPath,
@@ -575,6 +577,7 @@ describe("CorePluginLibraryService", () => {
       "bundle",
     );
     fs.mkdirSync(localPackagePath, { recursive: true });
+    fs.writeFileSync(path.join(localPackagePath,"README.md"), "package bytes");
     const materializePackageFn = vi.fn(async () => ({
       managedPath,
       localRepositoryPath,
@@ -601,19 +604,14 @@ describe("CorePluginLibraryService", () => {
       expect.objectContaining({ id: "test-market:bundle" }),
       "test-market:bundle",
     );
-    expect(result.plugin).toMatchObject({
-      managedPath,
-      localRepositoryPath,
-      localPackagePath,
-      source: {
-        localRepositoryPath,
-        localPackagePath,
-      },
-    });
+    const publishedPath = result.plugin.localPackagePath!;
+    expect(publishedPath).toContain(path.join("data", "plugin-files", "test-market%3Abundle", "current"));
+    expect(fs.readFileSync(path.join(publishedPath,"README.md"),"utf8")).toBe("package bytes");
+    expect(fs.existsSync(managedPath)).toBe(false);
 
     service.deletePlugin(result.plugin.id);
 
-    expect(fs.existsSync(managedPath)).toBe(false);
+    expect(fs.existsSync(publishedPath)).toBe(false);
   });
 
   it("detects and updates marketplace plugins from source while preserving distributed targets", async () => {

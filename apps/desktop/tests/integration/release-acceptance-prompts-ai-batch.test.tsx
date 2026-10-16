@@ -80,7 +80,7 @@ function registerDomain(): void {
   const prompts = new PromptDB(database);
   const folders = new FolderDB(database);
   registerPromptIPC(prompts, folders, database);
-  registerFolderIPC(folders, prompts);
+  registerFolderIPC(folders);
 }
 
 beforeEach(async () => {

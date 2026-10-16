@@ -1,3 +1,6 @@
+import { materializePortablePlugins } from "./portable-plugin-snapshot";
+import { materializePortableGenerations } from "./portable-generation-snapshot";
+import { materializePortableRules } from "./portable-rule-snapshot";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -19,6 +22,7 @@ import {
   cleanupOwnedTemporaryDatabase,
 } from "@prompthub/db";
 import { Zip, ZipDeflate } from "fflate";
+import { materializePortableAgentProviders } from "./portable-agent-provider-snapshot";
 
 const STREAM_BUFFER_BYTES = 1024 * 1024;
 
@@ -47,12 +51,13 @@ export interface PortableZipSourcePaths {
   versionsPath: string;
   skillsPath: string;
   rulesPath: string;
+  ruleDatabasePath?: string;
   pluginsPath: string;
+  pluginDatabasePath?: string;
   mcpPath?: string;
   mcpDatabasePath?: string;
-  agentsPath?: string;
-  generationsPath?: string;
-  objectsPath?: string;
+  agentProviderDatabasePath?: string;
+  generationDatabasePath?: string;
   imagesPath: string;
   videosPath: string;
 }
@@ -227,47 +232,12 @@ export async function createPortableSnapshotZip(options: {
   );
   addScope(
     scopes,
-    options.scope.rules,
-    "rules",
-    options.sourcePaths.rulesPath,
-    "data/rules",
-  );
-  addScope(
-    scopes,
-    options.scope.plugins,
-    "plugins",
-    options.sourcePaths.pluginsPath,
-    "data/plugins",
-  );
-  addScope(
-    scopes,
     options.scope.mcp &&
       !options.sourcePaths.mcpDatabasePath &&
       !options.sourcePaths.canonicalCheckpointPath,
     "mcp",
     options.sourcePaths.mcpPath ?? "",
     "data/mcp",
-  );
-  addScope(
-    scopes,
-    options.scope.agents,
-    "agents",
-    options.sourcePaths.agentsPath ?? "",
-    "data/agents",
-  );
-  addScope(
-    scopes,
-    options.scope.generations,
-    "generations",
-    options.sourcePaths.generationsPath ?? "",
-    "data/generations",
-  );
-  addScope(
-    scopes,
-    options.scope.generations,
-    "generation-objects",
-    options.sourcePaths.objectsPath ?? "",
-    "data/assets/objects",
   );
   addScope(
     scopes,
@@ -320,7 +290,74 @@ export async function createPortableSnapshotZip(options: {
     operationId,
   );
   let ownedMcpSnapshot: string | null = null;
+  const agentStagePath = `${snapshotPath}-agents`;
+  const ruleStagePath = `${snapshotPath}-rules`;
+  const pluginStagePath = `${snapshotPath}-plugins`;
+  const generationStagePath = `${snapshotPath}-generations`;
   try {
+    if (options.scope.plugins) {
+      let source: string;
+      if (options.sourcePaths.canonicalCheckpointPath) source = path.join(options.sourcePaths.canonicalCheckpointPath, "canonical", "plugins");
+      else {
+        if (!options.sourcePaths.pluginDatabasePath) throw new Error("Plugin export requires its authoritative SQLite database");
+        materializePortablePlugins(options.sourcePaths.pluginDatabasePath, options.sourcePaths.rootPath, pluginStagePath);
+        source = pluginStagePath;
+      }
+      addScope(scopes, true, "plugins", source, "data/plugins");
+    }
+    if (options.scope.generations) {
+      let source: string;
+      if (options.sourcePaths.canonicalCheckpointPath) source = path.join(options.sourcePaths.canonicalCheckpointPath, "canonical");
+      else {
+        if (!options.sourcePaths.generationDatabasePath) throw new Error("Generation export requires its authoritative SQLite database");
+        materializePortableGenerations(options.sourcePaths.generationDatabasePath, options.sourcePaths.rootPath, generationStagePath);
+        source = generationStagePath;
+      }
+      addScope(scopes, true, "generations", path.join(source, "generations"), "data/generations");
+      addScope(scopes, true, "generation-objects", path.join(source, "assets", "objects"), "data/assets/objects");
+    }
+    if (options.scope.rules) {
+      let rulePath: string;
+      if (options.sourcePaths.canonicalCheckpointPath)
+        rulePath = path.join(
+          options.sourcePaths.canonicalCheckpointPath,
+          "canonical",
+          "rules",
+        );
+      else {
+        if (!options.sourcePaths.ruleDatabasePath)
+          throw new Error(
+            "Rule export requires its authoritative SQLite database",
+          );
+        materializePortableRules(
+          options.sourcePaths.ruleDatabasePath,
+          ruleStagePath,
+        );
+        rulePath = ruleStagePath;
+      }
+      addScope(scopes, true, "rules", rulePath, "data/rules");
+    }
+    if (options.scope.agents) {
+      let agentPath: string;
+      if (options.sourcePaths.canonicalCheckpointPath) {
+        agentPath = path.join(
+          options.sourcePaths.canonicalCheckpointPath,
+          "canonical",
+          "agents",
+        );
+      } else {
+        if (!options.sourcePaths.agentProviderDatabasePath)
+          throw new Error(
+            "Agent provider export requires its authoritative SQLite database",
+          );
+        materializePortableAgentProviders(
+          options.sourcePaths.agentProviderDatabasePath,
+          agentStagePath,
+        );
+        agentPath = agentStagePath;
+      }
+      addScope(scopes, true, "agents", agentPath, "data/agents");
+    }
     const checkpointMcp = options.sourcePaths.canonicalCheckpointPath
       ? path.join(
           options.sourcePaths.canonicalCheckpointPath,
@@ -430,6 +467,10 @@ export async function createPortableSnapshotZip(options: {
       consistencyId: snapshot.manifest.consistencyId,
     };
   } finally {
+    fs.rmSync(pluginStagePath, { recursive: true, force: true });
+    fs.rmSync(generationStagePath, { recursive: true, force: true });
+    fs.rmSync(ruleStagePath, { recursive: true, force: true });
+    fs.rmSync(agentStagePath, { recursive: true, force: true });
     if (ownedMcpSnapshot) cleanupOwnedTemporaryDatabase(ownedMcpSnapshot);
     fs.rmSync(snapshotPath, { recursive: true, force: true });
   }

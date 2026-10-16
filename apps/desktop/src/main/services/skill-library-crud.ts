@@ -9,7 +9,6 @@ import { getPlatformSkillsDir } from "./skill-installer-utils";
 import {
   createLibrarySkill,
   prepareLibrarySkillEdit,
-  requireCanonicalSkillLibrary,
 } from "@prompthub/core/skills/library-commands";
 import { isCanonicalCommitOutcomeError } from "@prompthub/core/canonical-entry-publication";
 import type { SkillDB } from "@prompthub/db";
@@ -195,7 +194,6 @@ export async function deleteLibrarySkill(
   id: string,
   options?: SkillDeleteOptions,
 ): Promise<boolean> {
-  requireCanonicalSkillLibrary();
   const skill = db.getById(id);
   if (!skill) return false;
   const details =

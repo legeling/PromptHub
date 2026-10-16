@@ -61,6 +61,7 @@ describe("Desktop Skill package lifecycle persistence", () => {
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "prompthub-lifecycle-"));
+    configureRuntimePaths({ userDataPath: tempDir });
     skillsDir = path.join(tempDir, "skills");
     await fs.mkdir(skillsDir, { recursive: true });
     storedSkill = null;
@@ -81,6 +82,7 @@ describe("Desktop Skill package lifecycle persistence", () => {
 
   afterEach(async () => {
     vi.restoreAllMocks();
+    resetRuntimePaths();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
@@ -421,35 +423,27 @@ describe("Desktop Skill package lifecycle persistence", () => {
     );
   });
 
-  it("delegates managed replacement and container deletion to the installer", async () => {
+  it("leaves staged bytes available for the SQL storage owner to publish", async () => {
     const dependencies = createDesktopSkillPackageLifecycleDependencies(db, {
       skillsDir,
     });
-    const replacement = {
-      repoPath: path.join(skillsDir, "writer", "repo"),
-      recovery: {
-        repoPath: path.join(skillsDir, "writer", "repo"),
-        hadOriginal: false,
-      },
-      commit: vi.fn(),
-      rollback: vi.fn(),
-    };
-    const begin = vi
-      .spyOn(SkillInstaller, "beginManagedRepoReplacement")
-      .mockResolvedValue(replacement);
-    const remove = vi
-      .spyOn(SkillInstaller, "deleteManagedVariantContainer")
-      .mockResolvedValue(undefined);
-    const installed = createSkill();
+    const staged = path.join(tempDir, "staged");
+    await fs.mkdir(staged);
+    await fs.writeFile(path.join(staged, "SKILL.md"), "Staged package");
     const beforeApply = vi.fn();
-
-    await expect(
-      dependencies.beginReplacement(installed, "/staged/repo", beforeApply),
-    ).resolves.toBe(replacement);
-    await dependencies.deleteManagedContainer(installed);
-
-    expect(begin).toHaveBeenCalledWith(installed, "/staged/repo", beforeApply);
-    expect(remove).toHaveBeenCalledWith(installed);
+    const replacement = await dependencies.beginReplacement(
+      createSkill(),
+      staged,
+      beforeApply,
+    );
+    expect(replacement.repoPath).toBe(staged);
+    await replacement.rollback();
+    await replacement.commit();
+    await dependencies.deleteManagedContainer(createSkill());
+    expect(beforeApply).not.toHaveBeenCalled();
+    expect(await fs.readFile(path.join(staged, "SKILL.md"), "utf8")).toBe(
+      "Staged package",
+    );
   });
 
   it("restores an old update backup when DB finalization never completed", async () => {

@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
-import { CanonicalSkillDB } from "@prompthub/core/canonical-skill-db";
+import { SkillStorageDB } from "@prompthub/core/skill-storage";
 import {
   configureRuntimePaths,
   resetRuntimePaths,
@@ -59,7 +59,7 @@ vi.mock("../../../src/main/services/skill-installer-repo", () => ({
 describe("Skill CRUD IPC", () => {
   let root: string;
   let database: DatabaseAdapter.Database;
-  let db: CanonicalSkillDB;
+  let db: SkillStorageDB;
   let handlers: Map<string, (...args: unknown[]) => Promise<unknown>>;
   beforeEach(() => {
     vi.clearAllMocks();
@@ -81,9 +81,9 @@ describe("Skill CRUD IPC", () => {
       consistencyId: "d".repeat(64),
       operationId: "crud-ipc",
     });
-    database = new DatabaseAdapter(":memory:");
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
     database.exec(SCHEMA);
-    db = new CanonicalSkillDB(database);
+    db = new SkillStorageDB(database);
     registerSkillCrudHandlers({ db });
     handlers = new Map(mocks.handle.mock.calls);
   });

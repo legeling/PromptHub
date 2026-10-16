@@ -161,7 +161,7 @@ describe("#193 missing project Rules through real preload/IPC and storage", () =
         path.join(path.dirname(rule.managedPath || ""), "_rule.json"),
       ),
     );
-    const access = vi.spyOn(fsp, "access");
+    const access = vi.spyOn(fs, "existsSync");
     const rename = vi.spyOn(fsp, "rename");
     const upsert = vi.spyOn(RuleDB.prototype, "upsert");
     const versions = vi.spyOn(RuleDB.prototype, "replaceVersions");
@@ -210,7 +210,7 @@ describe("#193 missing project Rules through real preload/IPC and storage", () =
       rename.mock.calls.filter(([, destination]) =>
         metadata.has(String(destination)),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(
       upsert.mock.calls
         .filter(([rule]) => rule.scope === "project")
@@ -220,6 +220,6 @@ describe("#193 missing project Rules through real preload/IPC and storage", () =
       versions.mock.calls
         .filter(([id]) => id.startsWith("project:"))
         .map(([id]) => id),
-    ).toEqual([removed.id]);
+    ).toEqual([]);
   }, 60_000);
 });

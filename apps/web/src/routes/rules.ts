@@ -274,7 +274,7 @@ function toRuleErrorResponse(c: Context, routeError: unknown): Response {
       return error(c, 422, ErrorCode.VALIDATION_ERROR, routeError.message);
     }
 
-    if (routeError.message === 'Rule project root path already exists') {
+    if (routeError.message === 'Rule project root path already exists' || routeError.message === 'Rule project identity already exists') {
       return error(c, 409, ErrorCode.CONFLICT, routeError.message);
     }
 

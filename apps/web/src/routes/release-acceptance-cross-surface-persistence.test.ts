@@ -107,9 +107,15 @@ describe('release acceptance: Web process persistence', () => {
     const reopened = request(url, owner.accessToken);
     expect(reopened.body).toMatchObject({ data: { content: record.content, versions: [versions[1]] } });
     const managedPath = z.object({ data: z.object({ managedPath: z.string() }) }).parse(reopened.body).data.managedPath;
-    expect(managedPath.startsWith(path.join(root, 'data', 'rules') + path.sep)).toBe(true);
+    expect(managedPath.startsWith(path.join(root, 'data', 'rule-files') + path.sep)).toBe(true);
     expect(fs.readFileSync(managedPath, 'utf8')).toBe(record.content);
     expect(fs.readFileSync(targetPath, 'utf8')).toBe('External file must stay unchanged');
+    const database = new DatabaseAdapter(path.join(root, 'data', 'prompthub.db'), { readOnly: true });
+    try {
+      expect(database.get('SELECT owner_user_id, id, description FROM rules WHERE owner_user_id = ? AND id = ?', owner.user.id, record.id)).toEqual({owner_user_id:owner.user.id,id:record.id,description:record.description});
+      expect(database.all('SELECT id FROM rule_versions WHERE owner_user_id = ? AND rule_id = ?', owner.user.id,record.id)).toEqual([{id:'version-two'}]);
+    } finally { database.close(); }
+    expect(fs.existsSync(path.join(root,'data','rules'))).toBe(false);
   }, WORKFLOW_TIMEOUT_MS);
 
   it('clears only confirmed video files for the authenticated owner and persists the empty result', () => {

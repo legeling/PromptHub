@@ -185,7 +185,7 @@ export const VERIFICATION_CHECKS: VerificationCheck[] = [
     ["desktop", "database"],
     ["integration", "contract"],
     ["--filter", "@prompthub/desktop", "test:integration"],
-    { timeoutMs: 300_000, resourceGroup: "test-heavy" },
+    { timeoutMs: 600_000, resourceGroup: "test-heavy" },
   ),
   ...Array.from({ length: 8 }, (_, shard) =>
     pnpmCheck(

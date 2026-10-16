@@ -28,7 +28,7 @@ import {
   type SkillPackageLifecycleDependencies,
   type StagedSkillPackage,
 } from "./skill-package-lifecycle";
-import { getOperationsDir, getRuntimeStorageContext } from "../runtime-paths";
+import { getOperationsDir } from "../runtime-paths";
 
 const RECOVERY_FILE = "recovery.json";
 const DEFAULT_STAGING_LEASE_MS = 60 * 60 * 1000;
@@ -237,13 +237,7 @@ async function stagePackage(
   };
 }
 
-async function createStagingRoot(skillsDir: string): Promise<string> {
-  const lifecycleRoot = getSkillPackageLifecycleRoot(skillsDir);
-  await fs.mkdir(lifecycleRoot, { recursive: true });
-  return fs.mkdtemp(path.join(lifecycleRoot, "op-"));
-}
-
-async function createCanonicalStagingRoot(): Promise<string> {
+async function createStorageStagingRoot(): Promise<string> {
   const lifecycleRoot = path.join(
     getOperationsDir(),
     "skill-package-lifecycle",
@@ -252,7 +246,7 @@ async function createCanonicalStagingRoot(): Promise<string> {
   return fs.mkdtemp(path.join(lifecycleRoot, "op-"));
 }
 
-function beginCanonicalPublication(
+function beginStoragePublication(
   stagedRepoPath: string,
 ): Promise<PackageReplacement> {
   return Promise.resolve({
@@ -559,21 +553,20 @@ export async function cleanupAbandonedSkillPackageOperations(
   options: CleanupOptions = {},
 ): Promise<void> {
   const skillsDir = options.skillsDir ?? getSkillsDirAccessor();
-  const canonical =
-    options.skillsDir === undefined &&
-    getRuntimeStorageContext().localAuthority === "canonical-files";
-  const lifecycleRoot = canonical
-    ? path.join(getOperationsDir(), "skill-package-lifecycle")
-    : getSkillPackageLifecycleRoot(skillsDir);
+  const lifecycleRoot = path.join(
+    getOperationsDir(),
+    "skill-package-lifecycle",
+  );
   const now = (options.now ?? Date.now)();
   const leaseMs = options.leaseMs ?? DEFAULT_STAGING_LEASE_MS;
   const recoverAll = options.recoverAll === true;
-  const roots = await getOldOperationRoots(
-    lifecycleRoot,
-    now,
-    leaseMs,
-    recoverAll,
-  );
+  const roots = (
+    await Promise.all(
+      [lifecycleRoot, getSkillPackageLifecycleRoot(skillsDir)].map((root) =>
+        getOldOperationRoots(root, now, leaseMs, recoverAll),
+      ),
+    )
+  ).flat();
   for (const operationRoot of roots) {
     await recoverOperationRoot(db, operationRoot, skillsDir).catch((error) => {
       console.warn(
@@ -582,9 +575,14 @@ export async function cleanupAbandonedSkillPackageOperations(
       );
     });
   }
-  const referencedSkillIds = await getManifestSkillIds(
-    lifecycleRoot,
-    skillsDir,
+  const referencedSkillIds = new Set(
+    (
+      await Promise.all(
+        [lifecycleRoot, getSkillPackageLifecycleRoot(skillsDir)].map((root) =>
+          getManifestSkillIds(root, skillsDir),
+        ),
+      )
+    ).flatMap((ids) => [...ids]),
   );
   cleanupExpiredPendingInstallRows(
     db,
@@ -601,26 +599,14 @@ export function createDesktopSkillPackageLifecycleDependencies(
   options: DesktopLifecycleOptions = {},
 ): SkillPackageLifecycleDependencies {
   const skillsDir = options.skillsDir ?? getSkillsDirAccessor();
-  const canonical =
-    options.skillsDir === undefined &&
-    getRuntimeStorageContext().localAuthority === "canonical-files";
   return {
     db,
-    createStagingRoot: () =>
-      canonical ? createCanonicalStagingRoot() : createStagingRoot(skillsDir),
+    createStagingRoot: createStorageStagingRoot,
     stagePackage,
-    beginReplacement: canonical
-      ? (_skill, stagedRepoPath) => beginCanonicalPublication(stagedRepoPath)
-      : (skill, stagedRepoPath, beforeApply) =>
-          SkillInstaller.beginManagedRepoReplacement(
-            skill,
-            stagedRepoPath,
-            beforeApply,
-          ),
+    beginReplacement: (_skill, stagedRepoPath) =>
+      beginStoragePublication(stagedRepoPath),
     readFilesSnapshot,
-    deleteManagedContainer: canonical
-      ? () => Promise.resolve()
-      : (skill) => SkillInstaller.deleteManagedVariantContainer(skill),
+    deleteManagedContainer: () => Promise.resolve(),
     recordReplacement: writeRecoveryManifest,
     cleanupStagingRoot: (stagingRoot) =>
       recoverOperationRoot(db, stagingRoot, skillsDir),

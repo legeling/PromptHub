@@ -360,7 +360,7 @@ describe("agent root paths", () => {
       throw new Error("Missing built-in Agent root path");
 
     expect(config.skillsRelativePath).toBe("skills");
-    expect(config.mcpRelativePath).toBe("config.toml");
+    expect(config.mcpRelativePath).toBeUndefined();
     expect(config.configRelativePaths).toEqual([
       "config.toml",
       "settings.json",
@@ -371,7 +371,7 @@ describe("agent root paths", () => {
       buildAgentRootAssetPreview({ ...config, rootPath: config.rootPath }),
     ).toMatchObject({
       skillScanPaths: ["~/.reasonix/skills"],
-      mcpConfigPaths: ["~/.reasonix/config.toml"],
+      mcpConfigPaths: [],
       configCandidates: [
         "~/.reasonix/config.toml",
         "~/.reasonix/settings.json",

@@ -281,12 +281,9 @@ describe("rules workspace storage", () => {
       fs.readFileSync(path.join(projectRoot, "AGENTS.md"), "utf8"),
     ).toContain("## Policy");
 
-    const versionFile = path.join(
-      getRulesDir(),
-      ".versions",
-      encodeURIComponent("project:docs-site"),
-      "0001.md",
-    );
+    const versionFile = new RuleDB(initDatabase()).getVersions(
+      "project:docs-site",
+    )[0].filePath;
     expect(fs.existsSync(versionFile)).toBe(true);
 
     const db = new RuleDB(initDatabase());
@@ -320,17 +317,15 @@ describe("rules workspace storage", () => {
       "docs-site",
       "AGENTS.md",
     );
-    const originalWriteFile = fsp.writeFile.bind(fsp);
-    vi.spyOn(fsp, "writeFile").mockImplementation(
-      async (file, data, options) => {
-        if (data === "# Interrupted update") {
-          await originalWriteFile(file, "partial-write", options);
-          throw new Error("simulated interrupted managed write");
-        }
+    const originalWriteFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation((file, data, options) => {
+      if (data === "# Interrupted update") {
+        originalWriteFile(file, "partial-write", options);
+        throw new Error("simulated interrupted managed write");
+      }
 
-        return originalWriteFile(file, data, options);
-      },
-    );
+      return originalWriteFile(file, data, options);
+    });
 
     await expect(
       saveRuleContent("project:docs-site", "# Interrupted update"),
@@ -521,21 +516,12 @@ describe("rules workspace storage", () => {
       name: "Tampered",
       rootPath: projectRoot,
     });
-    const managedRoot = path.join(getRulesDir(), "projects");
-    const managedDir = fs
-      .readdirSync(managedRoot)
-      .map((name) => path.join(managedRoot, name))
-      .find((candidate) => fs.existsSync(path.join(candidate, "_rule.json")));
-    expect(managedDir).toBeTruthy();
-    const metaPath = path.join(managedDir!, "_rule.json");
-    const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
-    fs.writeFileSync(
-      metaPath,
-      JSON.stringify({
-        ...meta,
-        managedPath: path.join(protectedRoot, "AGENTS.md"),
-      }),
-      "utf8",
+    const database = initDatabase();
+    const original = new RuleDB(database).getById("project:tampered-cleanup")!;
+    database.run(
+      "UPDATE rules SET managed_path = ? WHERE id = ?",
+      path.join(protectedRoot, "AGENTS.md"),
+      original.id,
     );
     fs.rmSync(path.join(projectRoot, "AGENTS.md"));
 
@@ -549,7 +535,7 @@ describe("rules workspace storage", () => {
     expect(fs.readFileSync(path.join(protectedRoot, "keep.txt"), "utf8")).toBe(
       "keep",
     );
-    expect(fs.existsSync(metaPath)).toBe(true);
+    expect(fs.readFileSync(original.managedPath, "utf8")).toBe("# Missing");
   });
 
   it("reports a per-record cleanup failure without removing another missing record", async () => {
@@ -622,8 +608,16 @@ describe("rules workspace storage", () => {
       ".versions",
       encodeURIComponent("project:docs-site"),
     );
-    expect(fs.existsSync(path.join(versionDir, "0022.md"))).toBe(true);
-    expect(fs.existsSync(path.join(versionDir, "0021.md"))).toBe(true);
+    const persistedVersions = new RuleDB(initDatabase()).getVersions(
+      "project:docs-site",
+    );
+    expect(fs.readdirSync(versionDir)).toHaveLength(20);
+    expect(fs.readFileSync(persistedVersions[0].filePath, "utf8")).toBe(
+      "# version-22",
+    );
+    expect(fs.readFileSync(persistedVersions[1].filePath, "utf8")).toBe(
+      "# version-21",
+    );
   });
 
   it("always includes built-in global rule descriptors even when target files are missing", async () => {
@@ -663,6 +657,14 @@ describe("rules workspace storage", () => {
       "claude-global",
       "rule.md",
     );
+    const existingManagedPath = path.join(
+      getRulesDir(),
+      "global",
+      "claude-global",
+      "CLAUDE.md",
+    );
+    fs.mkdirSync(path.dirname(existingManagedPath), { recursive: true });
+    fs.writeFileSync(existingManagedPath, "# Device rule");
     const db = new RuleDB(initDatabase());
     db.upsert({
       id: "claude-global",
@@ -673,7 +675,7 @@ describe("rules workspace storage", () => {
       platformDescription: "Claude rules",
       canonicalFileName: "CLAUDE.md",
       description: "Global Claude rules",
-      managedPath: path.join(getRulesDir(), "global", "claude", "CLAUDE.md"),
+      managedPath: existingManagedPath,
       targetPath: staleCanonicalPath,
       projectRootPath: null,
       syncStatus: "target-missing",
@@ -701,7 +703,7 @@ describe("rules workspace storage", () => {
 
   it("keeps managed Rules in the cached list when only the deployment target is missing", async () => {
     const service = createGlobalRulesTestService();
-    const managedPath = path.join(getRulesDir(), "global", "pi", "AGENTS.md");
+    const managedPath = path.join(getRulesDir(), "global", "pi-global", "AGENTS.md");
     fs.mkdirSync(path.dirname(managedPath), { recursive: true });
     fs.writeFileSync(managedPath, "# Managed Pi rule", "utf8");
     new RuleDB(initDatabase()).upsert({
@@ -762,71 +764,26 @@ describe("rules workspace storage", () => {
     expect(createRuleDb).toHaveBeenCalledTimes(1);
   });
 
-  it("repairs chronological compatibility indexes before canonical publication", async () => {
+  it("reads SQL history without adopting a stray workspace JSON index", async () => {
     const service = createGlobalRulesTestService();
-    const targetPath = path.join(tempDir, "home", "codex", "AGENTS.md");
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.writeFileSync(targetPath, "# Version 3", "utf8");
-    await service.scanRuleDescriptors();
-
-    const versionDir = path.join(getRulesDir(), ".versions", "codex-global");
-    const entries = [
-      {
-        id: "codex-version-1",
-        savedAt: "2026-07-14T07:52:55.760Z",
-        source: "create",
-        fileName: "0001.md",
-        content: "# Version 1",
-      },
-      {
-        id: "codex-version-2",
-        savedAt: "2026-07-30T02:56:33.746Z",
-        source: "manual-save",
-        fileName: "0002.md",
-        content: "# Version 2",
-      },
-      {
-        id: "codex-version-3",
-        savedAt: "2026-08-03T04:45:21.203Z",
-        source: "manual-save",
-        fileName: "0003.md",
-        content: "# Version 3",
-      },
-    ] as const;
-    fs.mkdirSync(versionDir, { recursive: true });
-    for (const entry of entries) {
-      fs.writeFileSync(path.join(versionDir, entry.fileName), entry.content);
-    }
-    fs.writeFileSync(
-      path.join(versionDir, "index.json"),
-      `${JSON.stringify(
-        entries.map(({ content: _content, ...entry }) => entry),
-        null,
-        2,
-      )}\n`,
+    await service.saveRuleContent("codex-global", "# Version 1");
+    await service.saveRuleContent("codex-global", "# Version 2");
+    const repository = new RuleDB(initDatabase());
+    const original = repository.getVersions("codex-global");
+    const strayIndex = path.join(
+      path.dirname(original[0].filePath),
+      "index.json",
     );
-
-    await expect(service.scanRuleDescriptors()).resolves.toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "codex-global" })]),
+    fs.writeFileSync(strayIndex, JSON.stringify([{ id: "untrusted-stray" }]));
+    const result = await service.readRuleContent("codex-global");
+    expect(result.versions.map((version) => version.content)).toEqual([
+      "# Version 2",
+      "# Version 1",
+    ]);
+    expect(repository.getVersions("codex-global")).toEqual(original);
+    expect(fs.readFileSync(strayIndex, "utf8")).toBe(
+      JSON.stringify([{ id: "untrusted-stray" }]),
     );
-
-    const repairedIndex = JSON.parse(
-      fs.readFileSync(path.join(versionDir, "index.json"), "utf8"),
-    ) as Array<{ id: string }>;
-    expect(repairedIndex.map((entry) => entry.id)).toEqual([
-      "codex-version-3",
-      "codex-version-2",
-      "codex-version-1",
-    ]);
-    expect(
-      new RuleDB(initDatabase())
-        .getVersions("codex-global")
-        .map((version) => version.createdAt),
-    ).toEqual([
-      "2026-08-03T04:45:21.203Z",
-      "2026-07-30T02:56:33.746Z",
-      "2026-07-14T07:52:55.760Z",
-    ]);
   });
 
   it("deduplicates concurrent initial snapshots for global rules on first read", async () => {
@@ -864,7 +821,7 @@ describe("rules workspace storage", () => {
     ]);
 
     const content = await service.readRuleContent("claude-global");
-    expect(claudeMetaWrites).toBe(2);
+    expect(claudeMetaWrites).toBe(0);
     expect(content.versions).toHaveLength(1);
     expect(content.versions[0]).toEqual(
       expect.objectContaining({
@@ -1069,10 +1026,8 @@ describe("rules workspace storage", () => {
     ).toBeUndefined();
   });
 
-  it("skips missing version files and repairs the index instead of crashing", async () => {
+  it("reports missing history without deleting its SQL identity", async () => {
     const projectRoot = path.join(tempDir, "docs-site");
-    fs.mkdirSync(projectRoot, { recursive: true });
-
     await createProjectRule({
       id: "docs-site",
       name: "Docs Site",
@@ -1080,59 +1035,28 @@ describe("rules workspace storage", () => {
     });
     await saveRuleContent("project:docs-site", "# version-1");
     await saveRuleContent("project:docs-site", "# version-2");
-
-    // Manually delete the latest version file (simulate disk corruption)
-    const versionDir = path.join(
-      getRulesDir(),
-      ".versions",
-      encodeURIComponent("project:docs-site"),
-    );
-    fs.rmSync(path.join(versionDir, "0002.md"), { force: true });
-
-    // readRuleContent should NOT throw; it should skip the missing file
-    const content = await readRuleContent("project:docs-site");
-    expect(content.versions).toHaveLength(1);
-    expect(content.versions[0]?.content).toBe("# version-1");
-
-    // The index should have been repaired on disk
-    const indexPath = path.join(versionDir, "index.json");
-    const repairedIndex = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
-    expect(repairedIndex).toHaveLength(1);
-    expect(repairedIndex[0]?.fileName).toBe("0001.md");
-
-    // The DB version count should also be repaired
-    const db = new RuleDB(initDatabase());
-    expect(db.getById("project:docs-site")?.currentVersion).toBe(1);
+    const repository = new RuleDB(initDatabase());
+    const versions = repository.getVersions("project:docs-site");
+    fs.rmSync(versions[0].filePath);
+    await expect(readRuleContent("project:docs-site")).rejects.toThrow();
+    expect(repository.getVersions("project:docs-site")).toEqual(versions);
+    expect(repository.getById("project:docs-site")?.currentVersion).toBe(2);
+    expect(fs.readFileSync(versions[1].filePath, "utf8")).toBe("# version-1");
   });
 
-  it("does not create duplicate initial versions when re-materializing a global rule", async () => {
+  it("does not repair a lost managed global body by silently adopting its deployment", async () => {
     const service = createGlobalRulesTestService();
-    const platform = getPlatformById("claude");
-    expect(platform).toBeDefined();
-
-    const globalRulePath = path.join(tempDir, "home", ".claude", "CLAUDE.md");
-    expect(globalRulePath).toBeTruthy();
-
-    fs.mkdirSync(path.dirname(globalRulePath!), { recursive: true });
-    fs.writeFileSync(globalRulePath!, "# Claude global rule", "utf8");
-
-    // First materialization
-    await service.listRuleDescriptors();
-
-    // Delete the managed copy but keep versions
-    const managedPath = path.join(
-      getRulesDir(),
-      "global",
-      "claude",
-      "CLAUDE.md",
+    await service.saveRuleContent("claude-global", "# Claude global rule");
+    const repository = new RuleDB(initDatabase());
+    const record = repository.getById("claude-global")!;
+    const versions = repository.getVersions(record.id);
+    fs.rmSync(record.managedPath);
+    await expect(service.listRuleDescriptors()).rejects.toThrow();
+    expect(fs.existsSync(record.managedPath)).toBe(false);
+    expect(repository.getVersions(record.id)).toEqual(versions);
+    expect(fs.readFileSync(record.targetPath, "utf8")).toBe(
+      "# Claude global rule",
     );
-    fs.rmSync(managedPath, { force: true });
-
-    // Re-materialize (e.g., a later scan)
-    await service.listRuleDescriptors();
-
-    const content = await service.readRuleContent("claude-global");
-    expect(content.versions).toHaveLength(1);
   });
 
   it("migrates legacy rule-history JSON into managed rule versions", async () => {
@@ -1158,6 +1082,7 @@ describe("rules workspace storage", () => {
       "utf8",
     );
 
+    await service.bootstrapRuleWorkspace();
     await service.listRuleDescriptors();
     const content = await service.readRuleContent("claude-global");
 
@@ -1170,7 +1095,7 @@ describe("rules workspace storage", () => {
       fs.existsSync(
         path.join(getRulesDir(), ".versions", "claude-global", "index.json"),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("restores managed content from legacy rule-history when the target file is missing", async () => {
@@ -1196,6 +1121,7 @@ describe("rules workspace storage", () => {
       "utf8",
     );
 
+    await service.bootstrapRuleWorkspace();
     await service.listRuleDescriptors();
     const content = await service.readRuleContent("claude-global");
 

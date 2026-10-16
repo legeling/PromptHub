@@ -408,7 +408,9 @@ function validateVersion(value: unknown, pluginId: string): PluginVersion {
       value.packageSnapshot.files.length > MAX_SNAPSHOT_FILES
     )
       throw new Error("Plugin resource version package files are invalid");
-    const files = value.packageSnapshot.files.map(validateSnapshotFile);
+    const files = value.packageSnapshot.files.map(validateSnapshotFile).sort((a, b) =>
+      a.relativePath < b.relativePath ? -1 : a.relativePath > b.relativePath ? 1 : 0,
+    );
     if (new Set(files.map((file) => file.relativePath)).size !== files.length)
       throw new Error(
         "Plugin resource version package contains duplicate paths",
@@ -424,6 +426,21 @@ function validateVersion(value: unknown, pluginId: string): PluginVersion {
     plugin,
     ...(packageSnapshot ? { packageSnapshot } : {}),
   };
+}
+
+export function parsePluginResourceSnapshot(value: unknown): {
+  plugin: PluginLibraryEntry; versions: PluginVersion[]; files: PluginFileSnapshot[];
+} {
+  if (!isRecord(value) || !Array.isArray(value.versions) || !Array.isArray(value.files) || value.files.length > MAX_SNAPSHOT_FILES)
+    throw new Error("Invalid Plugin resource snapshot");
+  const plugin = validatePlugin(value.plugin);
+  const versions = value.versions.map((version) => validateVersion(version, plugin.id)).sort((a,b) => a.version - b.version);
+  const files = value.files.map(validateSnapshotFile).sort((a,b) => a.relativePath.localeCompare(b.relativePath));
+  if (new Set(versions.map((version) => version.id)).size !== versions.length ||
+      new Set(versions.map((version) => version.version)).size !== versions.length ||
+      new Set(files.map((file) => file.relativePath)).size !== files.length)
+    throw new Error("Duplicate Plugin snapshot identity");
+  return { plugin, versions, files };
 }
 
 function writeJsonSource(

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import {
   createRulesWorkspaceService,
   configureRuntimePaths,
+  getRulesDir,
   resetRuntimePaths,
 } from "@prompthub/core";
 import { initDatabase, closeDatabase, RuleDB } from "@prompthub/core";
@@ -13,7 +14,7 @@ import { initDatabase, closeDatabase, RuleDB } from "@prompthub/core";
 let root: string;
 function workspace() {
   return createRulesWorkspaceService({
-    getRulesDir: () => path.join(root, "managed-rules"),
+    getRulesDir,
     createRuleDb: () => new RuleDB(initDatabase()),
     getPlatformRootDir: (p) => path.join(root, "agents", p.id),
     getPlatformGlobalRulePath: (p) =>

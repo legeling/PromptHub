@@ -5,7 +5,6 @@ import { z } from 'zod';
 import type { Settings, SyncProviderKind, SyncSettings, SyncSnapshot } from '@prompthub/shared';
 import { getAuthUser } from '../middleware/auth.js';
 import { BackupService } from '../services/backup.service.js';
-import { validatePromptWorkspaceSnapshotPaths } from '../services/prompt-workspace.js';
 import { validateRuleWorkspaceSnapshotPaths } from '../services/rule-workspace.js';
 import { validateSkillWorkspaceSnapshotPaths } from '../services/skill-workspace.js';
 import { SettingsService } from '../services/settings.service.js';
@@ -38,11 +37,13 @@ const syncImportRequestSchema = z.object({
 
 function getSyncSettings(userId: string): SyncSettings {
   const settings = settingsService.get(userId);
-  return settings.sync ?? {
+  return (
+    settings.sync ?? {
     enabled: false,
     provider: 'manual',
     autoSync: false,
-  };
+  }
+  );
 }
 
 function assertWebDavConfig(settings: SyncSettings): asserts settings is SyncSettings & { endpoint: string } {
@@ -226,7 +227,6 @@ sync.put('/data', async (c) => {
 
   const actor = getAuthUser(c);
   try {
-    validatePromptWorkspaceSnapshotPaths(snapshot.folders, snapshot.prompts, snapshot.promptVersions);
     validateSkillWorkspaceSnapshotPaths(snapshot.skills, snapshot.skillVersions, snapshot.skillFiles);
     validateRuleWorkspaceSnapshotPaths(actor.userId, snapshot.rules ?? []);
     const media = {
@@ -324,7 +324,7 @@ sync.post('/pull', async (c) => {
     assertWebDavConfig(syncSettings);
     const pulled = await pullWebDavSnapshot(syncSettings);
     const remoteSnapshot = parseRemoteSyncSnapshot(pulled.body);
-    validatePromptWorkspaceSnapshotPaths(remoteSnapshot.folders, remoteSnapshot.prompts, remoteSnapshot.promptVersions);
+
     validateSkillWorkspaceSnapshotPaths(remoteSnapshot.skills, remoteSnapshot.skillVersions, remoteSnapshot.skillFiles);
     validateRuleWorkspaceSnapshotPaths(actor.userId, remoteSnapshot.rules ?? []);
     const media = {

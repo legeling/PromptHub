@@ -173,9 +173,11 @@ describe("web sync route contracts", () => {
             prompts: Array<{ title: string }>;
             folders: Array<{ name: string }>;
             skills: Array<{ name: string }>;
+            settingsUpdatedAt: string;
           };
         };
         expect(dataBody.data.version).toBe("web-backup-v2");
+        expect(dataBody.data.settingsUpdatedAt).toBe(new Date(0).toISOString());
         expect(dataBody.data.prompts).toEqual([
           expect.objectContaining({ title: "Sync Prompt" }),
         ]);
@@ -312,7 +314,7 @@ describe("web sync route contracts", () => {
             folders: Array<{ name: string }>;
             skills: Array<{ name: string }>;
             rules?: Array<{ id: string; content: string }>;
-            settings: { sync?: { lastSyncAt?: string } };
+            settings: { sync?: { lastSyncAt?: string; endpoint?: string; username?: string; password?: string } };
           };
         };
         expect(dataAfterImport.data.prompts).toEqual(
@@ -335,6 +337,11 @@ describe("web sync route contracts", () => {
         );
         expect(dataAfterImport.data.rules).toEqual([]);
         expect(dataAfterImport.data.settings.sync?.lastSyncAt).toBeTruthy();
+        expect(dataAfterImport.data.settings.sync).toMatchObject({
+          endpoint: "https://dav.example.com/remote.php/dav/files/sync",
+          username: "sync-user",
+          password: "sync-pass",
+        });
       } finally {
         fs.rmSync(dataDir, { recursive: true, force: true });
       }

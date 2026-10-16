@@ -61,6 +61,21 @@ function writeJournal(
 
 function baseJournal(root: string, operationKey: string, version: 1 | 2 = 2) {
   const targetPath = path.join(root, "asset");
+  const entry: {
+    targetPath: string;
+    stagePath: string | null;
+    priorPath: string;
+    delete: boolean;
+    hadPrior: boolean;
+    afterHash?: string;
+  } = {
+    targetPath,
+    stagePath: path.join(root, `.asset.stage-${OPERATION_ID}`),
+    priorPath: path.join(root, `.asset.prior-${OPERATION_ID}`),
+    delete: false,
+    hadPrior: true,
+    ...(version === 2 ? { afterHash: DIGEST } : {}),
+  };
   return {
     kind: JOURNAL_KIND,
     version,
@@ -69,16 +84,7 @@ function baseJournal(root: string, operationKey: string, version: 1 | 2 = 2) {
     rootPath: path.resolve(root),
     state: "prepared",
     ...(version === 2 ? { ownerPid: process.pid } : {}),
-    entries: [
-      {
-        targetPath,
-        stagePath: path.join(root, `.asset.stage-${OPERATION_ID}`),
-        priorPath: path.join(root, `.asset.prior-${OPERATION_ID}`),
-        delete: false,
-        hadPrior: true,
-        ...(version === 2 ? { afterHash: DIGEST } : {}),
-      },
-    ],
+    entries: [entry],
     createdAt: "2026-09-05T00:00:00.000Z",
   };
 }
@@ -115,7 +121,7 @@ describe("canonical entry validation and recovery boundaries", () => {
       },
       {
         name: "version",
-        value: { ...baseJournal(root, "bad"), version: 3 },
+        value: { ...baseJournal(root, "bad"), version: 999 },
         message: /invalid/u,
       },
       {
@@ -368,10 +374,11 @@ describe("canonical entry validation and recovery boundaries", () => {
         });
       const readdir = vi
         .spyOn(fs, "readdirSync")
-        .mockImplementation((directory) => {
+        // Publication requests the string overload; preserve Node's overloaded mock type.
+        .mockImplementation(((directory: fs.PathLike) => {
           if (stageStatsPath(directory)) throw new Error("readdir failed");
           return originalReaddir(directory);
-        });
+        }) as typeof fs.readdirSync);
       expect(() =>
         publishCanonicalEntries({
           rootPath: root,
@@ -428,10 +435,11 @@ describe("canonical entry validation and recovery boundaries", () => {
         });
       const readdir = vi
         .spyOn(fs, "readdirSync")
-        .mockImplementation((directory) => {
-          if (stageStatsPath(directory)) return names as never;
+        // Publication requests the string overload; preserve Node's overloaded mock type.
+        .mockImplementation(((directory: fs.PathLike) => {
+          if (stageStatsPath(directory)) return names;
           return originalReaddir(directory);
-        });
+        }) as typeof fs.readdirSync);
       vi.spyOn(fs, "openSync").mockImplementation((candidate, flags, mode) => {
         if (String(candidate).includes(".asset.stage-")) {
           const descriptor = nextDescriptor++;

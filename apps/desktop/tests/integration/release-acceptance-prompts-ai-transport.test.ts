@@ -38,6 +38,7 @@ const transport = vi.hoisted(() => {
   const handlers = new Map<string, TransportHandler>();
   const listeners = new Map<string, Set<TransportListener>>();
   return {
+    fetch: globalThis.fetch,
     handlers,
     listeners,
     async invoke(channel: string, ...args: unknown[]): Promise<unknown> {
@@ -79,7 +80,12 @@ vi.mock("electron", () => ({
       transport.listeners.get(channel)?.delete(listener);
     },
   },
-  session: { defaultSession: { setProxy: async () => undefined } },
+  session: {
+    defaultSession: {
+      setProxy: async () => undefined,
+      fetch: transport.fetch,
+    },
+  },
   BrowserWindow: {
     fromWebContents: () => {
       throw new Error("Native GUI is outside this test");

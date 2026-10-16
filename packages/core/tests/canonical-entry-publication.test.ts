@@ -26,6 +26,29 @@ afterEach(() => {
 });
 
 describe("canonical entry publication", () => {
+  it.each([false, true])(
+    "handles deletion below an absent parent during commit or rollback (failure %s)",
+    (fail) => {
+      const root = createRoot();
+      const absent = path.join(root, "data", "never-created", "body.md");
+      const publish = () =>
+        publishCanonicalEntries({
+          rootPath: root,
+          operationKey: "absent-deletion",
+          entries: [{ targetPath: absent, delete: true }],
+          verify() {
+            if (fail) throw new Error("injected verification failure");
+          },
+        });
+      if (fail) expect(publish).toThrow("injected verification failure");
+      else expect(publish()).toMatchObject({ cleanupPending: false });
+      expect(fs.existsSync(path.dirname(absent))).toBe(false);
+      expect(recoverCanonicalEntryPublication(root, "absent-deletion")).toBe(
+        "none",
+      );
+    },
+  );
+
   it("publishes replacements and deletions as one verified unit", () => {
     const root = createRoot();
     const first = path.join(root, "data", "mcp", "one");

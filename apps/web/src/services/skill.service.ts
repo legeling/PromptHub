@@ -1,4 +1,7 @@
-import { SkillDB } from '@prompthub/db';
+import { readSkillEntrypoint } from "@prompthub/core/skill-storage-files";
+import { getWebSkillPackagePath } from "./skill-workspace.js";
+import path from "node:path";
+import { WebSkillStorage } from "./skill-storage.js";
 import type {
   CreateSkillParams,
   Skill,
@@ -6,21 +9,20 @@ import type {
   SkillSafetyScanInput,
   SkillVersion,
   UpdateSkillParams,
-} from '@prompthub/shared';
-import { getServerDatabase } from '../database.js';
-import { ErrorCode } from '../utils/response.js';
-import { requestRemoteBuffered } from '../utils/remote-http.js';
-import { ensureSkillName } from '../utils/skill-name.js';
+} from "@prompthub/shared";
+import { getServerDatabase } from "../database.js";
+import { ErrorCode } from "../utils/response.js";
+import { requestRemoteBuffered } from "../utils/remote-http.js";
+import { ensureSkillName } from "../utils/skill-name.js";
 import {
   parseRemoteSkill,
   scanSkillContentWithAI,
-} from './skill-content.service.js';
-import { collectSkillUrlMetadataIssues } from './skill-url-validation.js';
-import { syncSkillWorkspaceFromDatabase } from './skill-workspace.js';
+} from "./skill-content.service.js";
+import { collectSkillUrlMetadataIssues } from "./skill-url-validation.js";
 
 export interface SkillActor {
   userId: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
 }
 
 export class SkillServiceError extends Error {
@@ -30,14 +32,14 @@ export class SkillServiceError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = 'SkillServiceError';
+    this.name = "SkillServiceError";
   }
 }
 
 interface SkillRow {
   id: string;
   owner_user_id: string | null;
-  visibility: 'private' | 'shared';
+  visibility: "private" | "shared";
 }
 
 interface SkillListRow extends SkillRow {
@@ -45,7 +47,7 @@ interface SkillListRow extends SkillRow {
   description: string | null;
   content: string | null;
   mcp_config: string | null;
-  protocol_type: Skill['protocol_type'];
+  protocol_type: Skill["protocol_type"];
   version: string | null;
   author: string | null;
   tags: string | null;
@@ -66,7 +68,7 @@ interface SkillListRow extends SkillRow {
   icon_url: string | null;
   icon_emoji: string | null;
   icon_background: string | null;
-  category: Skill['category'] | null;
+  category: Skill["category"] | null;
   is_builtin: number;
   registry_slug: string | null;
   content_url: string | null;
@@ -89,34 +91,28 @@ function parseJsonArray<T>(value: string | null | undefined): T[] | undefined {
 }
 
 export class SkillService {
-  private readonly skillDb = new SkillDB(getServerDatabase());
+  private readonly skillDb = new WebSkillStorage(getServerDatabase());
   private readonly db = getServerDatabase();
 
-  private syncWorkspace(): void {
-    syncSkillWorkspaceFromDatabase(this.db, this.skillDb);
-  }
-
   create(actor: SkillActor, data: CreateSkillParams): Skill {
-    const visibility = data.visibility ?? 'shared';
+    const visibility = data.visibility ?? "shared";
     this.assertCanCreate(actor, visibility);
     this.assertMetadataArraysAllowed(data);
     this.assertUrlMetadataAllowed(data);
 
     const skill = this.skillDb.create({
       ...data,
+      ownerUserId: actor.userId,
       visibility,
     });
-
-    this.db
-      .prepare('UPDATE skills SET owner_user_id = ?, visibility = ? WHERE id = ?')
-      .run(actor.userId, visibility, skill.id);
-
-    this.syncWorkspace();
 
     return this.getById(actor, skill.id);
   }
 
-  list(actor: SkillActor, scope: 'private' | 'shared' | 'all' = 'shared'): Skill[] {
+  list(
+    actor: SkillActor,
+    scope: "private" | "shared" | "all" = "shared",
+  ): Skill[] {
     const rows = this.getVisibleSkillRows(actor, scope);
     return rows.map((row) => this.rowToSkill(row));
   }
@@ -124,14 +120,14 @@ export class SkillService {
   getById(actor: SkillActor, id: string): Skill {
     const row = this.getRow(id);
     if (!row) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
 
     this.assertCanRead(actor, row);
 
     const skill = this.skillDb.getById(id);
     if (!skill) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
 
     return {
@@ -148,20 +144,18 @@ export class SkillService {
     this.assertUrlMetadataAllowed(data);
 
     const nextVisibility = data.visibility ?? row.visibility;
-    if (nextVisibility !== row.visibility && actor.role !== 'admin') {
-      throw new SkillServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can change shared visibility');
+    if (nextVisibility !== row.visibility && actor.role !== "admin") {
+      throw new SkillServiceError(
+        403,
+        ErrorCode.FORBIDDEN,
+        "Only admin can change shared visibility",
+      );
     }
 
     const updated = this.skillDb.update(id, data);
     if (!updated) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
-
-    if (data.visibility !== undefined) {
-      this.db.prepare('UPDATE skills SET visibility = ? WHERE id = ?').run(data.visibility, id);
-    }
-
-    this.syncWorkspace();
 
     return this.getById(actor, id);
   }
@@ -172,23 +166,28 @@ export class SkillService {
 
     const deleted = this.skillDb.delete(id);
     if (!deleted) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
-
-    this.syncWorkspace();
   }
 
   deleteAll(actor: SkillActor, confirm: boolean): void {
     if (!confirm) {
-      throw new SkillServiceError(422, ErrorCode.VALIDATION_ERROR, 'confirm=true is required');
+      throw new SkillServiceError(
+        422,
+        ErrorCode.VALIDATION_ERROR,
+        "confirm=true is required",
+      );
     }
 
-    if (actor.role !== 'admin') {
-      throw new SkillServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can delete all skills');
+    if (actor.role !== "admin") {
+      throw new SkillServiceError(
+        403,
+        ErrorCode.FORBIDDEN,
+        "Only admin can delete all skills",
+      );
     }
 
     this.skillDb.deleteAll();
-    this.syncWorkspace();
   }
 
   getVersions(actor: SkillActor, skillId: string): SkillVersion[] {
@@ -196,16 +195,18 @@ export class SkillService {
     return this.skillDb.getVersions(skillId);
   }
 
-  createVersion(actor: SkillActor, skillId: string, note?: string): SkillVersion {
+  createVersion(
+    actor: SkillActor,
+    skillId: string,
+    note?: string,
+  ): SkillVersion {
     const row = this.getRequiredRow(skillId);
     this.assertCanWrite(actor, row);
 
     const version = this.skillDb.createVersion(skillId, note);
     if (!version) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
-
-    this.syncWorkspace();
 
     return version;
   }
@@ -216,10 +217,12 @@ export class SkillService {
 
     const skill = this.skillDb.rollbackVersion(skillId, version);
     if (!skill) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill version not found');
+      throw new SkillServiceError(
+        404,
+        ErrorCode.NOT_FOUND,
+        "Skill version not found",
+      );
     }
-
-    this.syncWorkspace();
 
     return this.getById(actor, skillId);
   }
@@ -230,22 +233,26 @@ export class SkillService {
 
     const deleted = this.skillDb.deleteVersion(skillId, versionId);
     if (!deleted) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill version not found');
+      throw new SkillServiceError(
+        404,
+        ErrorCode.NOT_FOUND,
+        "Skill version not found",
+      );
     }
-
-    this.syncWorkspace();
   }
 
-  saveSafetyReport(actor: SkillActor, skillId: string, report: SkillSafetyReport): Skill {
+  saveSafetyReport(
+    actor: SkillActor,
+    skillId: string,
+    report: SkillSafetyReport,
+  ): Skill {
     const row = this.getRequiredRow(skillId);
     this.assertCanWrite(actor, row);
 
     const updated = this.skillDb.update(skillId, { safetyReport: report });
     if (!updated) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
-
-    this.syncWorkspace();
 
     return this.getById(actor, skillId);
   }
@@ -260,7 +267,7 @@ export class SkillService {
       enabled: overrides.enabled,
       method: overrides.method,
       name: overrides.name ?? skill.name,
-      content: overrides.content ?? skill.content ?? skill.instructions ?? '',
+      content: overrides.content ?? skill.content ?? skill.instructions ?? "",
       sourceUrl: overrides.sourceUrl ?? skill.source_url,
       contentUrl: overrides.contentUrl ?? skill.content_url,
       localRepoPath: overrides.localRepoPath,
@@ -271,7 +278,9 @@ export class SkillService {
     return scanSkillContentWithAI(input);
   }
 
-  async scanSafetyInput(input: SkillSafetyScanInput): Promise<SkillSafetyReport> {
+  async scanSafetyInput(
+    input: SkillSafetyScanInput,
+  ): Promise<SkillSafetyReport> {
     return scanSkillContentWithAI(input);
   }
 
@@ -282,7 +291,7 @@ export class SkillService {
       importToLibrary?: boolean;
       name?: string;
       description?: string;
-      visibility?: 'private' | 'shared';
+      visibility?: "private" | "shared";
     },
   ): Promise<{
     content: string;
@@ -299,32 +308,41 @@ export class SkillService {
 
     const response = await requestRemoteBuffered({
       url: payload.url,
-      method: 'GET',
+      method: "GET",
       headers: {
-        Accept: 'text/plain, text/markdown, application/octet-stream;q=0.8, */*;q=0.1',
-        'User-Agent': 'PromptHub/web-remote-skill-fetch',
+        Accept:
+          "text/plain, text/markdown, application/octet-stream;q=0.8, */*;q=0.1",
+        "User-Agent": "PromptHub/web-remote-skill-fetch",
       },
-      allowedProtocols: ['https:'],
+      allowedProtocols: ["https:"],
       maxBytes: 5 * 1024 * 1024,
     });
 
     if (response.status !== 200) {
-      throw new SkillServiceError(422, ErrorCode.VALIDATION_ERROR, `Remote fetch failed with HTTP ${response.status}`);
+      throw new SkillServiceError(
+        422,
+        ErrorCode.VALIDATION_ERROR,
+        `Remote fetch failed with HTTP ${response.status}`,
+      );
     }
 
-    const content = response.body.toString('utf-8');
+    const content = response.body.toString("utf-8");
     const parsed = parseRemoteSkill(content);
 
     let importedSkill: Skill | undefined;
     if (payload.importToLibrary) {
-      const name = ensureSkillName(payload.name ?? parsed.name ?? '', new URL(payload.url).pathname.split('/').pop() ?? 'remote-skill');
-      const visibility = payload.visibility ?? (actor.role === 'admin' ? 'shared' : 'private');
+      const name = ensureSkillName(
+        payload.name ?? parsed.name ?? "",
+        new URL(payload.url).pathname.split("/").pop() ?? "remote-skill",
+      );
+      const visibility =
+        payload.visibility ?? (actor.role === "admin" ? "shared" : "private");
       importedSkill = this.create(actor, {
         name,
         description: payload.description ?? parsed.description,
         content,
-        instructions: parsed.body || content,
-        protocol_type: 'skill',
+        instructions: content,
+        protocol_type: "skill",
         version: parsed.version,
         author: parsed.author,
         tags: parsed.tags,
@@ -348,27 +366,36 @@ export class SkillService {
     };
   }
 
-  private getVisibleSkillRows(actor: SkillActor, scope: 'private' | 'shared' | 'all'): SkillListRow[] {
-    if (scope === 'private') {
+  private getVisibleSkillRows(
+    actor: SkillActor,
+    scope: "private" | "shared" | "all",
+  ): SkillListRow[] {
+    if (scope === "private") {
       return this.db
-        .prepare('SELECT * FROM skills WHERE owner_user_id = ? AND visibility = ? ORDER BY updated_at DESC')
-        .all(actor.userId, 'private') as SkillListRow[];
+        .prepare(
+          "SELECT * FROM skills WHERE owner_user_id = ? AND visibility = ? ORDER BY updated_at DESC",
+        )
+        .all(actor.userId, "private") as SkillListRow[];
     }
 
-    if (scope === 'shared') {
+    if (scope === "shared") {
       return this.db
-        .prepare("SELECT * FROM skills WHERE visibility = 'shared' ORDER BY updated_at DESC")
+        .prepare(
+          "SELECT * FROM skills WHERE visibility = 'shared' ORDER BY updated_at DESC",
+        )
         .all() as SkillListRow[];
     }
 
     return this.db
-      .prepare('SELECT * FROM skills WHERE (owner_user_id = ? AND visibility = ?) OR visibility = ? ORDER BY updated_at DESC')
-      .all(actor.userId, 'private', 'shared') as SkillListRow[];
+      .prepare(
+        "SELECT * FROM skills WHERE (owner_user_id = ? AND visibility = ?) OR visibility = ? ORDER BY updated_at DESC",
+      )
+      .all(actor.userId, "private", "shared") as SkillListRow[];
   }
 
   private getRow(id: string): SkillRow | null {
     const row = this.db
-      .prepare('SELECT id, owner_user_id, visibility FROM skills WHERE id = ?')
+      .prepare("SELECT id, owner_user_id, visibility FROM skills WHERE id = ?")
       .get(id) as SkillRow | undefined;
     return row ?? null;
   }
@@ -376,14 +403,21 @@ export class SkillService {
   private getRequiredRow(id: string): SkillRow {
     const row = this.getRow(id);
     if (!row) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
     return row;
   }
 
-  private assertCanCreate(actor: SkillActor, visibility: 'private' | 'shared'): void {
-    if (visibility === 'shared' && actor.role !== 'admin') {
-      throw new SkillServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can create shared skills');
+  private assertCanCreate(
+    actor: SkillActor,
+    visibility: "private" | "shared",
+  ): void {
+    if (visibility === "shared" && actor.role !== "admin") {
+      throw new SkillServiceError(
+        403,
+        ErrorCode.FORBIDDEN,
+        "Only admin can create shared skills",
+      );
     }
   }
 
@@ -397,13 +431,17 @@ export class SkillService {
       }
     }
 
+    const content = readSkillEntrypoint(
+      path.join(getWebSkillPackagePath(row.id), "SKILL.md"),
+    );
     return {
       id: row.id,
       ownerUserId: row.owner_user_id,
       visibility: row.visibility,
       name: row.name,
       ...(row.description !== null && { description: row.description }),
-      ...(row.content !== null && { content: row.content, instructions: row.content }),
+      content,
+      instructions: content,
       ...(row.mcp_config !== null && { mcp_config: row.mcp_config }),
       protocol_type: row.protocol_type,
       ...(row.version !== null && { version: row.version }),
@@ -426,7 +464,7 @@ export class SkillService {
       icon_url: row.icon_url || undefined,
       icon_emoji: row.icon_emoji || undefined,
       icon_background: row.icon_background || undefined,
-      category: row.category || 'general',
+      category: row.category || "general",
       is_builtin: row.is_builtin === 1,
       registry_slug: row.registry_slug || undefined,
       content_url: row.content_url || undefined,
@@ -441,40 +479,50 @@ export class SkillService {
   }
 
   private assertHttpsRemoteSkillUrl(url: string): void {
-    if (new URL(url).protocol !== 'https:') {
-      throw new SkillServiceError(422, ErrorCode.VALIDATION_ERROR, 'Remote skill URL must use HTTPS');
+    if (new URL(url).protocol !== "https:") {
+      throw new SkillServiceError(
+        422,
+        ErrorCode.VALIDATION_ERROR,
+        "Remote skill URL must use HTTPS",
+      );
     }
   }
 
-  private assertMetadataArraysAllowed(data: Pick<
-    CreateSkillParams,
-    'tags' | 'original_tags' | 'prerequisites' | 'compatibility'
-  >): void {
-    this.assertBoundedMetadataArray(data.tags, 'tags', MAX_SKILL_METADATA_TAGS, MAX_SKILL_METADATA_TAG_LENGTH);
+  private assertMetadataArraysAllowed(
+    data: Pick<
+      CreateSkillParams,
+      "tags" | "original_tags" | "prerequisites" | "compatibility"
+    >,
+  ): void {
+    this.assertBoundedMetadataArray(
+      data.tags,
+      "tags",
+      MAX_SKILL_METADATA_TAGS,
+      MAX_SKILL_METADATA_TAG_LENGTH,
+    );
     this.assertBoundedMetadataArray(
       data.original_tags,
-      'original_tags',
+      "original_tags",
       MAX_SKILL_METADATA_TAGS,
       MAX_SKILL_METADATA_TAG_LENGTH,
     );
     this.assertBoundedMetadataArray(
       data.prerequisites,
-      'prerequisites',
+      "prerequisites",
       MAX_SKILL_METADATA_DETAILS,
       MAX_SKILL_METADATA_DETAIL_LENGTH,
     );
     this.assertBoundedMetadataArray(
       data.compatibility,
-      'compatibility',
+      "compatibility",
       MAX_SKILL_METADATA_DETAILS,
       MAX_SKILL_METADATA_DETAIL_LENGTH,
     );
   }
 
-  private assertUrlMetadataAllowed(data: Pick<
-    CreateSkillParams,
-    'source_url' | 'content_url' | 'icon_url'
-  >): void {
+  private assertUrlMetadataAllowed(
+    data: Pick<CreateSkillParams, "source_url" | "content_url" | "icon_url">,
+  ): void {
     const issues = collectSkillUrlMetadataIssues(data);
     if (issues.length === 0) {
       return;
@@ -483,7 +531,7 @@ export class SkillService {
     throw new SkillServiceError(
       422,
       ErrorCode.VALIDATION_ERROR,
-      issues.map((issue) => issue.message).join('; '),
+      issues.map((issue) => issue.message).join("; "),
     );
   }
 
@@ -506,7 +554,7 @@ export class SkillService {
     }
 
     for (const value of values) {
-      if (typeof value !== 'string' || value.trim().length === 0) {
+      if (typeof value !== "string" || value.trim().length === 0) {
         throw new SkillServiceError(
           422,
           ErrorCode.VALIDATION_ERROR,
@@ -524,25 +572,29 @@ export class SkillService {
   }
 
   private assertCanRead(actor: SkillActor, row: SkillRow): void {
-    if (row.visibility === 'shared') {
+    if (row.visibility === "shared") {
       return;
     }
 
     if (row.owner_user_id !== actor.userId) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
   }
 
   private assertCanWrite(actor: SkillActor, row: SkillRow): void {
-    if (row.visibility === 'shared') {
-      if (actor.role !== 'admin') {
-        throw new SkillServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can modify shared skills');
+    if (row.visibility === "shared") {
+      if (actor.role !== "admin") {
+        throw new SkillServiceError(
+          403,
+          ErrorCode.FORBIDDEN,
+          "Only admin can modify shared skills",
+        );
       }
       return;
     }
 
     if (row.owner_user_id !== actor.userId) {
-      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, 'Skill not found');
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
     }
   }
 }

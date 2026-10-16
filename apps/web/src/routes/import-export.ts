@@ -4,7 +4,6 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 import { getAuthUser } from '../middleware/auth.js';
 import { BackupService } from '../services/backup.service.js';
-import { validatePromptWorkspaceSnapshotPaths } from '../services/prompt-workspace.js';
 import { validateRuleWorkspaceSnapshotPaths } from '../services/rule-workspace.js';
 import { getMediaBase64Map, validatePulledSyncMedia, writePulledSyncMedia } from '../services/sync-media.js';
 import {
@@ -39,7 +38,7 @@ function rejectOversizedImportRequest(c: Context): Response | null {
 }
 
 async function readLimitedMultipartFormData(c: Context): Promise<
-  | { success: true; formData: FormData }
+  { success: true; formData: FormData }
   | { success: false; response: Response }
 > {
   const body = await readRequestBytesBody(c, {
@@ -143,7 +142,7 @@ importExport.post('/import', async (c) => {
 
       const snapshot = parseSyncSnapshot(rawData);
       const actor = getAuthUser(c);
-      validatePromptWorkspaceSnapshotPaths(snapshot.folders, snapshot.prompts, snapshot.promptVersions);
+
       validateSkillWorkspaceSnapshotPaths(snapshot.skills, snapshot.skillVersions, snapshot.skillFiles);
       validateRuleWorkspaceSnapshotPaths(actor.userId, snapshot.rules ?? []);
       const media = {
@@ -180,7 +179,6 @@ importExport.post('/import', async (c) => {
 
     const snapshot = parseSyncSnapshot(parsed.data);
     const actor = getAuthUser(c);
-    validatePromptWorkspaceSnapshotPaths(snapshot.folders, snapshot.prompts, snapshot.promptVersions);
     validateSkillWorkspaceSnapshotPaths(snapshot.skills, snapshot.skillVersions, snapshot.skillFiles);
     validateRuleWorkspaceSnapshotPaths(actor.userId, snapshot.rules ?? []);
     const media = {

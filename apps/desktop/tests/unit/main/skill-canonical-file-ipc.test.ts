@@ -5,17 +5,14 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
-import { CanonicalSkillDB } from "@prompthub/core/canonical-skill-db";
+import { SkillStorageDB } from "@prompthub/core/skill-storage";
 import {
   configureRuntimePaths,
   resetRuntimePaths,
   writeRuntimeLayoutState,
 } from "@prompthub/core/runtime-paths";
 import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import {
-  getCanonicalSkillWorkspacePath,
-  hydrateCanonicalSkillWorkspace,
-} from "@prompthub/core/canonical-skill-library";
+import { getManagedSkillPackagePath } from "@prompthub/core/skill-storage-files";
 
 const { handle } = vi.hoisted(() => ({ handle: vi.fn() }));
 vi.mock("electron", () => ({ ipcMain: { handle } }));
@@ -32,7 +29,7 @@ import { registerSkillVersionHandlers } from "../../../src/main/ipc/skill/versio
 describe("canonical Skill file IPC with real SQLite and filesystem", () => {
   let root: string;
   let database: DatabaseAdapter.Database;
-  let db: CanonicalSkillDB;
+  let db: SkillStorageDB;
   let id: string;
   let cache: string;
   let handlers: Record<string, (...args: unknown[]) => Promise<unknown>>;
@@ -44,9 +41,9 @@ describe("canonical Skill file IPC with real SQLite and filesystem", () => {
       consistencyId: "a".repeat(64),
       operationId: "skill-ipc-test",
     });
-    database = new DatabaseAdapter(":memory:");
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
     database.exec(SCHEMA);
-    db = new CanonicalSkillDB(database);
+    db = new SkillStorageDB(database);
     const source = path.join(root, "source");
     fs.mkdirSync(source);
     fs.writeFileSync(path.join(source, "SKILL.md"), "# Skill");
@@ -59,7 +56,7 @@ describe("canonical Skill file IPC with real SQLite and filesystem", () => {
       is_favorite: false,
       local_repo_path: source,
     }).id;
-    cache = getCanonicalSkillWorkspacePath(id);
+    cache = getManagedSkillPackagePath(id);
     handle.mockClear();
     registerSkillLocalRepoHandlers({ db });
     registerSkillVersionHandlers({ db });
@@ -71,7 +68,7 @@ describe("canonical Skill file IPC with real SQLite and filesystem", () => {
     resetRuntimePaths();
     fs.rmSync(root, { recursive: true, force: true });
   });
-  it("publishes editor write/rename/delete requests before cache reconstruction", async () => {
+  it("publishes editor write/rename/delete requests and retains results after reopening", async () => {
     await handlers[IPC_CHANNELS.SKILL_WRITE_LOCAL_FILE](
       null,
       id,
@@ -85,8 +82,9 @@ describe("canonical Skill file IPC with real SQLite and filesystem", () => {
       "nested/helper.py",
     );
     await handlers[IPC_CHANNELS.SKILL_DELETE_LOCAL_FILE](null, id, "asset.bin");
-    fs.rmSync(cache, { recursive: true });
-    hydrateCanonicalSkillWorkspace(id);
+    database.close();
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
+    db = new SkillStorageDB(database);
     expect(fs.readFileSync(path.join(cache, "nested/helper.py"), "utf8")).toBe(
       "print(1)",
     );
@@ -107,7 +105,7 @@ describe("canonical Skill file IPC with real SQLite and filesystem", () => {
     await handlers[IPC_CHANNELS.SKILL_REPLACE_FILES_SNAPSHOT](null, id, [
       { relativePath: "asset.bin", content: "AAE=", encoding: "base64" },
     ]);
-    hydrateCanonicalSkillWorkspace(id);
+
     expect(fs.readFileSync(path.join(cache, "SKILL.md"), "utf8")).toBe(
       "# Skill",
     );

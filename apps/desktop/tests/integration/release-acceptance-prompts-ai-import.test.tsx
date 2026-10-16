@@ -95,7 +95,7 @@ function registerDomain(): void {
   const prompts = new PromptDB(db);
   const folders = new FolderDB(db);
   registerPromptIPC(prompts, folders, db);
-  registerFolderIPC(folders, prompts);
+  registerFolderIPC(folders);
   registerSettingsIPC(db);
 }
 

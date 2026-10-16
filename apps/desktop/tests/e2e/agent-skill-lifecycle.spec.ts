@@ -35,7 +35,12 @@ async function readSkillState(page: Page, skillId: string) {
   }, skillId);
 }
 
-async function editCurrentFile(page: Page, content: string): Promise<void> {
+async function editCurrentFile(
+  page: Page,
+  skillId: string,
+  filePath: string,
+  content: string,
+): Promise<void> {
   const editorPane = page.locator(".skill-file-editor__editor");
   const editButton = editorPane.getByRole("button", {
     name: "Edit",
@@ -50,6 +55,13 @@ async function editCurrentFile(page: Page, content: string): Promise<void> {
   await expect(
     page.getByText("File saved", { exact: true }).last(),
   ).toBeVisible();
+  // A prior save toast can still be visible while this write is pending.
+  await expect
+    .poll(async () => {
+      const state = await readSkillState(page, skillId);
+      return state.files.find((file) => file.path === filePath)?.content;
+    })
+    .toBe(content);
 }
 
 function findCanonicalPackageFile(
@@ -155,7 +167,7 @@ test("creates, reads, updates, versions, distributes, restarts, and deletes a Sk
     await page.getByTitle("New File").click();
     await page.getByLabel("Enter file name").fill(EXTRA_FILE);
     await page.getByRole("button", { name: "Confirm", exact: true }).click();
-    await editCurrentFile(page, EXTRA_FILE_CONTENT);
+    await editCurrentFile(page, skill.id, EXTRA_FILE, EXTRA_FILE_CONTENT);
 
     await page.getByRole("button", { name: "SKILL.md", exact: true }).click();
     const beforeSkillMd = await page.evaluate(async (skillId) => {
@@ -164,6 +176,8 @@ test("creates, reads, updates, versions, distributes, restarts, and deletes a Sk
     }, skill.id);
     await editCurrentFile(
       page,
+      skill.id,
+      "SKILL.md",
       `${beforeSkillMd.trimEnd()}\n\n${SKILL_MARKER}\n`,
     );
 

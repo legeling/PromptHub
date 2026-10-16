@@ -1091,6 +1091,11 @@ export class SkillInstaller {
   }
 
   static async scanLocal(db: SkillDB): Promise<ScanLocalResult> {
+    const registeredPaths = new Set<string>();
+    for (const skill of db.getAll()) {
+      if (skill.local_repo_path)
+        registeredPaths.add(await normalizeExistingPath(skill.local_repo_path));
+    }
     let count = 0;
     const skipped: string[] = [];
     const scanPaths = getDefaultSkillScanEntries(this.skillsDir).map(
@@ -1108,6 +1113,8 @@ export class SkillInstaller {
         const skillDirs = await this.collectSkillDirs(scanPath);
 
         for (const skillFolderPath of skillDirs) {
+          if (registeredPaths.has(await normalizeExistingPath(skillFolderPath)))
+            continue;
           const skillMdPath = path.join(skillFolderPath, "SKILL.md");
           let skillDisplayName = path.basename(skillFolderPath);
 

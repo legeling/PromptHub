@@ -112,6 +112,11 @@ function stageCatalog(
 ) {
   return stageCanonicalStorageDatabase(dataPath, stagedPath, {
     operationalSourceDatabasePath,
+    agentProviderSourceDatabasePath: operationalSourceDatabasePath,
+    skillSourceDatabasePath: operationalSourceDatabasePath,
+    ruleSourceDatabasePath: operationalSourceDatabasePath,
+    generationSourceDatabasePath: operationalSourceDatabasePath,
+    pluginSourceDatabasePath: operationalSourceDatabasePath,
     publishedCanonicalRootPath,
   });
 }
@@ -129,7 +134,7 @@ export function reconcileCanonicalStorageCatalog(options: {
   activeRoot: string;
   databasePath: string;
 }): { status: "current" | "rebuilt" } {
-  return reconcileCoreCatalog({ ...options, unreadableDatabase: "rebuild" });
+  return reconcileCoreCatalog(options);
 }
 
 function regularFileSize(filePath: string): number {
@@ -243,9 +248,11 @@ function finalizeRepairCandidate(options: {
 }): CanonicalStorageCheckpointManifest {
   const candidateDataPath = path.join(options.candidateRoot, "data");
   const databasePath = path.join(candidateDataPath, "prompthub.db");
-  const source = isReadableDatabaseImage(options.sourceDatabasePath)
-    ? options.sourceDatabasePath
-    : undefined;
+  if (!isReadableDatabaseImage(options.sourceDatabasePath))
+    throw new Error(
+      "Authoritative SQLite is not readable; recovery is required",
+    );
+  const source = options.sourceDatabasePath;
   const staged = stageCatalog(
     candidateDataPath,
     databasePath,
@@ -326,11 +333,21 @@ async function publishPromptWorkspaceRepair(
     },
     verifyCandidate(candidateRoot) {
       if (!manifest) throw new Error("Canonical repair manifest is missing");
-      verifyCanonicalAuthorityRoot(candidateRoot, manifest, options.activeRoot);
+      verifyCanonicalAuthorityRoot(
+        candidateRoot,
+        manifest,
+        options.activeRoot,
+        "local-sqlite",
+      );
     },
     verifyActive(publishedRoot) {
       if (!manifest) throw new Error("Canonical repair manifest is missing");
-      verifyCanonicalAuthorityRoot(publishedRoot, manifest);
+      verifyCanonicalAuthorityRoot(
+        publishedRoot,
+        manifest,
+        publishedRoot,
+        "local-sqlite",
+      );
     },
     injectFailure: options.injectFailure,
     now: options.now,

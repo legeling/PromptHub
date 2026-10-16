@@ -13,6 +13,7 @@ import {
   readCanonicalStorageShadow,
   resetRuntimePaths,
   stageCanonicalStorageDatabase,
+  writeRuntimeLayoutState,
 } from "@prompthub/core";
 import {
   closeDatabase,
@@ -78,7 +79,7 @@ describe("canonical storage production projector", () => {
     const result = await projectCanonicalStorageShadow({
       database,
       targetPath,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: {
         kind: "prompthub-mcp-library",
         version: 1,
@@ -129,7 +130,7 @@ describe("canonical storage production projector", () => {
     const result = await projectCanonicalStorageShadow({
       database,
       targetPath,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: {
         kind: "prompthub-mcp-library",
         version: 1,
@@ -187,7 +188,7 @@ describe("canonical storage production projector", () => {
         projectCanonicalStorageShadow({
           database,
           targetPath,
-          readRules: async () => [],
+          readRules: () => [],
           mcpLibrary: {
             kind: "prompthub-mcp-library",
             version: 1,
@@ -209,8 +210,9 @@ describe("canonical storage production projector", () => {
       path.join(os.tmpdir(), "prompthub-canonical-generation-"),
     );
     roots.push(root);
+    writeRuntimeLayoutState(root);
     configureRuntimePaths({ userDataPath: root });
-    const database = initDatabase(path.join(root, "prompthub.db"));
+    const database = initDatabase(path.join(root, "data", "prompthub.db"));
     const library = new GenerationLibrary(database);
     const batch = await library.createBatch({
       prompt: "Canonical output",
@@ -356,5 +358,48 @@ describe("canonical storage production projector", () => {
 
     expect(readCanonicalStorageShadow(result.targetPath).rules).toEqual([]);
     expect(result.stagedDatabase.domainCounts.rules).toBe(0);
+  });
+
+  it("captures rows and file bytes before a following renderer command can edit them", async () => {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-projector-consistency-"),
+    );
+    roots.push(root);
+    configureRuntimePaths({ userDataPath: root });
+    const database = initDatabase(path.join(root, "prompthub.db"));
+    const prompts = new PromptDB(database);
+    const prompt = prompts.create({
+      title: "Before edit",
+      userPrompt: "Before content",
+      images: ["shared.png"],
+    });
+    const imagePath = path.join(getImagesDir(), "shared.png");
+    fs.mkdirSync(path.dirname(imagePath), { recursive: true });
+    fs.writeFileSync(imagePath, "before-image-bytes");
+    const pending = projectCanonicalStorageShadow({
+      database,
+      targetPath: path.join(root, "canonical-shadow"),
+    });
+    prompts.update(prompt.id, {
+      title: "After edit",
+      userPrompt: "After content",
+    });
+    fs.writeFileSync(imagePath, "after-image-bytes");
+    const result = await pending;
+    const shadow = readCanonicalStorageShadow(result.targetPath);
+    expect(shadow.promptGraph.snapshot.prompts[0]).toMatchObject({
+      id: prompt.id,
+      title: "Before edit",
+      userPrompt: "Before content",
+    });
+    const objects = shadow.promptGraph.manifest.files.filter((file) =>
+      file.path.startsWith("assets/objects/sha256/"),
+    );
+    expect(objects).toHaveLength(1);
+    expect(
+      fs.readFileSync(path.join(result.targetPath, objects[0].path), "utf8"),
+    ).toBe("before-image-bytes");
+    expect(prompts.getById(prompt.id)?.title).toBe("After edit");
+    expect(fs.readFileSync(imagePath, "utf8")).toBe("after-image-bytes");
   });
 });

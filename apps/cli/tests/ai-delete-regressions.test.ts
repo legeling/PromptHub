@@ -1,3 +1,5 @@
+import { DatabaseAdapter, SettingsDB } from "@prompthub/db";
+import "../../../packages/core/tests/helpers/settings-keyring";
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -11,6 +13,22 @@ afterEach(() => {
   for (const root of roots.splice(0))
     fs.rmSync(root, { recursive: true, force: true });
 });
+
+function readPersistedAI(root: string) {
+  const database = new DatabaseAdapter(
+    path.join(root, "user-data/data/prompthub.db"),
+  );
+  try {
+    const settings = new SettingsDB(database);
+    return {
+      providers: settings.get("aiProviders"),
+      models: settings.get("aiModels"),
+      modelRouteDefaults: settings.get("modelRouteDefaults"),
+    };
+  } finally {
+    database.close();
+  }
+}
 
 it("clears only the selected route and deletes a provider profile without deleting self-contained models", async () => {
   const root = makeTempRoot(roots);
@@ -75,24 +93,17 @@ it("clears only the selected route and deletes a provider profile without deleti
   expect(deleted.exitCode, deleted.joinedStderr).toBe(0);
   closeDatabase();
   resetRuntimePaths();
-  const persisted = JSON.parse(
-    fs.readFileSync(path.join(root, "user-data/config/ai-models.json"), "utf8"),
-  );
-  expect(
-    persisted.providers.map((provider: { id: string }) => provider.id),
-  ).toEqual([created[1].providerId]);
-  expect(persisted.models.map((model: { id: string }) => model.id)).toEqual([
-    created[0].modelId,
-    created[1].modelId,
+  const persisted = readPersistedAI(root);
+  expect(persisted.providers).toMatchObject([{ id: created[1].providerId }]);
+  expect(persisted.models).toMatchObject([
+    { id: created[0].modelId },
+    { id: created[1].modelId },
   ]);
   expect(persisted.modelRouteDefaults).toEqual({
     mainText: created[0].modelId,
     fastText: created[1].modelId,
   });
-  const before = fs.readFileSync(
-    path.join(root, "user-data/config/ai-models.json"),
-    "utf8",
-  );
+  const before = readPersistedAI(root);
   expect(
     (await execCli([...prefix, "ai", "provider-delete", "missing-provider"]))
       .exitCode,
@@ -100,7 +111,8 @@ it("clears only the selected route and deletes a provider profile without deleti
   expect(
     (await execCli([...prefix, "ai", "route-clear", "invalid-route"])).exitCode,
   ).toBe(2);
+  expect(readPersistedAI(root)).toEqual(before);
   expect(
-    fs.readFileSync(path.join(root, "user-data/config/ai-models.json"), "utf8"),
-  ).toBe(before);
+    fs.existsSync(path.join(root, "user-data/config/ai-models.json")),
+  ).toBe(false);
 });

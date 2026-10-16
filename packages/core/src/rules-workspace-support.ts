@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 
@@ -22,10 +21,6 @@ import type {
 import type { RuleDB } from "./database";
 
 export const RULE_VERSION_LIMIT = 20;
-export const RULE_META_FILE_NAME = "_rule.json";
-export const RULE_VERSION_INDEX_FILE_NAME = "index.json";
-export const RULE_VERSION_STAGING_PREFIX = ".versions-staging-";
-const RULE_VERSION_BACKUP_PREFIX = ".versions-backup-";
 export const LEGACY_RULE_HISTORY_DIR_NAME = "rule-history";
 export const SAFE_PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
 
@@ -147,20 +142,6 @@ export function pathsEqual(left: string, right: string): boolean {
   return normalize(left) === normalize(right);
 }
 
-export function ensureDir(targetPath: string): void {
-  fs.mkdirSync(targetPath, { recursive: true });
-}
-
-export function slugify(input: string | null | undefined): string {
-  const normalized = (input ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return normalized || "rule";
-}
-
 export function encodeRuleId(ruleId: RuleFileId): string {
   return encodeURIComponent(ruleId);
 }
@@ -227,104 +208,6 @@ export async function fileExists(filePath: string): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-export async function coalesceInFlight<K, V>(
-  pending: Map<K, Promise<V>>,
-  key: K,
-  create: () => Promise<V>,
-): Promise<V> {
-  const current = pending.get(key);
-  if (current) return current;
-  const operation = create();
-  pending.set(key, operation);
-  try {
-    return await operation;
-  } finally {
-    if (pending.get(key) === operation) pending.delete(key);
-  }
-}
-
-export async function readJsonFile<T>(filePath: string): Promise<T | null> {
-  try {
-    const raw = await fsp.readFile(filePath, "utf-8");
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-export async function writeJsonFile(
-  filePath: string,
-  value: unknown,
-): Promise<void> {
-  await writeTextFileAtomic(filePath, JSON.stringify(value, null, 2));
-}
-
-export async function writeTextFileAtomic(
-  filePath: string,
-  content: string,
-): Promise<void> {
-  await fsp.mkdir(path.dirname(filePath), { recursive: true });
-  const tempPath = path.join(
-    path.dirname(filePath),
-    `.rule-write-${crypto.randomUUID()}.tmp`,
-  );
-
-  try {
-    await fsp.writeFile(tempPath, content, "utf-8");
-    await fsp.rename(tempPath, filePath);
-  } catch (error) {
-    try {
-      await fsp.rm(tempPath, { force: true });
-    } catch {
-      // Best-effort cleanup; preserving the original write error matters most.
-    }
-    throw error;
-  }
-}
-
-export async function createSiblingTempDirectory(
-  targetDir: string,
-  prefix: string,
-): Promise<string> {
-  await fsp.mkdir(path.dirname(targetDir), { recursive: true });
-  return fsp.mkdtemp(path.join(path.dirname(targetDir), prefix));
-}
-
-export async function replaceDirectoryAtomic(
-  targetDir: string,
-  stagingDir: string,
-): Promise<void> {
-  const backupDir = await createSiblingTempDirectory(
-    targetDir,
-    RULE_VERSION_BACKUP_PREFIX,
-  );
-  await fsp.rm(backupDir, { recursive: true, force: true });
-
-  let liveMoved = false;
-  try {
-    if (await fileExists(targetDir)) {
-      await fsp.rename(targetDir, backupDir);
-      liveMoved = true;
-    }
-
-    await fsp.rename(stagingDir, targetDir);
-    try {
-      await fsp.rm(backupDir, { recursive: true, force: true });
-    } catch {
-      // The replacement is already published; stale backup cleanup is best-effort.
-    }
-  } catch (error) {
-    if (
-      !(await fileExists(targetDir)) &&
-      liveMoved &&
-      (await fileExists(backupDir))
-    ) {
-      await fsp.rename(backupDir, targetDir);
-    }
-    throw error;
   }
 }
 

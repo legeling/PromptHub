@@ -1,3 +1,4 @@
+import { readRuleBackupRecord } from './rule-workspace.js';
 import type {
   CreateRuleProjectInput,
   RuleFileContent,
@@ -35,7 +36,7 @@ function toRuleDescriptor(record: ReturnType<typeof exportRuleBackupRecords>[num
 }
 
 export function readRuleContent(userId: string, ruleId: RuleFileId): RuleFileContent | null {
-  const record = exportRuleBackupRecords(userId).find((item) => item.id === ruleId);
+  const record = readRuleBackupRecord(userId,ruleId);
   if (!record) {
     return null;
   }

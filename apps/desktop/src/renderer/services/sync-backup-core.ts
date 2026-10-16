@@ -1,11 +1,30 @@
+import {
+  encryptData,
+  decryptData,
+} from "@prompthub/shared/utils/sync-encryption";
+export {
+  encryptData,
+  decryptData,
+} from "@prompthub/shared/utils/sync-encryption";
 import type { PromptVersion } from "@prompthub/shared/types";
-import { serializeSkillSnapshotTransport, parseSkillSnapshotTransport } from "@prompthub/shared/utils/skill-file-snapshot";
+import type {
+  RemoteWriteCondition,
+  RemoteUploadResult,
+  RemoteDownloadResult,
+  RemoteDeleteResult,
+} from "@prompthub/shared/types/remote-sync";
+export type {
+  RemoteUploadResult,
+  RemoteDownloadResult,
+} from "@prompthub/shared/types/remote-sync";
+import {
+  serializeSkillSnapshotTransport,
+  parseSkillSnapshotTransport,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 
-import { getAllFolders, getAllPrompts } from "./database";
 import { exportDatabase, restoreFromBackup } from "./database-backup";
 import type { DatabaseBackup } from "./database-backup-format";
 import {
-  getCanonicalSettingsStateSnapshot,
   restoreAiConfigSnapshot,
   restoreSettingsStateSnapshot,
   SENSITIVE_SETTINGS_FIELDS,
@@ -110,18 +129,6 @@ async function runGuardedRestore<T>(
   }
 }
 
-export interface RemoteUploadResult {
-  success: boolean;
-  error?: string;
-}
-
-export interface RemoteDownloadResult {
-  success: boolean;
-  data?: string;
-  notFound?: boolean;
-  error?: string;
-}
-
 export interface RemoteStatResult {
   exists: boolean;
   lastModified?: string;
@@ -137,8 +144,13 @@ export interface RemoteSyncAdapter {
   };
   prepareLegacyUpload?(): Promise<void>;
   prepareIncrementalUpload?(includeMedia: boolean): Promise<void>;
-  uploadText(path: string, content: string): Promise<RemoteUploadResult>;
+  uploadText(
+    path: string,
+    content: string,
+    condition?: RemoteWriteCondition,
+  ): Promise<RemoteUploadResult>;
   downloadText(path: string): Promise<RemoteDownloadResult>;
+  deleteText?(path: string): Promise<RemoteDeleteResult>;
   stat?(path: string): Promise<RemoteStatResult>;
 }
 
@@ -154,104 +166,6 @@ function countSkillFiles(backup: DatabaseBackup): number {
     (count, files) => count + files.length,
     0,
   );
-}
-
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
-  }
-  return btoa(binary);
-}
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
-export async function encryptData(
-  data: string,
-  password: string,
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits", "deriveKey"],
-  );
-
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-
-  const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt"],
-  );
-
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    dataBuffer,
-  );
-
-  const combined = new Uint8Array(
-    salt.length + iv.length + encrypted.byteLength,
-  );
-  combined.set(salt, 0);
-  combined.set(iv, salt.length);
-  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-
-  return uint8ArrayToBase64(combined);
-}
-
-export async function decryptData(
-  encryptedBase64: string,
-  password: string,
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  const combined = base64ToUint8Array(encryptedBase64);
-
-  const salt = combined.slice(0, 16);
-  const iv = combined.slice(16, 28);
-  const encrypted = combined.slice(28);
-
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits", "deriveKey"],
-  );
-
-  const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"],
-  );
-
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    encrypted,
-  );
-
-  return decoder.decode(decrypted);
 }
 
 /** v4 compatibility digest; v5 object identities use the full SHA-256 above. */
@@ -375,7 +289,10 @@ async function serializeLegacyBackup(
 
   return JSON.stringify({
     encrypted: true,
-    data: await encryptData(serializeSkillSnapshotTransport(dataToEncrypt), encryptionPassword),
+    data: await encryptData(
+      serializeSkillSnapshotTransport(dataToEncrypt),
+      encryptionPassword,
+    ),
     images: backupData.images,
     videos: backupData.videos,
   });
@@ -578,71 +495,6 @@ async function restoreSharedSnapshots(data: BackupData): Promise<void> {
       preserveLocalFields: SENSITIVE_SETTINGS_FIELDS,
     });
   }
-}
-
-function maxTimestamp(current: Date, value: unknown): Date {
-  const candidate =
-    typeof value === "number"
-      ? new Date(value)
-      : typeof value === "string"
-        ? new Date(value)
-        : null;
-  if (!candidate || Number.isNaN(candidate.getTime())) {
-    return current;
-  }
-  return candidate > current ? candidate : current;
-}
-
-function getBackupTimestampCandidates(backup: DatabaseBackup): unknown[] {
-  const candidates: unknown[] = [
-    ...backup.prompts.map((prompt) => prompt.updatedAt),
-    ...backup.folders.map((folder) => folder.updatedAt),
-    ...backup.versions.map((version) => version.createdAt),
-    ...(backup.promptRelations ?? []).map((relation) => relation.updatedAt),
-    ...(backup.outputFormatItems ?? []).map((item) => item.updatedAt),
-    ...(backup.skills ?? []).map((skill) => skill.updated_at),
-    ...(backup.skillVersions ?? []).map((version) => version.createdAt),
-    backup.mcpLibrary?.updatedAt,
-    backup.pluginLibrary?.updatedAt,
-    backup.settingsUpdatedAt,
-  ];
-
-  for (const rule of backup.rules ?? []) {
-    candidates.push(...rule.versions.map((version) => version.savedAt));
-  }
-
-  return candidates;
-}
-
-async function getLocalLatestTimestamp(): Promise<Date> {
-  const [localPrompts, localFolders, backup] = await Promise.all([
-    getAllPrompts(),
-    getAllFolders(),
-    exportDatabase({ skipVideoContent: true, limitMedia: true }),
-  ]);
-  let localLatestTime = new Date(0);
-
-  for (const prompt of localPrompts) {
-    localLatestTime = maxTimestamp(localLatestTime, prompt.updatedAt);
-  }
-
-  for (const folder of localFolders) {
-    localLatestTime = maxTimestamp(localLatestTime, folder.updatedAt);
-  }
-
-  for (const value of getBackupTimestampCandidates(backup)) {
-    localLatestTime = maxTimestamp(localLatestTime, value);
-  }
-
-  const settingsSnapshot = await getCanonicalSettingsStateSnapshot();
-  if (settingsSnapshot?.settingsUpdatedAt) {
-    localLatestTime = maxTimestamp(
-      localLatestTime,
-      settingsSnapshot.settingsUpdatedAt,
-    );
-  }
-
-  return localLatestTime;
 }
 
 function createNoopSyncResult(skipped = 0): SyncResult {
@@ -1439,7 +1291,7 @@ export async function getRemoteSyncBackupTimestamp(
 
     if (path === adapter.paths.manifest) {
       const manifest = parseManifestText(downloadResult.data);
-        validateManifestReferences(adapter.paths, manifest);
+      validateManifestReferences(adapter.paths, manifest);
       return {
         exists: true,
         lastModified: manifest.updatedAt,
@@ -1457,37 +1309,4 @@ export async function getRemoteSyncBackupTimestamp(
   }
 
   return { exists: false };
-}
-
-export async function autoSyncBackup(
-  adapter: RemoteSyncAdapter,
-  options?: SyncBackupOptions,
-): Promise<SyncResult> {
-  try {
-    const localLatestTime = await getLocalLatestTimestamp();
-    const remoteTimestamp = await getRemoteSyncBackupTimestamp(
-      adapter,
-      options,
-    );
-
-    if (!remoteTimestamp.exists) {
-      return uploadSyncBackup(adapter, options);
-    }
-
-    const remoteTime = new Date(remoteTimestamp.lastModified || 0);
-    if (remoteTime > localLatestTime) {
-      return downloadSyncBackup(adapter, options);
-    }
-
-    if (localLatestTime > remoteTime) {
-      return uploadSyncBackup(adapter, options);
-    }
-
-    return createNoopSyncResult();
-  } catch (error) {
-    return {
-      success: false,
-      message: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"} / 同步失败: ${error instanceof Error ? error.message : "未知错误"}`,
-    };
-  }
 }

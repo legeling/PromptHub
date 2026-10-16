@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../src/renderer/services/backup-orchestrator", () => ({
-  runS3Upload: vi.fn(),
-  runWebDAVUpload: vi.fn(),
+  runS3AutoSync: vi.fn(),
+  runWebDAVAutoSync: vi.fn(),
 }));
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -11,8 +11,8 @@ vi.mock("../../../src/renderer/i18n", () => ({
   changeLanguage: vi.fn(),
 }));
 
-import { runWebDAVUpload } from "../../../src/renderer/services/backup-orchestrator";
-import { runS3Upload } from "../../../src/renderer/services/backup-orchestrator";
+import { runWebDAVAutoSync } from "../../../src/renderer/services/backup-orchestrator";
+import { runS3AutoSync } from "../../../src/renderer/services/backup-orchestrator";
 import {
   S3_SAVE_SYNC_DEBOUNCE_MS,
   resetWebDAVSaveSyncSchedulerForTests,
@@ -40,12 +40,12 @@ describe("webdav-save-sync", () => {
       webdavEncryptionEnabled: false,
       webdavEncryptionPassword: "",
     });
-    vi.mocked(runWebDAVUpload).mockResolvedValue({
+    vi.mocked(runWebDAVAutoSync).mockResolvedValue({
       success: true,
       message: "ok",
       localChanged: false,
     });
-    vi.mocked(runS3Upload).mockResolvedValue({
+    vi.mocked(runS3AutoSync).mockResolvedValue({
       success: true,
       message: "ok",
       localChanged: false,
@@ -58,10 +58,10 @@ describe("webdav-save-sync", () => {
     scheduleWebDAVSaveSync("rules:save");
 
     await vi.advanceTimersByTimeAsync(WEBDAV_SAVE_SYNC_DEBOUNCE_MS - 1);
-    expect(runWebDAVUpload).not.toHaveBeenCalled();
+    expect(runWebDAVAutoSync).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(runWebDAVUpload).toHaveBeenCalledTimes(1);
+    expect(runWebDAVAutoSync).toHaveBeenCalledTimes(1);
   });
 
   it("skips scheduling when save-sync is disabled", async () => {
@@ -70,12 +70,12 @@ describe("webdav-save-sync", () => {
     scheduleWebDAVSaveSync("prompt:update");
     await vi.advanceTimersByTimeAsync(WEBDAV_SAVE_SYNC_DEBOUNCE_MS);
 
-    expect(runWebDAVUpload).not.toHaveBeenCalled();
+    expect(runWebDAVAutoSync).not.toHaveBeenCalled();
   });
 
   it("queues one rerun when changes arrive during an in-flight upload", async () => {
     let resolveUpload: (() => void) | undefined;
-    vi.mocked(runWebDAVUpload).mockImplementation(
+    vi.mocked(runWebDAVAutoSync).mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveUpload = () =>
@@ -85,17 +85,17 @@ describe("webdav-save-sync", () => {
 
     scheduleWebDAVSaveSync("prompt:update");
     await vi.advanceTimersByTimeAsync(WEBDAV_SAVE_SYNC_DEBOUNCE_MS);
-    expect(runWebDAVUpload).toHaveBeenCalledTimes(1);
+    expect(runWebDAVAutoSync).toHaveBeenCalledTimes(1);
 
     scheduleWebDAVSaveSync("skill:update");
     scheduleWebDAVSaveSync("rules:save");
-    expect(runWebDAVUpload).toHaveBeenCalledTimes(1);
+    expect(runWebDAVAutoSync).toHaveBeenCalledTimes(1);
 
     resolveUpload?.();
     await Promise.resolve();
 
     await vi.advanceTimersByTimeAsync(WEBDAV_SAVE_SYNC_DEBOUNCE_MS);
-    expect(runWebDAVUpload).toHaveBeenCalledTimes(2);
+    expect(runWebDAVAutoSync).toHaveBeenCalledTimes(2);
   });
 
   it("debounces repeated S3 save-triggered sync requests", async () => {
@@ -119,10 +119,10 @@ describe("webdav-save-sync", () => {
     scheduleS3SaveSync("rules:save");
 
     await vi.advanceTimersByTimeAsync(S3_SAVE_SYNC_DEBOUNCE_MS - 1);
-    expect(runS3Upload).not.toHaveBeenCalled();
+    expect(runS3AutoSync).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(runS3Upload).toHaveBeenCalledTimes(1);
+    expect(runS3AutoSync).toHaveBeenCalledTimes(1);
   });
 
   it("skips WebDAV save-sync when another sync provider is active", async () => {
@@ -131,7 +131,7 @@ describe("webdav-save-sync", () => {
     scheduleWebDAVSaveSync("prompt:update");
     await vi.advanceTimersByTimeAsync(WEBDAV_SAVE_SYNC_DEBOUNCE_MS);
 
-    expect(runWebDAVUpload).not.toHaveBeenCalled();
+    expect(runWebDAVAutoSync).not.toHaveBeenCalled();
   });
 
   it("scheduleAllSaveSync only runs the active sync provider", async () => {
@@ -154,8 +154,8 @@ describe("webdav-save-sync", () => {
     scheduleAllSaveSync("prompt:update");
     await vi.advanceTimersByTimeAsync(S3_SAVE_SYNC_DEBOUNCE_MS);
 
-    expect(runS3Upload).toHaveBeenCalledTimes(1);
-    expect(runWebDAVUpload).not.toHaveBeenCalled();
+    expect(runS3AutoSync).toHaveBeenCalledTimes(1);
+    expect(runWebDAVAutoSync).not.toHaveBeenCalled();
   });
 
   it("clears a pending S3 timer when WebDAV becomes the active sync provider", async () => {
@@ -193,8 +193,8 @@ describe("webdav-save-sync", () => {
     scheduleAllSaveSync("prompt:update");
     await vi.advanceTimersByTimeAsync(WEBDAV_SAVE_SYNC_DEBOUNCE_MS);
 
-    expect(runWebDAVUpload).toHaveBeenCalledTimes(1);
-    expect(runS3Upload).not.toHaveBeenCalled();
+    expect(runWebDAVAutoSync).toHaveBeenCalledTimes(1);
+    expect(runS3AutoSync).not.toHaveBeenCalled();
   });
 
   it("cancels all pending save-sync timers when sync switches back to manual", async () => {
@@ -221,7 +221,7 @@ describe("webdav-save-sync", () => {
     scheduleAllSaveSync("settings:update");
     await vi.advanceTimersByTimeAsync(S3_SAVE_SYNC_DEBOUNCE_MS);
 
-    expect(runWebDAVUpload).not.toHaveBeenCalled();
-    expect(runS3Upload).not.toHaveBeenCalled();
+    expect(runWebDAVAutoSync).not.toHaveBeenCalled();
+    expect(runS3AutoSync).not.toHaveBeenCalled();
   });
 });

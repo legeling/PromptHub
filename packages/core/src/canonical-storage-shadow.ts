@@ -1,3 +1,5 @@
+import { GenerationDB } from "@prompthub/db";
+import { isExternalSkillRepoPath } from "./skill-local-repo-ownership";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,6 +13,9 @@ import {
   cleanupOwnedTemporaryDatabase,
   copyMcpDatabaseState,
   McpDB,
+  PromptDB,
+  FolderDB,
+  SYNC_TARGET_SCHEMA_VERSION,
   type CanonicalResourceRecord,
 } from "@prompthub/db";
 import type { GenerationBatchManifest, Prompt } from "@prompthub/shared/types";
@@ -54,11 +59,15 @@ import {
 } from "./plugin-resource-schema";
 import {
   materializePromptCanonicalGraph,
+  collectPromptCanonicalGraph,
   type PromptCanonicalGraphManifest,
   type PromptCanonicalGraphSnapshot,
 } from "./prompt-canonical-export";
 import { readPromptCanonicalGraph } from "./prompt-canonical-import";
-import { stagePromptCanonicalDatabase } from "./prompt-canonical-catalog";
+import {
+  stagePromptCanonicalDatabase,
+  stagePromptSnapshotDatabase,
+} from "./prompt-canonical-catalog";
 import {
   materializeRuleResourceBundle,
   readRuleResourceBundle,
@@ -96,6 +105,7 @@ export interface CanonicalAgentProviderShadowInput {
 export interface CanonicalGenerationShadowInput {
   manifest: GenerationBatchManifest;
   outputSources: Readonly<Record<string, string>>;
+  bundleRevision?: number;
 }
 
 export interface MaterializeCanonicalStorageShadowInput {
@@ -145,13 +155,22 @@ export interface StageCanonicalStorageDatabaseResult {
 }
 
 export const LOCAL_DATABASE_AUTHORITY_TABLES = Object.freeze({
-  compatibility: ["settings"],
+  skills: ["skills", "skill_versions"],
+  rules: ["rules", "rule_versions"],
+  agentProviders: ["agent_provider_profiles", "agent_provider_model_mappings"],
+  generations: ["generation_batches", "generation_outputs"],
+  plugins: ["plugins", "plugin_versions"],
+  settings: ["settings"],
   serverAuthoritative: ["users", "refresh_tokens", "user_settings"],
-  operational: [
-    "agent_provider_snapshots",
+  sessions: [
     "agent_session_sources",
     "agent_session_index",
     "agent_conversation_metadata",
+  ],
+  operational: [
+    "sync_targets",
+    "storage_publication_receipts",
+    "agent_provider_snapshots",
     "agent_conversation_handoffs",
   ],
   structuredBusiness: MCP_STORAGE_TABLES,
@@ -175,6 +194,13 @@ const CANONICAL_DOMAIN_EMPTY_METADATA_DIRECTORIES: Readonly<
 });
 
 export interface StageCanonicalStorageDatabaseOptions {
+  /** Normal maintenance uses SQLite; explicit archive imports use the graph. */
+  promptSourceDatabasePath?: string;
+  skillSourceDatabasePath?: string;
+  ruleSourceDatabasePath?: string;
+  agentProviderSourceDatabasePath?: string;
+  generationSourceDatabasePath?: string;
+  pluginSourceDatabasePath?: string;
   operationalSourceDatabasePath?: string;
   mcpSourceDatabasePath?: string;
   publishedCanonicalRootPath?: string;
@@ -359,6 +385,10 @@ function materializeAdditionalDomains(
       objectsRoot,
       manifest: entry.manifest,
       outputSources: entry.outputSources,
+      writePolicy:
+        entry.bundleRevision === undefined
+          ? undefined
+          : { mode: "create", revision: entry.bundleRevision },
     });
   }
   return {
@@ -470,16 +500,19 @@ function childBundlePaths(rootPath: string, domain: string): string[] {
     .sort(compareText);
 }
 
-export function readCanonicalStorageShadow(
+function readCanonicalStorageDomains(
   rootPath: string,
-): ReadCanonicalStorageShadowResult {
-  const skillPaths = childBundlePaths(rootPath, "skills");
+  includeSkills = true,
+  includeGenerations = true,
+): Omit<ReadCanonicalStorageShadowResult, "promptGraph"> {
+  const skillPaths = includeSkills ? childBundlePaths(rootPath, "skills") : [];
   const rulePaths = childBundlePaths(rootPath, "rules");
   const mcpPaths = childBundlePaths(rootPath, "mcp");
   const pluginPaths = childBundlePaths(rootPath, "plugins");
   const agentPaths = childBundlePaths(rootPath, "agents");
-  const generationPaths = childBundlePaths(rootPath, "generations");
-  const promptGraph = readPromptCanonicalGraph(rootPath);
+  const generationPaths = includeGenerations
+    ? childBundlePaths(rootPath, "generations")
+    : [];
   const skills = skillPaths.map(readSkillResourceBundle);
   const rules = rulePaths.map(readRuleResourceBundle);
   const mcpServers = mcpPaths.map((bundlePath) =>
@@ -500,7 +533,6 @@ export function readCanonicalStorageShadow(
     generations: generations.length,
   };
   return {
-    promptGraph,
     skills,
     rules,
     mcpServers,
@@ -511,15 +543,29 @@ export function readCanonicalStorageShadow(
   };
 }
 
-function bundleCatalogRecords(rootPath: string): CanonicalResourceRecord[] {
+export function readCanonicalStorageShadow(
+  rootPath: string,
+): ReadCanonicalStorageShadowResult {
+  return {
+    ...readCanonicalStorageDomains(rootPath),
+    promptGraph: readPromptCanonicalGraph(rootPath),
+  };
+}
+
+function bundleCatalogRecords(
+  rootPath: string,
+  includePrompts = true,
+  includeSkills = true,
+  includeGenerations = true,
+): CanonicalResourceRecord[] {
   const domains = [
-    "prompts",
-    "skills",
+    ...(includePrompts ? ["prompts"] : []),
+    ...(includeSkills ? ["skills"] : []),
     "rules",
     "mcp",
     "plugins",
     "agents",
-    "generations",
+    ...(includeGenerations ? ["generations"] : []),
   ];
   const records: CanonicalResourceRecord[] = [];
   for (const domain of domains) {
@@ -583,6 +629,33 @@ function tableColumns(
   ).map((column) => column.name);
 }
 
+function copyApplicationMigrationHistory(
+  target: InstanceType<typeof DatabaseAdapter>,
+  source: InstanceType<typeof DatabaseAdapter>,
+): void {
+  if (tableColumns(source, "schema_migrations").length === 0) return;
+  // Retain completed application migrations without losing new schema markers.
+  for (const row of source.all(
+    "SELECT name, applied_at FROM schema_migrations",
+  )) {
+    if (
+      row === null ||
+      typeof row !== "object" ||
+      !("name" in row) ||
+      typeof row.name !== "string" ||
+      !("applied_at" in row) ||
+      typeof row.applied_at !== "number"
+    ) {
+      throw new Error("Invalid source migration history");
+    }
+    target.run(
+      "INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET applied_at = excluded.applied_at",
+      row.name,
+      row.applied_at,
+    );
+  }
+}
+
 function copyPreservedDatabaseState(
   target: InstanceType<typeof DatabaseAdapter>,
   sourcePath: string | undefined,
@@ -593,9 +666,24 @@ function copyPreservedDatabaseState(
   try {
     const counts: Record<string, number> = {};
     target.transaction(() => {
+      if (tables.includes("settings"))
+        copyApplicationMigrationHistory(target, source);
       for (const table of tables) {
         const sourceColumns = tableColumns(source, table);
         const targetColumns = tableColumns(target, table);
+        if (table === "sync_targets" && sourceColumns.length === 0) {
+          const version: unknown = source.get("PRAGMA user_version");
+          if (
+            typeof version === "object" &&
+            version !== null &&
+            "user_version" in version &&
+            typeof version.user_version === "number" &&
+            version.user_version < SYNC_TARGET_SCHEMA_VERSION
+          ) {
+            counts[table] = 0;
+            continue;
+          }
+        }
         if (
           sourceColumns.length === 0 ||
           JSON.stringify(sourceColumns) !== JSON.stringify(targetColumns)
@@ -631,6 +719,33 @@ function copyPreservedDatabaseState(
       }
     })();
     return counts;
+  } finally {
+    source.close();
+  }
+}
+
+function localSkillBindings(
+  sourcePath: string | undefined,
+): Map<string, Pick<Skill, "source_url" | "local_repo_path">> {
+  if (!sourcePath) return new Map();
+  const source = new DatabaseAdapter(sourcePath, { readOnly: true });
+  try {
+    return new Map(
+      new SkillDB(source).getAll().flatMap((skill) => {
+        if (!skill.source_url || !path.isAbsolute(skill.source_url)) return [];
+        return [
+          [
+            skill.id,
+            {
+              source_url: skill.source_url,
+              ...(isExternalSkillRepoPath(skill.id, skill.local_repo_path)
+                ? { local_repo_path: skill.local_repo_path }
+                : {}),
+            },
+          ],
+        ];
+      }),
+    );
   } finally {
     source.close();
   }
@@ -691,8 +806,8 @@ function projectCanonicalRules(
         .createHash("sha256")
         .update(entry.rule.content, "utf8")
         .digest("hex"),
-      createdAt: versions[0]!.createdAt,
-      updatedAt: versions.at(-1)!.createdAt,
+      createdAt: versions[0]?.createdAt ?? entry.bundleManifest.createdAt,
+      updatedAt: versions.at(-1)?.createdAt ?? entry.bundleManifest.updatedAt,
     });
     ruleDb.replaceVersions(entry.rule.id, versions);
   }
@@ -702,61 +817,8 @@ function projectCanonicalGenerations(
   database: InstanceType<typeof DatabaseAdapter>,
   generations: readonly ReadGenerationResourceResult[],
 ): void {
-  for (const entry of generations) {
-    const manifest = entry.manifest;
-    const sourcePromptId =
-      manifest.sourcePromptId &&
-      database.get(
-        "SELECT id FROM prompts WHERE id = ?",
-        manifest.sourcePromptId,
-      )
-        ? manifest.sourcePromptId
-        : null;
-    database.run(
-      `INSERT INTO generation_batches (
-        id, manifest_path, status, title, source_prompt_id, provider, model,
-        requested_count, succeeded_count, failed_count, cancelled_count,
-        interrupted_count, created_at, updated_at, completed_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      manifest.id,
-      path.posix.join(
-        "generations",
-        encodeCanonicalResourceDirectory(manifest.id),
-        "batch.json",
-      ),
-      manifest.status,
-      manifest.title,
-      sourcePromptId,
-      manifest.model.provider,
-      manifest.model.model,
-      manifest.targetCount,
-      manifest.counts.succeeded,
-      manifest.counts.failed,
-      manifest.counts.cancelled,
-      manifest.counts.interrupted,
-      manifest.createdAt,
-      manifest.updatedAt,
-      manifest.completedAt ?? null,
-    );
-    for (const slot of manifest.slots) {
-      database.run(
-        `INSERT INTO generation_outputs (
-          id, batch_id, slot_index, status, file_name, mime_type, byte_size,
-          sha256, favorite, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        slot.output?.id ?? `${manifest.id}:${slot.index}`,
-        manifest.id,
-        slot.index,
-        slot.status,
-        slot.output?.fileName ?? null,
-        slot.output?.mimeType ?? null,
-        slot.output?.byteSize ?? null,
-        slot.output?.sha256 ?? null,
-        slot.output?.favorite ? 1 : 0,
-        slot.output?.createdAt ?? null,
-      );
-    }
-  }
+  const repository = new GenerationDB(database);
+  for (const entry of generations) repository.upsert(entry.manifest);
 }
 
 export function stageCanonicalStorageDatabase(
@@ -764,11 +826,20 @@ export function stageCanonicalStorageDatabase(
   databasePath: string,
   options: StageCanonicalStorageDatabaseOptions = {},
 ): StageCanonicalStorageDatabaseResult {
-  const storage = readCanonicalStorageShadow(rootPath);
+  const includeSkills = !options.skillSourceDatabasePath;
+  const includeGenerations = !options.generationSourceDatabasePath;
+  const storage = readCanonicalStorageDomains(
+    rootPath,
+    includeSkills,
+    includeGenerations,
+  );
   const publishedRootPath = path.resolve(
     options.publishedCanonicalRootPath ?? rootPath,
   );
-  const promptResult = stagePromptCanonicalDatabase(rootPath, databasePath);
+  const includePrompts = !options.promptSourceDatabasePath;
+  const promptResult = options.promptSourceDatabasePath
+    ? stageDatabasePromptGraph(options.promptSourceDatabasePath, databasePath)
+    : stagePromptCanonicalDatabase(rootPath, databasePath);
   try {
     const database = new DatabaseAdapter(databasePath);
     let preservedDatabaseCounts: Record<string, number> = {};
@@ -777,11 +848,19 @@ export function stageCanonicalStorageDatabase(
         database,
         options.operationalSourceDatabasePath,
         [
-          ...LOCAL_DATABASE_AUTHORITY_TABLES.compatibility,
+          ...LOCAL_DATABASE_AUTHORITY_TABLES.settings,
           ...LOCAL_DATABASE_AUTHORITY_TABLES.serverAuthoritative,
         ],
       );
-      const records = bundleCatalogRecords(rootPath);
+      const records = bundleCatalogRecords(
+        rootPath,
+        includePrompts,
+        includeSkills,
+        includeGenerations,
+      );
+      const deviceSkills = localSkillBindings(
+        options.operationalSourceDatabasePath,
+      );
       database.transaction(() => {
         const skillDb = new SkillDB(database);
         for (const entry of storage.skills) {
@@ -793,15 +872,22 @@ export function stageCanonicalStorageDatabase(
               encodeCanonicalResourceDirectory(entry.skill.id),
               "files",
             ),
+            ...deviceSkills.get(entry.skill.id),
           });
           for (const version of entry.versions) {
             skillDb.insertVersionDirect(version);
           }
         }
-        projectCanonicalRules(database, publishedRootPath, storage.rules);
-        const agentDb = new AgentProviderProfileDB(database);
-        for (const entry of storage.agentProviders) {
-          agentDb.insertProfileGraphDirect(entry.profile, entry.modelMappings);
+        if (!options.ruleSourceDatabasePath)
+          projectCanonicalRules(database, publishedRootPath, storage.rules);
+        if (!options.agentProviderSourceDatabasePath) {
+          const agentDb = new AgentProviderProfileDB(database);
+          for (const entry of storage.agentProviders) {
+            agentDb.insertProfileGraphDirect(
+              entry.profile,
+              entry.modelMappings,
+            );
+          }
         }
         projectCanonicalGenerations(database, storage.generations);
         new CanonicalResourceDB(database).replaceAll(records);
@@ -810,8 +896,36 @@ export function stageCanonicalStorageDatabase(
         ...preservedDatabaseCounts,
         ...copyPreservedDatabaseState(
           database,
+          options.skillSourceDatabasePath,
+          LOCAL_DATABASE_AUTHORITY_TABLES.skills,
+        ),
+        ...copyPreservedDatabaseState(
+          database,
+          options.ruleSourceDatabasePath,
+          LOCAL_DATABASE_AUTHORITY_TABLES.rules,
+        ),
+        ...copyPreservedDatabaseState(
+          database,
+          options.agentProviderSourceDatabasePath,
+          LOCAL_DATABASE_AUTHORITY_TABLES.agentProviders,
+        ),
+        ...copyPreservedDatabaseState(
+          database,
+          options.generationSourceDatabasePath,
+          LOCAL_DATABASE_AUTHORITY_TABLES.generations,
+        ),
+        ...copyPreservedDatabaseState(
+          database,
+          options.pluginSourceDatabasePath,
+          LOCAL_DATABASE_AUTHORITY_TABLES.plugins,
+        ),
+        ...copyPreservedDatabaseState(
+          database,
           options.operationalSourceDatabasePath,
-          LOCAL_DATABASE_AUTHORITY_TABLES.operational,
+          [
+            ...LOCAL_DATABASE_AUTHORITY_TABLES.sessions,
+            ...LOCAL_DATABASE_AUTHORITY_TABLES.operational,
+          ],
         ),
         ...preserveMcpState(
           database,
@@ -819,6 +933,15 @@ export function stageCanonicalStorageDatabase(
             options.operationalSourceDatabasePath,
         ),
       };
+      // Portable Skill bundles are an explicit migration input, not runtime SQL payloads.
+      if (!options.skillSourceDatabasePath)
+        database.run("DELETE FROM schema_migrations WHERE name = ?", "skill-payload-files-v1");
+      // Explicit portable imports rebuild Plugin SQL from the selected verified bundles.
+      if (!options.pluginSourceDatabasePath)
+        database.run(
+          "DELETE FROM schema_migrations WHERE name = ?",
+          "plugin-sqlite-v1",
+        );
       quickCheck(database);
     } finally {
       database.close();
@@ -830,7 +953,14 @@ export function stageCanonicalStorageDatabase(
         calculateCanonicalResourceCatalogHash(records);
       if (
         resourceCatalogHash !==
-        calculateCanonicalResourceCatalogHash(bundleCatalogRecords(rootPath))
+        calculateCanonicalResourceCatalogHash(
+          bundleCatalogRecords(
+            rootPath,
+            includePrompts,
+            includeSkills,
+            includeGenerations,
+          ),
+        )
       )
         throw new Error("canonical resource catalog reload hash mismatch");
       quickCheck(reopened);
@@ -841,6 +971,16 @@ export function stageCanonicalStorageDatabase(
         resourceCount: records.length,
         domainCounts: {
           ...storage.domainCounts,
+          skills: preservedDatabaseCounts.skills ?? storage.domainCounts.skills,
+          rules: preservedDatabaseCounts.rules ?? storage.domainCounts.rules,
+          plugins:
+            preservedDatabaseCounts.plugins ?? storage.domainCounts.plugins,
+          generations:
+            preservedDatabaseCounts.generation_batches ??
+            storage.domainCounts.generations,
+          "agent-providers":
+            preservedDatabaseCounts.agent_provider_profiles ??
+            storage.domainCounts["agent-providers"],
           "mcp-servers":
             preservedDatabaseCounts.mcp_servers ??
             storage.domainCounts["mcp-servers"],
@@ -853,5 +993,22 @@ export function stageCanonicalStorageDatabase(
   } catch (error) {
     cleanupOwnedTemporaryDatabase(databasePath);
     throw error;
+  }
+}
+
+function stageDatabasePromptGraph(sourcePath: string, targetPath: string) {
+  const source = new DatabaseAdapter(sourcePath, { readOnly: true });
+  try {
+    return stagePromptSnapshotDatabase(
+      collectPromptCanonicalGraph(
+        new PromptDB(source),
+        new FolderDB(source),
+        source,
+      ),
+      targetPath,
+      new Date().toISOString(),
+    );
+  } finally {
+    source.close();
   }
 }

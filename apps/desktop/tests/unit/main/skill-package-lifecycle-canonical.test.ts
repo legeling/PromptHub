@@ -12,8 +12,8 @@ import type {
 } from "@prompthub/shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CanonicalSkillDB } from "@prompthub/core/canonical-skill-db";
-import { readSkillResourceBundle } from "@prompthub/core/skill-resource-schema";
+import { SkillStorageDB } from "@prompthub/core/skill-storage";
+import { collectSkillPackageFiles } from "@prompthub/core/skill-storage-files";
 import {
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
@@ -98,7 +98,7 @@ describe("canonical Skill package lifecycle", () => {
   });
 
   it("installs a complete package through the real canonical persistence boundary", async () => {
-    const skillDb = new CanonicalSkillDB(database);
+    const skillDb = new SkillStorageDB(database);
     const lifecycle = new SkillPackageLifecycleService(
       createDesktopSkillPackageLifecycleDependencies(skillDb),
     );
@@ -115,21 +115,25 @@ describe("canonical Skill package lifecycle", () => {
       currentVersion: 1,
       source_last_error: undefined,
     });
-    expect(skillDb.getVersions(result.skill.id)).toHaveLength(1);
+    expect(skillDb.getVersions(result.skill.id)).toMatchObject([
+      { content: registrySkill.content },
+    ]);
     expect(
       fs.readFileSync(path.join(stored!.local_repo_path!, "SKILL.md"), "utf8"),
     ).toBe(registrySkill.content);
-    const bundle = readSkillResourceBundle(
-      path.join(getDataDir(), "skills", result.skill.id),
-    );
-    expect(bundle.packageFiles.map((file) => file.path)).toContain("SKILL.md");
+    expect(
+      collectSkillPackageFiles(stored!.local_repo_path!).map(
+        (file) => file.path,
+      ),
+    ).toContain("SKILL.md");
     expect(fs.readdirSync(path.join(getDataDir(), "skills"))).toEqual([
+      ".prompthub",
       result.skill.id,
     ]);
   });
 
   it("updates the canonical package without creating a managed container beside bundles", async () => {
-    const skillDb = new CanonicalSkillDB(database);
+    const skillDb = new SkillStorageDB(database);
     const lifecycle = new SkillPackageLifecycleService(
       createDesktopSkillPackageLifecycleDependencies(skillDb),
     );
@@ -146,7 +150,11 @@ describe("canonical Skill package lifecycle", () => {
     if (updated.status !== "completed") {
       throw new Error(`update failed: ${JSON.stringify(updated)}`);
     }
-    expect(skillDb.getVersions(installed.skill.id)).toHaveLength(2);
+    expect(skillDb.getVersions(installed.skill.id)).toMatchObject([
+      // Package updates retain the pre-update package for rollback.
+      { content: registrySkill.content },
+      { content: registrySkill.content },
+    ]);
     expect(
       fs.readFileSync(
         path.join(
@@ -157,12 +165,13 @@ describe("canonical Skill package lifecycle", () => {
       ),
     ).toBe(updatedContent);
     expect(fs.readdirSync(path.join(getDataDir(), "skills"))).toEqual([
+      ".prompthub",
       installed.skill.id,
     ]);
   });
 
   it("remains writable after reopening the canonical database and root", async () => {
-    const firstDb = new CanonicalSkillDB(database);
+    const firstDb = new SkillStorageDB(database);
     const firstLifecycle = new SkillPackageLifecycleService(
       createDesktopSkillPackageLifecycleDependencies(firstDb),
     );
@@ -171,8 +180,7 @@ describe("canonical Skill package lifecycle", () => {
     database.close();
 
     database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
-    const reopenedDb = new CanonicalSkillDB(database);
-    reopenedDb.reconcileCanonicalWorkspaces();
+    const reopenedDb = new SkillStorageDB(database);
     const reopenedLifecycle = new SkillPackageLifecycleService(
       createDesktopSkillPackageLifecycleDependencies(reopenedDb),
     );
@@ -197,12 +205,20 @@ describe("canonical Skill package lifecycle", () => {
     });
 
     expect(second.status).toBe("completed");
-    expect(reopenedDb.getAll()).toHaveLength(2);
-    expect(fs.readdirSync(path.join(getDataDir(), "skills"))).toHaveLength(2);
+    const reopenedSkills = reopenedDb.getAll();
+    expect(reopenedSkills).toHaveLength(2);
+    expect(fs.readdirSync(path.join(getDataDir(), "skills")).sort()).toEqual(
+      [".prompthub", ...reopenedSkills.map((skill) => skill.id)].sort(),
+    );
+    for (const skill of reopenedSkills) {
+      expect(reopenedDb.getVersions(skill.id)).toMatchObject([
+        { content: skill.content },
+      ]);
+    }
   });
 
   it("cleans interrupted canonical staging and its pending bundle on restart", async () => {
-    const skillDb = new CanonicalSkillDB(database);
+    const skillDb = new SkillStorageDB(database);
     const pending = skillDb.create({
       name: "interrupted-canonical-install",
       protocol_type: "skill",
@@ -230,7 +246,7 @@ describe("canonical Skill package lifecycle", () => {
   });
 
   it("removes the pending bundle when canonical database finalization fails", async () => {
-    const skillDb = new CanonicalSkillDB(database);
+    const skillDb = new SkillStorageDB(database);
     vi.spyOn(skillDb, "finalizePackageInstall").mockImplementation(() => {
       throw new Error("forced canonical finalization failure");
     });

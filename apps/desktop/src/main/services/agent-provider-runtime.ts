@@ -2,10 +2,13 @@ import path from "node:path";
 
 import {
   AgentAdapterRegistry,
-  CanonicalAgentProviderProfileDB,
   AgentProviderActivationService,
 } from "@prompthub/core";
-import { AgentConversationDB, AgentSessionIndexDB } from "@prompthub/db";
+import {
+  AgentConversationDB,
+  AgentProviderProfileDB,
+  AgentSessionIndexDB,
+} from "@prompthub/db";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
 import Database from "../database/sqlite";
 import { createAgentClaudeProviderAdapter } from "./agent-claude-provider-adapter";
@@ -52,7 +55,7 @@ export interface AgentProviderRuntime {
   codexAccountService: AgentCodexAccountService;
   backupService: AgentManagementBackupService;
   legacyProviderService: ReturnType<typeof createAgentCodexProviderService>;
-  profileDb: CanonicalAgentProviderProfileDB;
+  profileDb: AgentProviderProfileDB;
   conversationDb: AgentConversationDB;
   sessionIndexDb: AgentSessionIndexDB;
   profileService: AgentProviderProfileService;
@@ -66,7 +69,7 @@ export function createAgentProviderRuntime({
   userDataPath,
 }: CreateAgentProviderRuntimeOptions): AgentProviderRuntime {
   const backupRoot = path.join(userDataPath, "agent-config-backups");
-  const profileDb = new CanonicalAgentProviderProfileDB(database);
+  const profileDb = new AgentProviderProfileDB(database);
   const conversationDb = new AgentConversationDB(database);
   const sessionIndexDb = new AgentSessionIndexDB(database);
   const secretStore = createAgentSecretStore({

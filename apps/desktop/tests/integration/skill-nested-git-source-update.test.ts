@@ -269,7 +269,7 @@ describe("#218 nested Git Skill import and source update", () => {
   });
 
   it.each([false, true])(
-    "checks the repaired managed root (checkout exists: %s)",
+    "reports a missing package without fabricating bytes from SQL (old checkout exists: %s)",
     async (existingCheckout) => {
       const skill = await installSelected();
       const obsoleteRoot = path.join(
@@ -283,25 +283,23 @@ describe("#218 nested Git Skill import and source update", () => {
       if (!skill.local_repo_path)
         throw new Error("Installed Skill has no workspace");
       fs.rmSync(skill.local_repo_path, { recursive: true });
-      // Existing managed-path recovery is exercised with a persisted stale path;
-      // the canonical package and its original baseline remain unchanged.
+      const before = await skillApi.get(skill.id);
+      const versions = await skillApi.versionGetAll(skill.id);
       initDatabase()
         .prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")
         .run(obsoleteRoot, skill.id);
       await renderer.useSkillStore.getState().loadSkills();
-      const check = await renderer.useSkillStore
-        .getState()
-        .getInstalledSkillSourceUpdateStatus(skill.id);
-      expect(check?.status).toBe("up-to-date");
-      const repaired: Skill | null = await skillApi.get(skill.id);
-      expect(repaired?.local_repo_path).toBe(skill.local_repo_path);
-      expect(
+      await expect(
         renderer.useSkillStore
           .getState()
-          .skills.find((item) => item.id === skill.id)?.local_repo_path,
-      ).toBe(skill.local_repo_path);
-      if (!repaired) throw new Error("Recovered Skill is missing");
-      expectInstalledPackage(repaired, runtime.source);
+          .getInstalledSkillSourceUpdateStatus(skill.id),
+      ).rejects.toThrow(/SKILL.md/);
+      expect(fs.existsSync(skill.local_repo_path)).toBe(false);
+      expect(await skillApi.get(skill.id)).toMatchObject({
+        ...before,
+        local_repo_path: obsoleteRoot,
+      });
+      expect(await skillApi.versionGetAll(skill.id)).toEqual(versions);
     },
   );
 

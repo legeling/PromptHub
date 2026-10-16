@@ -8,7 +8,6 @@ import {
   DesktopBackupNotFoundError,
   DesktopBackupStore,
 } from "../services/desktop-backup-store.js";
-import { validatePromptWorkspaceSnapshotPaths } from "../services/prompt-workspace.js";
 import { validateRuleWorkspaceSnapshotPaths } from "../services/rule-workspace.js";
 import { validatePulledSyncMedia } from "../services/sync-media.js";
 import { parseSelfHostedBackupSnapshot } from "../services/self-hosted-backup-snapshot.js";
@@ -104,11 +103,7 @@ backups.post("/desktop", async (c) => {
 
 function parseAndValidateSnapshot(userId: string, payload: unknown) {
   const snapshot = parseSelfHostedBackupSnapshot(payload);
-  validatePromptWorkspaceSnapshotPaths(
-    snapshot.folders,
-    snapshot.prompts,
-    snapshot.promptVersions,
-  );
+
   validateSkillWorkspaceSnapshotPaths(
     snapshot.skills,
     snapshot.skillVersions,

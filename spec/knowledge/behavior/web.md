@@ -79,21 +79,54 @@
   must not become visible; if a later import step fails after pulled media was
   written, those media writes must be rolled back.
 
+### 8.1 Web Rule Storage
+
+- Rule metadata and version identity/order live in SQLite under the authenticated
+  user. Different users may keep the same public Rule and version IDs. Current
+  and historical content live under `data/rule-files/<userId>/`.
+- Startup converts the previous `data/rules/<userId>/` metadata/index once with
+  exact recovery copies. Unknown owners, conflicts and missing content fail
+  without adopting an empty workspace. Normal writes never recreate JSON metadata.
+- The [Rules persistence contract](rules-workspace.md#9-persistence-model) owns
+  migration, publication, version retention and external-path behavior. Server
+  imports and edits do not touch a client's external project directory.
+
 ### 9. Web Prompt Workspace Files
 
-- Prompt workspace exports under `data/prompts/` must publish complete
-  snapshots: folder metadata, prompt markdown files, and prompt version files
-  are written into a sibling staging directory before replacing the live
-  workspace.
-- If staging writes fail, the previous live prompt workspace must remain
-  readable and unchanged.
-- Prompt frontmatter must retain `parentId` and `order` so hierarchy moves
-  survive workspace export and bootstrap import.
+- SQLite owns Prompt, Folder, hierarchy and version state. Startup and normal
+  CRUD do not export Markdown or replay an exported snapshot. SQL imports and
+  sync are not constrained by Markdown export path lengths.
+- Before writable services open, `web-prompt-workspace-v1` converts historical
+  `data/prompts/`, including its nested `.versions/`, once. It preserves stable
+  identities, owner/visibility, usage and AI response fields. Same-ID conflicts
+  and unknown user references fail without dropping ownership or overwriting SQL.
+  Truly ownerless records retain the existing first-administrator claim contract.
+- Conversion preserves exact source bytes under
+  `recovery/web-prompt-workspace-v1/<inventory-hash>/`, records completion in the
+  migration ledger, and retires the source using the shared publication journal.
+  SQL or filesystem failure rolls back; retry must preserve the same graph.
+  A recreated historical source after completion requires explicit recovery.
+- Explicit `POST /api/prompts/workspace/sync` exports a complete snapshot to
+  `cache/prompt-workspace/`, including folder metadata and version files. Staging
+  failures preserve the previous export. This cache is not a startup authority.
+  Frontmatter retains `parentId`, `order`, owner and visibility.
+- Prompt/Folder changes and ownership assignment share a SQL transaction.
+  Direct insertion of an existing ID checks write ownership before updating it
+  in place. It preserves existing versions, descendants, Prompt placement,
+  relationships and output-format items. Explicit snapshot replacement owns
+  deletion of the selected scope; row insertion cannot imply those deletions.
+- Direct version import is idempotent only when identity, owner, version number
+  and normalized content match the existing snapshot. Conflicting history returns
+  409/CONFLICT and preserves existing rows; a successful response contains the
+  stored snapshot rather than echoing uncommitted input.
+- Rollback requires a paired pre-migration database safety point and the preserved
+  source tree in an isolated root. Do not copy old Markdown into an active upgraded
+  root; preserve post-upgrade writes before restoring a previous version.
 - Hierarchy moves must keep parent and child in the same folder: moving a
   prompt under another prompt adopts the parent's `folderId` for the whole
   subtree; moving to the root keeps the prompt's own `folderId`. Folder views
   must not silently flatten a persisted parent-child link.
-- Workspace import must restore prompts in parent-before-child order inside a
+- Historical migration must restore prompts in parent-before-child order inside a
   transaction. A missing or cyclic parent reference must fail without making a
   partial prompt hierarchy visible.
 
@@ -116,16 +149,24 @@
   service tests; Web typecheck passes. This verifies authenticated Hono requests
   and disk persistence, not browser interaction or the reporter's Docker image.
 
-### 10. Web Skill Workspace Files
+### 10. Web Skill Package Storage
 
-- Skill workspace exports under `data/skills/` must publish complete
-  snapshots: `skill.json`, `SKILL.md`, version files, and preserved sidecar
-  files are written into a sibling staging directory before replacing the live
-  workspace.
-- If staging writes fail, the previous live skill workspace must remain
-  readable and unchanged.
-- Interrupted skill workspace export scratch directories must not be treated as
-  valid skill directories during bootstrap/import scans.
+- SQLite owns Skill metadata, visibility, ownership and version records. Normal
+  writes do not emit `skill.json` or JSON version mirrors.
+- Actual packages use `data/skill-files/<encoded-id>/files/`. Renaming a Skill
+  does not rename its package; client `local_repo_path` is never a server read path.
+- Changes publish only the affected package and SQL rows using the existing
+  receipt journal. Failure restores both. Metadata-only edits do not scan packages.
+- Startup converts historical `data/skills/` once, preserving the complete old
+  tree under recovery and a database safety point. Unknown owners, missing files,
+  divergent metadata or conflicting version identities fail without discarding
+  either source. Downgrades require the matching pre-upgrade database and tree.
+- Backups read real package bytes, include binary files and do not synthesize a
+  missing package from SQL text. Restores match stable IDs and enforce ownership;
+  timestamp selection applies to metadata, versions and files together. File
+  publication participates in the same transaction decision as imported rows.
+- Current body and historical snapshot blobs remain in SQL in this first
+  conversion batch; their retirement remains part of the Foundation work.
 
 ### 11. Web Remote HTTP Streams
 
@@ -237,3 +278,20 @@ When a contributor changes `apps/web-cloudflare` runtime bindings, scripts, or s
 ## Current Verification Gap (2026-10-12)
 
 The stale Provider mapping case in `tests/release-acceptance-cross-surface-agents.test.ts` returns HTTP 500 where the conflict contract requires 409. The real HTTP regression remains failing; successful profile persistence and rule rewrite tests do not establish this error mapping.
+
+### Web Settings authority
+
+- `user_settings` is the sole durable settings authority, isolated by user ID.
+  GET supplies shared defaults without writing rows or files; PATCH and snapshot
+  imports commit SQL changes transactionally. Null clears remain SQL deletions.
+- `web-settings-sqlite-v1` imports historical `config/settings/<userId>.json`
+  only at startup for users without SQL settings. Existing SQL snapshots retain
+  precedence. Exact source bytes and unknown fields survive conversion; unsafe
+  files, malformed known fields and unknown owners stop the upgrade.
+- The converter retires the JSON directory with the existing SQL/file journal
+  and preserves a private recovery tree and pre-migration database safety point.
+  Completed conversion never replays backups or resurrects deleted rows. Restore
+  the paired old database and sources in an isolated root to downgrade, preserving
+  later writes first. Reintroduced legacy files require explicit recovery.
+- Invalid persisted JSON is an error, not an alternate string-valued contract.
+  Web credentials keep the existing server policy, without ordinary JSON mirrors.

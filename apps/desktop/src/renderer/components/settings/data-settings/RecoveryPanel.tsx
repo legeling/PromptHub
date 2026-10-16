@@ -21,20 +21,15 @@ export function RecoveryPanel() {
   return (
     <>
       {!webRuntime && activeSubsection === "recovery" ? (
-        <DataSettingsSection
-          title={t("settings.recoveryScanner", "历史数据急救")}
-        >
+        <DataSettingsSection title={t("settings.recoveryScanner")}>
           <div className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">
-                  {t("settings.recoveryScannerTitle", "历史数据急救")}
+                  {t("settings.recoveryScannerTitle")}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  {t(
-                    "settings.recoveryScannerDesc",
-                    "从旧版本目录、手动指定目录或历史备份中查找可恢复的数据，预览后选择恢复源。",
-                  )}
+                  {t("settings.recoveryScannerDesc")}
                 </div>
               </div>
               <button
@@ -47,7 +42,7 @@ export function RecoveryPanel() {
                   className={`w-4 h-4 ${scanningRecoverySources ? "animate-pulse" : ""}`}
                   aria-hidden="true"
                 />
-                {t("settings.recoveryScanAction", "Scan now")}
+                {t("settings.recoveryScanAction")}
               </button>
             </div>
 
@@ -55,13 +50,10 @@ export function RecoveryPanel() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium">
-                    {t("settings.recoveryExtraPaths", "Extra scan directories")}
+                    {t("settings.recoveryExtraPaths")}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {t(
-                      "settings.recoveryExtraPathsDesc",
-                      "Add old install folders or copied data directories to include them in recovery scans.",
-                    )}
+                    {t("settings.recoveryExtraPathsDesc")}
                   </div>
                 </div>
                 <button
@@ -70,17 +62,14 @@ export function RecoveryPanel() {
                   className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
                 >
                   <PlusIcon className="w-4 h-4" aria-hidden="true" />
-                  {t("settings.recoveryAddScanDir", "Add folder")}
+                  {t("settings.recoveryAddScanDir")}
                 </button>
               </div>
 
               <div className="flex gap-2">
                 <input
                   type="text"
-                  aria-label={t(
-                    "settings.recoveryExtraPaths",
-                    "Extra scan directories",
-                  )}
+                  aria-label={t("settings.recoveryExtraPaths")}
                   value={manualPathInputValue}
                   onChange={(e) => setManualPathInputValue(e.target.value)}
                   onKeyDown={(e) => {
@@ -88,10 +77,7 @@ export function RecoveryPanel() {
                       handleAddManualRecoveryPathFromInput();
                     }
                   }}
-                  placeholder={t(
-                    "settings.recoveryManualPathPlaceholder",
-                    "Paste or type a path…",
-                  )}
+                  placeholder={t("settings.recoveryManualPathPlaceholder")}
                   className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <button
@@ -101,16 +87,13 @@ export function RecoveryPanel() {
                   className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-40"
                 >
                   <PlusIcon className="w-4 h-4" aria-hidden="true" />
-                  {t("settings.recoveryAddPathBtn", "Add")}
+                  {t("settings.recoveryAddPathBtn")}
                 </button>
               </div>
 
               {manualRecoveryPaths.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-                  {t(
-                    "settings.recoveryExtraPathsEmpty",
-                    "No extra scan directories added yet.",
-                  )}
+                  {t("settings.recoveryExtraPathsEmpty")}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -130,7 +113,7 @@ export function RecoveryPanel() {
                         type="button"
                         onClick={() => handleRemoveManualRecoveryPath(entry)}
                         className="h-7 w-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                        title={t("common.delete", "Delete")}
+                        title={t("common.delete")}
                       >
                         <XIcon aria-hidden="true" className="w-4 h-4 mx-auto" />
                       </button>

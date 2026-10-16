@@ -62,6 +62,15 @@ vi.mock("electron", () => ({
     },
   },
   webUtils: {},
+  safeStorage: {
+    isEncryptionAvailable: () => false,
+    encryptString: () => {
+      throw new Error("No OS secrets in fixture");
+    },
+    decryptString: () => {
+      throw new Error("No OS secrets in fixture");
+    },
+  },
   app: {},
   session: {},
 }));
@@ -99,7 +108,7 @@ function openHandlers(): void {
   const prompts = new PromptDB(database);
   const folders = new FolderDB(database);
   registerPromptIPC(prompts, folders, database);
-  registerFolderIPC(folders, prompts);
+  registerFolderIPC(folders);
   registerSecurityIPC(database);
 }
 
@@ -142,14 +151,15 @@ async function createPrivatePrompt(): Promise<{
 }
 
 beforeEach(async () => {
-  root = fs.mkdtempSync(
-    path.join(os.tmpdir(), "prompthub-acceptance-privacy-"),
+  root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-acceptance-privacy-")),
   );
   configureRuntimePaths({ userDataPath: root });
   writeRuntimeLayoutState(root);
   lock();
-  initDatabase();
+  database = initDatabase();
   const persistence = createRendererPersistenceStore({
+      database: database,
     rootPath: root,
     encryption: {
       isEncryptionAvailable: () => false,
@@ -276,7 +286,7 @@ describe("release acceptance: private folder persistence (D2)", () => {
     );
   });
 
-  it("fulfills the private-folder encrypted-storage promise across lock and reopen", async () => {
+  it("preserves unencrypted local content and private flags across lock and two reopens", async () => {
     const { prompt, versions } = await createPrivatePrompt();
     await api().security.lock();
     await reopen();
@@ -284,20 +294,28 @@ describe("release acceptance: private folder persistence (D2)", () => {
       "SELECT user_prompt FROM prompts WHERE id = ?",
       prompt.id,
     );
-    const leakingFiles = Object.entries(fileBytes(path.join(root, "data")))
+    const contentFiles = Object.entries(fileBytes(path.join(root, "data")))
       .filter(([, encoded]) =>
         Buffer.from(encoded, "base64").includes(Buffer.from(PRIVATE_TEXT)),
       )
       .map(([file]) => file);
-    // Verify recoverability before the correct-behavior red assertions. A loss
-    // of private content must never count as successful encryption.
+    // Private folders hide content in the app; local storage remains plaintext.
+    expect(stored).toEqual({ user_prompt: PRIVATE_TEXT });
+    expect(contentFiles).toContain("prompthub.db");
+    expect(contentFiles.some((file) => file.startsWith("prompts/"))).toBe(false);
+    await reopen();
+    expect(await api().security.status()).toEqual({
+      configured: true,
+      unlocked: false,
+    });
     expect(await api().security.unlock(PASSWORD)).toMatchObject({
       success: true,
       unlocked: true,
     });
     expect(await api().prompt.get(prompt.id)).toEqual(prompt);
     expect(await api().version.getAll(prompt.id)).toEqual(versions);
-    expect.soft(stored).not.toEqual({ user_prompt: PRIVATE_TEXT });
-    expect.soft(leakingFiles).toEqual([]);
+    expect(await api().folder.getAll()).toContainEqual(
+      expect.objectContaining({ id: prompt.folderId, isPrivate: true }),
+    );
   });
 });

@@ -1104,13 +1104,12 @@ describe("SkillInstaller.isManagedRepoPath", () => {
     );
   });
 
-  it("returns true for the skills directory itself", async () => {
-    // isPathWithin("base", "base") => relative is "" which doesn't start with ".."
-    // and is not absolute, so it returns true.
+  it("does not treat the entire Skills library as one managed package", async () => {
     // Create the dir first so realpathSync resolves consistently on macOS.
     await SkillInstaller.init();
     const skillsDir = managedSkillsDir();
-    expect(await SkillInstaller.isManagedRepoPath(skillsDir)).toBe(true);
+    await fs.mkdir(skillsDir, { recursive: true });
+    expect(await SkillInstaller.isManagedRepoPath(skillsDir)).toBe(false);
   });
 
   it("returns false for parent of skills directory", async () => {

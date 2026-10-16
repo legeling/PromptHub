@@ -190,11 +190,12 @@ describe("Skill public functional workflows (real services and persistent storag
     };
     expect(fileInventory(filesRoot)).toEqual(expectedInventory);
     const workspaceInventory = fileInventory(installed.local_repo_path!);
-    const marker = fs.readFileSync(
-      path.join(installed.local_repo_path!, ".canonical-bundle-hash"),
-      "utf8",
-    );
-    expect(marker).toMatch(/^[a-f0-9]{64}$/);
+    expect(installed.local_repo_path).toBe(filesRoot);
+    expect(
+      fs.existsSync(
+        path.join(installed.local_repo_path!, ".canonical-bundle-hash"),
+      ),
+    ).toBe(false);
     expect(workspaceInventory).toEqual(expectedInventory);
     await skillApi.installMd(installed.id, initialContent, "claude");
     await skillApi.installMdSymlink(installed.id, initialContent, "codex");

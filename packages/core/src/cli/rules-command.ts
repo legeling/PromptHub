@@ -36,6 +36,7 @@ export async function handleRulesCommand(
     return;
   }
 
+  await coreRulesWorkspaceService.bootstrapRuleWorkspace();
   const action = requirePositional(args, 0, "rules 子命令");
 
   if (action === "list") {

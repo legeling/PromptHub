@@ -28,6 +28,7 @@ function registerSettings(failPublication = false): void {
   const profile = runtime.profile;
   registerSettingsIPC(getDatabase(), {
     rendererPersistence: createRendererPersistenceStore({
+      database: getDatabase(),
       rootPath: profile,
       encryption: {
         isEncryptionAvailable: () => false,
@@ -62,24 +63,16 @@ function registerSettings(failPublication = false): void {
 it("makes a fresh profile writable before renderer migration returns, without restart", async () => {
   runtime = await createSkillTestRuntime({ freshStartup: true });
   registerSettings();
-  await expect(
-    skillApi.create({
-      name: "first-launch",
-      protocol_type: "skill",
-      instructions: "# First",
-      is_favorite: false,
-    }),
-  ).rejects.toThrow(/completed canonical storage migration/);
-  await invokeSkillIPC(IPC_CHANNELS.SETTINGS_RENDERER_PERSISTENCE_MIGRATE, {
-    indexedDbMigrationDone: true,
-  });
-  expect(getRuntimeStorageContext().localAuthority).toBe("canonical-files");
   const created = await skillApi.create({
     name: "first-launch",
     protocol_type: "skill",
     instructions: "# First",
     is_favorite: false,
   });
+  await invokeSkillIPC(IPC_CHANNELS.SETTINGS_RENDERER_PERSISTENCE_MIGRATE, {
+    indexedDbMigrationDone: true,
+  });
+  expect(getRuntimeStorageContext().localAuthority).toBe("canonical-files");
   expect(await skillApi.getAll()).toEqual([
     expect.objectContaining({ id: created.id, name: "first-launch" }),
   ]);

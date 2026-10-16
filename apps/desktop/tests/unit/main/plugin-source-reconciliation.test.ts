@@ -17,7 +17,8 @@ vi.mock("child_process", async () => {
 import {
   CorePluginLibraryService,
   configureRuntimePaths,
-  getPluginLibraryFilePath,
+  initDatabase,
+  closeDatabase,
   resetRuntimePaths,
 } from "@prompthub/core";
 import {
@@ -103,10 +104,12 @@ describe("Plugin source reconciliation", () => {
       path.join(os.tmpdir(), "plugin-source-reconciliation-"),
     );
     configureRuntimePaths({ userDataPath });
+    initDatabase();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
@@ -324,11 +327,7 @@ describe("Plugin source reconciliation", () => {
         ? { ...plugin, installedPackageHash: undefined }
         : plugin,
     );
-    fs.writeFileSync(
-      getPluginLibraryFilePath(),
-      `${JSON.stringify(legacyLibrary, null, 2)}\n`,
-      "utf8",
-    );
+    service.write(legacyLibrary);
     fs.writeFileSync(
       path.join(sourcePath, "commands", "review.md"),
       "Changed without a baseline",

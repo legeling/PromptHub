@@ -9,7 +9,7 @@ import {
   type SkillTestRuntime,
 } from "./helpers/skill-runtime";
 import type { ScannedSkill } from "@prompthub/shared/types";
-import { CanonicalSkillDB } from "@prompthub/core";
+import { SkillStorageDB } from "@prompthub/core";
 
 vi.mock("../../src/renderer/services/webdav-save-sync", () => ({
   scheduleAllSaveSync: vi.fn(),
@@ -173,7 +173,7 @@ it("restores a linked entrypoint if metadata finalization fails, then permits re
   const skill = result.importedSkills[0];
   const before = fileInventory(runtime.source);
   const finalize = vi
-    .spyOn(CanonicalSkillDB.prototype, "finalizePackageUpdate")
+    .spyOn(SkillStorageDB.prototype, "finalizePackageUpdate")
     .mockImplementationOnce(() => {
       throw new Error("Injected finalization failure");
     });

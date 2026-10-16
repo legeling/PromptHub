@@ -1,3 +1,5 @@
+import { skillVersionPayloadEntry } from "@prompthub/core/skill-version-files";
+import { SkillMetadataDB } from "@prompthub/db";
 import { importAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
 import crypto from "crypto";
 import fs from "fs";
@@ -27,7 +29,6 @@ import {
   PromptOutputFormatDB,
   PromptRelationDB,
   RuleDB,
-  SkillDB,
 } from "@prompthub/db";
 import type {
   AgentAssetFileSnapshot,
@@ -45,6 +46,8 @@ import {
 } from "./canonical-storage-checkpoint";
 import { verifyCanonicalAuthorityRoot } from "./canonical-storage-authority";
 import { prepareCanonicalPortableCandidate } from "./portable-snapshot-candidate";
+import { RETIRED_AGENT_SETTING_KEYS } from "@prompthub/core/agent-management/agent-settings-contract";
+import { readPortableAgentProviderGraphs } from "./portable-agent-provider-snapshot";
 import { extractPortableSnapshotZip } from "./portable-snapshot-import";
 
 const LOGICAL_FILE_NAME = "import-with-prompthub.json";
@@ -379,12 +382,13 @@ function safeSkillDirectory(activeRoot: string, name: string): string {
 function restorePromptAndSkillDatabase(
   database: InstanceType<typeof Database>,
   activeRoot: string,
+  stageRoot: string,
   envelope: PortableLogicalEnvelope,
 ): void {
   const { payload, scope } = envelope;
   const promptDb = new PromptDB(database);
   const folderDb = new FolderDB(database);
-  const skillDb = new SkillDB(database);
+  const skillDb = new SkillMetadataDB(database);
   const relationDb = new PromptRelationDB(database);
   const outputDb = new PromptOutputFormatDB(database);
   const restore = database.transaction(() => {
@@ -508,6 +512,13 @@ function restorePromptAndSkillDatabase(
             `Portable Skill version has missing Skill: ${version.id}`,
           );
         }
+        const entry = skillVersionPayloadEntry(
+          version,
+          path.join(stageRoot, "data", "skills"),
+          stageRoot,
+        );
+        fs.rmSync(entry.targetPath, { recursive: true, force: true });
+        entry.prepare!(entry.targetPath);
         skillDb.insertVersionDirect(version);
       }
     }
@@ -661,7 +672,7 @@ function restoreDatabase(
   const database = new Database(databasePath);
   try {
     database.pragma("foreign_keys = ON");
-    restorePromptAndSkillDatabase(database, activeRoot, envelope);
+    restorePromptAndSkillDatabase(database, activeRoot, stageRoot, envelope);
     if (envelope.scope.settings && envelope.payload.settings?.state) {
       importAgentSettingsV1(database, envelope.payload.settings.state);
     }
@@ -695,44 +706,57 @@ async function restoreConfiguration(
     ...(scope.aiConfig ? payload.aiConfig : undefined),
   };
   assertNoPortableSecrets(importedSettings);
-  const store = createRendererPersistenceStore({
-    rootPath: stageRoot,
-    encryption,
-  });
-  if (scope.settings || scope.aiConfig) {
-    const current = store.readHydratedStateSync();
-    await store.replaceSettings({ ...current.settings, ...importedSettings });
-  }
-  const sources = payload.storeSources;
-  for (const [selected, domain, value] of [
-    [scope.skills, "skill", sources?.skills],
-    [scope.mcp, "mcp", sources?.mcp],
-    [scope.plugins, "plugin", sources?.plugins],
-  ] as const) {
-    if (!selected || !value) continue;
-    const normalized = value.customStoreSources.flatMap((source, index) => {
-      if (
-        source.type !== "marketplace-json" &&
-        source.type !== "git-repo" &&
-        source.type !== "local-dir"
-      ) {
-        return [];
-      }
-      return [
-        {
-          id: source.id,
-          name: source.name,
-          type: source.type,
-          url: source.url,
-          branch: source.branch,
-          directory: source.directory,
-          enabled: source.enabled !== false,
-          order: source.order ?? index,
-          createdAt: source.createdAt ?? 0,
-        },
-      ];
+  const database = new Database(path.join(stageRoot, "data", "prompthub.db"));
+  try {
+    const store = createRendererPersistenceStore({
+      database,
+      rootPath: stageRoot,
+      encryption,
     });
-    await store.replaceMarketplaceSources(domain, normalized);
+    if (scope.settings || scope.aiConfig) {
+      const current = store.readHydratedStateSync();
+      // restoreDatabase already converts historical Agent fields through their owner.
+      const settings = Object.fromEntries(
+        Object.entries(importedSettings).filter(
+          ([key]) =>
+            !RETIRED_AGENT_SETTING_KEYS.some((retired) => retired === key),
+        ),
+      );
+      await store.replaceSettings({ ...current.settings, ...settings });
+    }
+    const sources = payload.storeSources;
+    for (const [selected, domain, value] of [
+      [scope.skills, "skill", sources?.skills],
+      [scope.mcp, "mcp", sources?.mcp],
+      [scope.plugins, "plugin", sources?.plugins],
+    ] as const) {
+      if (!selected || !value) continue;
+      const normalized = value.customStoreSources.flatMap((source, index) => {
+        if (
+          source.type !== "marketplace-json" &&
+          source.type !== "git-repo" &&
+          source.type !== "local-dir"
+        ) {
+          return [];
+        }
+        return [
+          {
+            id: source.id,
+            name: source.name,
+            type: source.type,
+            url: source.url,
+            branch: source.branch,
+            directory: source.directory,
+            enabled: source.enabled !== false,
+            order: source.order ?? index,
+            createdAt: source.createdAt ?? 0,
+          },
+        ];
+      });
+      await store.replaceMarketplaceSources(domain, normalized);
+    }
+  } finally {
+    database.close();
   }
 }
 
@@ -900,16 +924,27 @@ async function prepareCandidate(
       dereference: false,
     });
   }
-  createRendererPersistenceStore({
-    rootPath: stageRoot,
-    encryption,
-  }).readHydratedStateSync();
+  const validationDatabase = new Database(
+    path.join(stageRoot, "data", "prompthub.db"),
+  );
+  try {
+    createRendererPersistenceStore({
+      rootPath: stageRoot,
+      database: validationDatabase,
+      encryption,
+    }).readHydratedStateSync();
+  } finally {
+    validationDatabase.close();
+  }
   return prepareCanonicalPortableCandidate({
     activeRoot,
     stageRoot,
     envelope,
     encryption,
     operationId,
+    agentProviders: readPortableAgentProviderGraphs(snapshot, envelope),
+    generationSnapshot:
+      snapshot?.manifest.scopes.includes("generations") ?? false,
   });
 }
 

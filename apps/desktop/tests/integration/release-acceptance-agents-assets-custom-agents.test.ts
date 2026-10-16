@@ -22,6 +22,7 @@ let runtime: SkillTestRuntime;
 function register(): void {
   registerSettingsIPC(getDatabase(), {
     rendererPersistence: createRendererPersistenceStore({
+      database: getDatabase(),
       rootPath: runtime.profile,
       encryption: {
         isEncryptionAvailable: () => false,

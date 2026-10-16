@@ -9,8 +9,9 @@ import {
   CoreMcpLibraryService,
   CorePluginLibraryService,
   configureRuntimePaths,
+  initDatabase,
+  closeDatabase,
   emptyPluginInventory,
-  getPluginLibraryFilePath,
   resetRuntimePaths,
 } from "@prompthub/core";
 import { importChildMcpServersForPlugin } from "../../../src/main/ipc/plugin.ipc";
@@ -40,6 +41,7 @@ describe("Plugin child MCP import", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-child-mcp-"));
     configureRuntimePaths({ userDataPath });
+    initDatabase();
     mcpStorage = createMcpTestStorage();
     pluginPackagePath = path.join(
       userDataPath,
@@ -64,7 +66,7 @@ describe("Plugin child MCP import", () => {
     writeJson(path.join(pluginPackagePath, "package.json"), {
       name: "gmail",
     });
-    writeJson(getPluginLibraryFilePath(), {
+    new CorePluginLibraryService().write({
       kind: "prompthub-plugin-library",
       version: 1,
       updatedAt: "2026-06-22T00:00:00.000Z",
@@ -97,8 +99,16 @@ describe("Plugin child MCP import", () => {
     });
   });
 
+  beforeEach(() => {
+    const managed = new CorePluginLibraryService().read().plugins[0]
+      .localPackagePath;
+    if (!managed) throw new Error("Missing managed Plugin package");
+    pluginPackagePath = managed;
+  });
+
   afterEach(() => {
     mcpStorage.dispose();
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });

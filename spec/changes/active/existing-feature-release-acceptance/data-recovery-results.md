@@ -1,6 +1,18 @@
 # 数据迁移与备份恢复验收记录
 
-Status: D5 baseline verified; joined Provider/Generation roundtrip fails; release acceptance incomplete
+## 当前私密目录合同（取代下文历史 D2 加密提案）
+
+2026-10-14 已确认：私密目录仅提供应用内入口及内容隐藏，本地数据不加密。主密码用于解锁查看及敏感操作确认，不承诺抵御本地文件读取。D2 的落盘加密方案不实施；原加密断言按此明确需求改为明文数据、私密标记、锁定状态、错误密码及两次重开的保全验收。七种语言的创建/删除提示、安全设置和 README 同步去除加密承诺。模型、MCP 等凭据的既有加密合同不变。
+
+## 2026-10-14 修复与安装包验证
+
+Provider mapping 身份、Generation bundle revision、目标 identity 校验、实际 MCP SQLite 快照及迁移标记保全已修复；联合恢复与失败回滚用例继续保留严格断言。最终组合状态完整发布检查 40/40 通过，桌面集成 262 pass / 4 个既有 skip，桌面单元 6,099 pass，内置 Electron smoke 8 pass；2,579 个源码、测试及配置文件在检查前后散列一致。另行复现的 BC01 新旧元数据并存删除问题仍失败，未被完整检查覆盖；不能据此认定数据升级或完整发布验收通过。
+
+当前签名 ARM64 DMG 安装副本使用隔离 profile，经界面完成 Prompt 创建、中文修改、两版本历史读取、完整 ZIP 导出，以及导出后的收藏写入和历史读取。旧安装副本曾复现导出后数据库已关闭；当前包包含消费者重绑修复，同流程显示导出成功并可继续读写。ZIP 读回核对中文正文和版本内容一致。解锁后已通过界面确认导入，并完成两次整进程冷启动：活动列表仅保留备份的 1 条 Prompt 和两个版本，中文正文完整，后建测试条目保留在恢复安全副本中；第二次启动后收藏写入成功。测试模式禁用了恢复后的自动重启，因而在手动冷启动前页面 reload 曾报告数据库已关闭；不能将该测试环境现象当成生产恢复失败，也不能声明自动重启已验证。以上不代替稳定版旧 profile 的升级验收。
+
+后续生产启动路径验证（2026-10-14）：包含 BC07 修复的签名 ARM64 应用在隔离应用数据目录中运行，未启用 E2E 模式。Rules 旧历史升级、中文正文编辑和三条版本读取通过；完整 ZIP 导出后修改 Prompt，再通过界面导入，应用从 PID 31325 自动重启为 31946。新窗口显示备份中的第 1 版 Prompt，Rules 当前正文及三条历史保留。真实 SQLite 完整性检查通过，恢复前的 Prompt 修改在安全副本中保留。再次冷启动、完整导出后，收藏写入和编辑器打开通过。证据位于 `output/rule-history-repair-20261014/native-readback.json`、`native-startup.jsonl` 和 `native-restored-*.jpg`。一次导出后的画面/控件状态不同步未再次复现，保留为观察项；不据此认定业务故障已复现或已修复。
+
+Status: local recovery, packaged restore, manual cold starts and production automatic relaunch verified on macOS ARM64 synthetic data; historical stable-version upgrade and full release acceptance incomplete
 
 ## 结论
 

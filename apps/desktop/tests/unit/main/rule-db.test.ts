@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { RuleDB } from "../../../src/main/database/rule";
-import { SCHEMA_INDEXES, SCHEMA_TABLES } from "../../../src/main/database/schema";
+import { RuleDB } from "@prompthub/db";
+import {
+  SCHEMA_INDEXES,
+  SCHEMA_TABLES,
+} from "../../../src/main/database/schema";
 import DatabaseAdapter from "../../../src/main/database/sqlite";
 import type { RuleRecord, RuleVersionRecord } from "@prompthub/shared/types";
 
@@ -44,7 +47,9 @@ describe("RuleDB (in-memory SQLite)", () => {
     };
   }
 
-  function createVersion(overrides: Partial<RuleVersionRecord> = {}): RuleVersionRecord {
+  function createVersion(
+    overrides: Partial<RuleVersionRecord> = {},
+  ): RuleVersionRecord {
     return {
       id: "version-1",
       ruleId: "claude-global",
@@ -57,12 +62,27 @@ describe("RuleDB (in-memory SQLite)", () => {
   }
 
   it("upserts and returns rules ordered by update time", () => {
-    db.upsert(createRule({ id: "windsurf-global", platformId: "windsurf", platformName: "Windsurf", updatedAt: "2026-05-09T00:00:01.000Z" }));
-    db.upsert(createRule({ id: "claude-global", updatedAt: "2026-05-09T00:00:00.000Z" }));
+    db.upsert(
+      createRule({
+        id: "windsurf-global",
+        platformId: "windsurf",
+        platformName: "Windsurf",
+        updatedAt: "2026-05-09T00:00:01.000Z",
+      }),
+    );
+    db.upsert(
+      createRule({
+        id: "claude-global",
+        updatedAt: "2026-05-09T00:00:00.000Z",
+      }),
+    );
 
     const all = db.getAll();
 
-    expect(all.map((rule) => rule.id)).toEqual(["windsurf-global", "claude-global"]);
+    expect(all.map((rule) => rule.id)).toEqual([
+      "windsurf-global",
+      "claude-global",
+    ]);
     expect(db.getById("claude-global")).toEqual(
       expect.objectContaining({
         platformName: "Claude Code",
@@ -73,9 +93,16 @@ describe("RuleDB (in-memory SQLite)", () => {
 
   it("replaces versions atomically for a rule", () => {
     db.upsert(createRule());
-    db.replaceVersions("claude-global", [createVersion({ id: "version-1", version: 1 })]);
     db.replaceVersions("claude-global", [
-      createVersion({ id: "version-2", version: 2, filePath: "/tmp/data/rules/.versions/claude-global/0002.md", source: "manual-save" }),
+      createVersion({ id: "version-1", version: 1 }),
+    ]);
+    db.replaceVersions("claude-global", [
+      createVersion({
+        id: "version-2",
+        version: 2,
+        filePath: "/tmp/data/rules/.versions/claude-global/0002.md",
+        source: "manual-save",
+      }),
       createVersion({ id: "version-1", version: 1 }),
     ]);
 

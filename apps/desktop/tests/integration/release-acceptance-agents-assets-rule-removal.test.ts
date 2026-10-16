@@ -5,7 +5,6 @@ import {
 } from "./helpers/skill-runtime";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import fsp from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { RuleFileDescriptor } from "@prompthub/shared/types";
@@ -68,14 +67,14 @@ function copyBinding(
   overrides: Record<string, unknown> = {},
 ): string {
   assert(descriptor.managedPath);
-  const destination = path.join(getRulesDir(), "projects", directory);
-  fs.mkdirSync(destination);
-  const meta: Record<string, unknown> = JSON.parse(
-    fs.readFileSync(
-      path.join(path.dirname(descriptor.managedPath), "_rule.json"),
-      "utf8",
-    ),
+  const destination = path.join(
+    runtime.profile,
+    "cache/rules-workspace/projects",
+    directory,
   );
+  fs.mkdirSync(destination, { recursive: true });
+  const meta = new RuleDB(getDatabase()).getById(descriptor.id);
+  assert(meta);
   fs.copyFileSync(
     descriptor.managedPath,
     path.join(destination, descriptor.name),
@@ -95,7 +94,7 @@ it("removes every verified legacy binding by ID while retaining other projects a
   const first = await project("remove-me");
   const other = await project("remove-me-other");
   const legacy = copyBinding(first, "same-display-name__remove-me");
-  const unrelated = copyBinding(other, "remove-me__similar-name");
+  const unrelated = path.dirname(other.managedPath!);
   const unrelatedBefore = fileInventory(unrelated);
   const unbound = path.join(getRulesDir(), "projects", "remove-me-unbound");
   fs.mkdirSync(unbound);
@@ -141,18 +140,19 @@ it("uses the same ID-derived managed path across create, reopen and Cursor remov
   );
 });
 
-it("validates all same-ID bindings before deleting any managed or external content", async () => {
+it("rejects unsafe legacy bindings during startup without changing managed or external content", async () => {
   const descriptor = await project("tampered");
   assert(descriptor.managedPath);
-  const unsafe = copyBinding(descriptor, "zzz-tampered__tampered", {
-    managedPath: descriptor.path,
-  });
+  const unsafe = copyBinding(descriptor, "zzz-tampered__tampered");
+  fs.unlinkSync(path.join(unsafe, descriptor.name));
+  fs.symlinkSync(descriptor.path, path.join(unsafe, descriptor.name));
   const before = fileInventory(getRulesDir());
-  await expect(rulesApi.removeProject("tampered")).rejects.toThrow(
-    "Unsafe managed rule path",
-  );
+  await expect(reopen()).rejects.toThrow(/symbolic link|symlink/i);
   expect(fileInventory(getRulesDir())).toEqual(before);
   expect(fs.existsSync(unsafe)).toBe(true);
+  fs.unlinkSync(path.join(unsafe, descriptor.name));
+  fs.copyFileSync(descriptor.managedPath, path.join(unsafe, descriptor.name));
+  await reopen();
   expect(new RuleDB(getDatabase()).getById(descriptor.id)).not.toBeNull();
   expect(fs.readFileSync(descriptor.path, "utf8")).toBe(
     "# Keep external content\n",
@@ -161,7 +161,7 @@ it("validates all same-ID bindings before deleting any managed or external conte
 
 it("rolls back a partial deletion publication and permits an explicit retry", async () => {
   const descriptor = await project("delete-failure");
-  const legacy = copyBinding(descriptor, "zzz-legacy__delete-failure");
+  const legacy = path.dirname(descriptor.managedPath!);
   const originalRename = fs.renameSync.bind(fs);
   const fault = vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
     if (String(from) === legacy)
@@ -192,10 +192,10 @@ it("cleans a failed project import at its actual managed path without modifying 
   fs.mkdirSync(rootPath);
   const targetPath = path.join(rootPath, "AGENTS.md");
   fs.writeFileSync(targetPath, "# External before import\n");
-  const originalWrite = fsp.writeFile.bind(fsp);
+  const originalWrite = fs.writeFileSync.bind(fs);
   const fault = vi
-    .spyOn(fsp, "writeFile")
-    .mockImplementation(async (file, data, options) => {
+    .spyOn(fs, "writeFileSync")
+    .mockImplementation((file, data, options) => {
       if (data === "# Imported body\n")
         throw new Error("Injected imported body failure");
       return originalWrite(file, data, options);

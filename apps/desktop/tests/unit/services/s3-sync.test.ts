@@ -115,11 +115,13 @@ describe("s3-sync", () => {
       ),
       mainConfig,
       expect.stringContaining('"Home edit"'),
+      undefined,
     );
     expect(window.electron?.s3?.upload).toHaveBeenCalledWith(
       "team/prompthub-backup/manifest.json",
       mainConfig,
       expect.stringContaining('"dataHash"'),
+      undefined,
     );
     expect(result.success).toBe(true);
     expect(result.localChanged).toBe(false);

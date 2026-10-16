@@ -1,314 +1,209 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { closeDatabase } from '@prompthub/db';
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {
+  ENV_KEYS,
+  originalEnv,
+  createTestApp,
+  registerUser,
+  authHeaders,
+} from "../routes/import-export.test-helpers";
 
-const ENV_KEYS = [
-  'PORT',
-  'HOST',
-  'JWT_SECRET',
-  'JWT_ACCESS_TTL',
-  'JWT_REFRESH_TTL',
-  'DATA_ROOT',
-  'ALLOW_REGISTRATION',
-  'LOG_LEVEL',
-] as const;
-
-const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
-
-function configureTestEnv(dataDir: string): void {
-  process.env.PORT = '3994';
-  process.env.HOST = '127.0.0.1';
-  process.env.JWT_SECRET = 'test-secret-for-web-settings-service-1234567890';
-  process.env.JWT_ACCESS_TTL = '900';
-  process.env.JWT_REFRESH_TTL = '604800';
-  process.env.DATA_ROOT = dataDir;
-  process.env.ALLOW_REGISTRATION = 'true';
-  process.env.LOG_LEVEL = 'debug';
-}
-
-async function createUser(username: string) {
-  const [{ getServerDatabase }] = await Promise.all([import('../database')]);
-  const db = getServerDatabase();
-  const now = Date.now();
-  const user = {
-    id: `settings-user-${username}`,
-    username,
-    role: 'admin' as const,
+let root: string;
+const TEST_TIMEOUT = 20000;
+beforeEach(() => {
+  vi.resetModules();
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "ph-web-settings-sql-"));
+});
+afterEach(async () => {
+  (await import("@prompthub/db")).closeDatabase();
+  for (const key of ENV_KEYS) {
+    if (originalEnv[key] === undefined) delete process.env[key];
+    else process.env[key] = originalEnv[key];
+  }
+  fs.rmSync(root, { recursive: true, force: true });
+});
+async function setup() {
+  const app = await createTestApp(root);
+  const owner = (await registerUser(app, "owner", "fixture-password")).payload
+    .data;
+  const other = (await registerUser(app, "other", "fixture-password")).payload
+    .data;
+  const { SettingsService } = await import("./settings.service");
+  const { getServerDatabase } = await import("../database");
+  return {
+    app,
+    owner,
+    other,
+    service: new SettingsService(),
+    db: getServerDatabase(),
   };
-
-  db.prepare(
-    `INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(user.id, user.username, 'test-password-hash', user.role, now, now);
-
-  return { user };
 }
-
-describe('web settings workspace storage', () => {
-  const TEST_TIMEOUT = 20000;
-  let dataDir = '';
-
-  beforeAll(() => {
-    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-settings-service-test-'));
-    configureTestEnv(dataDir);
-    vi.resetModules();
-  });
-
-  afterAll(() => {
-    closeDatabase();
-    fs.rmSync(dataDir, { recursive: true, force: true });
-    for (const key of ENV_KEYS) {
-      const value = originalEnv[key];
-      if (value === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = value;
-      }
-    }
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('writes default settings into a per-user workspace file on first read', async () => {
-    const owner = await createUser('settings-owner-1');
-    const [{ SettingsService }] = await Promise.all([import('./settings.service')]);
-
-    const service = new SettingsService();
-    const settings = service.get(owner.user.id);
-
-    expect(settings.theme).toBe('system');
-    expect(settings.language).toBe('zh');
-
-    const settingsFile = path.join(
-      dataDir,
-      'config',
-      'settings',
-      `${owner.user.id}.json`,
-    );
-    expect(fs.existsSync(settingsFile)).toBe(true);
-
-    const saved = JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as {
-      theme: string;
-      language: string;
-      autoSave: boolean;
-    };
-    expect(saved).toMatchObject({
-      theme: 'system',
-      language: 'zh',
+async function reopen() {
+  (await import("@prompthub/db")).closeDatabase();
+  vi.resetModules();
+  return createTestApp(root);
+}
+it(
+  "reads defaults without creating settings rows or files",
+  async () => {
+    const { service, owner, db } = await setup();
+    expect(service.get(owner.user.id)).toMatchObject({
+      theme: "system",
+      language: "zh",
       autoSave: true,
     });
-  }, TEST_TIMEOUT);
+    expect(db.all("SELECT * FROM user_settings")).toEqual([]);
+    expect(fs.existsSync(path.join(root, "config", "settings"))).toBe(false);
+  },
+  TEST_TIMEOUT,
+);
 
-  it('persists updated settings into both sqlite and workspace json', async () => {
-    const owner = await createUser('settings-owner-2');
-    const [{ SettingsService }] = await Promise.all([import('./settings.service')]);
-
-    const service = new SettingsService();
-    service.set(owner.user.id, {
-      theme: 'dark',
-      language: 'en',
-      sync: {
-        enabled: true,
-        provider: 'webdav',
-        endpoint: 'https://dav.example.com/backups',
-        username: 'alice',
-        password: 'secret',
-        autoSync: true,
+it(
+  "persists tenant HTTP patches and explicit clears through reopen without a file mirror",
+  async () => {
+    const { app, owner, other, service, db } = await setup();
+    const put = (patch: unknown) =>
+      app.request(
+        new Request("http://local/api/settings", {
+          method: "PUT",
+          headers: authHeaders(owner.accessToken),
+          body: JSON.stringify(patch),
+        }),
+      );
+    expect(
+      (
+        await put({
+          theme: "dark",
+          language: "fr",
+          defaultFolderId: "folder",
+          sync: {
+            enabled: true,
+            provider: "webdav",
+            endpoint: "https://dav.example.com",
+            username: "fixture-user",
+            password: "fixture-secret",
+            autoSync: true,
+          },
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await put({ defaultFolderId: null, sync: { autoSync: false } })).status,
+    ).toBe(200);
+    expect(service.get(other.user.id).theme).toBe("system");
+    expect(
+      db.get(
+        "SELECT value FROM user_settings WHERE user_id = ? AND key = ?",
+        owner.user.id,
+        "theme",
+      ),
+    ).toEqual({ value: '"dark"' });
+    expect(
+      db.get(
+        "SELECT value FROM user_settings WHERE user_id = ? AND key = ?",
+        owner.user.id,
+        "defaultFolderId",
+      ),
+    ).toBeNull();
+    const next = await reopen();
+    const response = await next.request(
+      new Request("http://local/api/settings", {
+        headers: authHeaders(owner.accessToken),
+      }),
+    );
+    const value = await response.json();
+    expect(value).toMatchObject({
+      data: {
+        theme: "dark",
+        language: "fr",
+        sync: {
+          username: "fixture-user",
+          password: "fixture-secret",
+          autoSync: false,
+        },
       },
     });
+    expect(value.data.defaultFolderId).toBeUndefined();
+    expect(fs.existsSync(path.join(root, "config", "settings"))).toBe(false);
+  },
+  TEST_TIMEOUT,
+);
 
-    const settings = service.get(owner.user.id);
-    expect(settings.theme).toBe('dark');
-    expect(settings.language).toBe('en');
-    expect(settings.sync).toMatchObject({
-      enabled: true,
-      provider: 'webdav',
-      endpoint: 'https://dav.example.com/backups',
-      username: 'alice',
-      password: 'secret',
-      autoSync: true,
-    });
-
-    const settingsFile = path.join(
-      dataDir,
-      'config',
-      'settings',
-      `${owner.user.id}.json`,
-    );
-    const saved = JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as {
-      theme: string;
-      language: string;
-      sync: { provider: string; endpoint?: string };
-    };
-    expect(saved.theme).toBe('dark');
-    expect(saved.language).toBe('en');
-    expect(saved.sync).toMatchObject({
-      provider: 'webdav',
-      endpoint: 'https://dav.example.com/backups',
-    });
-  }, TEST_TIMEOUT);
-
-  it('removes cleared nullable settings from sqlite and workspace json', async () => {
-    const owner = await createUser('settings-owner-clear');
-    const [{ SettingsService }, { getServerDatabase }] = await Promise.all([
-      import('./settings.service'),
-      import('../database'),
-    ]);
-
-    const service = new SettingsService();
+it(
+  "preserves every setting and timestamp when a later SQL write fails, then accepts a retry",
+  async () => {
+    const { owner, service, db } = await setup();
     service.set(owner.user.id, {
-      defaultFolderId: 'folder-to-clear',
+      theme: "light",
+      language: "en",
+      defaultFolderId: "folder",
     });
-
-    service.set(owner.user.id, {
-      defaultFolderId: null,
-    });
-
-    const settings = service.get(owner.user.id);
-    expect(settings.defaultFolderId).toBeUndefined();
-
-    const db = getServerDatabase();
-    const row = db
-      .prepare('SELECT value FROM user_settings WHERE user_id = ? AND key = ?')
-      .get(owner.user.id, 'defaultFolderId');
-    expect(row).toBeNull();
-
-    const settingsFile = path.join(
-      dataDir,
-      'config',
-      'settings',
-      `${owner.user.id}.json`,
+    const before = db.all("SELECT * FROM user_settings ORDER BY key");
+    db.exec(
+      "CREATE TRIGGER reject_settings BEFORE INSERT ON user_settings WHEN NEW.key = 'language' BEGIN SELECT RAISE(ABORT,'injected settings failure'); END",
     );
-    const saved = JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as {
-      defaultFolderId?: string;
-    };
-    expect(saved.defaultFolderId).toBeUndefined();
-  }, TEST_TIMEOUT);
-
-  it('hydrates sqlite from the workspace settings file when database rows are missing', async () => {
-    const owner = await createUser('settings-owner-3');
-    const [{ SettingsService }, { getServerDatabase }] = await Promise.all([
-      import('./settings.service'),
-      import('../database'),
-    ]);
-
-    const settingsDir = path.join(dataDir, 'config', 'settings');
-    fs.mkdirSync(settingsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(settingsDir, `${owner.user.id}.json`),
-      JSON.stringify(
-        {
-          theme: 'light',
-          language: 'ja',
-          autoSave: false,
-          sync: {
-            enabled: false,
-            provider: 'manual',
-            autoSync: false,
-          },
-        },
-        null,
-        2,
-      ),
-      'utf8',
-    );
-
-    const db = getServerDatabase();
-    db.prepare('DELETE FROM user_settings WHERE user_id = ?').run(owner.user.id);
-
-    const service = new SettingsService();
-    const settings = service.get(owner.user.id);
-
-    expect(settings).toMatchObject({
-      theme: 'light',
-      language: 'ja',
-      autoSave: false,
-    });
-    expect(service.has(owner.user.id)).toBe(true);
-  }, TEST_TIMEOUT);
-
-  it('uses the workspace file as the merge base when the first write happens before any read', async () => {
-    const owner = await createUser('settings-owner-4');
-    const [{ SettingsService }, { getServerDatabase }] = await Promise.all([
-      import('./settings.service'),
-      import('../database'),
-    ]);
-
-    const settingsDir = path.join(dataDir, 'config', 'settings');
-    fs.mkdirSync(settingsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(settingsDir, `${owner.user.id}.json`),
-      JSON.stringify(
-        {
-          theme: 'dark',
-          language: 'fr',
-          autoSave: true,
-          sync: {
-            enabled: false,
-            provider: 'manual',
-            autoSync: false,
-          },
-        },
-        null,
-        2,
-      ),
-      'utf8',
-    );
-
-    const db = getServerDatabase();
-    db.prepare('DELETE FROM user_settings WHERE user_id = ?').run(owner.user.id);
-
-    const service = new SettingsService();
-    service.set(owner.user.id, {
-      autoSave: false,
-    });
-
-    const settings = service.get(owner.user.id);
-    expect(settings).toMatchObject({
-      theme: 'dark',
-      language: 'fr',
-      autoSave: false,
-    });
-  }, TEST_TIMEOUT);
-
-  it('preserves the existing workspace file when a settings mirror write is interrupted', async () => {
-    const owner = await createUser('settings-owner-atomic');
-    const [{ SettingsService }] = await Promise.all([import('./settings.service')]);
-    const settingsDir = path.join(dataDir, 'config', 'settings');
-    const settingsFile = path.join(settingsDir, `${owner.user.id}.json`);
-    const existingSettings = {
-      theme: 'light',
-      language: 'en',
-      autoSave: true,
-    };
-    const existingContent = `${JSON.stringify(existingSettings, null, 2)}\n`;
-    fs.mkdirSync(settingsDir, { recursive: true });
-    fs.writeFileSync(settingsFile, existingContent, 'utf8');
-
-    const service = new SettingsService();
-    const originalWriteFileSync = fs.writeFileSync.bind(fs);
-    let interrupted = false;
-    vi.spyOn(fs, 'writeFileSync').mockImplementation((file, data, options) => {
-      const filePath = String(file);
-      if (!interrupted && filePath.startsWith(settingsDir)) {
-        interrupted = true;
-        originalWriteFileSync(file, '[', options as BufferEncoding);
-        throw new Error('simulated interrupted settings mirror write');
-      }
-
-      return originalWriteFileSync(file, data, options as BufferEncoding);
-    });
-
     expect(() =>
       service.set(owner.user.id, {
-        theme: 'dark',
+        theme: "dark",
+        language: "fr",
+        defaultFolderId: null,
       }),
-    ).toThrow('simulated interrupted settings mirror write');
+    ).toThrow("injected settings failure");
+    expect(db.all("SELECT * FROM user_settings ORDER BY key")).toEqual(before);
+    db.exec("DROP TRIGGER reject_settings");
+    service.set(owner.user.id, {
+      theme: "dark",
+      language: "fr",
+      defaultFolderId: null,
+    });
+    expect(service.get(owner.user.id)).toMatchObject({
+      theme: "dark",
+      language: "fr",
+    });
+  },
+  TEST_TIMEOUT,
+);
 
-    expect(fs.readFileSync(settingsFile, 'utf8')).toBe(existingContent);
-  }, TEST_TIMEOUT);
-});
+it(
+  "does not resurrect retired files after clearing SQL and fails explicitly on corrupted JSON rows",
+  async () => {
+    const { owner, service, db } = await setup();
+    const retired = path.join(
+      root,
+      "config",
+      "settings",
+      `${owner.user.id}.json`,
+    );
+    fs.mkdirSync(path.dirname(retired), { recursive: true });
+    fs.writeFileSync(
+      retired,
+      '{"theme":"dark","language":"ja","autoSave":false}',
+    );
+    expect(service.get(owner.user.id)).toMatchObject({
+      theme: "system",
+      language: "zh",
+    });
+    expect(service.has(owner.user.id)).toBe(false);
+    service.set(owner.user.id, { autoSave: false });
+    expect(service.get(owner.user.id)).toMatchObject({
+      theme: "system",
+      language: "zh",
+      autoSave: false,
+    });
+    db.run(
+      "UPDATE user_settings SET value = ? WHERE user_id = ? AND key = ?",
+      "{",
+      owner.user.id,
+      "theme",
+    );
+    expect(() => service.get(owner.user.id)).toThrow(
+      "Invalid stored Web setting",
+    );
+    expect(fs.readFileSync(retired, "utf8")).toBe(
+      '{"theme":"dark","language":"ja","autoSave":false}',
+    );
+  },
+  TEST_TIMEOUT,
+);

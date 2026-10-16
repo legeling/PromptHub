@@ -1,3 +1,4 @@
+import { assertVersionImportMatches } from "./version-import";
 import Database from "./adapter";
 import { v4 as uuidv4 } from "uuid";
 import type {
@@ -81,8 +82,118 @@ function parseJsonArray<T>(value: string | null | undefined): T[] | undefined {
   return value ? (JSON.parse(value) as T[]) : undefined;
 }
 
+function normalizeImportedSkillVersion(version: SkillVersion): SkillVersionRow {
+  for (const [field, value] of Object.entries(version)) {
+    if (typeof value === "string" && value.includes("\0"))
+      throw new Error(`Skill version ${field} must not contain null bytes`);
+  }
+  return {
+    id: version.id,
+    skill_id: version.skillId,
+    version: version.version,
+    content: version.content ?? null,
+    files_snapshot: version.filesSnapshot
+      ? JSON.stringify(version.filesSnapshot)
+      : null,
+    note: version.note ?? null,
+    created_at: version.createdAt
+      ? new Date(version.createdAt).getTime()
+      : Date.now(),
+  };
+}
+
+const INSERT_SKILL_VERSION_SQL = `INSERT INTO skill_versions (
+  id, skill_id, version, content, files_snapshot, note, created_at
+) VALUES (
+  @id, @skill_id, @version, @content, @files_snapshot, @note, @created_at
+)`;
+
+// Stable-ID import updates must not cascade-delete dependent records.
+const UPSERT_SKILL_SQL = `INSERT INTO skills (
+  id, owner_user_id, visibility, name, description, content, mcp_config,
+  protocol_type, version, author, tags, original_tags, is_favorite,
+  source_url, source_id, source_label, source_branch, source_directory, canonical_skill_path, logical_name, variant_key, local_repo_path, directory_fingerprint, icon_url, icon_emoji, icon_background, category, is_builtin,
+  registry_slug, content_url, installed_content_hash, installed_directory_fingerprint, fingerprint_algorithm, source_last_checked_at, source_last_error, source_binding_state, installed_version, installed_at,
+  updated_from_store_at, prerequisites, compatibility, current_version,
+  version_tracking_enabled, safety_level, safety_score, safety_report, safety_scanned_at,
+  created_at, updated_at
+) VALUES (
+  @id, @owner_user_id, @visibility, @name, @description, @content, @mcp_config,
+  @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
+  @source_url, @source_id, @source_label, @source_branch, @source_directory, @canonical_skill_path, @logical_name, @variant_key, @local_repo_path, @directory_fingerprint, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
+  @registry_slug, @content_url, @installed_content_hash, @installed_directory_fingerprint, @fingerprint_algorithm, @source_last_checked_at, @source_last_error, @source_binding_state, @installed_version, @installed_at,
+  @updated_from_store_at, @prerequisites, @compatibility, @current_version,
+  @version_tracking_enabled, @safety_level, @safety_score, @safety_report, @safety_scanned_at,
+  @created_at, @updated_at
+) ON CONFLICT(id) DO UPDATE SET
+  owner_user_id = excluded.owner_user_id,
+  visibility = excluded.visibility,
+  name = excluded.name,
+  description = excluded.description,
+  content = excluded.content,
+  mcp_config = excluded.mcp_config,
+  protocol_type = excluded.protocol_type,
+  version = excluded.version,
+  author = excluded.author,
+  tags = excluded.tags,
+  original_tags = excluded.original_tags,
+  is_favorite = excluded.is_favorite,
+  source_url = excluded.source_url,
+  source_id = excluded.source_id,
+  source_label = excluded.source_label,
+  source_branch = excluded.source_branch,
+  source_directory = excluded.source_directory,
+  canonical_skill_path = excluded.canonical_skill_path,
+  logical_name = excluded.logical_name,
+  variant_key = excluded.variant_key,
+  local_repo_path = excluded.local_repo_path,
+  directory_fingerprint = excluded.directory_fingerprint,
+  icon_url = excluded.icon_url,
+  icon_emoji = excluded.icon_emoji,
+  icon_background = excluded.icon_background,
+  category = excluded.category,
+  is_builtin = excluded.is_builtin,
+  registry_slug = excluded.registry_slug,
+  content_url = excluded.content_url,
+  installed_content_hash = excluded.installed_content_hash,
+  installed_directory_fingerprint = excluded.installed_directory_fingerprint,
+  fingerprint_algorithm = excluded.fingerprint_algorithm,
+  source_last_checked_at = excluded.source_last_checked_at,
+  source_last_error = excluded.source_last_error,
+  source_binding_state = excluded.source_binding_state,
+  installed_version = excluded.installed_version,
+  installed_at = excluded.installed_at,
+  updated_from_store_at = excluded.updated_from_store_at,
+  prerequisites = excluded.prerequisites,
+  compatibility = excluded.compatibility,
+  current_version = excluded.current_version,
+  version_tracking_enabled = excluded.version_tracking_enabled,
+  safety_level = excluded.safety_level,
+  safety_score = excluded.safety_score,
+  safety_report = excluded.safety_report,
+  safety_scanned_at = excluded.safety_scanned_at,
+  created_at = excluded.created_at,
+  updated_at = excluded.updated_at`;
+
 export class SkillDB {
   constructor(protected db: Database.Database) {}
+
+  protected persistContent(content: string | undefined): string | null {
+    return content ?? null;
+  }
+
+  protected persistFiles(
+    files: SkillFileSnapshot[] | undefined,
+  ): string | null {
+    return files === undefined ? null : JSON.stringify(files);
+  }
+
+  protected hydrateSkill(skill: Skill): Skill {
+    return skill;
+  }
+  protected hydrateVersion(version: SkillVersion): SkillVersion {
+    return version;
+  }
 
   /**
    * Get Skill by name (case-insensitive)
@@ -93,7 +204,7 @@ export class SkillDB {
       "SELECT * FROM skills WHERE LOWER(name) = LOWER(?)",
     );
     const row = stmt.get(name) as SkillRow | undefined;
-    return row ? this.rowToSkill(row) : null;
+    return row ? this.hydrateSkill(this.rowToSkill(row)) : null;
   }
 
   getBySourceId(sourceId: string): Skill | null {
@@ -103,7 +214,7 @@ export class SkillDB {
     }
     const stmt = this.db.prepare("SELECT * FROM skills WHERE source_id = ?");
     const row = stmt.get(normalizedSourceId) as SkillRow | undefined;
-    return row ? this.rowToSkill(row) : null;
+    return row ? this.hydrateSkill(this.rowToSkill(row)) : null;
   }
 
   /**
@@ -116,6 +227,14 @@ export class SkillDB {
    *   如果为 true，跳过创建初始版本快照（用于备份恢复时避免产生多余版本）。
    */
   create(
+    data: CreateSkillParams,
+    options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
+  ): Skill {
+    return this.createWithId(uuidv4(), data, options);
+  }
+
+  protected createWithId(
+    id: string,
     data: CreateSkillParams,
     options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
   ): Skill {
@@ -147,7 +266,6 @@ export class SkillDB {
       );
     }
 
-    const id = uuidv4();
     const now = Date.now();
 
     const tagsJson = JSON.stringify(data.tags || []);
@@ -180,7 +298,7 @@ export class SkillDB {
       "@visibility": data.visibility ?? "private",
       "@name": normalizedName,
       "@description": data.description || null,
-      "@content": data.content || data.instructions || null,
+      "@content": this.persistContent(data.instructions ?? data.content),
       "@mcp_config": data.mcp_config || null,
       "@protocol_type": data.protocol_type || "mcp",
       "@version": data.version || "1.0.0",
@@ -244,7 +362,7 @@ export class SkillDB {
   getById(id: string): Skill | null {
     const stmt = this.db.prepare("SELECT * FROM skills WHERE id = ?");
     const row = stmt.get(id) as SkillRow | undefined;
-    return row ? this.rowToSkill(row) : null;
+    return row ? this.hydrateSkill(this.rowToSkill(row)) : null;
   }
 
   /**
@@ -256,7 +374,7 @@ export class SkillDB {
       "SELECT * FROM skills ORDER BY updated_at DESC",
     );
     const rows = stmt.all() as SkillRow[];
-    return rows.map((row) => this.rowToSkill(row));
+    return rows.map((row) => this.hydrateSkill(this.rowToSkill(row)));
   }
 
   /**
@@ -320,10 +438,10 @@ export class SkillDB {
     // 处理 content 和 instructions（instructions 同步到 content）
     if (data.instructions !== undefined) {
       updates.push("content = ?");
-      values.push(data.instructions);
+      values.push(this.persistContent(data.instructions));
     } else if (data.content !== undefined) {
       updates.push("content = ?");
-      values.push(data.content);
+      values.push(this.persistContent(data.content));
     }
     if (data.mcp_config !== undefined) {
       updates.push("mcp_config = ?");
@@ -711,8 +829,8 @@ export class SkillDB {
         "@id": id,
         "@skill_id": skillId,
         "@version": version,
-        "@content": skill.content || null,
-        "@files_snapshot": filesSnapshot ? JSON.stringify(filesSnapshot) : null,
+        "@content": this.persistContent(skill.content),
+        "@files_snapshot": this.persistFiles(filesSnapshot),
         "@note": note || null,
         "@created_at": now,
       });
@@ -743,7 +861,7 @@ export class SkillDB {
       "SELECT * FROM skill_versions WHERE skill_id = ? ORDER BY version DESC",
     );
     const rows = stmt.all(skillId) as SkillVersionRow[];
-    return rows.map((row) => this.rowToSkillVersion(row));
+    return rows.map((row) => this.hydrateVersion(this.rowToSkillVersion(row)));
   }
 
   /**
@@ -755,7 +873,7 @@ export class SkillDB {
       "SELECT * FROM skill_versions WHERE skill_id = ? AND version = ?",
     );
     const row = stmt.get(skillId, version) as SkillVersionRow | undefined;
-    return row ? this.rowToSkillVersion(row) : null;
+    return row ? this.hydrateVersion(this.rowToSkillVersion(row)) : null;
   }
 
   /**
@@ -842,85 +960,63 @@ export class SkillDB {
   insertSkillDirect(skill: Skill): void {
     const safetyReport = skill.safetyReport;
 
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO skills (
-          id, owner_user_id, visibility, name, description, content, mcp_config,
-          protocol_type, version, author, tags, original_tags, is_favorite,
-          source_url, source_id, source_label, source_branch, source_directory, canonical_skill_path, logical_name, variant_key, local_repo_path, directory_fingerprint, icon_url, icon_emoji, icon_background, category, is_builtin,
-          registry_slug, content_url, installed_content_hash, installed_directory_fingerprint, fingerprint_algorithm, source_last_checked_at, source_last_error, source_binding_state, installed_version, installed_at,
-          updated_from_store_at, prerequisites, compatibility, current_version,
-          version_tracking_enabled, safety_level, safety_score, safety_report, safety_scanned_at,
-          created_at, updated_at
-        ) VALUES (
-          @id, @owner_user_id, @visibility, @name, @description, @content, @mcp_config,
-          @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
-          @source_url, @source_id, @source_label, @source_branch, @source_directory, @canonical_skill_path, @logical_name, @variant_key, @local_repo_path, @directory_fingerprint, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
-          @registry_slug, @content_url, @installed_content_hash, @installed_directory_fingerprint, @fingerprint_algorithm, @source_last_checked_at, @source_last_error, @source_binding_state, @installed_version, @installed_at,
-          @updated_from_store_at, @prerequisites, @compatibility, @current_version,
-          @version_tracking_enabled, @safety_level, @safety_score, @safety_report, @safety_scanned_at,
-          @created_at, @updated_at
-        )`,
-      )
-      .run({
-        "@id": skill.id,
-        "@owner_user_id": skill.ownerUserId ?? null,
-        "@visibility": skill.visibility ?? "private",
-        "@name": skill.name,
-        "@description": skill.description ?? null,
-        "@content": skill.content ?? skill.instructions ?? null,
-        "@mcp_config": skill.mcp_config ?? null,
-        "@protocol_type": skill.protocol_type,
-        "@version": skill.version ?? null,
-        "@author": skill.author ?? null,
-        "@tags": JSON.stringify(skill.tags ?? []),
-        "@original_tags": JSON.stringify(
-          skill.original_tags ?? skill.tags ?? [],
-        ),
-        "@is_favorite": skill.is_favorite ? 1 : 0,
-        "@source_url": skill.source_url ?? null,
-        "@source_id": skill.source_id ?? null,
-        "@source_label": skill.source_label ?? null,
-        "@source_branch": skill.source_branch ?? null,
-        "@source_directory": skill.source_directory ?? null,
-        "@canonical_skill_path": skill.canonical_skill_path ?? null,
-        "@logical_name": skill.logical_name ?? null,
-        "@variant_key": skill.variant_key ?? null,
-        "@local_repo_path": skill.local_repo_path ?? null,
-        "@directory_fingerprint": skill.directory_fingerprint ?? null,
-        "@icon_url": skill.icon_url ?? null,
-        "@icon_emoji": skill.icon_emoji ?? null,
-        "@icon_background": skill.icon_background ?? null,
-        "@category": skill.category ?? "general",
-        "@is_builtin": skill.is_builtin ? 1 : 0,
-        "@registry_slug": skill.registry_slug ?? null,
-        "@content_url": skill.content_url ?? null,
-        "@installed_content_hash": skill.installed_content_hash ?? null,
-        "@installed_directory_fingerprint":
-          skill.installed_directory_fingerprint ?? null,
-        "@fingerprint_algorithm": skill.fingerprint_algorithm ?? null,
-        "@source_last_checked_at": skill.source_last_checked_at ?? null,
-        "@source_last_error": skill.source_last_error ?? null,
-        "@source_binding_state": skill.source_binding_state ?? null,
-        "@installed_version": skill.installed_version ?? null,
-        "@installed_at": skill.installed_at ?? null,
-        "@updated_from_store_at": skill.updated_from_store_at ?? null,
-        "@prerequisites": skill.prerequisites
-          ? JSON.stringify(skill.prerequisites)
-          : null,
-        "@compatibility": skill.compatibility
-          ? JSON.stringify(skill.compatibility)
-          : null,
-        "@current_version": skill.currentVersion ?? 0,
-        "@version_tracking_enabled":
-          (skill.versionTrackingEnabled ?? true) ? 1 : 0,
-        "@safety_level": safetyReport?.level ?? null,
-        "@safety_score": safetyReport?.score ?? null,
-        "@safety_report": safetyReport ? JSON.stringify(safetyReport) : null,
-        "@safety_scanned_at": safetyReport?.scannedAt ?? null,
-        "@created_at": skill.created_at || Date.now(),
-        "@updated_at": skill.updated_at || Date.now(),
-      });
+    this.db.prepare(UPSERT_SKILL_SQL).run({
+      "@id": skill.id,
+      "@owner_user_id": skill.ownerUserId ?? null,
+      "@visibility": skill.visibility ?? "private",
+      "@name": skill.name,
+      "@description": skill.description ?? null,
+      "@content": this.persistContent(skill.instructions ?? skill.content),
+      "@mcp_config": skill.mcp_config ?? null,
+      "@protocol_type": skill.protocol_type,
+      "@version": skill.version ?? null,
+      "@author": skill.author ?? null,
+      "@tags": JSON.stringify(skill.tags ?? []),
+      "@original_tags": JSON.stringify(skill.original_tags ?? skill.tags ?? []),
+      "@is_favorite": skill.is_favorite ? 1 : 0,
+      "@source_url": skill.source_url ?? null,
+      "@source_id": skill.source_id ?? null,
+      "@source_label": skill.source_label ?? null,
+      "@source_branch": skill.source_branch ?? null,
+      "@source_directory": skill.source_directory ?? null,
+      "@canonical_skill_path": skill.canonical_skill_path ?? null,
+      "@logical_name": skill.logical_name ?? null,
+      "@variant_key": skill.variant_key ?? null,
+      "@local_repo_path": skill.local_repo_path ?? null,
+      "@directory_fingerprint": skill.directory_fingerprint ?? null,
+      "@icon_url": skill.icon_url ?? null,
+      "@icon_emoji": skill.icon_emoji ?? null,
+      "@icon_background": skill.icon_background ?? null,
+      "@category": skill.category ?? "general",
+      "@is_builtin": skill.is_builtin ? 1 : 0,
+      "@registry_slug": skill.registry_slug ?? null,
+      "@content_url": skill.content_url ?? null,
+      "@installed_content_hash": skill.installed_content_hash ?? null,
+      "@installed_directory_fingerprint":
+        skill.installed_directory_fingerprint ?? null,
+      "@fingerprint_algorithm": skill.fingerprint_algorithm ?? null,
+      "@source_last_checked_at": skill.source_last_checked_at ?? null,
+      "@source_last_error": skill.source_last_error ?? null,
+      "@source_binding_state": skill.source_binding_state ?? null,
+      "@installed_version": skill.installed_version ?? null,
+      "@installed_at": skill.installed_at ?? null,
+      "@updated_from_store_at": skill.updated_from_store_at ?? null,
+      "@prerequisites": skill.prerequisites
+        ? JSON.stringify(skill.prerequisites)
+        : null,
+      "@compatibility": skill.compatibility
+        ? JSON.stringify(skill.compatibility)
+        : null,
+      "@current_version": skill.currentVersion ?? 0,
+      "@version_tracking_enabled":
+        (skill.versionTrackingEnabled ?? true) ? 1 : 0,
+      "@safety_level": safetyReport?.level ?? null,
+      "@safety_score": safetyReport?.score ?? null,
+      "@safety_report": safetyReport ? JSON.stringify(safetyReport) : null,
+      "@safety_scanned_at": safetyReport?.scannedAt ?? null,
+      "@created_at": skill.created_at || Date.now(),
+      "@updated_at": skill.updated_at || Date.now(),
+    });
   }
 
   /**
@@ -932,28 +1028,42 @@ export class SkillDB {
    * 与 `createVersion` 不同，此方法不会自动递增 `current_version`，
    * 且接受所有字段的显式值。
    */
-  insertVersionDirect(version: SkillVersion): void {
-    this.db
-      .prepare(
-        `INSERT OR IGNORE INTO skill_versions (
-          id, skill_id, version, content, files_snapshot, note, created_at
-        ) VALUES (
-          @id, @skill_id, @version, @content, @files_snapshot, @note, @created_at
-        )`,
-      )
-      .run({
-        "@id": version.id,
-        "@skill_id": version.skillId,
-        "@version": version.version,
-        "@content": version.content || null,
-        "@files_snapshot": version.filesSnapshot
-          ? JSON.stringify(version.filesSnapshot)
-          : null,
-        "@note": version.note || null,
-        "@created_at": version.createdAt
-          ? new Date(version.createdAt).getTime()
-          : Date.now(),
-      });
+  insertVersionDirect(version: SkillVersion): SkillVersion {
+    const row = normalizeImportedSkillVersion(version);
+    row.content = this.persistContent(version.content);
+    row.files_snapshot = this.persistFiles(version.filesSnapshot);
+    const candidate = this.rowToSkillVersion(row);
+    return this.db.transaction(() => {
+      // The typed adapter row is normalized before semantic JSON comparison.
+      const existing = this.db
+        .prepare(
+          "SELECT * FROM skill_versions WHERE id = ? OR (skill_id = ? AND version = ?)",
+        )
+        .all(row.id, row.skill_id, row.version) as SkillVersionRow[];
+      if (existing.length > 0) {
+        assertVersionImportMatches(
+          "Skill",
+          row.id,
+          existing.map((value) => this.rowToSkillVersion(value)),
+          candidate,
+        );
+        return this.rowToSkillVersion(existing[0]);
+      }
+      this.db
+        .prepare(INSERT_SKILL_VERSION_SQL)
+        .run(
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [`@${key}`, value]),
+          ),
+        );
+      // Readback catches unsupported text representations before committing.
+      const stored = this.db
+        .prepare("SELECT * FROM skill_versions WHERE id = ?")
+        .get(row.id) as SkillVersionRow | undefined;
+      const persisted = stored ? [this.rowToSkillVersion(stored)] : [];
+      assertVersionImportMatches("Skill", row.id, persisted, candidate);
+      return persisted[0];
+    })();
   }
 
   /**

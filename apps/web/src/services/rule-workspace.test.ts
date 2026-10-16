@@ -29,6 +29,12 @@ function configureTestEnv(dataDir: string): void {
   process.env.LOG_LEVEL = 'debug';
 }
 
+async function seedOwners(): Promise<void> {
+  const {getServerDatabase}=await import('../database');
+  const database=getServerDatabase();
+  for(const id of ['user-a','user-b']) database.run("INSERT INTO users (id, username, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",id,id,'unused-fixture-hash','user',1,1);
+}
+
 describe('web rule workspace storage', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -51,6 +57,7 @@ describe('web rule workspace storage', () => {
 
     try {
       configureTestEnv(dataDir);
+      await seedOwners();
       const workspaceModule = await import('./rule-workspace.js');
 
       workspaceModule.importRuleBackupRecords('user-a', [
@@ -103,6 +110,7 @@ describe('web rule workspace storage', () => {
 
     try {
       configureTestEnv(dataDir);
+      await seedOwners();
       const workspaceModule = await import('./rule-workspace.js');
 
       expect(() =>
@@ -137,6 +145,7 @@ describe('web rule workspace storage', () => {
 
     try {
       configureTestEnv(dataDir);
+      await seedOwners();
       const workspaceModule = await import('./rule-workspace.js');
 
       const baseRecord = {
@@ -181,7 +190,7 @@ describe('web rule workspace storage', () => {
       vi.spyOn(fs, 'writeFileSync').mockImplementation((file, data, options) => {
         if (
           typeof file === 'string' &&
-          file.endsWith(`${path.sep}0002.md`) &&
+          file.endsWith('.md') &&
           String(data).includes('new imported v2')
         ) {
           throw new Error('simulated rule version write failure');

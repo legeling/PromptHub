@@ -6,6 +6,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   CorePluginLibraryService,
   configureRuntimePaths,
+  initDatabase,
+  closeDatabase,
   resetRuntimePaths,
 } from "@prompthub/core";
 import {
@@ -18,6 +20,7 @@ let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-native-install-"));
   configureRuntimePaths({ userDataPath: path.join(root, "userdata") });
+  initDatabase();
   fs.mkdirSync(path.join(root, "source", ".claude-plugin"), {
     recursive: true,
   });
@@ -34,6 +37,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  closeDatabase();
   resetRuntimePaths();
   fs.rmSync(root, { recursive: true, force: true });
 });

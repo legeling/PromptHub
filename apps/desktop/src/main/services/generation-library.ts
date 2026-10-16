@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import { constants as fsConstants, existsSync } from "fs";
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -7,21 +6,12 @@ import {
   normalizeGenerationRequest,
   reduceGenerationCounts,
 } from "@prompthub/core/image-generation-workbench";
+import { assertStorageMaintenanceAvailable } from "@prompthub/core";
 import {
-  assertStorageMaintenanceAvailable,
-  getRuntimeStorageContext,
-  materializeGenerationResourceBundle,
-  readContentAddressedObject,
-  type ResourceBundleManifest,
-} from "@prompthub/core";
-import {
-  getAssetsDir,
-  getGeneratedImagesDir,
-  getGenerationsDir,
-  getImagesDir,
-  getLegacyGeneratedImagesDir,
-  getUserDataPath,
-} from "@prompthub/core/runtime-paths";
+  GenerationStorage,
+  generationOutputPath,
+} from "@prompthub/core/generation-storage";
+import { getImagesDir, getUserDataPath } from "@prompthub/core/runtime-paths";
 import type {
   CommitGenerationOutputInput,
   CommitGenerationRemoteOutputInput,
@@ -34,7 +24,7 @@ import type {
   SetGenerationFavoriteInput,
 } from "@prompthub/shared/types";
 import type Database from "../database/sqlite";
-import { CanonicalResourceDB } from "@prompthub/db";
+import { GenerationDB } from "@prompthub/db";
 import {
   downloadRemoteImage,
   type RemoteImageDownload,
@@ -120,6 +110,22 @@ function isTerminal(status: GenerationBatchManifest["status"]): boolean {
   return !["queued", "running", "cancelling"].includes(status);
 }
 
+function updateBatchState(manifest: GenerationBatchManifest): void {
+  const previousStatus = manifest.status;
+  manifest.counts = reduceGenerationCounts(
+    manifest.slots.map((slot) => slot.status),
+  );
+  manifest.status = deriveGenerationBatchStatus(
+    manifest.slots.map((slot) => slot.status),
+  );
+  manifest.updatedAt = new Date().toISOString();
+  manifest.completedAt = isTerminal(manifest.status)
+    ? isTerminal(previousStatus) && manifest.completedAt
+      ? manifest.completedAt
+      : manifest.updatedAt
+    : undefined;
+}
+
 export class GenerationLibrary {
   private readonly batchMutations = new Map<string, Promise<unknown>>();
 
@@ -132,15 +138,6 @@ export class GenerationLibrary {
 
   private assertStorageAvailable(): void {
     assertStorageMaintenanceAvailable(getUserDataPath());
-  }
-
-  private getBatchDir(batchId: string): string {
-    assertBatchId(batchId);
-    return path.join(getGenerationsDir(), batchId);
-  }
-
-  private getManifestPath(batchId: string): string {
-    return path.join(this.getBatchDir(batchId), "batch.json");
   }
 
   private enqueueMutation<T>(
@@ -159,215 +156,12 @@ export class GenerationLibrary {
     return current;
   }
 
-  private async migrateLegacyOutputs(
-    manifest: GenerationBatchManifest,
-  ): Promise<void> {
-    this.assertStorageAvailable();
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      const targetDir = path.join(getGeneratedImagesDir(), manifest.id);
-      await fs.mkdir(targetDir, { recursive: true });
-      for (const slot of manifest.slots) {
-        if (!slot.output) continue;
-        const target = path.join(targetDir, slot.output.fileName);
-        try {
-          await fs.copyFile(
-            readContentAddressedObject(
-              path.join(getAssetsDir(), "objects"),
-              slot.output.sha256,
-              { maxBytes: slot.output.byteSize },
-            ).path,
-            target,
-            fsConstants.COPYFILE_EXCL,
-          );
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        }
-      }
-      return;
-    }
-    const legacyDir = path.join(getLegacyGeneratedImagesDir(), manifest.id);
-    const targetDir = path.join(getGeneratedImagesDir(), manifest.id);
-    try {
-      const entries = await fs.readdir(legacyDir, { withFileTypes: true });
-      await fs.mkdir(targetDir, { recursive: true });
-      await Promise.all(
-        entries
-          .filter((entry) => entry.isFile())
-          .map(async (entry) => {
-            const target = path.join(targetDir, entry.name);
-            try {
-              await fs.copyFile(
-                path.join(legacyDir, entry.name),
-                target,
-                fsConstants.COPYFILE_EXCL,
-              );
-            } catch (error) {
-              if ((error as NodeJS.ErrnoException).code !== "EEXIST")
-                throw error;
-            }
-          }),
-      );
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-  }
-
-  private async writeManifest(
-    manifest: GenerationBatchManifest,
-  ): Promise<void> {
-    this.assertStorageAvailable();
-    const manifestPath = this.getManifestPath(manifest.id);
-    const tempPath = `${manifestPath}.${crypto.randomUUID()}.tmp`;
-    await fs.mkdir(path.dirname(manifestPath), { recursive: true });
-    try {
-      await fs.writeFile(tempPath, JSON.stringify(manifest, null, 2), "utf8");
-      await fs.rename(tempPath, manifestPath);
-    } finally {
-      await fs.rm(tempPath, { force: true });
-    }
-  }
-
-  private writeCanonicalManifest(
-    manifest: GenerationBatchManifest,
-  ): ResourceBundleManifest {
-    const outputSources = Object.fromEntries(
-      manifest.slots.flatMap((slot) =>
-        slot.output
-          ? [
-              [
-                slot.output.fileName,
-                path.join(
-                  getGeneratedImagesDir(),
-                  manifest.id,
-                  slot.output.fileName,
-                ),
-              ],
-            ]
-          : [],
-      ),
-    );
-    const bundlePath = this.getBatchDir(manifest.id);
-    return materializeGenerationResourceBundle({
-      bundlePath,
-      objectsRoot: path.join(getAssetsDir(), "objects"),
-      manifest,
-      outputSources,
-      writePolicy: {
-        mode: existsSync(path.join(bundlePath, "manifest.json"))
-          ? "replace"
-          : "create",
-      },
-    }).bundleManifest;
-  }
-
-  private indexManifest(
-    manifest: GenerationBatchManifest,
-    publishCanonical?: () => ResourceBundleManifest,
-  ): void {
-    this.assertStorageAvailable();
-    const sourcePromptId = manifest.sourcePromptId
-      ? this.db
-          .prepare("SELECT id FROM prompts WHERE id = ?")
-          .get(manifest.sourcePromptId)
-        ? manifest.sourcePromptId
-        : null
-      : null;
-    const write = this.db.transaction(() => {
-      this.db.run(
-        `INSERT INTO generation_batches (
-          id, manifest_path, status, title, source_prompt_id, provider, model,
-          requested_count, succeeded_count, failed_count, cancelled_count,
-          interrupted_count, created_at, updated_at, completed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          status = excluded.status, title = excluded.title,
-          source_prompt_id = excluded.source_prompt_id, provider = excluded.provider,
-          model = excluded.model, requested_count = excluded.requested_count,
-          succeeded_count = excluded.succeeded_count, failed_count = excluded.failed_count,
-          cancelled_count = excluded.cancelled_count,
-          interrupted_count = excluded.interrupted_count,
-          updated_at = excluded.updated_at, completed_at = excluded.completed_at`,
-        manifest.id,
-        path.posix.join("generations", manifest.id, "batch.json"),
-        manifest.status,
-        manifest.title,
-        sourcePromptId,
-        manifest.model.provider,
-        manifest.model.model,
-        manifest.targetCount,
-        manifest.counts.succeeded,
-        manifest.counts.failed,
-        manifest.counts.cancelled,
-        manifest.counts.interrupted,
-        manifest.createdAt,
-        manifest.updatedAt,
-        manifest.completedAt ?? null,
-      );
-      for (const slot of manifest.slots) {
-        this.db.run(
-          `INSERT INTO generation_outputs (
-            id, batch_id, slot_index, status, file_name, mime_type, byte_size,
-            sha256, favorite, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(batch_id, slot_index) DO UPDATE SET
-            id = excluded.id, status = excluded.status, file_name = excluded.file_name,
-            mime_type = excluded.mime_type, byte_size = excluded.byte_size,
-            sha256 = excluded.sha256, favorite = excluded.favorite,
-            created_at = excluded.created_at`,
-          slot.output?.id ?? `${manifest.id}:${slot.index}`,
-          manifest.id,
-          slot.index,
-          slot.status,
-          slot.output?.fileName ?? null,
-          slot.output?.mimeType ?? null,
-          slot.output?.byteSize ?? null,
-          slot.output?.sha256 ?? null,
-          slot.output?.favorite ? 1 : 0,
-          slot.output?.createdAt ?? null,
-        );
-      }
-      const published = publishCanonical?.();
-      if (published) {
-        new CanonicalResourceDB(this.db).upsert({
-          resourceType: published.resourceType,
-          resourceId: published.resourceId,
-          schemaVersion: published.schemaVersion,
-          revision: published.revision,
-          contentHash: published.contentHash,
-          manifestPath: path.posix.join(
-            "generations",
-            manifest.id,
-            "manifest.json",
-          ),
-          updatedAt: published.updatedAt,
-        });
-      }
-    });
-    write();
-  }
-
   private async persist(
     manifest: GenerationBatchManifest,
+    image?: { fileName: string; bytes: Buffer },
   ): Promise<GenerationBatchManifest> {
-    const previousStatus = manifest.status;
-    manifest.counts = reduceGenerationCounts(
-      manifest.slots.map((slot) => slot.status),
-    );
-    manifest.status = deriveGenerationBatchStatus(
-      manifest.slots.map((slot) => slot.status),
-    );
-    manifest.updatedAt = new Date().toISOString();
-    manifest.completedAt = isTerminal(manifest.status)
-      ? isTerminal(previousStatus) && manifest.completedAt
-        ? manifest.completedAt
-        : manifest.updatedAt
-      : undefined;
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      this.indexManifest(manifest, () => this.writeCanonicalManifest(manifest));
-    } else {
-      await this.writeManifest(manifest);
-      this.indexManifest(manifest);
-    }
+    updateBatchState(manifest);
+    new GenerationStorage(this.db, getUserDataPath()).save(manifest, image);
     return manifest;
   }
 
@@ -417,58 +211,46 @@ export class GenerationLibrary {
       createdAt: now,
       updatedAt: now,
     };
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      this.indexManifest(manifest, () => this.writeCanonicalManifest(manifest));
-    } else {
-      await this.writeManifest(manifest);
-      this.indexManifest(manifest);
-    }
+    new GenerationStorage(this.db, getUserDataPath()).save(manifest);
     return manifest;
   }
 
   async getBatch(batchId: string): Promise<GenerationBatchManifest> {
-    const text = await fs.readFile(this.getManifestPath(batchId), "utf8");
-    const manifest = JSON.parse(text) as GenerationBatchManifest;
-    await this.migrateLegacyOutputs(manifest);
+    this.assertStorageAvailable();
+    assertBatchId(batchId);
+    const manifest = new GenerationDB(this.db).get(batchId);
+    if (!manifest) throw new Error("Generation batch not found");
     return manifest;
   }
 
   async listBatches(): Promise<GenerationBatchManifest[]> {
     this.assertStorageAvailable();
-    await fs.mkdir(getGenerationsDir(), { recursive: true });
-    const entries = await fs.readdir(getGenerationsDir(), {
-      withFileTypes: true,
-    });
-    const batches = await Promise.all(
-      entries
-        .filter(
-          (entry) => entry.isDirectory() && BATCH_ID_PATTERN.test(entry.name),
-        )
-        .map(async (entry) => {
-          const manifest = await this.getBatch(entry.name);
-          const hasRunningSlots = manifest.slots.some(
-            (slot) => slot.status === "running",
-          );
-          if (!hasRunningSlots) return manifest;
-          manifest.slots = manifest.slots.map((slot) =>
-            slot.status === "running"
-              ? {
-                  index: slot.index,
-                  status: "interrupted" as const,
-                  error: {
-                    code: "interrupted",
-                    retryable: true,
-                    message: "Generation was interrupted when the app stopped",
-                  },
-                }
-              : slot,
-          );
-          return this.persist(manifest);
-        }),
-    );
-    return batches.sort((left, right) =>
-      right.createdAt.localeCompare(left.createdAt),
-    );
+    return new GenerationDB(this.db).list();
+  }
+
+  recoverInterrupted(): void {
+    this.assertStorageAvailable();
+    const repository = new GenerationDB(this.db);
+    this.db.transaction(() => {
+      for (const manifest of repository.list()) {
+        if (!manifest.slots.some((slot) => slot.status === "running")) continue;
+        manifest.slots = manifest.slots.map((slot) =>
+          slot.status === "running"
+            ? {
+                index: slot.index,
+                status: "interrupted",
+                error: {
+                  code: "interrupted",
+                  retryable: true,
+                  message: "Generation was interrupted when the app stopped",
+                },
+              }
+            : slot,
+        );
+        updateBatchState(manifest);
+        repository.upsert(manifest);
+      }
+    })();
   }
 
   async markSlotRunning(
@@ -501,12 +283,6 @@ export class GenerationLibrary {
     const image = validateImageBytes(bytes, claimedMimeType);
     const outputId = crypto.randomUUID();
     const fileName = `${outputId}${image.extension}`;
-    const outputDir = path.join(getGeneratedImagesDir(), manifest.id);
-    await fs.mkdir(outputDir, { recursive: true });
-    const tempPath = path.join(outputDir, `${fileName}.tmp`);
-    const finalPath = path.join(outputDir, fileName);
-    await fs.writeFile(tempPath, image.bytes);
-    await fs.rename(tempPath, finalPath);
     const createdAt = new Date().toISOString();
     manifest.slots[slotIndex] = {
       index: slotIndex,
@@ -523,7 +299,7 @@ export class GenerationLibrary {
         ...(revisedPrompt ? { revisedPrompt } : {}),
       },
     };
-    return this.persist(manifest);
+    return this.persist(manifest, { fileName, bytes: image.bytes });
   }
 
   async commitOutput(
@@ -642,8 +418,8 @@ export class GenerationLibrary {
     const extension = MIME_EXTENSIONS[output.mimeType];
     if (!extension) throw new Error("Unsupported image type");
     const fileName = `generated-${manifest.id}-${output.id}${extension}`;
-    const sourcePath = path.join(
-      getGeneratedImagesDir(),
+    const sourcePath = generationOutputPath(
+      getUserDataPath(),
       manifest.id,
       output.fileName,
     );
@@ -670,8 +446,8 @@ export class GenerationLibrary {
       throw new Error("Generation output not found");
     }
 
-    const sourcePath = path.join(
-      getGeneratedImagesDir(),
+    const sourcePath = generationOutputPath(
+      getUserDataPath(),
       manifest.id,
       output.fileName,
     );

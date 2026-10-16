@@ -22,7 +22,7 @@ import {
 } from "./resource-bundle-publication";
 
 export const RULE_RESOURCE_KIND = "prompthub-rule-resource";
-export const RULE_RESOURCE_SCHEMA_VERSION = 1;
+export const RULE_RESOURCE_SCHEMA_VERSION = 2;
 
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
 const MAX_RULE_BYTES = 16 * 1024 * 1024;
@@ -39,7 +39,7 @@ export interface CanonicalRuleVersionMetadata {
 
 export interface RuleResourceDocument {
   kind: typeof RULE_RESOURCE_KIND;
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   rule: {
     id: RuleFileId;
     platformId: RulePlatformId;
@@ -148,7 +148,9 @@ function validateOptionalPath(
   return value;
 }
 
-function validateVersion(value: unknown, version: number): RuleVersionSnapshot {
+export function validateRuleVersionSnapshot(
+  value: unknown,
+): RuleVersionSnapshot {
   if (!isRecord(value)) throw new Error("Rule resource version is invalid");
   assertId(value.id, "version id");
   assertTimestamp(value.savedAt, "version savedAt");
@@ -157,7 +159,7 @@ function validateVersion(value: unknown, version: number): RuleVersionSnapshot {
   return {
     id: value.id,
     savedAt: value.savedAt,
-    content: validateContent(value.content, `version ${version} content`),
+    content: validateContent(value.content, `version ${value.id} content`),
     source: value.source as RuleVersionSnapshot["source"],
   };
 }
@@ -176,11 +178,9 @@ function validateRule(value: unknown): CanonicalRuleResource {
     assertString(value[field], field);
   if (typeof value.group !== "string" || !GROUPS.has(value.group))
     throw new Error("Rule resource group is invalid");
-  if (!Array.isArray(value.versions) || value.versions.length === 0)
+  if (!Array.isArray(value.versions))
     throw new Error("Rule resource versions are missing");
-  const versions = value.versions.map((version, index) =>
-    validateVersion(version, index + 1),
-  );
+  const versions = value.versions.map(validateRuleVersionSnapshot);
   if (new Set(versions.map((version) => version.id)).size !== versions.length)
     throw new Error("Rule resource contains a duplicate version");
   for (let index = 1; index < versions.length; index += 1) {
@@ -191,10 +191,7 @@ function validateRule(value: unknown): CanonicalRuleResource {
       throw new Error("Rule resource versions are not chronological");
   }
   const content = validateContent(value.content, "current content");
-  if (content !== versions.at(-1)?.content)
-    throw new Error(
-      "Rule resource current content does not match latest history",
-    );
+
   return {
     id: value.id as RuleFileId,
     platformId: value.platformId as RulePlatformId,
@@ -268,7 +265,7 @@ export function materializeRuleResourceBundle(input: {
   }));
   const document: RuleResourceDocument = {
     kind: RULE_RESOURCE_KIND,
-    schemaVersion: 1,
+    schemaVersion: RULE_RESOURCE_SCHEMA_VERSION,
     rule: {
       id: rule.id,
       platformId: rule.platformId,
@@ -324,7 +321,7 @@ export function materializeRuleResourceBundle(input: {
       input.bundlePath,
       "rule",
       rule.id,
-      rule.versions.length,
+      Math.max(1, rule.versions.length),
       input.writePolicy,
     );
     return writeResourceBundle(
@@ -334,8 +331,8 @@ export function materializeRuleResourceBundle(input: {
         resourceId: rule.id,
         schemaVersion: 1,
         revision,
-        createdAt: rule.versions[0].savedAt,
-        updatedAt: rule.versions.at(-1)!.savedAt,
+        createdAt: rule.versions[0]?.savedAt ?? "1970-01-01T00:00:00.000Z",
+        updatedAt: rule.versions.at(-1)?.savedAt ?? "1970-01-01T00:00:00.000Z",
         provenance: { source: "rules-workspace-shadow-export" },
         payloads,
       },
@@ -369,7 +366,8 @@ function parseDocument(bundlePath: string): RuleResourceDocument {
   if (
     !isRecord(value) ||
     value.kind !== RULE_RESOURCE_KIND ||
-    value.schemaVersion !== 1 ||
+    (value.schemaVersion !== 1 &&
+      value.schemaVersion !== RULE_RESOURCE_SCHEMA_VERSION) ||
     !isRecord(value.rule)
   ) {
     throw new Error("Rule resource metadata header is unsupported");
@@ -387,7 +385,11 @@ function parseDocument(bundlePath: string): RuleResourceDocument {
     assertString(metadata[field], field);
   if (typeof metadata.group !== "string" || !GROUPS.has(metadata.group))
     throw new Error("Rule resource group is invalid");
-  const currentVersion = positiveVersion(metadata.currentVersion);
+  const currentVersion =
+    metadata.currentVersion === 0 &&
+    value.schemaVersion === RULE_RESOURCE_SCHEMA_VERSION
+      ? 0
+      : positiveVersion(metadata.currentVersion);
   const targetPath = validateOptionalPath(metadata.targetPath, "targetPath");
   const projectRootPath =
     metadata.projectRootPath === null
@@ -423,7 +425,7 @@ function parseDocument(bundlePath: string): RuleResourceDocument {
   return {
     ...value,
     kind: RULE_RESOURCE_KIND,
-    schemaVersion: 1,
+    schemaVersion: value.schemaVersion,
     rule: {
       id: metadata.id as RuleFileId,
       platformId: metadata.platformId as RulePlatformId,
@@ -480,7 +482,7 @@ export function readRuleResourceBundle(
   if (roles.size !== versions.length + 2)
     throw new Error("Rule resource contains undeclared version metadata");
   const content = readText(path.join(bundlePath, "rule.md"), MAX_RULE_BYTES);
-  if (content !== versions.at(-1)?.content)
+  if (document.schemaVersion === 1 && content !== versions.at(-1)?.content)
     throw new Error(
       "Rule resource current content does not match latest history",
     );

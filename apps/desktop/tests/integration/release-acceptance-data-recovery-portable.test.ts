@@ -7,24 +7,21 @@ import { unzipSync } from "fflate";
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
-  CanonicalAgentProviderProfileDB,
   AgentProviderProfileService,
   CorePluginLibraryService,
+  CoreMcpLibraryService,
+  exportMcpStorageSnapshot,
+  MCP_STORAGE_SNAPSHOT_FILE,
   createAgentSecretStore,
   createRendererPersistenceStore,
   writeRuntimeLayoutState,
   AgentSettingsRepository,
   createPortableSkillResource,
   createPortablePluginResourceEntry,
-  createMcpBindingConfigDocument,
-  deriveLocalResourceDeviceId,
-  materializeMcpServerResourceBundle,
-  readMcpServerResourceBundle,
-  readContentAddressedObject,
   readResourceBundle,
   type PortableLogicalEnvelope,
 } from "@prompthub/core";
-import { AgentSessionIndexDB } from "@prompthub/db";
+import { AgentProviderProfileDB, AgentSessionIndexDB } from "@prompthub/db";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import {
   closeDatabase,
@@ -169,6 +166,7 @@ function writeFiles(
 
 function persistence() {
   return createRendererPersistenceStore({
+    database: database,
     rootPath: profile,
     encryption: transport.encryption,
   });
@@ -179,7 +177,7 @@ async function openHandlers(): Promise<void> {
   const prompts = new PromptDB(database);
   const folders = new FolderDB(database);
   registerPromptIPC(prompts, folders, database);
-  registerFolderIPC(folders, prompts);
+  registerFolderIPC(folders);
   await registerSkillIPC(new SkillDB(database));
   registerRulesIPC();
   registerPluginIPC(new CorePluginLibraryService());
@@ -188,7 +186,7 @@ async function openHandlers(): Promise<void> {
   registerGenerationIPC(database);
   registerAgentProviderProfileIPC(
     new AgentProviderProfileService(
-      new CanonicalAgentProviderProfileDB(database),
+      new AgentProviderProfileDB(database),
       createAgentSecretStore({
         userDataPath: profile,
         encryption: transport.encryption,
@@ -197,7 +195,7 @@ async function openHandlers(): Promise<void> {
   );
   registerAgentManagementBackupIPC(
     createAgentManagementBackupService({
-      profiles: new CanonicalAgentProviderProfileDB(database),
+      profiles: new AgentProviderProfileDB(database),
       sessions: new AgentSessionIndexDB(database),
       secrets: createAgentSecretStore({
         userDataPath: profile,
@@ -220,8 +218,8 @@ async function startProfile(destination: string, fresh = false): Promise<void> {
   invalidateCustomPathsCache();
   if (fresh) {
     writeRuntimeLayoutState(profile);
-    const initial = initDatabase();
-    initial
+    database = initDatabase();
+    database
       .prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
       .run(
         "builtinAgentOverrides",
@@ -352,6 +350,20 @@ async function seedRuleAndPlugin(sourceBase = root): Promise<void> {
 async function consumerSnapshot() {
   const prompts = await window.api.prompt.getAll();
   const skills = await window.api.skill.getAll();
+  expect(
+    database.get(
+      "SELECT name FROM schema_migrations WHERE name = ?",
+      "skill-payload-files-v1",
+    ),
+  ).toEqual({ name: "skill-payload-files-v1" });
+  expect(
+    database.all("SELECT id FROM skills WHERE content IS NOT NULL"),
+  ).toEqual([]);
+  expect(
+    database.all(
+      "SELECT id FROM skill_versions WHERE content IS NOT NULL OR files_snapshot IS NOT NULL",
+    ),
+  ).toEqual([]);
   const rules = await window.api.rules.list();
   const plugins = (await window.api.plugin.getLibrary()).plugins;
   const skillPackages = skills.map((skill) => {
@@ -405,8 +417,8 @@ async function consumerSnapshot() {
 }
 
 beforeEach(async () => {
-  root = fs.mkdtempSync(
-    path.join(os.tmpdir(), "prompthub-acceptance-portable-"),
+  root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-acceptance-portable-")),
   );
   transport.home = path.join(root, "home");
   fs.mkdirSync(transport.home);
@@ -444,19 +456,9 @@ function seedMcp(id: string): string {
     createdAt: 1,
     updatedAt: 2,
   };
-  materializeMcpServerResourceBundle({
-    bundlePath,
-    server,
-    currentVersion: 2,
-    versions: [
-      {
-        version: 1,
-        server: { ...server, updatedAt: 1 },
-        createdAt: new Date(1).toISOString(),
-      },
-      { version: 2, server, createdAt: new Date(2).toISOString() },
-    ],
-  });
+  const service = new CoreMcpLibraryService();
+  service.createServer({ ...server, args: ["first-version"] });
+  service.updateServer(id, server);
   return bundlePath;
 }
 
@@ -464,7 +466,10 @@ function partialEnvelope(
   selected: boolean,
   retainedBundle: string,
 ): PortableLogicalEnvelope {
-  const server = readMcpServerResourceBundle(retainedBundle).server;
+  const server = new CoreMcpLibraryService()
+    .readForTransport()
+    .servers.find((item) => item.id === "retained");
+  if (!server) throw new Error("Missing retained MCP fixture");
   const files = Object.keys(inventory(retainedBundle)).map((relativePath) => {
     const bytes = fs.readFileSync(path.join(retainedBundle, relativePath));
     return {
@@ -472,6 +477,14 @@ function partialEnvelope(
       size: bytes.length,
       contentBase64: bytes.toString("base64"),
     };
+  });
+  const snapshotBytes = fs.readFileSync(
+    path.join(root, MCP_STORAGE_SNAPSHOT_FILE),
+  );
+  files.push({
+    relativePath: MCP_STORAGE_SNAPSHOT_FILE,
+    size: snapshotBytes.length,
+    contentBase64: snapshotBytes.toString("base64"),
   });
   return {
     kind: "prompthub-export",
@@ -537,6 +550,9 @@ it.each([
     const expected = await consumerSnapshot();
     const agentSettings = new AgentSettingsRepository(database).read();
     const retained = seedMcp("retained");
+    exportMcpStorageSnapshot(path.join(root, MCP_STORAGE_SNAPSHOT_FILE), {
+      database,
+    });
     seedMcp("removed");
     const metadata = {
       "data/mcp/market-sources.json": JSON.stringify({
@@ -552,9 +568,9 @@ it.each([
     const retainedBefore = inventory(retained);
     const nativePath = path.join(root, "native-agent.json");
     fs.writeFileSync(nativePath, "native configuration stays unchanged");
-    const binding = createMcpBindingConfigDocument({
-      deviceId: deriveLocalResourceDeviceId(profile),
-      knownServerIds: new Set(["retained", "removed"]),
+    const service = new CoreMcpLibraryService();
+    const binding = service.write({
+      ...service.read(),
       bindings: [
         {
           id: "fixture-binding",
@@ -569,13 +585,10 @@ it.each([
       ],
     });
     writeFiles(profile, {
-      "config/devices/mcp-bindings.json": JSON.stringify(binding),
       "secrets/fixture-vault.bin": Buffer.from([0, 47, 255, 12]),
     });
     const secretsBefore = inventory(path.join(profile, "secrets"));
-    const bindingsBefore = fs.readFileSync(
-      path.join(profile, "config", "devices", "mcp-bindings.json"),
-    );
+    const bindingsBefore = binding.bindings;
     const envelope = partialEnvelope(selected, retained);
     const rename = fs.renameSync;
     let failed = false;
@@ -584,7 +597,7 @@ it.each([
         if (
           !failed &&
           String(from).includes(".prompthub-restore-stage-") &&
-          String(to) === path.join(profile, "config")
+          String(to) === path.join(profile, "data")
         ) {
           failed = true;
           throw Object.assign(new Error("Fixture config publication EIO"), {
@@ -633,23 +646,15 @@ it.each([
           content,
         );
       }
-      const bindingPath = path.join(
-        profile,
-        "config",
-        "devices",
-        "mcp-bindings.json",
-      );
+      const actualBindings = new CoreMcpLibraryService().read().bindings;
       if (selected && !failPublication) {
-        expect(JSON.parse(fs.readFileSync(bindingPath, "utf8"))).toMatchObject({
-          deviceId: binding.deviceId,
-          bindings: [{ serverIds: ["retained"] }],
-        });
+        expect(actualBindings).toMatchObject([{ serverIds: ["retained"] }]);
         expect(
           fs.existsSync(path.join(profile, "data", "mcp", "removed")),
         ).toBe(false);
       } else {
         expect(inventory(path.join(profile, "data", "mcp"))).toEqual(mcpBefore);
-        expect(fs.readFileSync(bindingPath)).toEqual(bindingsBefore);
+        expect(actualBindings).toEqual(bindingsBefore);
       }
       expect(fs.readFileSync(nativePath, "utf8")).toBe(
         "native configuration stays unchanged",
@@ -658,97 +663,123 @@ it.each([
   },
 );
 
-it("exports all nonempty content domains through the renderer and restores the real ZIP across two normal startups", async () => {
-  await seedPrompts();
-  await seedSkill();
-  await seedRuleAndPlugin();
-  const expected = await consumerSnapshot();
-  const normalize = (value: unknown): unknown =>
-    JSON.parse(JSON.stringify(value).split(profile).join("<profile>"));
-  const expectedJson = normalize(expected);
-  expect(expected.prompts).toHaveLength(2);
-  expect(expected.folders).toHaveLength(1);
-  expect(expected.versions.flat()).toHaveLength(3);
-  expect(expected.relations).toHaveLength(1);
-  expect(expected.skills).toHaveLength(1);
-  expect(expected.skillVersions.flat().length).toBeGreaterThan(0);
-  expect(expected.rules).toHaveLength(1);
-  expect(expected.rules[0].versions).toHaveLength(2);
-  expect(expected.plugins).toHaveLength(1);
-  expect(expected.pluginVersions.flat()).toHaveLength(1);
-  expect(expected.settings).toMatchObject(settings);
-  const sourcePackages = {
-    skill: inventory(path.join(root, "skill-source")),
-    plugin: inventory(path.join(root, "plugin-source")),
-    project: inventory(path.join(root, "project")),
-  };
-  expect(expected.skillPackages[0].files).toEqual(sourcePackages.skill);
-  expect(expected.pluginPackages[0].files).toEqual(sourcePackages.plugin);
-  await downloadSelectiveExport({
-    prompts: true,
-    folders: true,
-    versions: true,
-    images: true,
-    videos: true,
-    aiConfig: true,
-    settings: true,
-    rules: true,
-    skills: true,
-    mcp: true,
-    plugins: true,
-    agents: true,
-  });
-  const archive = fs.readFileSync(transport.archive);
-  const entries = unzipSync(archive);
-  expect(
-    Object.keys(entries).some((name) => name.endsWith("manifest.json")),
-  ).toBe(true);
-  expect(
-    Object.keys(entries).some((name) => name.endsWith("assets/blob.bin")),
-  ).toBe(true);
-  // Export checkpoints/reopens the DB, so refresh handlers just as startup does.
-  await startProfile(path.join(root, "source-profile"));
-  expect(normalize(await consumerSnapshot())).toEqual(expectedJson);
-  closeDatabase();
-  const sourceBeforeRestore = inventory(
-    path.join(root, "source-profile", "data"),
-  );
-  const destination = path.join(root, "restored-profile");
-  await startProfile(destination, true);
-  const restore = await window.electron.restorePortableBackup?.(
-    transport.archive,
-  );
-  expect(restore, JSON.stringify(restore)).toMatchObject({
-    success: true,
-    needsRestart: true,
-  });
-  expect(transport.relaunches).toBe(1);
-  expect(inventory(path.join(root, "source-profile", "data"))).toEqual(
-    sourceBeforeRestore,
-  );
-  expect(fs.readFileSync(transport.archive)).toEqual(archive);
-  for (const startup of ["first", "second"]) {
-    await startProfile(destination);
-    expect(normalize(await consumerSnapshot()), startup).toEqual(expectedJson);
-    expect(database.all("PRAGMA foreign_key_check")).toEqual([]);
-    expect(database.get("PRAGMA quick_check")).toEqual({ quick_check: "ok" });
-    expect(fs.readFileSync(path.join(getImagesDir(), "pixel.png"))).toEqual(
-      imageBytes,
+it.each(["complete", "current-removed", "all-removed"])(
+  "exports all nonempty content domains through the renderer and restores the real ZIP across two normal startups (Rule history %s)",
+  async (historyMode) => {
+    await seedPrompts();
+    await seedSkill();
+    await seedRuleAndPlugin();
+    if (historyMode !== "complete") {
+      const rule = (await window.api.rules.list()).find((entry) =>
+        entry.id.startsWith("project:"),
+      )!;
+      const content = await window.api.rules.read(rule.id);
+      const removed =
+        historyMode === "all-removed"
+          ? content.versions
+          : content.versions.slice(0, 1);
+      for (const version of removed)
+        await window.api.rules.deleteVersion(rule.id, version.id);
+      expect((await window.api.rules.read(rule.id)).content).toBe(
+        "# Second rule\n",
+      );
+    }
+    const expected = await consumerSnapshot();
+    const normalize = (value: unknown): unknown =>
+      JSON.parse(JSON.stringify(value).split(profile).join("<profile>"));
+    const expectedJson = normalize(expected);
+    expect(expected.prompts).toHaveLength(2);
+    expect(expected.folders).toHaveLength(1);
+    expect(expected.versions.flat()).toHaveLength(3);
+    expect(expected.relations).toHaveLength(1);
+    expect(expected.skills).toHaveLength(1);
+    expect(expected.skillVersions.flat().length).toBeGreaterThan(0);
+    expect(expected.rules).toHaveLength(1);
+    expect(expected.rules[0].versions).toHaveLength(
+      historyMode === "complete"
+        ? 2
+        : historyMode === "current-removed"
+          ? 1
+          : 0,
     );
-    expect(fs.readFileSync(path.join(getVideosDir(), "clip.mp4"))).toEqual(
-      videoBytes,
+    expect(expected.plugins).toHaveLength(1);
+    expect(expected.pluginVersions.flat()).toHaveLength(1);
+    expect(expected.settings).toMatchObject(settings);
+    const sourcePackages = {
+      skill: inventory(path.join(root, "skill-source")),
+      plugin: inventory(path.join(root, "plugin-source")),
+      project: inventory(path.join(root, "project")),
+    };
+    expect(expected.skillPackages[0].files).toEqual(sourcePackages.skill);
+    expect(expected.pluginPackages[0].files).toEqual(sourcePackages.plugin);
+    await downloadSelectiveExport({
+      prompts: true,
+      folders: true,
+      versions: true,
+      images: true,
+      videos: true,
+      aiConfig: true,
+      settings: true,
+      rules: true,
+      skills: true,
+      mcp: true,
+      plugins: true,
+      agents: true,
+    });
+    const archive = fs.readFileSync(transport.archive);
+    const entries = unzipSync(archive);
+    expect(
+      Object.keys(entries).some((name) => name.endsWith("manifest.json")),
+    ).toBe(true);
+    expect(
+      Object.keys(entries).some((name) => name.endsWith("assets/blob.bin")),
+    ).toBe(true);
+    // Export checkpoints/reopens the DB, so refresh handlers just as startup does.
+    await startProfile(path.join(root, "source-profile"));
+    expect(normalize(await consumerSnapshot())).toEqual(expectedJson);
+    closeDatabase();
+    const sourceBeforeRestore = inventory(
+      path.join(root, "source-profile", "data"),
     );
-  }
-  expect(inventory(path.join(root, "source-profile", "data"))).toEqual(
-    sourceBeforeRestore,
-  );
-  expect(fs.readFileSync(transport.archive)).toEqual(archive);
-  expect({
-    skill: inventory(path.join(root, "skill-source")),
-    plugin: inventory(path.join(root, "plugin-source")),
-    project: inventory(path.join(root, "project")),
-  }).toEqual(sourcePackages);
-});
+    const destination = path.join(root, "restored-profile");
+    await startProfile(destination, true);
+    const restore = await window.electron.restorePortableBackup?.(
+      transport.archive,
+    );
+    expect(restore, JSON.stringify(restore)).toMatchObject({
+      success: true,
+      needsRestart: true,
+    });
+    expect(transport.relaunches).toBe(1);
+    expect(inventory(path.join(root, "source-profile", "data"))).toEqual(
+      sourceBeforeRestore,
+    );
+    expect(fs.readFileSync(transport.archive)).toEqual(archive);
+    for (const startup of ["first", "second"]) {
+      await startProfile(destination);
+      expect(normalize(await consumerSnapshot()), startup).toEqual(
+        expectedJson,
+      );
+      expect(database.all("PRAGMA foreign_key_check")).toEqual([]);
+      expect(database.get("PRAGMA quick_check")).toEqual({ quick_check: "ok" });
+      expect(fs.readFileSync(path.join(getImagesDir(), "pixel.png"))).toEqual(
+        imageBytes,
+      );
+      expect(fs.readFileSync(path.join(getVideosDir(), "clip.mp4"))).toEqual(
+        videoBytes,
+      );
+    }
+    expect(inventory(path.join(root, "source-profile", "data"))).toEqual(
+      sourceBeforeRestore,
+    );
+    expect(fs.readFileSync(transport.archive)).toEqual(archive);
+    expect({
+      skill: inventory(path.join(root, "skill-source")),
+      plugin: inventory(path.join(root, "plugin-source")),
+      project: inventory(path.join(root, "project")),
+    }).toEqual(sourcePackages);
+  },
+);
 
 async function seedProviderAndGeneration(name: string): Promise<void> {
   const prompts = await window.api.prompt.getAll();
@@ -922,7 +953,7 @@ it.each([
         if (
           !injected &&
           String(from).includes(".prompthub-restore-stage-") &&
-          String(to) === path.join(destination, "config")
+          String(to) === path.join(destination, "data")
         ) {
           injected = true;
           throw Object.assign(
@@ -974,10 +1005,14 @@ it.each([
           if (!slot.output) throw new Error("Joined fixture output is missing");
           expect(
             fs.readFileSync(
-              readContentAddressedObject(
-                path.join(destination, "data", "assets", "objects"),
-                slot.output.sha256,
-              ).path,
+              path.join(
+                destination,
+                "data",
+                "generations",
+                "assets",
+                batch.id,
+                slot.output.fileName,
+              ),
             ),
           ).toEqual(imageBytes);
         }

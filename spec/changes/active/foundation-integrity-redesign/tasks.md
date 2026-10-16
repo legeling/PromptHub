@@ -39,6 +39,7 @@ Evidence and fixture gaps: [migration inventory](design.md#client-060-migration-
 
 - [x] Confirm 0.6.0 as the target baseline and distinguish it from published beta profiles.
 - [x] Inventory local tagged schema sources, remote release status, existing migration entrypoints and fixture gaps (2026-09-15; source inspection only).
+- [x] Regenerate exact v0.5.9/beta.1/beta.2 Core profiles in isolated roots and verify direct current-Core upgrade, edits, two database reopens, pre-commit failure preservation and retry (2026-10-14; six cases across two runs). Desktop source modes, sequential upgrades and the target authority conversion remain open.
 - [ ] Freeze the release commit and complete target format/schema manifest; resolve source profiles against historical initializer behavior and real generated fixtures.
 - [ ] Implement one-time baseline adoption and ordered executable migrations while preserving issued history and reusing recovery facilities.
 - [ ] Verify normal old-profile upgrade/read/edit/reopen first, then skipped releases, repeated starts, malformed states and crash/restore boundaries; retire obsolete runtime writers after convergence.
@@ -49,6 +50,14 @@ validator. No application code, live profiles or migration tests were changed
 or executed in this preparation batch.
 
 ## Client storage ownership inventory
+
+- [x] Verify SQLite/file publication crash recovery with schema v5 receipts: SQL and
+  receipt commit together, startup resolves prepared journals from that receipt,
+  and missing/unreadable databases retain recovery material. Covers existing Prompt,
+  Rule history and Agent upgrade callers before further Rule authority conversion.
+  Full Core: 95 files / 955 cases; Desktop: 84 cases plus the one timed-out ZIP case
+  passing alone with its unchanged deadline; Web: 22; CLI: 10. A later SQL-only
+  follow-up recovery case is verified in the focused suite. Overall release remains open.
 
 See [the field/table inventory](storage-inventory.md) for current sources,
 owners, target structures and migration actions. It implements the existing
@@ -99,6 +108,19 @@ Findings and required conversions are maintained in
 
 - [x] Trace BC01–BC08 through actual normal entrypoints and distinguish historical conversion from supported external formats.
 - [x] Reproduce BC01 with the real helper and isolated filesystem: two normal controls pass; distinct existing data fails preservation (exit 1). Temporary files removed; full service/GUI acceptance remains pending.
+- [x] Repair BC01 Plugin read-time deletion through shared Core/Desktop startup migration; preserve unique entries, package bytes and history, journal source retirement, and verify rollback, retry and repeated startup (27 focused cases). Signed ARM64 DMG native UI and two cold reopens pass for coexisting sources; full historical stable-upgrade coverage remains separate.
+- [x] Move BC07 historical Rule conversion to explicit bootstrap; preserve existing/current/history data, atomically retire raw sources with recovery copies and SQLite completion, and verify 32 migration cases plus real CLI/Desktop entrypoints. Signed ARM64 native editing, history and full backup/restore with production automatic relaunch pass; broader authority conversion remains open.
+- [x] Reject a missing settings bridge and malformed settings response before renderer state/default writes; nine new loader cases and 73 existing settings/readiness cases pass. Full readiness and native error-screen acceptance remain separate.
+- [x] Reject malformed settings/source/recovery replacement IPC inputs without converting them to empty replacements; explicit clears remain supported. Real persistence and reopen pass in 36 new cases, alongside 15 existing settings cases. No storage-authority conversion or native UI acceptance is implied.
+- [x] Move Agent Provider profiles and mappings to SQLite-only normal CRUD, migrate and retire historical bundles with conflict/rollback/retry coverage, preserve SQL during catalog maintenance, and export public portable bundles from SQL. Ten migration cases, Desktop runtime and repair checks, and seven real ZIP restore cases pass; the broader Core suite is covered by the full run plus corrected fixture rerun. Other domains, causal sync and full release acceptance remain open.
+- [x] Remove the canonical Prompt mutation coordinator; adopt Prompt/Folder/version/relation/output-format graphs into SQLite with media and recovery copies, preserve SQL during catalog maintenance, and test conflict, rollback, deletion and repeated startup. Core full run (895 cases), targeted migration/startup/IPC checks and seven real ZIP restore cases pass. Plugin path migration now works after Prompt catalog retirement. Legacy Markdown startup conversion and complete release acceptance remain open.
+- [x] Replace Core/Desktop Prompt Markdown startup merging with one-time SQL conversion, byte-preserving recovery and conflict/rollback/reopen checks; remove automatic Markdown writes and keep explicit exports in cache. Fourteen migration cases, real Core/Desktop startups, full Core 911-case run, Desktop typechecks and real ZIP/public workflow checks pass. Web Markdown and full release acceptance remain open.
+- [x] Convert Web Prompt Markdown through the shared journal with explicit tenant-preserving historical parsing; keep normal CRUD in SQLite and explicit exports in cache. Twenty-two Core migration cases, three Desktop startup cases and all 466 Web cases pass; typechecks, strict scoped lint and Web server build pass. This does not complete other domain conversions or release acceptance.
+- [x] Preserve Rule history during metadata upsert by replacing destructive SQL REPLACE with in-place conflict updates. Four new disk/reopen and failure cases, 41 existing Core cases and 29 Desktop workspace cases pass; restoring the old SQL in an isolated copy fails three regression assertions. This does not complete Rule storage conversion.
+- [x] Preserve Prompt graphs, Folder descendants and Skill versions on direct stable-ID import; reject secondary Skill identity collisions without deleting either record. Five new Core cases, one authenticated Web reopen flow and affected Core/Web/Desktop regressions pass, including real ZIP restore. Isolated old SQL fails four preservation assertions. Full domain conversion and causal sync remain open.
+- [x] Reject conflicting Prompt/Skill version imports instead of silently ignoring them; exact retries return stored snapshots and Web conflicts return 409. Fourteen new Core cases, full Core 942 cases, full Web 468 cases, 97 Desktop DB/ZIP cases and 10 affected CLI cases pass. An isolated old implementation fails 11 new cases; remaining Foundation integration and release acceptance are still open.
+- [x] Move Core/Desktop/CLI Rules metadata, bindings and history order to SQLite, preserving actual files through receipt publication. Startup conversion, missing-file errors, detached batch import, deleted history, long scoped filenames and real ZIP/two-start recovery pass; exact evidence is recorded in implementation and `output/rule-sqlite-20261015/summary.json`. Web Rule conversion and complete Foundation acceptance remain open.
+- [x] Convert self-hosted Web Rules to tenant-scoped SQLite metadata and actual body/history files. Schema v6 preserves existing local Rules; old Web files migrate once with recovery copies, all history and owner validation. Authenticated same-ID tenant isolation, late import failure, independent process reopen, Core/Desktop/CLI regression and schema scale checks pass; see implementation for exact full-suite versus corrected-fixture evidence. Other domains and full release acceptance remain open.
 - [ ] Deliver the BC01–BC03 preservation/upgrade-readiness fixes with regression coverage, without retaining an old business backend.
 - [ ] Move BC04–BC08 historical field/path conversion into the upgrade boundary and remove runtime branches in the same verified delivery.
 - [ ] Replace tests that codify legacy CRUD or destructive read-time cleanup with normal current functionality and data-preservation acceptance.
@@ -110,3 +132,55 @@ Findings and required conversions are maintained in
 - [ ] Convert Core domain/configuration/path sources through ordered migrations; remove corresponding authority modes and read-time conversion together.
 - [ ] Verify full historical upgrade, restore, current functionality and repeated startup before baseline release.
 - [ ] Commit and push verified logical batches without unrelated worktree changes.
+- [x] Retire Web Settings JSON mirrors and read-side writes; convert historical per-user files once with private exact-byte recovery, SQL precedence, journal rollback and ledger. Tenant HTTP/readback/reopen and migration failures pass. Correct default-only export baseline without breaking WebDAV pulls; final 22 affected sync/import tests, types/lint/build pass. Full-run and corrected-check evidence is recorded in implementation; Desktop Settings and release acceptance remain open.
+
+- [x] Move renderer marketplace sources, recovery paths and self-hosted device identity to SQLite, with explicit DB binding, byte-preserving legacy migration, conflict detection, rollback and no normal JSON writers. Final Core 28 cases, affected Desktop 61 cases and 16 corrected ZIP/privacy/Skill cases pass; source/test types, scoped lint and Desktop build pass. Exact initial failures and unaffected prior checks are recorded in implementation. Application/AI/sync settings and full release acceptance remain open.
+- [x] Move shared application, AI and sync settings to SQLite with a device-encrypted credential vault; retire historical JSON writers and keep AI backup repair migration-only. Settings migration, real IPC/CLI persistence, nine portable ZIP recovery cases, types, scoped lint and builds pass at recorded revisions. The final built CLI fresh-profile smoke passed. Native keyring and complete release acceptance remain open; see implementation.md and output/settings-sqlite-20261015.
+- [x] Keep session sources, annotations and conversation metadata in their existing authoritative SQL tables; remove the obsolete canonical-file target. Two new disk/maintenance workflows, 59 related Core cases and 40 Desktop DB/scan cases pass, along with types and scoped lint. An isolated omission of session preservation fails the new regression. Full portable/GUI and remote-sync acceptance remain separate.
+- [x] Move Core/Desktop/CLI Skill metadata and source bindings to SQLite with one actual managed package. Historical upgrade, complete binary packages, recovery/rollback, explicit restore, missing-file reads and deletion are verified. Nine portable ZIP cases, six historical upgrade cases and focused CLI/Core checks passed; full CLI had 163/165 pass before the two affected checks were corrected and passed. Exact command evidence and the restored test-isolation incident are recorded in implementation and `output/skill-sqlite-20261015/`. Skill history payload conversion, Web mirrors, historical identity conflict resolution and complete release acceptance remain open.
+
+- [x] Retire Web Skill metadata/version JSON mirrors, migrate the historical tree with recovery, publish affected packages with SQL, and enforce stable-ID/owner selection during restore. Full Web 484/486 passed before two obsolete name-path assertions were corrected; their 11 focused cases, four migration cases, 15 Core package cases, types, scoped lint and Web production build pass. Current Skill/history SQL payload retirement and full Foundation/release acceptance remain open.
+
+## Generation SQLite ownership batch
+
+- [x] Move complete Generation metadata to schema v7 SQLite records and keep actual image files under the existing asset root.
+- [x] Verify old-row migration, failed publication rollback/retry, active-list behavior, full metadata reopen, portable ZIP restore and repeated startup.
+- [x] Measure 5,000 batches / 10,000 slots without image loading and run affected type, lint and production build checks; record aggregate failures and focused corrections in implementation.md.
+
+## Persistent causal sync state batch
+
+- [x] Persist destination-local common baselines and pending publication identities in SQLite with ordered migration and maintenance preservation.
+- [x] Connect the pending identity to conditional HEAD publication and verify lost responses, conflicts, reopen, late SQL failure and local-edit fences.
+- [x] Run the full Core suite (111 files / 1,042 cases), 26 Desktop migration/checkpoint cases, strict/Core and Desktop types, scoped lint and Desktop build.
+- [x] Join file application and baseline advancement through the existing SQLite receipt publisher, with pre-replacement inventory checks; eight new binary/SQLite cases, full Core 1,050 cases and 15 Desktop regressions pass.
+- [ ] Verify actual deployed WebDAV/S3 conditional publication; complete inventories, file write sets and automatic entrypoints are implemented and covered by the controlled acceptance below.
+- [x] Add the Core orchestration and Prompt/Skill/Rule/Generation/MCP domain adapters, including whole-package conflicts, unavailable credential references, offline completion and multi-domain rollback. Final affected 23 cases and scoped static checks pass; six historical upgrade/retry cases also pass. Plugin/configuration, actual automatic entrypoint, resolution UI and real-provider/release acceptance remain open; see implementation.md.
+- [x] Connect all nine portable desktop domain owners, typed main/preload IPC and automatic WebDAV/S3 startup/interval/save entrypoints; add explicit token-bound baseline/conflict review, retained recovery, encryption and no-op preservation. Controlled HTTP/SDK integration and isolated built Electron baseline/reopen acceptance pass; exact evidence is recorded in implementation.md.
+- [ ] Complete real-provider conditional publication and signed/notarized macOS/Windows upgrade acceptance; controlled protocol fixtures do not satisfy these gates.
+
+- [x] Run the frozen repaired candidate through all 40 release checks (2026-10-16,
+  1,442.1 s), including full Core/CLI/Desktop/Web/Worker/Mobile suites and isolated
+  built Electron smoke. All passed; 2,657 source/test/config hashes were unchanged.
+  This does not close real-provider, native-package or remaining Foundation gates.
+
+
+## Skill current and historical file payload batch
+
+- [x] Move current/history payloads out of live SQL through the versioned shared file owner while preserving relational identities and complete binary packages.
+- [x] Verify populated old-data upgrade, pre-commit file/SQL rollback, committed-receipt recovery, retry, linked-source preservation and two reopens.
+- [x] Connect version CRUD/rollback, causal sync, Web backup, portable restore and catalog reconciliation; keep historical packages out of discovery.
+- [x] Run affected Core/Web/Desktop/CLI regression and static/build checks; record diagnostic failures and corrected reruns in implementation.md. The earlier release gate does not cover this subsequent candidate change.
+- [x] Complete the frozen 40-check release follow-up after repairing Desktop initialization and updating historical startup/package fixtures: run 4 passes 40/40 in 1,543.2 s with 2,612 selected source/test/config hashes unchanged. Earlier failed runs remain diagnostic evidence; deployed-provider and native platform acceptance remain separate.
+
+## Existing-profile native startup repair
+
+- [x] Preserve colliding historical Skill identities and packages with explicit detached source bindings; preserve metadata-only Plugins with obsolete duplicate locators; archive orphan Prompt history without resurrecting parents.
+- [x] Verify populated-copy migration, rollback/reopen regressions, actual-profile native page loading and byte-preserving recovery. The normal development client reaches `startup:window_ready`; exact evidence and the isolated-copy credential limitation are recorded in implementation.md.
+- [x] Repeat the full release gate for the startup-repaired 0.6.0 candidate: 40/40 checks pass in 1,655.7 seconds with all 2,675 selected source hashes unchanged. Cross-platform packaging and public promotion remain separate.
+
+## 0.6.0 Draft preparation
+
+- [x] Align shipped version identities, multilingual development labels and unreleased notes; preserve published stable links and website metadata.
+- [x] Prevent version-tag creation from automatically publishing GHCR images before the GitHub Release is public.
+- [x] Complete fresh frozen release verification for the startup-repaired 0.6.0 candidate: the repaired rerun passes all 40 checks; diagnostic failures and focused checks remain recorded.
+- [ ] Create the v0.6.0 tag and upload release artifacts while retaining GitHub Draft status.

@@ -1,5 +1,6 @@
+import { runDesktopCausalSync } from "./causal-sync";
+import type { RemoteWriteCondition } from "@prompthub/shared/types/remote-sync";
 import {
-  autoSyncBackup,
   BACKUP_DIR,
   DATA_FILENAME,
   downloadSyncBackup,
@@ -80,13 +81,11 @@ async function uploadFile(
   key: string,
   config: S3SyncConfig,
   content: string,
+  condition?: RemoteWriteCondition,
 ): Promise<RemoteUploadResult> {
   try {
-    const result = await window.electron?.s3?.upload?.(key, toMainConfig(config), content);
-    return {
-      success: result?.success === true,
-      error: result?.error,
-    };
+    const result = await window.electron?.s3?.upload?.(key, toMainConfig(config), content, condition);
+    return result ?? { success: false, error: "S3 transport unavailable" };
   } catch (error) {
     console.error("S3 upload failed:", error);
     return {
@@ -143,8 +142,12 @@ function createS3Adapter(config: S3SyncConfig): RemoteSyncAdapter {
       image: (fileName: string) => buildImageKey(config, fileName),
       video: (fileName: string) => buildVideoKey(config, fileName),
     },
-    uploadText: (path, content) => uploadFile(path, config, content),
+    uploadText: (path, content, condition) => uploadFile(path, config, content, condition),
     downloadText: (path) => downloadFile(path, config),
+    deleteText: async (path) => {
+      const result = await window.electron?.s3?.delete(path, toMainConfig(config));
+      return result ?? { success: false, error: "S3 transport unavailable" };
+    },
     stat: (path) => statFile(path, config),
   };
 }
@@ -213,8 +216,8 @@ export async function getRemoteBackupTimestamp(
 }
 
 export async function autoSync(
-  config: S3SyncConfig,
-  options?: S3SyncOptions,
+  _config: S3SyncConfig,
+  _options?: S3SyncOptions,
 ): Promise<SyncResult> {
-  return autoSyncBackup(createS3Adapter(config), options);
+  return runDesktopCausalSync("s3");
 }

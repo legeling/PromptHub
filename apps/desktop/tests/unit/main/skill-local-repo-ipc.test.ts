@@ -3,6 +3,8 @@ import { SKILL_PACKAGE_FINGERPRINT_ALGORITHM } from "@prompthub/shared/utils/ski
 
 vi.mock("@prompthub/core/runtime-paths", () => ({
   getRuntimeStorageContext: () => ({ localAuthority: "database-catalog" }),
+  getOperationsDir: () => "/managed/operations",
+  getSkillsDir: () => "/managed",
 }));
 
 const handleMock = vi.fn();
@@ -512,9 +514,21 @@ describe("skill local repo IPC", () => {
 
   it("ignores legacy scan and approval options while persisting package metadata", async () => {
     const { db, handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
-    const skill = {id: "skill-private", name: "private-skill"}; db.getById.mockReturnValue(skill);
-    await handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO](null, skill.id, {repoUrl:"https://gitea.example.com/team/private-skill.git", safetyScan:{mode:"enabled"}, approvedPackageFingerprint:"not-sha256"});
-    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(skill, {repoUrl:"https://gitea.example.com/team/private-skill.git", branch:undefined, directory:undefined});
+    const skill = { id: "skill-private", name: "private-skill" };
+    db.getById.mockReturnValue(skill);
+    await handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO](null, skill.id, {
+      repoUrl: "https://gitea.example.com/team/private-skill.git",
+      safetyScan: { mode: "enabled" },
+      approvedPackageFingerprint: "not-sha256",
+    });
+    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(
+      skill,
+      {
+        repoUrl: "https://gitea.example.com/team/private-skill.git",
+        branch: undefined,
+        directory: undefined,
+      },
+    );
     expect(db.update).toHaveBeenCalled();
   });
 
@@ -524,7 +538,7 @@ describe("skill local repo IPC", () => {
       invokeArgs: ["skill-writer", "scripts/main.ts", "updated content"],
       fsMock: writeLocalRepoFileByPathMock,
       expectedFsArgs: [
-        "/managed/skill-writer/repo",
+        "/external/skill-writer/repo",
         "scripts/main.ts",
         "updated content",
       ],
@@ -534,7 +548,7 @@ describe("skill local repo IPC", () => {
       invokeArgs: ["skill-writer", "scripts/old.ts", "scripts/new.ts"],
       fsMock: renameLocalRepoPathByPathMock,
       expectedFsArgs: [
-        "/managed/skill-writer/repo",
+        "/external/skill-writer/repo",
         "scripts/old.ts",
         "scripts/new.ts",
       ],
@@ -543,22 +557,22 @@ describe("skill local repo IPC", () => {
       channel: "SKILL_DELETE_LOCAL_FILE",
       invokeArgs: ["skill-writer", "scripts/main.ts"],
       fsMock: deleteLocalRepoFileByPathMock,
-      expectedFsArgs: ["/managed/skill-writer/repo", "scripts/main.ts"],
+      expectedFsArgs: ["/external/skill-writer/repo", "scripts/main.ts"],
     },
     {
       channel: "SKILL_CREATE_LOCAL_DIR",
       invokeArgs: ["skill-writer", "scripts"],
       fsMock: createLocalRepoDirByPathMock,
-      expectedFsArgs: ["/managed/skill-writer/repo", "scripts"],
+      expectedFsArgs: ["/external/skill-writer/repo", "scripts"],
     },
   ])(
-    "does not create an automatic version snapshot for local repo file operation $channel",
+    "does not create an automatic version snapshot for linked local repo file operation $channel",
     async ({ channel, invokeArgs, fsMock, expectedFsArgs }) => {
       const { db, handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
       db.getById.mockReturnValue({
         id: "skill-writer",
         name: "writer",
-        local_repo_path: "/managed/skill-writer/repo",
+        local_repo_path: "/external/skill-writer/repo",
       });
 
       await expect(
@@ -613,12 +627,12 @@ describe("skill local repo IPC", () => {
     );
   });
 
-  it("updates skill metadata for SKILL.md saves without creating an automatic version", async () => {
+  it("updates linked Skill metadata for SKILL.md saves without creating an automatic version", async () => {
     const { db, handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
     db.getById.mockReturnValue({
       id: "skill-writer",
       name: "writer",
-      local_repo_path: "/managed/skill-writer/repo",
+      local_repo_path: "/external/skill-writer/repo",
     });
     computeRepoDirectoryFingerprintMock.mockResolvedValueOnce(
       "fingerprint-after-save",
@@ -632,7 +646,7 @@ describe("skill local repo IPC", () => {
     );
 
     expect(writeLocalRepoFileByPathMock).toHaveBeenCalledWith(
-      "/managed/skill-writer/repo",
+      "/external/skill-writer/repo",
       "SKILL.md",
       "# Updated",
     );

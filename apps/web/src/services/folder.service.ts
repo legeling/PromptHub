@@ -2,8 +2,6 @@ import { FolderDB } from '@prompthub/db';
 import type { CreateFolderDTO, Folder, FolderVisibility, UpdateFolderDTO } from '@prompthub/shared';
 import { getServerDatabase } from '../database.js';
 import { ErrorCode } from '../utils/response.js';
-import { PromptDB } from '@prompthub/db';
-import { syncPromptWorkspaceFromDatabase } from './prompt-workspace.js';
 
 export interface FolderActor {
   userId: string;
@@ -67,7 +65,6 @@ function resolveUpdateVisibility(
 
 export class FolderService {
   private readonly folderDb = new FolderDB(getServerDatabase());
-  private readonly promptDb = new PromptDB(getServerDatabase());
   private readonly db = getServerDatabase();
 
   create(actor: FolderActor, data: CreateFolderDTO): Folder {
@@ -75,19 +72,19 @@ export class FolderService {
     this.assertCreateVisibilityAllowed(actor, visibility);
     this.assertParentAllowed(actor, data.parentId, visibility);
 
-    const folder = this.folderDb.create({
-      ...data,
-      visibility,
-      isPrivate: visibility === 'private',
-    });
+    return this.db.transaction(() => {
+      const folder = this.folderDb.create({
+        ...data,
+        visibility,
+        isPrivate: visibility === 'private',
+      });
 
-    this.db
-      .prepare('UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?')
-      .run(actor.userId, visibility, folder.id);
+      this.db
+        .prepare('UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?')
+        .run(actor.userId, visibility, folder.id);
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
-    return this.getById(actor, folder.id);
+      return this.getById(actor, folder.id);
+    })();
   }
 
   list(actor: FolderActor, scope: 'private' | 'shared' | 'all' = 'private'): Folder[] {
@@ -122,34 +119,40 @@ export class FolderService {
     const resolvedVisibility = resolveUpdateVisibility(data, row.visibility);
     const nextVisibility = resolvedVisibility.visibility;
     if (nextVisibility !== row.visibility && actor.role !== 'admin') {
-      throw new FolderServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can change shared visibility');
+      throw new FolderServiceError(
+        403,
+        ErrorCode.FORBIDDEN,
+        'Only admin can change shared visibility',
+      );
     }
 
     const isParentChanging = data.parentId !== undefined;
     const isVisibilityChanging = nextVisibility !== row.visibility;
-    const nextParentId = isParentChanging ? data.parentId ?? undefined : this.getFolderParentId(id);
+    const nextParentId = isParentChanging
+      ? (data.parentId ?? undefined)
+      : this.getFolderParentId(id);
     if (isParentChanging || isVisibilityChanging) {
       this.assertParentAllowed(actor, nextParentId, nextVisibility);
       this.assertNoParentCycle(id, nextParentId);
       this.assertChildrenVisibilityAllowed(id, nextVisibility);
     }
 
-    const updated = this.folderDb.update(id, {
-      ...data,
-      isPrivate: resolvedVisibility.provided ? nextVisibility === 'private' : data.isPrivate,
-    });
+    return this.db.transaction(() => {
+      const updated = this.folderDb.update(id, {
+        ...data,
+        isPrivate: resolvedVisibility.provided ? nextVisibility === 'private' : data.isPrivate,
+      });
 
-    if (!updated) {
-      throw new FolderServiceError(404, ErrorCode.NOT_FOUND, 'Folder not found');
-    }
+      if (!updated) {
+        throw new FolderServiceError(404, ErrorCode.NOT_FOUND, 'Folder not found');
+      }
 
-    if (resolvedVisibility.provided) {
-      this.db.prepare('UPDATE folders SET visibility = ? WHERE id = ?').run(nextVisibility, id);
-    }
+      if (resolvedVisibility.provided) {
+        this.db.prepare('UPDATE folders SET visibility = ? WHERE id = ?').run(nextVisibility, id);
+      }
 
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-
-    return this.getById(actor, id);
+      return this.getById(actor, id);
+    })();
   }
 
   delete(actor: FolderActor, id: string): void {
@@ -160,8 +163,6 @@ export class FolderService {
     if (!deleted) {
       throw new FolderServiceError(404, ErrorCode.NOT_FOUND, 'Folder not found');
     }
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
   insertDirect(actor: FolderActor, folder: DirectFolderInput): Folder {
@@ -169,18 +170,16 @@ export class FolderService {
     this.assertCreateVisibilityAllowed(actor, visibility);
     this.assertParentAllowed(actor, folder.parentId ?? undefined, visibility);
 
+    const existing = this.getFolderRow(folder.id);
+    if (existing) this.assertCanWrite(actor, existing);
     this.folderDb.insertFolderDirect({
       ...folder,
+      ownerUserId: actor.userId,
       icon: folder.icon ?? undefined,
       parentId: folder.parentId ?? undefined,
       visibility,
       isPrivate: visibility === 'private',
     });
-    this.db
-      .prepare('UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?')
-      .run(actor.userId, visibility, folder.id);
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
 
     return this.getById(actor, folder.id);
   }
@@ -211,7 +210,6 @@ export class FolderService {
     }
 
     this.folderDb.reorder(ids);
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
   private getVisibleFolderRows(actor: FolderActor, scope: 'private' | 'shared' | 'all'): FolderListRow[] {

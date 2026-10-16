@@ -36,6 +36,9 @@
 ### 2. Folder And Versioning Behavior
 
 - Prompt 文件夹结构和版本快照属于稳定产品能力。
+- 直接导入版本时，同一身份和版本号只接受规范内容完全相同的幂等重试；冲突不得
+  静默忽略或报告提交的正文已经保存。新行写入和读回校验处于同一事务，外层恢复
+  可以在任何版本冲突时整体回滚。显式空字符串与缺失值分别保留。
 - 工作区 `.trash` 保存删除/改名产生的恢复文件，属于内部恢复目录，不参与
   活跃 Prompt graph 清单、计数或发布。读取器必须验证根 `.trash` 是真实目录，
   拒绝符号链接或同名普通文件；忽略内容不意味着删除恢复文件或放宽活跃记录校验。
@@ -388,6 +391,15 @@ Shared / DB / Core / CLI / Desktop / Web / Mobile / Worker 源码类型检查、
 生成、跨平台或完整 release 门禁；提交边界仅包含 #225。提交使用 `Closes #225`，
 关联及关闭边界见 [issue 规则](../../rules/issue-management-rules.md#github-issue-状态规则)；
 本地提交未推送，远端关闭待提交进入默认分支后确认，发布验收状态不因此改变。
+
+## Historical orphan history recovery (2026-10-16)
+
+Historical Markdown migration retains version files whose parent is absent from
+both SQLite and all historical current-Prompt locations in the verified recovery
+copy. It does not synthesize a parent or insert orphan SQL rows. The complete file
+inventory is copied before retirement in the same recoverable publication; failure
+restores the sources, and later startup does not replay archived deletions. Version
+owners are resolved only after both historical workspace locations are merged.
 
 ## Current Verification Gap (2026-10-12)
 

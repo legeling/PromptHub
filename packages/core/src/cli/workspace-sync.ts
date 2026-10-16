@@ -3,9 +3,9 @@ import {
   restoreMcpStorageFiles,
 } from "../mcp-storage-file-snapshot";
 import {
-  exportAgentAssetDirectorySnapshot,
-  restoreAgentAssetDirectorySnapshot,
-} from "../agent-asset-file-snapshot";
+  exportPluginStorageFiles,
+  restorePluginStorageFiles,
+} from "../plugin-storage-file-snapshot";
 import fs from "fs";
 import path from "path";
 
@@ -16,14 +16,10 @@ import {
   type DatabaseAdapter,
   type FolderDB,
   type PromptDB,
-  type SkillDB,
+  SkillDB,
 } from "../database";
-import { publishCanonicalPromptGraph } from "../canonical-prompt-graph-db";
 import { CoreMcpLibraryService } from "../mcp-library";
-import {
-  CorePluginLibraryService,
-  getPluginLibraryFilePath,
-} from "../plugin-library";
+import { CorePluginLibraryService } from "../plugin-library";
 import { coreRulesWorkspaceService } from "../rules-workspace-default";
 import { getImagesDir, getVideosDir } from "../runtime-paths";
 import {
@@ -148,9 +144,7 @@ function writeMediaDirectory(
 
 function createAgentAssetFilesSnapshot(): AgentAssetFilesSnapshot | undefined {
   const mcp = exportMcpStorageFiles();
-  const plugins = exportAgentAssetDirectorySnapshot(
-    path.dirname(getPluginLibraryFilePath()),
-  );
+  const plugins = exportPluginStorageFiles();
   const snapshot: AgentAssetFilesSnapshot = {};
   if (mcp.length > 0) snapshot.mcp = mcp;
   if (plugins.length > 0) snapshot.plugins = plugins;
@@ -206,6 +200,7 @@ export async function createCliWorkspaceBundle(
   skillService: CliSkillService = coreCliSkillService,
   db?: DatabaseAdapter.Database,
 ): Promise<CliWorkspaceBundleV2> {
+  await coreRulesWorkspaceService.bootstrapRuleWorkspace();
   const prompts = promptDb.getAll();
   const promptVersions = prompts.flatMap((prompt) =>
     promptDb.getVersions(prompt.id),
@@ -358,6 +353,7 @@ export function parseCliWorkspaceBundle(
 }
 
 export function clearCliWorkspaceData(db: DatabaseAdapter.Database): void {
+  new SkillDB(db).deleteAll();
   const transaction = db.transaction(() => {
     // Child tables first when FK is enabled.
     db.prepare("DELETE FROM prompt_relations").run();
@@ -374,6 +370,7 @@ export function clearCliWorkspaceData(db: DatabaseAdapter.Database): void {
 export async function hasCliWorkspaceData(
   db: DatabaseAdapter.Database,
 ): Promise<boolean> {
+  await coreRulesWorkspaceService.bootstrapRuleWorkspace();
   if (!isDatabaseEmpty(db)) {
     return true;
   }
@@ -520,9 +517,14 @@ export async function restoreCliWorkspaceSnapshot(
     restoreMcpStorageFiles(snapshot.agentAssetFiles.mcp);
   }
   if (snapshot.agentAssetFiles?.plugins) {
-    restoreAgentAssetDirectorySnapshot(
-      path.dirname(getPluginLibraryFilePath()),
+    restorePluginStorageFiles(
       snapshot.agentAssetFiles.plugins,
+      snapshot.pluginLibrary
+        ? {
+            library: snapshot.pluginLibrary,
+            packages: snapshot.pluginPackages,
+          }
+        : undefined,
     );
   }
   if (snapshot.mcpLibrary) {
@@ -530,7 +532,7 @@ export async function restoreCliWorkspaceSnapshot(
       mergeMcpLibraryFromTransport(currentMcpLibrary, snapshot.mcpLibrary),
     );
   }
-  if (snapshot.pluginLibrary) {
+  if (snapshot.pluginLibrary && !snapshot.agentAssetFiles?.plugins) {
     new CorePluginLibraryService().restoreSnapshot({
       library: snapshot.pluginLibrary,
       packages: snapshot.pluginPackages,
@@ -538,7 +540,6 @@ export async function restoreCliWorkspaceSnapshot(
   }
   writeMediaDirectory(getImagesDir(), snapshot.images);
   writeMediaDirectory(getVideosDir(), snapshot.videos);
-  if (options.db) publishCanonicalPromptGraph(options.db);
 
   return createCliWorkspaceSummary(snapshot);
 }

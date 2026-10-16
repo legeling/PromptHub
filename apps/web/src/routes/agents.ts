@@ -354,6 +354,9 @@ function registerConfigWriteRoute(
 
 function providerErrorResponse(c: Context, cause: unknown): Response {
   const code = cause instanceof Error ? cause.message : "";
+  if (code === "Provider profile changed externally") {
+    return error(c, 409, ErrorCode.CONFLICT, code);
+  }
   if (
     code === "AGENT_SECRET_STORE_UNAVAILABLE" ||
     code === "AGENT_CONFIG_BACKUP_ENCRYPTION_UNAVAILABLE"

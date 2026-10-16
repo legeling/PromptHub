@@ -31,6 +31,7 @@ beforeEach(async () => {
   runtime = await createSkillTestRuntime();
   registerSettingsIPC(getDatabase(), {
     rendererPersistence: createRendererPersistenceStore({
+      database: getDatabase(),
       rootPath: runtime.profile,
       encryption: safeStorage,
     }),

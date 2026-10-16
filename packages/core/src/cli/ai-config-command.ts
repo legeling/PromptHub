@@ -1,4 +1,4 @@
-import type { CliIO } from "./types";
+import type { CliIO, CliDatabaseHooks } from "./types";
 import {
   AIConfigError,
   coreAIConfigService,
@@ -480,6 +480,7 @@ export async function handleAIConfigCommand(
   inputArgs: string[],
   io: CliIO,
   output: OutputFormat,
+  databaseHooks: CliDatabaseHooks,
 ): Promise<number> {
   const args = [...inputArgs];
 
@@ -490,6 +491,7 @@ export async function handleAIConfigCommand(
     }
 
     const action = requirePositional(args, 0, "ai 子命令");
+    databaseHooks.initDatabase();
 
     if (action === "providers") {
       ensureNoUnknownOptions(args.slice(1));

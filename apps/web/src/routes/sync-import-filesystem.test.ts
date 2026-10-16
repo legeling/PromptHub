@@ -98,17 +98,7 @@ describe("web sync import filesystem safety", () => {
       );
 
       try {
-        vi.doMock("../services/rule-workspace.js", async () => {
-          const actual = await vi.importActual<
-            typeof import("../services/rule-workspace.js")
-          >("../services/rule-workspace.js");
-          return {
-            ...actual,
-            importRuleBackupRecords: vi.fn(() => {
-              throw new Error("Simulated sync rule import failure");
-            }),
-          };
-        });
+
 
         const app = await createTestApp(dataDir);
         const { payload: registerPayload } = await registerUser(
@@ -117,6 +107,8 @@ describe("web sync import filesystem safety", () => {
           "debugpass001",
         );
         const token = registerPayload.data.accessToken;
+        const { getServerDatabase } = await import('../database');
+        getServerDatabase().exec("CREATE TRIGGER reject_import_rule BEFORE INSERT ON rules BEGIN SELECT RAISE(ABORT, 'Simulated sync rule import failure'); END");
 
         const importResponse = await app.request(
           new Request("http://local/api/sync/data", {
@@ -172,7 +164,6 @@ describe("web sync import filesystem safety", () => {
         expect(dataBody.data.folders).toEqual([]);
         expect(dataBody.data.rules).toEqual([]);
       } finally {
-        vi.doUnmock("../services/rule-workspace.js");
         fs.rmSync(dataDir, { recursive: true, force: true });
       }
     },
@@ -259,7 +250,7 @@ describe("web sync import filesystem safety", () => {
   );
 
   it(
-    "rejects sync imports that exceed prompt workspace path limits before writing media or records",
+    "imports deep Prompt hierarchies and media without Markdown path limits",
     async () => {
       const dataDir = fs.mkdtempSync(
         path.join(os.tmpdir(), "prompthub-web-sync-deep-folders-"),
@@ -284,14 +275,7 @@ describe("web sync import filesystem safety", () => {
           }),
         );
 
-        expect(importResponse.status).toBe(422);
-        const importBody = (await importResponse.json()) as {
-          error: { code: string; message: string };
-        };
-        expect(importBody.error.code).toBe("VALIDATION_ERROR");
-        expect(importBody.error.message).toContain(
-          "prompt workspace path is too long",
-        );
+        expect(importResponse.status).toBe(200);
         expect(
           fs.existsSync(
             path.join(
@@ -303,7 +287,7 @@ describe("web sync import filesystem safety", () => {
               "deep-image.png",
             ),
           ),
-        ).toBe(false);
+        ).toBe(true);
 
         const dataResponse = await app.request(
           new Request("http://local/api/sync/data", {
@@ -317,8 +301,11 @@ describe("web sync import filesystem safety", () => {
             folders: unknown[];
           };
         };
-        expect(dataBody.data.prompts).toEqual([]);
-        expect(dataBody.data.folders).toEqual([]);
+        expect(dataBody.data.prompts).toHaveLength(1);
+        expect(dataBody.data.folders).toHaveLength(180);
+        expect(fs.existsSync(path.join(dataDir, "data", "prompts"))).toBe(
+          false,
+        );
       } finally {
         fs.rmSync(dataDir, { recursive: true, force: true });
       }
@@ -327,7 +314,7 @@ describe("web sync import filesystem safety", () => {
   );
 
   it(
-    "rejects sync imports that exceed skill workspace path limits before writing media or records",
+    "imports long Skill names, packages and media using stable ID paths",
     async () => {
       const dataDir = fs.mkdtempSync(
         path.join(os.tmpdir(), "prompthub-web-sync-deep-skills-"),
@@ -352,14 +339,7 @@ describe("web sync import filesystem safety", () => {
           }),
         );
 
-        expect(importResponse.status).toBe(422);
-        const importBody = (await importResponse.json()) as {
-          error: { code: string; message: string };
-        };
-        expect(importBody.error.code).toBe("VALIDATION_ERROR");
-        expect(importBody.error.message).toContain(
-          "skill workspace path segment is too long",
-        );
+        expect(importResponse.status).toBe(200);
         expect(
           fs.existsSync(
             path.join(
@@ -371,7 +351,7 @@ describe("web sync import filesystem safety", () => {
               "deep-skill-image.png",
             ),
           ),
-        ).toBe(false);
+        ).toBe(true);
 
         const dataResponse = await app.request(
           new Request("http://local/api/sync/data", {
@@ -385,8 +365,11 @@ describe("web sync import filesystem safety", () => {
             skills: unknown[];
           };
         };
-        expect(dataBody.data.prompts).toEqual([]);
-        expect(dataBody.data.skills).toEqual([]);
+        expect(dataBody.data.prompts).toHaveLength(1);
+        expect(dataBody.data.skills).toEqual([
+          expect.objectContaining({ id: 'deep-skill', name: buildDeepSkillPayload().skills[0].name }),
+        ]);
+        expect(fs.readFileSync(path.join(dataDir, 'data', 'skill-files', 'deep-skill', 'files', 'SKILL.md'), 'utf8')).toBe('echo too long');
       } finally {
         fs.rmSync(dataDir, { recursive: true, force: true });
       }

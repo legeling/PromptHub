@@ -20,6 +20,22 @@ interface FolderRow {
   updated_at: number;
 }
 
+// Stable-ID import updates must not cascade-delete dependent records.
+const UPSERT_FOLDER_SQL = `INSERT INTO folders (
+  id, owner_user_id, visibility, name, icon, parent_id, sort_order, is_private, created_at, updated_at
+) VALUES (
+  @id, @owner_user_id, @visibility, @name, @icon, @parent_id, @sort_order, @is_private, @created_at, @updated_at
+) ON CONFLICT(id) DO UPDATE SET
+  owner_user_id = excluded.owner_user_id,
+  visibility = excluded.visibility,
+  name = excluded.name,
+  icon = excluded.icon,
+  parent_id = excluded.parent_id,
+  sort_order = excluded.sort_order,
+  is_private = excluded.is_private,
+  created_at = excluded.created_at,
+  updated_at = excluded.updated_at`;
+
 export class FolderDB {
   constructor(protected readonly db: Database.Database) {}
 
@@ -172,30 +188,22 @@ export class FolderDB {
   }
 
   insertFolderDirect(folder: Folder): void {
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO folders (
-          id, owner_user_id, visibility, name, icon, parent_id, sort_order, is_private, created_at, updated_at
-        ) VALUES (
-          @id, @owner_user_id, @visibility, @name, @icon, @parent_id, @sort_order, @is_private, @created_at, @updated_at
-        )`,
-      )
-      .run({
-        "@id": folder.id,
-        "@owner_user_id": folder.ownerUserId ?? null,
-        "@visibility": folder.visibility ?? "private",
-        "@name": folder.name,
-        "@icon": folder.icon ?? null,
-        "@parent_id": folder.parentId ?? null,
-        "@sort_order": folder.order ?? 0,
-        "@is_private": folder.isPrivate ? 1 : 0,
-        "@created_at": folder.createdAt
-          ? new Date(folder.createdAt).getTime()
-          : Date.now(),
-        "@updated_at": folder.updatedAt
-          ? new Date(folder.updatedAt).getTime()
-          : Date.now(),
-      });
+    this.db.prepare(UPSERT_FOLDER_SQL).run({
+      "@id": folder.id,
+      "@owner_user_id": folder.ownerUserId ?? null,
+      "@visibility": folder.visibility ?? "private",
+      "@name": folder.name,
+      "@icon": folder.icon ?? null,
+      "@parent_id": folder.parentId ?? null,
+      "@sort_order": folder.order ?? 0,
+      "@is_private": folder.isPrivate ? 1 : 0,
+      "@created_at": folder.createdAt
+        ? new Date(folder.createdAt).getTime()
+        : Date.now(),
+      "@updated_at": folder.updatedAt
+        ? new Date(folder.updatedAt).getTime()
+        : Date.now(),
+    });
   }
 
   /**

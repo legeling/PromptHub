@@ -1,3 +1,7 @@
+import { CoreSettingsStore } from "@prompthub/core/settings-store";
+import { planSettingsSqliteUpgrade } from "@prompthub/core/migrations/settings-sqlite-v1";
+import { readRendererPersistenceMigrationMarker } from "@prompthub/core/renderer-persistence-migration";
+import type { DatabaseAdapter } from "@prompthub/db";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -33,6 +37,7 @@ export type RendererAIConfigRecoveryResult =
 
 export interface RepairRendererAIConfigOptions {
   activeRoot: string;
+  database: DatabaseAdapter.Database;
   encryption: RendererPersistenceEncryption;
   listBackups?: () => Promise<readonly RendererAIConfigBackupCandidate[]>;
   failPublicationAt?: string;
@@ -112,19 +117,18 @@ export async function repairRendererAIConfigFromUpgradeBackups(
   options: RepairRendererAIConfigOptions,
 ): Promise<RendererAIConfigRecoveryResult> {
   const activeRoot = path.resolve(options.activeRoot);
-  const store = createRendererPersistenceStore({
-    rootPath: activeRoot,
-    encryption: options.encryption,
-    failPublicationAt: options.failPublicationAt,
-  });
-  const current = store.readHydratedStateSync();
-  if (!current.migrationComplete) return { status: "not-migrated" };
-
-  const models = current.settings.aiModels as readonly unknown[];
-  const routedIds = routedModelIds(current.settings);
-  if (models.length > 0 || routedIds.length === 0) {
+  const upgrade = planSettingsSqliteUpgrade(
+    options.database,
+    activeRoot,
+    options.encryption,
+  );
+  if (!upgrade) return { status: "current" };
+  if (!readRendererPersistenceMigrationMarker(activeRoot))
+    return { status: "not-migrated" };
+  const models = upgrade.settings.aiModels;
+  const routedIds = routedModelIds(upgrade.settings);
+  if ((Array.isArray(models) && models.length > 0) || routedIds.length === 0)
     return { status: "current" };
-  }
 
   const candidates = await (
     options.listBackups ?? (() => listUpgradeBackups(activeRoot))
@@ -133,11 +137,12 @@ export async function repairRendererAIConfigFromUpgradeBackups(
     const config = readBackupConfig(candidate);
     if (!config || !containsEveryRoutedModel(config, routedIds)) continue;
 
-    await store.replaceSettings({
-      ...current.settings,
-      aiProviders: config.providers,
-      aiModels: config.models,
-      modelRouteDefaults: current.settings.modelRouteDefaults,
+    new CoreSettingsStore({
+      database: options.database,
+      rootPath: activeRoot,
+      legacyEncryption: options.encryption,
+      recoveredAIConfig: config,
+      failPublicationAt: options.failPublicationAt,
     });
     return {
       status: "recovered",
@@ -151,22 +156,16 @@ export async function repairRendererAIConfigFromUpgradeBackups(
 
 export async function readRendererSettingsWithAIRecovery(options: {
   activeRoot: string;
+  database: DatabaseAdapter.Database;
   encryption: RendererPersistenceEncryption;
 }): Promise<RendererHydratedState> {
-  try {
-    const result = await repairRendererAIConfigFromUpgradeBackups(options);
-    if (result.status === "recovered") {
-      console.info(
-        `[startup] Recovered ${result.modelCount} AI models from upgrade safety point ${result.sourceBackupId}`,
-      );
-    }
-  } catch (error) {
-    console.warn(
-      "[startup] AI model configuration recovery failed; preserving current files:",
-      error,
+  const result = await repairRendererAIConfigFromUpgradeBackups(options);
+  if (result.status === "recovered")
+    console.info(
+      `[startup] Recovered ${result.modelCount} AI models from upgrade safety point ${result.sourceBackupId}`,
     );
-  }
   return createRendererPersistenceStore({
+    database: options.database,
     rootPath: path.resolve(options.activeRoot),
     encryption: options.encryption,
   }).readHydratedStateSync();

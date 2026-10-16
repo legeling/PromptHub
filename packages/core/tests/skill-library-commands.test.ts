@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CanonicalSkillDB } from "../src/canonical-skill-db";
+import { SkillStorageDB } from "../src/skill-storage";
 import {
   configureRuntimePaths,
   getOperationsDir,
@@ -13,7 +13,6 @@ import {
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
 } from "../src";
-import { readSkillResourceBundle } from "../src/skill-resource-schema";
 import {
   createLibrarySkill,
   prepareLibrarySkillEdit,
@@ -22,7 +21,7 @@ import {
 describe("Skill library commands", () => {
   let root: string;
   let database: DatabaseAdapter.Database;
-  let db: CanonicalSkillDB;
+  let db: SkillStorageDB;
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-crud-"));
     configureRuntimePaths({ userDataPath: root });
@@ -31,9 +30,9 @@ describe("Skill library commands", () => {
       consistencyId: "d".repeat(64),
       operationId: "crud-test",
     });
-    database = new DatabaseAdapter(":memory:");
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
     database.exec(SCHEMA);
-    db = new CanonicalSkillDB(database);
+    db = new SkillStorageDB(database);
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -49,8 +48,10 @@ describe("Skill library commands", () => {
       content: "---\nname: writer\nlicense: MIT\ntags: [source]\n---\nOriginal",
       tags: ["personal"],
     });
-  const bundle = (id: string) =>
-    readSkillResourceBundle(path.join(root, "data/skills", id));
+  const stored = (id: string) => ({
+    skill: db.getById(id)!,
+    versions: db.getVersions(id),
+  });
 
   it("creates a complete package and edits body, metadata and history with one publication", async () => {
     const skill = await create();
@@ -62,7 +63,7 @@ describe("Skill library commands", () => {
       Buffer.from([0, 255, 1]),
     );
     db.update(skill.id, {});
-    const before = bundle(skill.id);
+    const before = stored(skill.id);
     const edit = await prepareLibrarySkillEdit(db, skill.id, {
       name: "author",
       instructions:
@@ -73,10 +74,8 @@ describe("Skill library commands", () => {
     } finally {
       await edit!.dispose();
     }
-    const after = bundle(skill.id);
-    expect(after.bundleManifest.revision).toBe(
-      before.bundleManifest.revision + 1,
-    );
+    const after = stored(skill.id);
+    expect(after.skill.name).toBe("author");
     expect(after.versions).toHaveLength(before.versions.length + 1);
     expect(
       after.versions
@@ -99,7 +98,7 @@ describe("Skill library commands", () => {
   });
   it("does not publish a version or lose bytes if finalization fails", async () => {
     const skill = await create();
-    const before = bundle(skill.id);
+    const before = stored(skill.id);
     const edit = await prepareLibrarySkillEdit(db, skill.id, {
       content: "changed",
     });
@@ -111,9 +110,7 @@ describe("Skill library commands", () => {
     } finally {
       await edit!.dispose();
     }
-    expect(bundle(skill.id).bundleManifest.revision).toBe(
-      before.bundleManifest.revision,
-    );
+    expect(stored(skill.id)).toEqual(before);
     expect(db.getById(skill.id)?.content).toContain("Original");
   });
   it("rejects stale edits and invalid names before publishing", async () => {
@@ -158,7 +155,7 @@ describe("Skill library commands", () => {
   });
   it("rejects malformed entrypoints, relocation and failed staging without changing the package", async () => {
     const skill = await create();
-    const before = bundle(skill.id).bundleManifest.revision;
+    const before = stored(skill.id);
     await expect(
       prepareLibrarySkillEdit(db, skill.id, {
         content: "---\nname: [\n---\ninvalid",
@@ -175,7 +172,7 @@ describe("Skill library commands", () => {
         protocol_type: "skill",
       }),
     ).rejects.toThrow(/lifecycle/);
-    expect(bundle(skill.id).bundleManifest.revision).toBe(before);
+    expect(stored(skill.id)).toEqual(before);
     const operations = getOperationsDir();
     expect(
       fs
@@ -183,17 +180,15 @@ describe("Skill library commands", () => {
         .filter((name) => name.startsWith("skill-save-")),
     ).toEqual([]);
   });
-  it("requires canonical migration instead of taking a legacy write path", async () => {
-    const otherRoot = path.join(root, "unmigrated");
-    configureRuntimePaths({ userDataPath: otherRoot });
-    await expect(
-      createLibrarySkill(db, {
-        name: "writer",
-        is_favorite: false,
-        protocol_type: "skill",
-      }),
-    ).rejects.toThrow(/migration/);
-    expect(db.getAll()).toEqual([]);
+  it("writes through SQL without requiring a canonical authority marker", async () => {
+    fs.rmSync(path.join(root, "data", ".authority-state.json"), {
+      force: true,
+    });
+    const skill = await create();
+    expect(db.getById(skill.id)?.name).toBe("writer");
+    expect(
+      fs.readFileSync(path.join(skill.local_repo_path!, "SKILL.md"), "utf8"),
+    ).toContain("Original");
   });
   it("supports an empty new body and metadata-only edits while preserving source fields", async () => {
     const skill = await createLibrarySkill(db, {

@@ -35,8 +35,9 @@ describe("Web Skill snapshot transport compatibility", () => {
       const assetPath = path.join(
         root,
         "data",
-        "skills",
-        `lossless__${skill.id}`,
+        "skill-files",
+        skill.id,
+        "files",
         "asset.bin",
       );
       fs.writeFileSync(assetPath, Buffer.from([0, 255, 128]));

@@ -1,7 +1,6 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { writeCanonicalStorageAuthority } from "@prompthub/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { FolderDB } from "../../../src/main/database/folder";
@@ -12,16 +11,13 @@ import {
 } from "../../../src/main/database/schema";
 import DatabaseAdapter from "../../../src/main/database/sqlite";
 import {
-  bootstrapPromptWorkspace,
   importPromptWorkspaceIntoDatabase,
   syncPromptWorkspaceFromDatabase,
-  writeRestoreMarker,
 } from "../../../src/main/services/prompt-workspace";
 import {
   configureRuntimePaths,
   getPromptsWorkspaceDir,
   getWorkspaceDir,
-  refreshRuntimeStorageContext,
   resetRuntimePaths,
 } from "../../../src/main/runtime-paths";
 
@@ -34,17 +30,6 @@ function writeLegacyFolderList(baseDir: string, folders: unknown[]): void {
     JSON.stringify(folders, null, 2),
     "utf8",
   );
-}
-
-function writeLegacyPromptDir(
-  promptsDir: string,
-  relativeDir: string,
-  contents: string,
-): string {
-  const promptDir = path.join(promptsDir, relativeDir);
-  fs.mkdirSync(promptDir, { recursive: true });
-  fs.writeFileSync(path.join(promptDir, "prompt.md"), contents, "utf8");
-  return promptDir;
 }
 
 describe("prompt workspace storage", () => {
@@ -123,33 +108,6 @@ describe("prompt workspace storage", () => {
       "0002.md",
     );
     expect(fs.existsSync(versionFile)).toBe(true);
-  });
-
-  it("never exports SQLite back into the legacy workspace under file authority", () => {
-    const prompt = promptDb.create({
-      title: "Canonical only",
-      userPrompt: "The file graph owns this content.",
-    });
-    writeCanonicalStorageAuthority(tempDir, {
-      consistencyId: "a".repeat(64),
-      operationId: "canonical-workspace-test",
-    });
-    refreshRuntimeStorageContext();
-
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-
-    expect(result).toMatchObject({
-      quadrant: "db-only",
-      imported: false,
-      exported: false,
-      promptCount: 1,
-      folderCount: 0,
-      versionCount: 1,
-    });
-    expect(fs.existsSync(getPromptsWorkspaceDir())).toBe(false);
-    expect(promptDb.getById(prompt.id)?.userPrompt).toBe(
-      "The file graph owns this content.",
-    );
   });
 
   it("imports workspace files into an empty database", () => {
@@ -283,73 +241,6 @@ Check deployment health for {{service}}.
     expect(childFolder?.parentId).toBe("folder_parent");
   });
 
-  it("bootstraps from workspace when database is empty (Q3: workspace-only)", () => {
-    writeLegacyFolderList(getWorkspaceDir(), []);
-    writeLegacyPromptDir(
-      getPromptsWorkspaceDir(),
-      path.join("general", "status__prompt_2"),
-      `---
-id: "prompt_2"
-title: "Status"
-promptType: "text"
-createdAt: "2026-04-13T00:00:00.000Z"
-updatedAt: "2026-04-13T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-Summarize the latest status.
-      `,
-    );
-
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-
-    expect(result.quadrant).toBe("workspace-only");
-    expect(result.imported).toBe(true);
-    // v0.5.3: Q3 intentionally skips re-export; workspace is already authoritative.
-    expect(result.exported).toBe(false);
-    expect(promptDb.getAll()).toHaveLength(1);
-  });
-
-  it("Q1: does nothing when both DB and workspace are empty", () => {
-    // Regression guard: empty-state must NOT create files that mask future recovery.
-    // v0.5.2 bug: empty DB → rmSync wiped workspace → infinite relaunch loop.
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-
-    expect(result.quadrant).toBe("empty");
-    expect(result.imported).toBe(false);
-    expect(result.exported).toBe(false);
-    expect(fs.existsSync(path.join(getWorkspaceDir(), "folders.json"))).toBe(
-      false,
-    );
-    // prompts dir must not exist either, so subsequent boots don't see "ghost" workspace.
-    expect(fs.existsSync(getPromptsWorkspaceDir())).toBe(false);
-  });
-
-  it("Q2: exports DB to workspace when workspace is empty (0.5.1 upgrade path)", () => {
-    const folder = folderDb.create({ name: "Upgrade Folder" });
-    const prompt = promptDb.create({
-      title: "Pre-existing",
-      userPrompt: "Existing user prompt",
-      folderId: folder.id,
-    });
-
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-
-    expect(result.quadrant).toBe("db-only");
-    expect(result.imported).toBe(false);
-    expect(result.exported).toBe(true);
-    expect(result.promptCount).toBe(1);
-    expect(result.folderCount).toBe(1);
-
-    const exportedPath = path.join(
-      getPromptsWorkspaceDir(),
-      "upgrade-folder",
-      "pre-existing.md",
-    );
-    expect(fs.existsSync(exportedPath)).toBe(true);
-  });
-
   it("exports prompts without folders directly under data/prompts", () => {
     const prompt = promptDb.create({
       title: "Inbox Prompt",
@@ -370,96 +261,6 @@ Summarize the latest status.
       ),
     ).toContain("Unfiled prompt body");
     expect(promptDb.getById(prompt.id)?.folderId).toBeNull();
-  });
-
-  it("Q4: merges workspace-newer prompt into DB, then re-syncs to disk", () => {
-    // Seed DB with older version.
-    const prompt = promptDb.create({
-      title: "Shared",
-      userPrompt: "Old user prompt",
-      systemPrompt: null,
-    });
-    // Manually set DB updatedAt to a fixed earlier ISO via direct insert.
-    const dbPrompt = promptDb.getById(prompt.id);
-    expect(dbPrompt).not.toBeNull();
-    promptDb.insertPromptDirect({
-      ...dbPrompt!,
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
-
-    // Seed workspace with a NEWER file on disk for the same id.
-    const legacyPromptDir = writeLegacyPromptDir(
-      getPromptsWorkspaceDir(),
-      `shared__${prompt.id}`,
-      `---
-id: ${JSON.stringify(prompt.id)}
-title: "Shared"
-promptType: "text"
-createdAt: "2026-01-01T00:00:00.000Z"
-updatedAt: "2026-06-01T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-New user prompt from disk.
-      `,
-    );
-    writeLegacyFolderList(getWorkspaceDir(), []);
-
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-
-    expect(result.quadrant).toBe("both");
-    const merged = promptDb.getById(prompt.id);
-    expect(merged?.userPrompt).toBe("New user prompt from disk.");
-
-    // Disk should now reflect merged state (same text, re-serialized).
-    expect(fs.existsSync(legacyPromptDir)).toBe(false);
-    const diskContents = fs.readFileSync(
-      path.join(getPromptsWorkspaceDir(), "shared.md"),
-      "utf8",
-    );
-    expect(diskContents).toContain("New user prompt from disk.");
-  });
-
-  it("Q4: keeps DB newer prompt when file updatedAt is older", () => {
-    const prompt = promptDb.create({
-      title: "DB Wins",
-      userPrompt: "DB newer prompt",
-    });
-    const dbPrompt = promptDb.getById(prompt.id);
-    promptDb.insertPromptDirect({
-      ...dbPrompt!,
-      updatedAt: "2026-06-01T00:00:00.000Z",
-    });
-
-    writeLegacyFolderList(getWorkspaceDir(), []);
-    const legacyPromptDir = writeLegacyPromptDir(
-      getPromptsWorkspaceDir(),
-      `db-wins__${prompt.id}`,
-      `---
-id: ${JSON.stringify(prompt.id)}
-title: "DB Wins"
-promptType: "text"
-createdAt: "2026-01-01T00:00:00.000Z"
-updatedAt: "2026-01-01T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-Stale file content.
-      `,
-    );
-
-    bootstrapPromptWorkspace(promptDb, folderDb);
-
-    expect(promptDb.getById(prompt.id)?.userPrompt).toBe("DB newer prompt");
-    expect(fs.existsSync(legacyPromptDir)).toBe(false);
-    expect(
-      fs.readFileSync(
-        path.join(getPromptsWorkspaceDir(), "db-wins.md"),
-        "utf8",
-      ),
-    ).toContain("DB newer prompt");
   });
 
   it("syncPromptWorkspaceFromDatabase trashes orphan prompt files instead of deleting", () => {
@@ -506,7 +307,7 @@ Stale file content.
     // called with an empty DB; the new impl must at minimum be safe and correct
     // for the normal case.
     const folder = folderDb.create({ name: "Team" });
-    const prompt = promptDb.create({
+    promptDb.create({
       title: "Hello",
       userPrompt: "Hi {{who}}",
       folderId: folder.id,
@@ -518,65 +319,6 @@ Stale file content.
     const file = path.join(getPromptsWorkspaceDir(), "team", "hello.md");
     expect(fs.existsSync(file)).toBe(true);
     expect(fs.readFileSync(file, "utf8")).toContain("Hi {{who}}");
-  });
-
-  it("Q4 with restore marker: skips WS→DB phase to prevent deleted-record revival", () => {
-    // Regression for the "data revival after restore" bug:
-    // If a user restores DB from an older backup/WebDAV snapshot, the workspace
-    // may still contain prompt files for records that were deleted before the
-    // backup was made. Without a marker, Q4's Phase 1 (WS→DB) would re-import
-    // those files and "revive" the deleted records.
-    const survivor = promptDb.create({
-      title: "Survivor",
-      userPrompt: "I survived the restore",
-    });
-    // Seed workspace state: folders.json + a ghost prompt dir that references
-    // a record which is NOT in DB (the restore dropped it).
-    fs.mkdirSync(getWorkspaceDir(), { recursive: true });
-    writeLegacyFolderList(getWorkspaceDir(), []);
-    const ghostId = "ghost-prompt-id-1234";
-    const ghostDir = writeLegacyPromptDir(
-      getPromptsWorkspaceDir(),
-      `ghost__${ghostId}`,
-      `---
-id: ${JSON.stringify(ghostId)}
-title: "Ghost"
-promptType: "text"
-createdAt: "2026-01-01T00:00:00.000Z"
-updatedAt: "2099-01-01T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-Should not come back.
-      `,
-    );
-
-    // Simulate performDatabaseRecovery writing a restore marker.
-    writeRestoreMarker();
-
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-
-    // Marker was honored: Q4, Phase 1 skipped.
-    expect(result.quadrant).toBe("both");
-    expect(result.restoreMarkerUsed).toBe(true);
-    expect(result.imported).toBe(false);
-
-    // Ghost must NOT have been revived into DB.
-    expect(promptDb.getById(ghostId)).toBeNull();
-
-    // Ghost directory was swept as orphan during Phase 2 (DB→WS).
-    expect(fs.existsSync(ghostDir)).toBe(false);
-
-    // Survivor is intact.
-    expect(promptDb.getById(survivor.id)?.userPrompt).toBe(
-      "I survived the restore",
-    );
-
-    // Marker was cleared so next boot behaves normally.
-    expect(fs.existsSync(path.join(tempDir, ".prompthub-restore-marker"))).toBe(
-      false,
-    );
   });
 
   it("importPromptWorkspaceIntoDatabase resolves duplicate prompt.id by newer updatedAt, trashing losers", () => {
@@ -835,50 +577,5 @@ File content wins.
       }),
     ).not.toThrow();
     expect(promptDb.getById("child")?.parentId).toBe("parent");
-  });
-
-  it("Q4 passes skippedPromptDirs to Phase 2 so insert-failing imports are not trashed as orphans", () => {
-    // Seed DB with one real prompt so Q4 path is taken.
-    const real = promptDb.create({
-      title: "Real",
-      userPrompt: "Real content",
-    });
-    syncPromptWorkspaceFromDatabase(promptDb, folderDb);
-
-    // Add a workspace directory whose prompt.md references a non-existent
-    // folderId. The FK constraint on `prompts.folder_id` will make
-    // insertPromptDirect throw during Phase 1 → the dir is added to
-    // skippedPromptDirs and Phase 2 must NOT re-sweep it into .trash.
-    const orphanId = "fk-fail-xyz789";
-    const fkFailDir = writeLegacyPromptDir(
-      getPromptsWorkspaceDir(),
-      `fkfail__${orphanId}`,
-      `---
-id: ${JSON.stringify(orphanId)}
-title: "FK Fail"
-promptType: "text"
-folderId: "this-folder-does-not-exist"
-createdAt: "2026-01-01T00:00:00.000Z"
-updatedAt: "2099-01-01T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-FK failure body.
-      `,
-    );
-
-    const result = bootstrapPromptWorkspace(promptDb, folderDb);
-    expect(result.quadrant).toBe("both");
-
-    // Insert failed, so the prompt was not inserted into DB.
-    expect(promptDb.getById(orphanId)).toBeNull();
-
-    // FK-fail dir must still exist (not trashed) so the user can inspect it.
-    expect(fs.existsSync(fkFailDir)).toBe(true);
-    expect(fs.existsSync(path.join(fkFailDir, "prompt.md"))).toBe(true);
-
-    // Real prompt unchanged.
-    expect(promptDb.getById(real.id)?.userPrompt).toBe("Real content");
   });
 });

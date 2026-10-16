@@ -11,10 +11,7 @@ import {
   initDatabase,
   RuleDB,
 } from "../src/database";
-import {
-  materializeRuleResourceBundle,
-  readRuleResourceBundle,
-} from "../src/rule-resource-schema";
+import { materializeRuleResourceBundle } from "../src/rule-resource-schema";
 import { createRulesWorkspaceService } from "../src/rules-workspace";
 import {
   configureRuntimePaths,
@@ -23,7 +20,10 @@ import {
 } from "../src/runtime-paths";
 import { writeCanonicalStorageAuthority } from "../src/canonical-storage-authority";
 import { writeRuntimeLayoutState } from "../src/runtime-storage-context";
-import { materializeCanonicalStorageShadow } from "../src/canonical-storage-shadow";
+import {
+  materializeCanonicalStorageShadow,
+  stageCanonicalStorageDatabase,
+} from "../src/canonical-storage-shadow";
 
 const ruleId = "project:detached";
 const currentBody = "# Restored project\nPreserve current body.\n";
@@ -74,6 +74,10 @@ beforeEach(() => {
       outputFormatItems: [],
     },
   });
+  stageCanonicalStorageDatabase(
+    path.join(root, "data"),
+    path.join(root, "data", "prompthub.db"),
+  );
   writeRuntimeLayoutState(root);
   writeCanonicalStorageAuthority(root, {
     consistencyId: "d".repeat(64),
@@ -125,8 +129,7 @@ afterEach(() => {
 });
 
 it("keeps detached project identity, body and history through two real startups and removal", async () => {
-  const originalRule = readRuleResourceBundle(bundle).rule;
-  expect(readRuleResourceBundle(bundle).rule.targetPath).toBeUndefined();
+  expect(fs.existsSync(bundle)).toBe(false);
   for (let startup = 0; startup < 2; startup += 1) {
     reopen();
     const workspace = service();
@@ -154,7 +157,7 @@ it("keeps detached project identity, body and history through two real startups 
         ["prior", previousBody],
       ],
     );
-    expect(readRuleResourceBundle(bundle).rule).toEqual(originalRule);
+    expect(fs.existsSync(bundle)).toBe(false);
   }
   const record = new RuleDB(getDatabase()).getById(ruleId);
   expect(record).not.toBeNull();
@@ -180,8 +183,14 @@ it.each(["aaa-stale", "zzz-stale"])(
     const oldTarget = path.join(oldRoot, "AGENTS.md");
     fs.mkdirSync(oldRoot);
     fs.writeFileSync(oldTarget, "# External old deployment\n");
-    const staleDirectory = path.join(getRulesDir(), "projects", staleName);
-    fs.mkdirSync(staleDirectory);
+    const staleDirectory = path.join(
+      root,
+      "cache",
+      "rules-workspace",
+      "projects",
+      staleName,
+    );
+    fs.mkdirSync(staleDirectory, { recursive: true });
     fs.writeFileSync(path.join(staleDirectory, "AGENTS.md"), currentBody);
     fs.writeFileSync(
       path.join(staleDirectory, "_rule.json"),
@@ -219,12 +228,23 @@ it.each([
   (placement) => {
     const record = new RuleDB(getDatabase()).getById(ruleId);
     if (!record) throw new Error("Detached Rule missing after startup");
-    const metadata = path.join(path.dirname(record.managedPath), "_rule.json");
-    const beforeBundle = readFiles(bundle);
+    const metadata = path.join(
+      root,
+      "cache",
+      "rules-workspace",
+      "projects",
+      "malformed",
+      "_rule.json",
+    );
+    fs.mkdirSync(path.dirname(metadata), { recursive: true });
     fs.writeFileSync(metadata, JSON.stringify({ ...record, ...placement }));
     const beforeWorkspace = readFiles(getRulesDir());
-    expect(() => reopen()).toThrow("Canonical Rule project binding is invalid");
-    expect(readFiles(bundle)).toEqual(beforeBundle);
+    expect(() => reopen()).toThrow(
+      "Historical Rule project binding is invalid",
+    );
+    expect(JSON.parse(fs.readFileSync(metadata, "utf8"))).toMatchObject(
+      placement,
+    );
     expect(readFiles(getRulesDir())).toEqual(beforeWorkspace);
   },
 );

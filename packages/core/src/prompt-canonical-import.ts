@@ -23,6 +23,7 @@ import {
   parsePromptResourceDocuments,
   type CanonicalTagReference,
   type SerializedPromptVersionDocument,
+  type PromptMediaObjectReference,
 } from "./prompt-resource-schema";
 import { readResourceBundle } from "./resource-bundle";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
@@ -32,11 +33,6 @@ const MAX_CATALOG_BYTES = 16 * 1024 * 1024;
 const MAX_RECORD_BYTES = 8 * 1024 * 1024;
 const MAX_FILES = 100_000;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
-
-interface CanonicalEnvelope extends Record<string, unknown> {
-  kind: string;
-  schemaVersion: number;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -330,8 +326,10 @@ function verifyInventory(
   const independentlyVerifiedPrefixes = [
     "skills/",
     "rules/",
+    "rule-files/",
     "mcp/",
     "plugins/",
+    "plugin-files/",
     "agents/",
     "generations/",
     "conversations/",
@@ -600,6 +598,7 @@ export function readPromptCanonicalGraph(
 ): {
   manifest: PromptCanonicalGraphManifest;
   snapshot: PromptCanonicalGraphSnapshot;
+  mediaObjects: PromptMediaObjectReference[];
 } {
   const rootStat = fs.lstatSync(rootPath);
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink())
@@ -624,5 +623,11 @@ export function readPromptCanonicalGraph(
   validatePromptCanonicalGraphSnapshot(snapshot);
   assertTagSet(snapshot, tags);
   assertCounts(snapshot, tags, manifest.counts);
-  return { manifest, snapshot };
+  return {
+    manifest,
+    snapshot,
+    mediaObjects: parsedPrompts.flatMap(
+      (parsed) => parsed.promptDocument.mediaObjects ?? [],
+    ),
+  };
 }

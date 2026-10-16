@@ -1,3 +1,7 @@
+import {
+  rendererTestDatabase,
+  closeRendererTestDatabases,
+} from "../../../../../packages/core/tests/helpers/renderer-database";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import fs from "node:fs";
@@ -10,6 +14,7 @@ import type {
 } from "@prompthub/core";
 import {
   collectLegacyRendererPersistence,
+  flushRendererPersistence,
   migrateRendererPersistence,
   resetRendererPersistenceForTests,
 } from "../../../src/renderer/services/renderer-persistence";
@@ -81,6 +86,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  closeRendererTestDatabases();
   resetRendererPersistenceForTests();
   if (window.api.settings) delete window.api.settings.rendererPersistence;
   for (const root of roots.splice(0))
@@ -88,6 +94,63 @@ afterEach(() => {
 });
 
 describe("renderer persistence bridge", () => {
+  it("persists optional default settings through the real SQL owner before sync", async () => {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "ph-renderer-settings-"),
+    );
+    roots.push(root);
+    const options = {
+      database: rendererTestDatabase(root),
+      rootPath: root,
+      encryption: {
+        isEncryptionAvailable: () => false,
+        encryptString: (): Buffer => {
+          throw new Error("No fixture secrets");
+        },
+        decryptString: (): string => {
+          throw new Error("No fixture secrets");
+        },
+      },
+    };
+    const store = createRendererPersistenceStore(options);
+    const api = installApi("already-complete");
+    api.replaceSettings.mockImplementation(async (input) => {
+      await store.replaceSettings(input);
+      return true;
+    });
+    await migrateRendererPersistence();
+    useSettingsStore.setState({
+      language: "de",
+      backgroundImageFileName: undefined,
+    });
+    await flushRendererPersistence();
+    const reopened = createRendererPersistenceStore(options);
+    const state = await reopened.readHydratedState();
+    expect(state.settings.language).toBe("de");
+    expect(state.settings).not.toHaveProperty("backgroundImageFileName");
+  });
+  it("waits for queued settings persistence before synchronization reads SQL", async () => {
+    const api = installApi("already-complete");
+    await migrateRendererPersistence();
+    let finish: (() => void) | undefined;
+    api.replaceSettings.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = () => resolve(true);
+        }),
+    );
+    useSettingsStore.setState({ language: "es" });
+    let settled = false;
+    const flushed = flushRendererPersistence().then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(finish).toBeDefined();
+    finish?.();
+    await flushed;
+    expect(settled).toBe(true);
+  });
   it("does not duplicate SQLite-owned prompt preferences in renderer settings", async () => {
     const api = installApi("already-complete");
     await migrateRendererPersistence();
@@ -197,6 +260,7 @@ describe("renderer persistence bridge", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-issue-216-"));
     roots.push(root);
     const options = {
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption: {
         isEncryptionAvailable: () => false,

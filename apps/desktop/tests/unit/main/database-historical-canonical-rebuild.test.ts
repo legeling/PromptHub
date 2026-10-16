@@ -73,7 +73,7 @@ describe("historical database canonical rebuild", () => {
       const result = await projectCanonicalStorageShadow({
         database,
         targetPath: path.join(root, "canonical-shadow"),
-        readRules: async () => [],
+        readRules: () => [],
         mcpLibrary: {
           kind: "prompthub-mcp-library",
           version: 1,

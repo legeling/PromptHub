@@ -22,6 +22,7 @@ function register(): void {
   registerMcpIPC();
   registerSettingsIPC(getDatabase(), {
     rendererPersistence: createRendererPersistenceStore({
+      database: getDatabase(),
       rootPath: runtime.profile,
       encryption: safeStorage,
     }),

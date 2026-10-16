@@ -323,6 +323,10 @@ describe("CLI feature completeness", () => {
       "helper notes\n",
       "utf8",
     );
+    fs.writeFileSync(
+      path.join(skillDir, "bytes.bin"),
+      Buffer.from([0, 255, 128]),
+    );
     expect(
       (
         await execCli([
@@ -350,6 +354,8 @@ describe("CLI feature completeness", () => {
     expect(bundle.payload.skillFiles).toBeTruthy();
     expect(bundle.payload.promptRelations).toHaveLength(1);
     expect(bundle.payload.outputFormatItems).toHaveLength(1);
+    // The target must restore the exported package without its original source.
+    fs.rmSync(skillDir, { recursive: true });
 
     const importRes = await execCli([
       ...withDataDir(targetRoot),
@@ -389,8 +395,21 @@ describe("CLI feature completeness", () => {
       (entry) => entry.path,
     );
     expect(filePaths).toEqual(
-      expect.arrayContaining(["SKILL.md", "notes.txt"]),
+      expect.arrayContaining(["SKILL.md", "notes.txt", "bytes.bin"]),
     );
+    expect(
+      fs.readFileSync(
+        path.join(
+          targetRoot,
+          "user-data",
+          "data",
+          "skills",
+          skillGet.json.id,
+          "files",
+          "bytes.bin",
+        ),
+      ),
+    ).toEqual(Buffer.from([0, 255, 128]));
 
     const relations = await execCli([
       ...withDataDir(targetRoot),

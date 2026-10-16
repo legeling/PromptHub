@@ -399,6 +399,9 @@ export const IPC_CHANNELS = {
   // S3-compatible storage
   S3_TEST_CONNECTION: "s3:testConnection",
   S3_UPLOAD: "s3:upload",
+  S3_DELETE: "s3:delete",
+  CAUSAL_SYNC_RUN: "sync:run-causal",
+  WEBDAV_DELETE: "webdav:delete",
   S3_DOWNLOAD: "s3:download",
   S3_STAT: "s3:stat",
 

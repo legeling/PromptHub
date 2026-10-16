@@ -2,11 +2,20 @@
  * @vitest-environment node
  */
 import fs from "fs";
+import crypto from "node:crypto";
 import os from "os";
 import path from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { unzipSync } from "fflate";
+import {
+  AgentProviderProfileDB,
+  DatabaseAdapter,
+  GenerationDB,
+  SCHEMA,
+} from "@prompthub/db";
 
+import { PluginStorage } from "@prompthub/core/plugin-storage";
+import { emptyPluginInventory } from "@prompthub/core/plugin-library/shared";
 import { createPortableSnapshotZip } from "../../../src/main/services/portable-snapshot-archive";
 
 describe("portable snapshot archive", () => {
@@ -17,6 +26,36 @@ describe("portable snapshot archive", () => {
     for (const root of roots.splice(0)) {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it("exports SQL-owned Plugin packages and histories in a selected archive", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ph-plugin-export-"));
+    roots.push(root);
+    const databasePath = path.join(root, "plugins.sqlite");
+    const database = new DatabaseAdapter(databasePath);
+    const incoming = path.join(root, "incoming");
+    fs.mkdirSync(incoming);
+    fs.writeFileSync(path.join(incoming, "payload.bin"), Buffer.from([0,255,12]));
+    try {
+      database.exec(SCHEMA);
+      new PluginStorage(database, root).write([{
+        id: "plugin-fixture", name: "fixture", displayName: "Fixture",
+        source: { kind: "local", url: incoming }, localPackagePath: incoming,
+        classification: "bundle", trustLevel: "custom", inventory: emptyPluginInventory(),
+        installedAt: 1, updatedAt: 1,
+      }], []);
+    } finally { database.close(); }
+    const destination = path.join(root, "plugin.zip");
+    await createPortableSnapshotZip({ destinationPath: destination, sourcePaths: {
+      rootPath: root, cachePath: path.join(root,"cache"),
+      promptsPath: "", versionsPath: "", skillsPath: "", rulesPath: "",
+      pluginsPath: "", pluginDatabasePath: databasePath, imagesPath: "", videosPath: "",
+    }, scope: { prompts: false, versions: false, images: false, skills: false,
+      plugins: true, config: false } });
+    const files = unzipSync(fs.readFileSync(destination));
+    expect(Buffer.from(files["data/plugins/plugin-fixture/files/payload.bin"])).toEqual(Buffer.from([0,255,12]));
+    expect(Object.keys(files)).toContain("data/plugins/plugin-fixture/plugin.json");
+    expect(fs.readdirSync(path.join(root,"cache","portable-snapshots"))).toEqual([]);
   });
 
   it("streams only selected scopes and cleans task-owned staging", async () => {
@@ -77,19 +116,76 @@ describe("portable snapshot archive", () => {
     roots.push(root);
     const cache = path.join(root, "cache");
     const mcpPath = path.join(root, "data", "mcp");
-    const agentsPath = path.join(root, "data", "agents");
+    const agentProviderDatabasePath = path.join(root, "data", "prompthub.db");
     const generationsPath = path.join(root, "data", "generations");
     const objectsPath = path.join(root, "data", "assets", "objects");
-    for (const directory of [
-      mcpPath,
-      agentsPath,
-      generationsPath,
-      objectsPath,
-    ]) {
+    for (const directory of [mcpPath, generationsPath, objectsPath]) {
       fs.mkdirSync(directory, { recursive: true });
     }
     fs.writeFileSync(path.join(mcpPath, "server.json"), "mcp");
-    fs.writeFileSync(path.join(agentsPath, "profile.json"), "agent");
+    const database = new DatabaseAdapter(agentProviderDatabasePath);
+    database.exec(SCHEMA);
+    const repository = new AgentProviderProfileDB(database);
+    const profile = repository.createProfileWithMappings(
+      {
+        name: "SQL provider",
+        platformId: "codex",
+        providerKind: "openai",
+        protocol: "openai-responses",
+        config: {},
+        source: "manual",
+        secretRef: "agent-provider:device-reference",
+      },
+      [{ routeKey: "primary", modelId: "fixture", parameters: {} }],
+    );
+    const mappings = repository.listModelMappings(profile.id);
+    const bytes = Buffer.from([0, 255, 128]);
+    const imageHash = crypto.createHash("sha256").update(bytes).digest("hex");
+    const at = "2026-10-15T00:00:00.000Z";
+    new GenerationDB(database).upsert({
+      kind: "prompthub-generation-batch",
+      version: 1,
+      id: "batch",
+      title: "Image",
+      status: "succeeded",
+      resolvedPrompt: "A sea",
+      model: { id: "m1", provider: "openai", model: "image" },
+      parameters: {},
+      targetCount: 1,
+      slots: [
+        {
+          index: 0,
+          status: "succeeded",
+          output: {
+            id: "output",
+            slotIndex: 0,
+            fileName: "image.png",
+            mimeType: "image/png",
+            byteSize: bytes.length,
+            sha256: imageHash,
+            createdAt: at,
+            favorite: true,
+          },
+        },
+      ],
+      counts: {
+        total: 1,
+        pending: 0,
+        running: 0,
+        succeeded: 1,
+        failed: 0,
+        cancelled: 0,
+        interrupted: 0,
+      },
+      createdAt: at,
+      updatedAt: at,
+      completedAt: at,
+    });
+    const imageDirectory = path.join(generationsPath, "assets", "batch");
+    fs.mkdirSync(imageDirectory, { recursive: true });
+    fs.writeFileSync(path.join(imageDirectory, "image.png"), bytes);
+    database.close();
+    const originalDatabase = fs.readFileSync(agentProviderDatabasePath);
     fs.writeFileSync(path.join(generationsPath, "batch.json"), "generation");
     fs.writeFileSync(path.join(objectsPath, "object.bin"), "object");
     const destination = path.join(root, "domains.zip");
@@ -105,9 +201,8 @@ describe("portable snapshot archive", () => {
         rulesPath: path.join(root, "missing-rules"),
         pluginsPath: path.join(root, "missing-plugins"),
         mcpPath,
-        agentsPath,
-        generationsPath,
-        objectsPath,
+        agentProviderDatabasePath,
+        generationDatabasePath: agentProviderDatabasePath,
         imagesPath: path.join(root, "missing-images"),
         videosPath: path.join(root, "missing-videos"),
       },
@@ -123,14 +218,38 @@ describe("portable snapshot archive", () => {
       },
     });
 
-    const files = Object.keys(unzipSync(fs.readFileSync(destination))).sort();
+    const entries = unzipSync(fs.readFileSync(destination));
+    const files = Object.keys(entries).sort();
     expect(files).toEqual([
-      "data/agents/profile.json",
-      "data/assets/objects/object.bin",
-      "data/generations/batch.json",
+      `data/agents/${profile.id}/agent.json`,
+      `data/agents/${profile.id}/manifest.json`,
+      `data/assets/objects/sha256/${imageHash.slice(0, 2)}/${imageHash}`,
+      "data/generations/batch/batch.json",
+      "data/generations/batch/manifest.json",
       "data/mcp/server.json",
       "portable-manifest.json",
     ]);
+    expect(
+      Buffer.from(
+        entries[
+          `data/assets/objects/sha256/${imageHash.slice(0, 2)}/${imageHash}`
+        ],
+      ),
+    ).toEqual(bytes);
+    const document = JSON.parse(
+      Buffer.from(entries[`data/agents/${profile.id}/agent.json`]).toString(),
+    );
+    expect(document).toMatchObject({
+      profile: { id: profile.id, name: profile.name },
+      modelMappings: mappings,
+      requiresSecret: true,
+    });
+    expect(document.profile.secretRef).toBeUndefined();
+    expect(fs.readFileSync(agentProviderDatabasePath)).toEqual(
+      originalDatabase,
+    );
+    expect(fs.existsSync(path.join(root, "data", "agents"))).toBe(false);
+    expect(fs.readdirSync(path.join(cache, "portable-snapshots"))).toEqual([]);
   });
 
   it("embeds the verified canonical checkpoint without local catalog or device state", async () => {

@@ -43,6 +43,7 @@ import {
 } from "./shortcuts";
 import { initUpdater, registerUpdaterIPC } from "./updater";
 import { registerS3IPC } from "./s3";
+import { registerCausalSyncIPC } from "./ipc/causal-sync.ipc";
 import { registerWebDAVIPC } from "./webdav";
 import {
   applyE2ESeed,
@@ -75,12 +76,7 @@ import {
   getUserDataPath,
 } from "./runtime-paths";
 import { registerAppRuntimeIPC } from "./ipc/app-runtime.ipc";
-import { PromptDB } from "./database/prompt";
-import { FolderDB } from "./database/folder";
-import {
-  bootstrapPromptWorkspace,
-  writeRestoreMarker,
-} from "./services/prompt-workspace";
+import { writeRestoreMarker } from "./services/prompt-workspace-restore-marker";
 import { bootstrapRuleWorkspace } from "./services/rules-workspace";
 import {
   migrateLegacyDataLayout,
@@ -1018,12 +1014,7 @@ ipcMain.handle("data:performRecovery", async (_event, sourcePath: string) => {
       );
     }
 
-    // v0.5.3 review-follow-up: write a restore marker so the next boot's
-    // bootstrapPromptWorkspace skips Phase 1 (WS → DB). Without this, prompt
-    // files that still carry pre-deletion state would "revive" records the
-    // restored DB no longer contains.
-    // v0.5.3 review 反馈修复：写入恢复标记，下次启动 bootstrap 跳过 Phase 1，
-    // 防止工作区旧文件"复活"已删除记录。
+    // Retire historical workspace files without importing over the restored DB.
     try {
       writeRestoreMarker(currentPath);
     } catch (markerError) {
@@ -1358,76 +1349,9 @@ app.whenReady().then(async () => {
     } catch {
       // ignore
     }
-    // Legacy workspace bootstrap remains isolated from startup. Canonical mode
-    // is read-only here because file authority and SQLite reconciliation have
-    // already completed before the database was opened.
-    try {
-      await bootstrapRuleWorkspace();
-    } catch (error) {
-      console.error(
-        "[startup] bootstrapRuleWorkspace failed, continuing without rules workspace bootstrap:",
-        error,
-      );
-      logStartupEvent({
-        event: "startup:bootstrap_rules_workspace_failed",
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    // Historical Rules conversion must complete before writable UI opens.
+    await bootstrapRuleWorkspace();
 
-    try {
-      if (canonicalRecoveryRequired) {
-        console.warn(
-          "[startup] Canonical Prompt graph requires recovery; workspace synchronization was skipped.",
-        );
-        logStartupEvent({
-          event: "startup:bootstrap_workspace_recovery_required",
-          reason: canonicalRecoveryReason ?? "invalid-canonical-storage",
-        });
-      } else {
-        const bootstrapResult = bootstrapPromptWorkspace(
-          new PromptDB(db),
-          new FolderDB(db),
-        );
-        // v0.5.3: Always log bootstrap outcome so users who see an empty UI
-        // after upgrade can share a diagnosable log. "empty" quadrant in
-        // particular indicates both DB and workspace were empty — the user
-        // likely needs to use DataRecoveryDialog manually.
-        // v0.5.3: 总是记录引导结果，以便升级后看到空界面的用户能提供可分析日志。
-        // 特别是 "empty" 象限意味着 DB 和工作区都空，用户可能需要手动使用
-        // DataRecoveryDialog 恢复数据。
-        logStartupEvent({
-          event:
-            bootstrapResult.quadrant === "empty"
-              ? "startup:bootstrap_workspace_empty"
-              : "startup:bootstrap_workspace_ok",
-          quadrant: bootstrapResult.quadrant,
-          imported: bootstrapResult.imported,
-          exported: bootstrapResult.exported,
-          promptCount: bootstrapResult.promptCount,
-          folderCount: bootstrapResult.folderCount,
-          versionCount: bootstrapResult.versionCount,
-          ...(bootstrapResult.restoreMarkerUsed
-            ? { restoreMarkerUsed: true }
-            : {}),
-        });
-        if (bootstrapResult.quadrant === "empty") {
-          console.warn(
-            "[startup] Both database and workspace are empty. " +
-              "If this is an upgrade, the user should use DataRecoveryDialog " +
-              "to restore data from a previous install location.",
-          );
-        }
-      }
-    } catch (error) {
-      console.error(
-        "[startup] bootstrapPromptWorkspace failed, continuing without workspace sync:",
-        error,
-      );
-      logStartupEvent({
-        event: "startup:bootstrap_workspace_failed",
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
     registerDatabaseBoundIpc(db);
 
     // Create application menu
@@ -1442,6 +1366,7 @@ app.whenReady().then(async () => {
     // 注册 WebDAV IPC（绕过 CORS）
     registerWebDAVIPC();
     registerS3IPC();
+    registerCausalSyncIPC();
     registerE2EIPC();
 
     // Register shortcuts IPC
@@ -1494,8 +1419,6 @@ app.on("before-quit", () => {
   closeDatabase();
 });
 
-// Export main window reference (used by other modules)
-// 导出主窗口引用（供其他模块使用）
 export function getMainWindow() {
   return mainWindow;
 }

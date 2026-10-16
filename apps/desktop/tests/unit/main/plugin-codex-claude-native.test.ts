@@ -6,6 +6,8 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import {
   CorePluginLibraryService,
   configureRuntimePaths,
+  initDatabase,
+  closeDatabase,
   resetRuntimePaths,
 } from "@prompthub/core";
 
@@ -21,12 +23,14 @@ function write(file: string, value: unknown): void {
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-native-"));
   configureRuntimePaths({ userDataPath: path.join(root, "data") });
+  initDatabase();
   write(
     "skills/hello/SKILL.md",
     "---\nname: hello\ndescription: Say hello\n---\nHello",
   );
 });
 afterEach(() => {
+  closeDatabase();
   resetRuntimePaths();
   fs.rmSync(root, { recursive: true, force: true });
 });

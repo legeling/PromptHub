@@ -16,7 +16,7 @@ describe('self-hosted Web storage topology', () => {
     expect(first.shared).toEqual(second.shared);
     expect(first.user.rulesPath).not.toBe(second.user.rulesPath);
     expect(first.user.imagesPath).not.toBe(second.user.imagesPath);
-    expect(first.user.settingsPath).not.toBe(second.user.settingsPath);
+    expect(first.user).not.toHaveProperty('settingsPath');
     for (const userPath of Object.values(first.user)) {
       expect(path.relative(getRootDir(), userPath)).not.toMatch(/^\.\./u);
     }

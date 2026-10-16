@@ -78,7 +78,7 @@ describe("canonical storage authority publication", () => {
   function options(input: ReturnType<typeof fixture>) {
     return {
       ...input,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: {
         kind: "prompthub-mcp-library" as const,
         version: 1 as const,

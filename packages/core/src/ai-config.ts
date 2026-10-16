@@ -1,8 +1,7 @@
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
-
-import { getConfigDir } from "./runtime-paths";
+import { getDatabase } from "@prompthub/db";
+import { getUserDataPath } from "./runtime-paths";
+import { CoreSettingsStore } from "./settings-store";
 import type { AIProtocol } from "@prompthub/shared/types";
 
 export type CoreAIModelType = "chat" | "image";
@@ -87,7 +86,6 @@ export class AIConfigError extends Error {
   }
 }
 
-const AI_CONFIG_FILE_NAME = "ai-models.json";
 const MODEL_ROUTES: CoreAIModelRoute[] = [
   "mainText",
   "fastText",
@@ -101,21 +99,6 @@ function nowIso(): string {
 
 function createId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
-}
-
-function defaultConfig(): CoreAIConfigFile {
-  return {
-    kind: "prompthub-ai-config",
-    version: 1,
-    updatedAt: nowIso(),
-    providers: [],
-    models: [],
-    modelRouteDefaults: {},
-  };
-}
-
-export function getAIConfigFilePath(): string {
-  return path.join(getConfigDir(), AI_CONFIG_FILE_NAME);
 }
 
 function normalizeProtocol(
@@ -259,23 +242,25 @@ export function parseCoreAIConfig(raw: string): CoreAIConfigFile {
 }
 
 export class CoreAIConfigService {
-  read(): CoreAIConfigFile {
-    const filePath = getAIConfigFilePath();
-    if (!fs.existsSync(filePath)) {
-      return defaultConfig();
-    }
+  private settings(): CoreSettingsStore {
+    return new CoreSettingsStore({
+      database: getDatabase(),
+      rootPath: getUserDataPath(),
+    });
+  }
 
-    try {
-      return parseCoreAIConfig(fs.readFileSync(filePath, "utf8"));
-    } catch (error) {
-      if (error instanceof AIConfigError) {
-        throw error;
-      }
-      throw new AIConfigError(
-        "INVALID_CONFIG",
-        error instanceof Error ? error.message : "AI 配置文件无法解析",
-      );
-    }
+  read(): CoreAIConfigFile {
+    const settings = this.settings().read();
+    return parseCoreAIConfig(
+      JSON.stringify({
+        kind: "prompthub-ai-config",
+        version: 1,
+        updatedAt: settings.settingsUpdatedAt ?? new Date(0).toISOString(),
+        providers: settings.aiProviders,
+        models: settings.aiModels,
+        modelRouteDefaults: settings.modelRouteDefaults ?? {},
+      }),
+    );
   }
 
   write(config: CoreAIConfigFile): CoreAIConfigFile {
@@ -286,12 +271,12 @@ export class CoreAIConfigService {
       modelRouteDefaults: normalizeRoutes(config.modelRouteDefaults),
       updatedAt: nowIso(),
     };
-    fs.mkdirSync(getConfigDir(), { recursive: true });
-    fs.writeFileSync(
-      getAIConfigFilePath(),
-      `${JSON.stringify(next, null, 2)}\n`,
-      "utf8",
-    );
+    this.settings().patchSettings({
+      aiProviders: next.providers,
+      aiModels: next.models,
+      modelRouteDefaults: next.modelRouteDefaults,
+      settingsUpdatedAt: next.updatedAt,
+    });
     return next;
   }
 

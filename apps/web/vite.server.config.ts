@@ -20,7 +20,7 @@ export default defineConfig({
         '../../packages/shared/types',
       ),
       '@prompthub/shared': path.resolve(currentDir, '../../packages/shared/types/index.ts'),
-      '@prompthub/db': path.resolve(currentDir, '../../packages/db/src/index.ts'),
+      '@prompthub/db': path.resolve(currentDir, '../../packages/db/src'),
     },
   },
   build: {

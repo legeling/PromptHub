@@ -17,7 +17,12 @@ import {
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
 } from "@prompthub/core";
-import { closeDatabase, initDatabase } from "@prompthub/db";
+import {
+  closeDatabase,
+  initDatabase,
+  DatabaseAdapter,
+  PromptDB,
+} from "@prompthub/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -125,7 +130,8 @@ describe("canonical storage startup", () => {
     writeRuntimeLayoutState(activeRoot);
     const sourceDatabasePath = path.join(activeRoot, "data", "prompthub.db");
     fs.mkdirSync(path.dirname(sourceDatabasePath), { recursive: true });
-    fs.writeFileSync(sourceDatabasePath, "database");
+    initDatabase(sourceDatabasePath);
+    closeDatabase();
     return {
       activeRoot,
       sourceDatabasePath,
@@ -198,6 +204,75 @@ describe("canonical storage startup", () => {
       databasePath: input.sourceDatabasePath,
     });
     expect(input.prepareSourceDatabase).not.toHaveBeenCalled();
+  });
+
+  it("migrates once at the real startup entrypoint and preserves SQL deletion across another startup", async () => {
+    const input = fixture();
+    writeCanonicalStorageAuthority(input.activeRoot, {
+      consistencyId: "a".repeat(64),
+      operationId: "existing-authority",
+    });
+    materializeEmptyPromptGraph(input.activeRoot);
+    const source = new DatabaseAdapter(input.sourceDatabasePath);
+    let promptId: string;
+    try {
+      promptId = new PromptDB(source).create({
+        title: "Keep until deleted",
+        userPrompt: "body",
+      }).id;
+    } finally {
+      source.close();
+    }
+    expect((await ensureCanonicalStorageAuthorityOnStartup(input)).status).toBe(
+      "already-canonical",
+    );
+    const migrated = new DatabaseAdapter(input.sourceDatabasePath);
+    try {
+      expect(new PromptDB(migrated).getById(promptId)?.title).toBe(
+        "Keep until deleted",
+      );
+      new PromptDB(migrated).delete(promptId);
+    } finally {
+      migrated.close();
+    }
+    expect((await ensureCanonicalStorageAuthorityOnStartup(input)).status).toBe(
+      "already-canonical",
+    );
+    const reopened = new DatabaseAdapter(input.sourceDatabasePath, {
+      readOnly: true,
+    });
+    try {
+      expect(new PromptDB(reopened).getById(promptId)).toBeNull();
+    } finally {
+      reopened.close();
+    }
+    expect(
+      fs.existsSync(path.join(input.activeRoot, "data", "catalog.json")),
+    ).toBe(false);
+  });
+
+  it("does not attempt file repair when the authoritative SQL image is unreadable", async () => {
+    const input = fixture();
+    writeCanonicalStorageAuthority(input.activeRoot, {
+      consistencyId: "a".repeat(64),
+      operationId: "existing-authority",
+    });
+    materializeEmptyPromptGraph(input.activeRoot);
+    fs.writeFileSync(input.sourceDatabasePath, "unreadable SQL evidence");
+    const repairInvalidAuthority = vi.fn();
+    expect(
+      await ensureCanonicalStorageAuthorityOnStartup({
+        ...input,
+        repairInvalidAuthority,
+      }),
+    ).toMatchObject({
+      status: "recovery-required",
+      reason: "invalid-canonical-storage",
+    });
+    expect(repairInvalidAuthority).not.toHaveBeenCalled();
+    expect(fs.readFileSync(input.sourceDatabasePath, "utf8")).toBe(
+      "unreadable SQL evidence",
+    );
   });
 
   it("rebuilds a stale SQLite projection without showing recovery", async () => {
@@ -457,7 +532,7 @@ describe("canonical storage startup", () => {
 
     const result = await ensureCanonicalStorageAuthorityOnStartup({
       ...input,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: {
         kind: "prompthub-mcp-library",
         version: 1,

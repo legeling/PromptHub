@@ -1,3 +1,7 @@
+import {
+  configureRuntimePaths,
+  resetRuntimePaths,
+} from "@prompthub/core/runtime-paths";
 /**
  * @vitest-environment node
  */
@@ -19,6 +23,7 @@ describe("SkillDB source id uniqueness", () => {
     tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "prompthub-skill-source-id-"),
     );
+    configureRuntimePaths({ userDataPath: tempDir });
     db = new Database(path.join(tempDir, "prompthub.db"));
     db.exec(SCHEMA);
     skillDb = new SkillDB(db);
@@ -26,6 +31,7 @@ describe("SkillDB source id uniqueness", () => {
 
   afterEach(() => {
     db.close();
+    resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 

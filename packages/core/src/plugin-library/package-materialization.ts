@@ -14,7 +14,7 @@ import type {
   PluginSourceUpdateCheck,
 } from "@prompthub/shared/types/plugin";
 
-import { getCacheDir, getRuntimeStorageContext } from "../runtime-paths";
+import { getCacheDir, getDataDir } from "../runtime-paths";
 import {
   CODEX_PLUGIN_MANIFEST_FILE,
   CorePluginError,
@@ -41,9 +41,7 @@ import {
 import { normalizePluginSafetyReport } from "./normalization";
 
 function getPluginMaterializationDir(): string {
-  return getRuntimeStorageContext().localAuthority === "canonical-files"
-    ? path.join(getCacheDir(), "plugin-materializations")
-    : getManagedPluginsDir();
+  return path.join(getCacheDir(), "plugin-materializations");
 }
 
 export function removePluginMaterialization(managedPath?: string): void {
@@ -91,7 +89,7 @@ export function copyPluginPackageToManagedPath(
 
 function isInsideManagedPluginsDir(candidatePath: string): boolean {
   try {
-    ensureInsideDirectory(getManagedPluginsDir(), candidatePath);
+    ensureInsideDirectory(path.join(getDataDir(), "plugin-files"), candidatePath);
     return true;
   } catch {
     return false;

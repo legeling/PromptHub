@@ -63,6 +63,7 @@ afterEach(async () => {
 
 function rendererStore() {
   return createRendererPersistenceStore({
+    database,
     rootPath: root,
     encryption: electron.encryption,
   });
@@ -81,28 +82,26 @@ async function reopenAndApply(): Promise<void> {
 }
 
 describe("startup network proxy settings from actual persisted sources", () => {
-  it("uses completed renderer settings over a different SQLite value after reopening", async () => {
+  it("persists the renderer proxy in the shared SQL owner after reopening", async () => {
     storeDatabaseValue(JSON.stringify(manualProxy));
     await rendererStore().migrate({
       settings: JSON.stringify({ state: { networkProxy: { mode: "direct" } } }),
     });
-    const appFile = path.join(root, "config", "app.json");
-    const appBytes = fs.readFileSync(appFile);
+    expect(fs.existsSync(path.join(root, "config/app.json"))).toBe(false);
 
     await applyStoredNetworkProxySettings(database);
     expect(electron.setProxy).toHaveBeenLastCalledWith({ mode: "direct" });
     expect(getActiveNetworkProxySettings().mode).toBe("direct");
     await reopenAndApply();
     expect(electron.setProxy).toHaveBeenLastCalledWith({ mode: "direct" });
-    expect(fs.readFileSync(appFile)).toEqual(appBytes);
     expect(
       database
         .prepare("SELECT value FROM settings WHERE key = ?")
         .get("networkProxy"),
-    ).toEqual({ value: JSON.stringify(manualProxy) });
+    ).toEqual({ value: JSON.stringify({ mode: "direct" }) });
   });
 
-  it("reads SQLite until migration is complete, even when renderer files already exist", async () => {
+  it("uses saved SQL settings even before the browser migration is complete", async () => {
     storeDatabaseValue(JSON.stringify(manualProxy));
     await rendererStore().replaceSettings({ networkProxy: { mode: "direct" } });
     expect(rendererStore().readHydratedStateSync().migrationComplete).toBe(
@@ -110,21 +109,14 @@ describe("startup network proxy settings from actual persisted sources", () => {
     );
 
     await applyStoredNetworkProxySettings(database);
-    const expectedSession = {
-      mode: "fixed_servers",
-      proxyRules: "http://localhost:18081",
-      proxyBypassRules: DEFAULT_NETWORK_PROXY_SETTINGS.bypass,
-    };
-    expect(electron.setProxy).toHaveBeenLastCalledWith(expectedSession);
-    expect(getActiveNetworkProxySettings()).toEqual(manualProxy);
+    expect(electron.setProxy).toHaveBeenLastCalledWith({ mode: "direct" });
     await reopenAndApply();
-    expect(electron.setProxy).toHaveBeenLastCalledWith(expectedSession);
-    expect(getActiveNetworkProxySettings()).toEqual(manualProxy);
+    expect(electron.setProxy).toHaveBeenLastCalledWith({ mode: "direct" });
   });
 
   it("uses the formal default when migrated settings omit the proxy", async () => {
     storeDatabaseValue(JSON.stringify({ mode: "direct" }));
-    await rendererStore().migrate({});
+    await rendererStore().replaceSettings({});
 
     await applyStoredNetworkProxySettings(database);
     expect(getActiveNetworkProxySettings()).toEqual(
@@ -135,20 +127,18 @@ describe("startup network proxy settings from actual persisted sources", () => {
     });
   });
 
-  it("preserves malformed SQLite JSON while applying the formal default", async () => {
+  it("reports malformed historical proxy data and preserves its original bytes", async () => {
     const malformed = "{invalid JSON";
     storeDatabaseValue(malformed);
-
-    await applyStoredNetworkProxySettings(database);
-    await reopenAndApply();
-    expect(getActiveNetworkProxySettings()).toEqual(
-      DEFAULT_NETWORK_PROXY_SETTINGS,
+    await expect(applyStoredNetworkProxySettings(database)).rejects.toThrow(
+      /Invalid networkProxy/,
     );
     expect(
       database
         .prepare("SELECT value FROM settings WHERE key = ?")
         .get("networkProxy"),
     ).toEqual({ value: malformed });
+    expect(electron.setProxy).not.toHaveBeenCalled();
   });
 
   it("uses the formal default for a new profile without saving a fabricated setting", async () => {

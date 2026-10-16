@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
+import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
 import { PromptDB } from "../database/prompt";
 import { PromptOutputFormatDB, PromptRelationDB } from "../database";
 import { FolderDB } from "../database/folder";
@@ -22,7 +23,6 @@ import type {
   UpdatePromptRelationDTO,
   UpdatePromptDTO,
 } from "@prompthub/shared/types";
-import { syncPromptWorkspaceAfterMutation } from "../services/prompt-workspace";
 
 /**
  * Register Prompt-related IPC handlers
@@ -35,10 +35,6 @@ export function registerPromptIPC(
 ): void {
   const relationDb = new PromptRelationDB(rawDb);
   const outputFormatDb = new PromptOutputFormatDB(rawDb);
-  const syncWorkspace = (options?: { publishCanonicalGraph: boolean }) => {
-    if (options?.publishCanonicalGraph) db.publishCanonicalGraph();
-    syncPromptWorkspaceAfterMutation(db, folderDb);
-  };
 
   const sortFoldersForInsert = (folders: Folder[]): Folder[] => {
     const pending = new Map(folders.map((folder) => [folder.id, folder]));
@@ -100,7 +96,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_CREATE,
     async (_, data: CreatePromptDTO) => {
       const created = db.create(data);
-      syncWorkspace();
       return created;
     },
   );
@@ -131,7 +126,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_RENAME_TAG,
     async (_, oldTag: string, newTag: string) => {
       db.renameTag(oldTag, newTag);
-      syncWorkspace();
       return true;
     },
   );
@@ -142,9 +136,6 @@ export function registerPromptIPC(
     }
     try {
       const result = db.deleteTagIfUnreferenced(tag);
-      if (result.deleted) {
-        syncWorkspace();
-      }
       return result;
     } catch (error) {
       console.error("Failed to delete tag:", error);
@@ -156,9 +147,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_UPDATE,
     async (_, id: string, data: UpdatePromptDTO) => {
       const updated = db.update(id, data);
-      if (updated) {
-        syncWorkspace();
-      }
       return updated;
     },
   );
@@ -167,9 +155,6 @@ export function registerPromptIPC(
   // 删除 Prompt
   ipcMain.handle(IPC_CHANNELS.PROMPT_DELETE, async (_, id: string) => {
     const deleted = db.delete(id);
-    if (deleted) {
-      syncWorkspace();
-    }
     return deleted;
   });
 
@@ -206,7 +191,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_INSERT_DIRECT,
     async (_, prompt: Prompt) => {
       db.insertPromptDirect(prompt);
-      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -315,7 +299,6 @@ export function registerPromptIPC(
       });
 
       restore();
-      syncWorkspace({ publishCanonicalGraph: true });
       return {
         promptCount: payload.prompts.length,
         folderCount: payload.folders.length,
@@ -399,7 +382,6 @@ export function registerPromptIPC(
       });
 
       migrate();
-      syncWorkspace({ publishCanonicalGraph: true });
 
       return {
         imported: true,
@@ -411,7 +393,7 @@ export function registerPromptIPC(
   );
 
   ipcMain.handle(IPC_CHANNELS.PROMPT_SYNC_WORKSPACE, async () => {
-    syncWorkspace({ publishCanonicalGraph: true });
+    syncPromptWorkspaceFromDatabase(db, folderDb);
     return true;
   });
 
@@ -427,7 +409,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.VERSION_CREATE,
     async (_, promptId: string, note?: string) => {
       const created = db.createVersion(promptId, note);
-      syncWorkspace();
       return created;
     },
   );
@@ -438,18 +419,12 @@ export function registerPromptIPC(
     IPC_CHANNELS.VERSION_ROLLBACK,
     async (_, promptId: string, version: number) => {
       const rolledBack = db.rollback(promptId, version);
-      if (rolledBack) {
-        syncWorkspace();
-      }
       return rolledBack;
     },
   );
 
   ipcMain.handle(IPC_CHANNELS.VERSION_DELETE, async (_, versionId: string) => {
     const deleted = db.deleteVersion(versionId);
-    if (deleted) {
-      syncWorkspace();
-    }
     return deleted;
   });
 
@@ -457,7 +432,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.VERSION_INSERT_DIRECT,
     async (_, version: PromptVersion) => {
       db.insertVersionDirect(version);
-      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -472,7 +446,6 @@ export function registerPromptIPC(
     ) => {
       assertPromptMoveInput(promptId, newParentId, newOrder);
       db.movePrompt(promptId, newParentId, newOrder);
-      syncWorkspace();
       return true;
     },
   );
@@ -481,7 +454,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_RELATION_CREATE,
     async (_, data: CreatePromptRelationDTO) => {
       const relation = relationDb.create(data);
-      syncWorkspace();
       return relation;
     },
   );
@@ -490,7 +462,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_RELATION_INSERT_DIRECT,
     async (_, relation: PromptRelation) => {
       relationDb.insertRelationDirect(relation);
-      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -506,18 +477,12 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_RELATION_UPDATE,
     async (_, id: string, data: UpdatePromptRelationDTO) => {
       const relation = relationDb.update(id, data);
-      if (relation) {
-        syncWorkspace();
-      }
       return relation;
     },
   );
 
   ipcMain.handle(IPC_CHANNELS.PROMPT_RELATION_DELETE, async (_, id: string) => {
     const deleted = relationDb.delete(id);
-    if (deleted) {
-      syncWorkspace();
-    }
     return deleted;
   });
 
@@ -525,7 +490,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_CREATE,
     async (_, data: CreateOutputFormatItemDTO) => {
       const item = outputFormatDb.create(data);
-      syncWorkspace();
       return item;
     },
   );
@@ -534,7 +498,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_INSERT_DIRECT,
     async (_, item: OutputFormatItem) => {
       outputFormatDb.insertItemDirect(item);
-      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -550,9 +513,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_UPDATE,
     async (_, id: string, data: UpdateOutputFormatItemDTO) => {
       const item = outputFormatDb.update(id, data);
-      if (item) {
-        syncWorkspace();
-      }
       return item;
     },
   );
@@ -561,9 +521,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_DELETE,
     async (_, id: string) => {
       const deleted = outputFormatDb.delete(id);
-      if (deleted) {
-        syncWorkspace();
-      }
       return deleted;
     },
   );
@@ -572,7 +529,6 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_REORDER,
     async (_, sourcePromptId: string, itemId: string, newSortOrder: number) => {
       outputFormatDb.reorder(sourcePromptId, itemId, newSortOrder);
-      syncWorkspace();
       return true;
     },
   );

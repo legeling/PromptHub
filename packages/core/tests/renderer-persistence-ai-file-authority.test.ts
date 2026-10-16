@@ -1,3 +1,7 @@
+import {
+  rendererTestDatabase,
+  closeRendererTestDatabases,
+} from "./helpers/renderer-database";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -60,6 +64,7 @@ function fileOwnedConfig() {
 }
 
 afterEach(() => {
+  closeRendererTestDatabases();
   for (const root of roots.splice(0)) {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -69,6 +74,7 @@ describe("renderer AI file authority", () => {
   it("preserves a populated file inventory over renderer default-empty arrays", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -103,23 +109,19 @@ describe("renderer AI file authority", () => {
       fastText: "model-file",
     });
 
-    const persisted = fs.readFileSync(
-      path.join(root, "config", "providers.json"),
-      "utf8",
+    expect(fs.existsSync(path.join(root, "config/providers.json"))).toBe(false);
+    expect(fs.existsSync(path.join(root, "config/ai-models.json"))).toBe(false);
+    const persisted = JSON.stringify(
+      rendererTestDatabase(root).prepare("SELECT * FROM settings").all(),
     );
-    const compatibility = fs.readFileSync(
-      path.join(root, "config", "ai-models.json"),
-      "utf8",
-    );
-    expect(`${persisted}\n${compatibility}`).not.toContain(
-      "provider-file-secret",
-    );
-    expect(`${persisted}\n${compatibility}`).not.toContain("model-file-secret");
+    expect(persisted).not.toContain("provider-file-secret");
+    expect(persisted).not.toContain("model-file-secret");
   });
 
   it("keeps renderer arrays when the file inventory is empty", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });

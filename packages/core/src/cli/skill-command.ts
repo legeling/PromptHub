@@ -70,15 +70,11 @@ export async function handleSkillDelete(
     ? []
     : await uninstallSkillFromPlatforms(context.skills, skill.name);
 
-  let purgedManagedRepo = false;
-  if (
+  const purgedManagedRepo = Boolean(
     purgeManagedRepo &&
     skill.local_repo_path &&
-    (await context.skills.isManagedRepoPath(skill.local_repo_path))
-  ) {
-    await context.skills.deleteRepoByPath(skill.local_repo_path);
-    purgedManagedRepo = true;
-  }
+    (await context.skills.isManagedRepoPath(skill.local_repo_path)),
+  );
 
   if (!skillDb.delete(skill.id)) {
     throw new CliError(

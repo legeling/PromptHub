@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
 import {
   acquireStorageMaintenanceIntent,
-  readGenerationResourceBundle,
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
 } from "@prompthub/core";
@@ -28,8 +27,10 @@ describe("GenerationLibrary", () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-generation-"));
+    writeRuntimeLayoutState(tempDir);
     configureRuntimePaths({ userDataPath: tempDir });
-    db = new DatabaseAdapter(":memory:");
+    fs.mkdirSync(path.join(tempDir, "data"), { recursive: true });
+    db = new DatabaseAdapter(path.join(tempDir, "data", "prompthub.db"));
     db.exec(SCHEMA);
     library = new GenerationLibrary(db);
   });
@@ -41,7 +42,7 @@ describe("GenerationLibrary", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("persists a batch manifest and derived index", async () => {
+  it("persists authoritative SQL metadata without a live manifest", async () => {
     const batch = await library.createBatch({
       title: "Architecture run",
       prompt: "Minimal white concrete house",
@@ -65,10 +66,10 @@ describe("GenerationLibrary", () => {
       fs.existsSync(
         path.join(tempDir, "data", "generations", batch.id, "batch.json"),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("publishes canonical generation bundles and keeps display bytes in cache", async () => {
+  it("stores one actual image and SQL metadata even with a historical authority marker", async () => {
     writeRuntimeLayoutState(tempDir);
     writeCanonicalStorageAuthority(tempDir, {
       consistencyId: "a".repeat(64),
@@ -76,29 +77,18 @@ describe("GenerationLibrary", () => {
     });
     resetRuntimePaths();
     configureRuntimePaths({ userDataPath: tempDir });
-    library = new GenerationLibrary(db);
-
     const batch = await library.createBatch({
-      prompt: "Canonical poster",
+      prompt: "Poster",
       model: { id: "m1", provider: "openai", model: "gpt-image-1" },
       targetCount: 1,
     });
     const completed = await library.commitOutput({
       batchId: batch.id,
       slotIndex: 0,
-      mimeType: "image/png",
       base64: PNG_BYTES.toString("base64"),
     });
-    const bundlePath = path.join(tempDir, "data", "generations", batch.id);
-    const restored = readGenerationResourceBundle(
-      bundlePath,
-      path.join(tempDir, "data", "assets", "objects"),
-    );
-
-    expect(restored.bundleManifest.revision).toBe(2);
-    expect(restored.outputs).toHaveLength(1);
     expect(getGeneratedImagesDir()).toBe(
-      path.join(tempDir, "cache", "generated-images"),
+      path.join(tempDir, "data", "generations", "assets"),
     );
     expect(
       fs.readFileSync(
@@ -109,18 +99,37 @@ describe("GenerationLibrary", () => {
         ),
       ),
     ).toEqual(PNG_BYTES);
-    expect(fs.existsSync(path.join(bundlePath, "manifest.json"))).toBe(true);
     expect(
-      db
-        .prepare(
-          `SELECT revision, content_hash FROM canonical_resources
-           WHERE resource_type = ? AND resource_id = ?`,
-        )
-        .get("generation", batch.id),
-    ).toEqual({
-      revision: 2,
-      content_hash: restored.bundleManifest.contentHash,
+      fs.existsSync(path.join(tempDir, "data", "generations", batch.id)),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(tempDir, "cache", "generated-images"))).toBe(
+      false,
+    );
+    expect(await library.getBatch(batch.id)).toEqual(completed);
+  });
+
+  it("listing an active batch never interrupts it; explicit startup recovery preserves the error across reopen", async () => {
+    const batch = await library.createBatch({
+      prompt: "Poster",
+      model: { id: "m1", provider: "openai", model: "image" },
+      targetCount: 1,
     });
+    await library.markSlotRunning(batch.id, 0);
+    expect((await library.listBatches())[0].slots[0].status).toBe("running");
+    db.close();
+    db = new DatabaseAdapter(path.join(tempDir, "data", "prompthub.db"));
+    library = new GenerationLibrary(db);
+    library.recoverInterrupted();
+    const recovered = await library.getBatch(batch.id);
+    expect(recovered.slots[0]).toMatchObject({
+      status: "interrupted",
+      error: { code: "interrupted", retryable: true },
+    });
+    db.close();
+    db = new DatabaseAdapter(path.join(tempDir, "data", "prompthub.db"));
+    expect(await new GenerationLibrary(db).getBatch(batch.id)).toEqual(
+      recovered,
+    );
   });
 
   it("blocks generation writes during structural storage maintenance", async () => {
@@ -206,7 +215,7 @@ describe("GenerationLibrary", () => {
     ).toEqual(JPEG_BYTES);
   });
 
-  it("keeps legacy Prompt media selected and stores generation originals outside it", async () => {
+  it("keeps generation originals outside Prompt media and leaves legacy attachments intact", async () => {
     const legacyImagesDir = path.join(tempDir, "images");
     fs.mkdirSync(path.join(tempDir, "data", "assets", "images", "generated"), {
       recursive: true,
@@ -225,7 +234,10 @@ describe("GenerationLibrary", () => {
       base64: PNG_BYTES.toString("base64"),
     });
 
-    expect(getImagesDir()).toBe(legacyImagesDir);
+    expect(getImagesDir()).toBe(path.join(tempDir, "data", "assets", "images"));
+    expect(fs.readFileSync(path.join(legacyImagesDir, "legacy.png"))).toEqual(
+      PNG_BYTES,
+    );
     expect(getGeneratedImagesDir()).not.toContain(
       path.join("assets", "images"),
     );
@@ -275,7 +287,7 @@ describe("GenerationLibrary", () => {
     ).rejects.toThrow(/payload size/i);
   });
 
-  it("copies legacy workbench outputs into the corrected local asset directory", async () => {
+  it("does not import legacy files or recreate a missing output during metadata reads", async () => {
     const batch = await library.createBatch({
       prompt: "Poster",
       model: { id: "m1", provider: "openai", model: "gpt-image-1" },
@@ -306,8 +318,14 @@ describe("GenerationLibrary", () => {
 
     await library.getBatch(batch.id);
 
-    expect(fs.readFileSync(correctedPath)).toEqual(PNG_BYTES);
+    expect(fs.existsSync(correctedPath)).toBe(false);
     expect(fs.readFileSync(legacyPath)).toEqual(PNG_BYTES);
+    await expect(
+      library.readOutputReference({
+        batchId: batch.id,
+        outputId: successful.slots[0].output!.id,
+      }),
+    ).rejects.toThrow();
   });
 
   it("rejects traversal-like IDs and invalid image payloads", async () => {
@@ -412,6 +430,7 @@ describe("GenerationLibrary", () => {
       outputId: successful.slots[0].output!.id,
       favorite: true,
     });
+    library.recoverInterrupted();
     const recovered = await library.listBatches();
     const retried = await library.retryFailed(batch.id);
 
@@ -540,7 +559,8 @@ describe("GenerationLibrary", () => {
       favorite: true,
     });
 
-    expect(updated.sourcePromptId).toBe("source-prompt");
+    expect(updated.sourcePromptId).toBeUndefined();
+    expect(updated.sourcePromptVersion).toBe(3);
     expect(
       db
         .prepare("SELECT source_prompt_id FROM generation_batches WHERE id = ?")

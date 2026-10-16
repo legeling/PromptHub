@@ -1,3 +1,8 @@
+import { SettingsDB } from "@prompthub/db";
+import {
+  rendererTestDatabase,
+  closeRendererTestDatabases,
+} from "./helpers/renderer-database";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -51,7 +56,10 @@ function enforceWindowsFsyncWriteAccess(): void {
     closeSync(descriptor);
   });
   vi.spyOn(fs, "fsyncSync").mockImplementation((descriptor) => {
-    if (descriptorFlags.get(descriptor) === "r") {
+    if (
+      descriptorFlags.get(descriptor) === "r" &&
+      fs.fstatSync(descriptor).isFile()
+    ) {
       const error = new Error(
         "EPERM: operation not permitted, fsync",
       ) as NodeJS.ErrnoException;
@@ -63,6 +71,7 @@ function enforceWindowsFsyncWriteAccess(): void {
 }
 
 afterEach(() => {
+  closeRendererTestDatabases();
   vi.restoreAllMocks();
   for (const root of roots.splice(0)) {
     fs.rmSync(root, { recursive: true, force: true });
@@ -72,8 +81,10 @@ afterEach(() => {
 describe("renderer persistence migration", () => {
   it("flushes staged canonical files through Windows write-capable handles", async () => {
     enforceWindowsFsyncWriteAccess();
+    const storeRoot = createRoot();
     const store = createRendererPersistenceStore({
-      rootPath: createRoot(),
+      database: rendererTestDatabase(storeRoot),
+      rootPath: storeRoot,
       encryption,
     });
 
@@ -85,6 +96,7 @@ describe("renderer persistence migration", () => {
   it("moves durable settings, sources, device identity, recovery paths, and secrets to canonical owners", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -226,6 +238,7 @@ describe("renderer persistence migration", () => {
   it("survives an empty renderer snapshot after browser storage is cleared", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -246,6 +259,7 @@ describe("renderer persistence migration", () => {
   it("imports and redacts the legacy AI config when renderer storage has no provider copy", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -275,17 +289,20 @@ describe("renderer persistence migration", () => {
         apiKey: "legacy-provider-secret",
       }),
     ]);
-    const legacyConfig = fs.readFileSync(
-      path.join(root, "config", "ai-models.json"),
-      "utf8",
+    expect(fs.existsSync(path.join(root, "config", "ai-models.json"))).toBe(
+      false,
     );
-    expect(legacyConfig).not.toContain("legacy-provider-secret");
-    expect(JSON.parse(legacyConfig).providers[0].apiKey).toBe("");
+    expect(
+      JSON.stringify(
+        rendererTestDatabase(root).prepare("SELECT * FROM settings").all(),
+      ),
+    ).not.toContain("legacy-provider-secret");
   });
 
   it("fails closed on malformed sources without publishing a completion marker", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -321,44 +338,43 @@ describe("renderer persistence migration", () => {
     ).toBe(false);
   });
 
-  it("rolls back every canonical file when publication fails", async () => {
+  it("rolls back settings, auxiliary state and marker when publication fails", async () => {
     const root = createRoot();
-    const appConfigPath = path.join(root, "config", "app.json");
-    fs.mkdirSync(path.dirname(appConfigPath), { recursive: true });
-    fs.writeFileSync(appConfigPath, "previous-app-config\n", "utf8");
-    const store = createRendererPersistenceStore({
+    const database = rendererTestDatabase(root);
+    const initial = createRendererPersistenceStore({
+      database,
       rootPath: root,
       encryption,
-      failPublicationAt: "config/marketplace-sources.json",
     });
-
+    await initial.patchSettings({ language: "en" });
+    const vaultBefore = fs.readFileSync(path.join(root, "secrets/vault.enc"));
+    const failing = createRendererPersistenceStore({
+      database,
+      rootPath: root,
+      encryption,
+      failPublicationAt: "secrets/vault.enc",
+    });
     await expect(
-      store.migrate({
-        settings: persisted({ language: "fr" }),
-        skillStore: persisted({ customStoreSources: [] }),
+      failing.migrate({
+        settings: { language: "fr", githubToken: "secret" },
+        recoveryPaths: ["/changed"],
       }),
-    ).rejects.toThrow(/injected|publication/iu);
-
-    expect(fs.readFileSync(appConfigPath, "utf8")).toBe(
-      "previous-app-config\n",
+    ).rejects.toThrow(/publication/);
+    expect(initial.readHydratedStateSync()).toMatchObject({
+      migrationComplete: false,
+      settings: { language: "en" },
+      recoveryPaths: [],
+    });
+    expect(fs.readFileSync(path.join(root, "secrets/vault.enc"))).toEqual(
+      vaultBefore,
     );
-    expect(fs.existsSync(path.join(root, "secrets", "vault.enc"))).toBe(false);
-    expect(
-      fs.existsSync(
-        path.join(
-          root,
-          "data",
-          "operations",
-          "migrations",
-          "renderer-persistence-v1.json",
-        ),
-      ),
-    ).toBe(false);
+    expect(readRendererPersistenceMigrationMarker(root)).toBeNull();
   });
 
   it("moves the IndexedDB completion marker outside renderer storage", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -376,6 +392,7 @@ describe("renderer persistence migration", () => {
   it("keeps canonical settings, sources, recovery paths, and device identity current", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -414,6 +431,7 @@ describe("renderer persistence migration", () => {
   it("normalizes direct state, agent device settings, and all marketplace source types", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
       now: () => new Date("2026-08-12T00:00:00.000Z"),
@@ -485,9 +503,12 @@ describe("renderer persistence migration", () => {
       "2026-08-12T00:00:00.000Z",
     );
 
-    fs.rmSync(path.join(root, "config", "devices", "agents.json"));
-    const withoutAgents = store.readHydratedStateSync();
-    expect(withoutAgents.settings.builtinAgentOverrides).toBeUndefined();
+    expect(fs.existsSync(path.join(root, "config/devices/agents.json"))).toBe(
+      false,
+    );
+    expect(
+      store.readHydratedStateSync().settings.builtinAgentOverrides,
+    ).toEqual({ codex: { enabled: true } });
   });
 
   it("rejects malformed snapshots, settings, providers, recovery paths, and devices", async () => {
@@ -506,7 +527,7 @@ describe("renderer persistence migration", () => {
       },
       {
         input: { settings: { aiModels: new Array(513).fill({}) } },
-        pattern: /Invalid AI model collection/,
+        pattern: /Invalid renderer model id/,
       },
       {
         input: { settings: { aiProviders: [{ id: "../provider" }] } },
@@ -536,6 +557,7 @@ describe("renderer persistence migration", () => {
     for (const [index, testCase] of cases.entries()) {
       const root = createRoot();
       const store = createRendererPersistenceStore({
+        database: rendererTestDatabase(root),
         rootPath: root,
         encryption,
       });
@@ -548,16 +570,21 @@ describe("renderer persistence migration", () => {
 
     const circular: Record<string, unknown> = {};
     circular.self = circular;
+    const circularStoreRoot = createRoot();
     const circularStore = createRendererPersistenceStore({
-      rootPath: createRoot(),
+      database: rendererTestDatabase(circularStoreRoot),
+      rootPath: circularStoreRoot,
       encryption,
     });
     await expect(circularStore.migrate({ settings: circular })).rejects.toThrow(
       /Invalid renderer persistence snapshot/,
     );
 
+    const largeStoreRoot = createRoot();
+
     const largeStore = createRendererPersistenceStore({
-      rootPath: createRoot(),
+      database: rendererTestDatabase(largeStoreRoot),
+      rootPath: largeStoreRoot,
       encryption,
     });
     await expect(
@@ -593,6 +620,7 @@ describe("renderer persistence migration", () => {
     for (const collection of invalidCollections) {
       const root = createRoot();
       const store = createRendererPersistenceStore({
+        database: rendererTestDatabase(root),
         rootPath: root,
         encryption,
       });
@@ -603,8 +631,11 @@ describe("renderer persistence migration", () => {
       ).rejects.toThrow(/source|marketplace|unsafe|invalid/iu);
     }
 
+    const noSourcesRoot = createRoot();
+
     const noSources = createRendererPersistenceStore({
-      rootPath: createRoot(),
+      database: rendererTestDatabase(noSourcesRoot),
+      rootPath: noSourcesRoot,
       encryption,
     });
     await noSources.migrate({ skillStore: {} });
@@ -613,151 +644,50 @@ describe("renderer persistence migration", () => {
     ).toEqual([]);
   });
 
-  it("requires encryption for secrets and fails closed on corrupt vaults and references", async () => {
-    const unavailable: RendererPersistenceEncryption = {
-      ...encryption,
-      isEncryptionAvailable: () => false,
-    };
-    const root = createRoot();
-    const store = createRendererPersistenceStore({
-      rootPath: root,
-      encryption: unavailable,
-    });
-    await expect(
-      store.migrate({ settings: persisted({ githubToken: "secret" }) }),
-    ).rejects.toThrow("RENDERER_SECRET_VAULT_UNAVAILABLE");
-    await expect(
-      store.migrate({ settings: persisted({ language: "en" }) }),
-    ).resolves.toMatchObject({
-      status: "migrated",
-    });
-
-    const corruptCases: Array<{
-      mutate(rootPath: string): void;
-      encryption?: RendererPersistenceEncryption;
-      pattern: RegExp;
-    }> = [
-      {
-        mutate(rootPath) {
-          const vaultPath = path.join(rootPath, "secrets", "vault.enc");
-          const vault = JSON.parse(fs.readFileSync(vaultPath, "utf8"));
-          vault.kind = "wrong-vault";
-          fs.writeFileSync(vaultPath, JSON.stringify(vault));
-        },
-        pattern: /Invalid renderer secret vault/,
-      },
-      {
-        mutate(rootPath) {
-          const vaultPath = path.join(rootPath, "secrets", "vault.enc");
-          const vault = JSON.parse(fs.readFileSync(vaultPath, "utf8"));
-          vault.secrets["renderer:githubToken"] = 123;
-          fs.writeFileSync(vaultPath, JSON.stringify(vault));
-        },
-        pattern: /Invalid renderer secret vault/,
-      },
-      {
-        mutate() {},
-        encryption: unavailable,
-        pattern: /RENDERER_SECRET_VAULT_UNAVAILABLE/,
-      },
-      {
-        mutate(rootPath) {
-          const appPath = path.join(rootPath, "config", "app.json");
-          const app = JSON.parse(fs.readFileSync(appPath, "utf8"));
-          app.secretRefs.githubToken = 123;
-          fs.writeFileSync(appPath, JSON.stringify(app));
-        },
-        pattern: /Invalid renderer secret reference/,
-      },
-      {
-        mutate(rootPath) {
-          const appPath = path.join(rootPath, "config", "app.json");
-          const app = JSON.parse(fs.readFileSync(appPath, "utf8"));
-          app.secretRefs.githubToken = "renderer:missing";
-          fs.writeFileSync(appPath, JSON.stringify(app));
-        },
-        pattern: /Missing renderer secret/,
-      },
-      {
-        mutate(rootPath) {
-          const providersPath = path.join(rootPath, "config", "providers.json");
-          const providers = JSON.parse(fs.readFileSync(providersPath, "utf8"));
-          providers.providers[0].apiKeyRef = "renderer:missing";
-          fs.writeFileSync(providersPath, JSON.stringify(providers));
-        },
-        pattern: /Missing renderer secret/,
-      },
-      {
-        mutate(rootPath) {
-          const appPath = path.join(rootPath, "config", "app.json");
-          const app = JSON.parse(fs.readFileSync(appPath, "utf8"));
-          app.settings.networkProxy.usernameRef = "renderer:missing";
-          fs.writeFileSync(appPath, JSON.stringify(app));
-        },
-        pattern: /Missing renderer secret/,
-      },
-    ];
-    for (const corruptCase of corruptCases) {
-      const caseRoot = createRoot();
-      const initial = createRendererPersistenceStore({
-        rootPath: caseRoot,
+  it("fails closed on current SQL secret references and corrupt encrypted vaults", async () => {
+    for (const field of ["githubToken", "aiProviders", "networkProxy"]) {
+      const root = createRoot();
+      const database = rendererTestDatabase(root);
+      const store = createRendererPersistenceStore({
+        database,
+        rootPath: root,
         encryption,
       });
-      await initial.migrate({
-        settings: persisted({
+      await store.migrate({
+        settings: {
           githubToken: "secret",
-          aiProviders: [{ id: "provider-1", apiKey: "provider-secret" }],
-          networkProxy: { mode: "manual", username: "proxy-user" },
-        }),
+          aiProviders: [{ id: "p", apiKey: "provider" }],
+          networkProxy: { mode: "manual", username: "user" },
+        },
       });
-      corruptCase.mutate(caseRoot);
-      const reader = createRendererPersistenceStore({
-        rootPath: caseRoot,
-        encryption: corruptCase.encryption ?? encryption,
-      });
-      expect(() => reader.readHydratedStateSync()).toThrow(corruptCase.pattern);
+      const bad =
+        field === "githubToken"
+          ? { secretRef: "missing" }
+          : field === "aiProviders"
+            ? [{ id: "p", apiKeyRef: "missing" }]
+            : { usernameRef: "missing" };
+      new SettingsDB(database).set({ [field]: bad });
+      expect(() => store.readHydratedStateSync()).toThrow(
+        /Missing settings secret reference/,
+      );
     }
+    const root = createRoot();
+    const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
+      rootPath: root,
+      encryption,
+    });
+    await store.migrate({ settings: { githubToken: "secret" } });
+    const vaultPath = path.join(root, "secrets/vault.enc");
+    const vault = JSON.parse(fs.readFileSync(vaultPath, "utf8"));
+    vault.kind = "wrong";
+    fs.writeFileSync(vaultPath, JSON.stringify(vault));
+    expect(() => store.readHydratedStateSync()).toThrow(
+      /Invalid or unsupported settings vault/,
+    );
   });
 
   it("rejects unsafe canonical files, unsupported versions, and invalid markers", async () => {
-    const invalidFileRoot = createRoot();
-    const invalidFileStore = createRendererPersistenceStore({
-      rootPath: invalidFileRoot,
-      encryption,
-    });
-    await invalidFileStore.migrate({});
-    const appPath = path.join(invalidFileRoot, "config", "app.json");
-    fs.rmSync(appPath);
-    fs.mkdirSync(appPath);
-    expect(() => invalidFileStore.readHydratedStateSync()).toThrow(
-      /Invalid renderer persistence file/,
-    );
-
-    const versionRoot = createRoot();
-    const versionStore = createRendererPersistenceStore({
-      rootPath: versionRoot,
-      encryption,
-    });
-    await versionStore.migrate({});
-    const versionAppPath = path.join(versionRoot, "config", "app.json");
-    const app = JSON.parse(fs.readFileSync(versionAppPath, "utf8"));
-    app.version = 2;
-    fs.writeFileSync(versionAppPath, JSON.stringify(app));
-    expect(() => versionStore.readHydratedStateSync()).toThrow(/Unsupported/);
-
-    const agentRoot = createRoot();
-    const agentStore = createRendererPersistenceStore({
-      rootPath: agentRoot,
-      encryption,
-    });
-    await agentStore.migrate({ settings: { builtinAgentOverrides: {} } });
-    const agentPath = path.join(agentRoot, "config", "devices", "agents.json");
-    fs.rmSync(agentPath);
-    fs.mkdirSync(agentPath);
-    expect(agentStore.readHydratedStateSync().settings).not.toHaveProperty(
-      "builtinAgentOverrides",
-    );
-
     const markerFields: Array<[string, unknown]> = [
       ["kind", "wrong"],
       ["version", 2],
@@ -768,6 +698,7 @@ describe("renderer persistence migration", () => {
     for (const [field, value] of markerFields) {
       const markerRoot = createRoot();
       const markerStore = createRendererPersistenceStore({
+        database: rendererTestDatabase(markerRoot),
         rootPath: markerRoot,
         encryption,
       });
@@ -786,17 +717,6 @@ describe("renderer persistence migration", () => {
         /Invalid renderer persistence migration marker/,
       );
     }
-
-    const invalidJsonRoot = createRoot();
-    const invalidJsonStore = createRendererPersistenceStore({
-      rootPath: invalidJsonRoot,
-      encryption,
-    });
-    await invalidJsonStore.migrate({});
-    fs.writeFileSync(path.join(invalidJsonRoot, "config", "app.json"), "{");
-    expect(() => invalidJsonStore.readHydratedStateSync()).toThrow(
-      /Invalid renderer config\/app.json/,
-    );
   });
 
   it("blocks symlinked publication targets and restores settings after replacement failure", async () => {
@@ -804,13 +724,13 @@ describe("renderer persistence migration", () => {
       const parentRoot = createRoot();
       const outside = createRoot();
       fs.symlinkSync(outside, path.join(parentRoot, "config"));
-      const parentStore = createRendererPersistenceStore({
-        rootPath: parentRoot,
-        encryption,
-      });
-      await expect(parentStore.migrate({})).rejects.toThrow(
-        /Unsafe renderer persistence target/,
-      );
+      expect(() =>
+        createRendererPersistenceStore({
+          database: rendererTestDatabase(parentRoot),
+          rootPath: parentRoot,
+          encryption,
+        }),
+      ).toThrow(/unsafe|symlink|symbolic link/i);
 
       const targetRoot = createRoot();
       const targetOutside = path.join(createRoot(), "app.json");
@@ -820,25 +740,27 @@ describe("renderer persistence migration", () => {
         targetOutside,
         path.join(targetRoot, "config", "app.json"),
       );
-      const targetStore = createRendererPersistenceStore({
-        rootPath: targetRoot,
-        encryption,
-      });
-      await expect(targetStore.migrate({})).rejects.toThrow(
-        /Unsafe renderer persistence target/,
-      );
+      expect(() =>
+        createRendererPersistenceStore({
+          database: rendererTestDatabase(targetRoot),
+          rootPath: targetRoot,
+          encryption,
+        }),
+      ).toThrow(/unsafe|symlink|symbolic link/i);
     }
 
     const root = createRoot();
     const initial = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
     await initial.migrate({ settings: persisted({ language: "en" }) });
     const failing = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
-      failPublicationAt: "config/providers.json",
+      failPublicationAt: "secrets/vault.enc",
     });
     await expect(
       failing.replaceSettings({ language: "fr", githubToken: "new-secret" }),
@@ -847,8 +769,10 @@ describe("renderer persistence migration", () => {
   });
 
   it("handles IndexedDB marker preconditions, idempotence, verification, and atomic failure", async () => {
+    const incompleteRoot = createRoot();
     const incomplete = createRendererPersistenceStore({
-      rootPath: createRoot(),
+      database: rendererTestDatabase(incompleteRoot),
+      rootPath: incompleteRoot,
       encryption,
     });
     await expect(incomplete.markIndexedDbMigrationDone()).rejects.toThrow(
@@ -858,6 +782,7 @@ describe("renderer persistence migration", () => {
 
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -867,6 +792,7 @@ describe("renderer persistence migration", () => {
 
     const verifyRoot = createRoot();
     const verifyStore = createRendererPersistenceStore({
+      database: rendererTestDatabase(verifyRoot),
       rootPath: verifyRoot,
       encryption,
     });
@@ -888,6 +814,7 @@ describe("renderer persistence migration", () => {
 
     const atomicRoot = createRoot();
     const atomicStore = createRendererPersistenceStore({
+      database: rendererTestDatabase(atomicRoot),
       rootPath: atomicRoot,
       encryption,
     });
@@ -908,12 +835,13 @@ describe("renderer persistence migration", () => {
   it("hydrates pre-migration and partially missing renderer documents safely", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
     expect(store.readHydratedStateSync()).toEqual({
       migrationComplete: false,
-      settings: { aiProviders: [], aiModels: [] },
+      settings: { aiProviders: [], aiModels: [], modelRouteDefaults: {} },
       marketplaceSources: { skill: [], mcp: [], plugin: [] },
       recoveryPaths: [],
       selfHostedDeviceId: null,
@@ -925,32 +853,12 @@ describe("renderer persistence migration", () => {
 
     const migratedRoot = createRoot();
     const migrated = createRendererPersistenceStore({
+      database: rendererTestDatabase(migratedRoot),
       rootPath: migratedRoot,
       encryption,
     });
     await migrated.migrate({ settings: persisted({ language: "en" }) });
-    const devicesPath = path.join(
-      migratedRoot,
-      "config",
-      "devices",
-      "renderer.json",
-    );
-    const devices = JSON.parse(fs.readFileSync(devicesPath, "utf8"));
-    devices.selfHostedDeviceId = 123;
-    fs.writeFileSync(devicesPath, JSON.stringify(devices));
-    const providersPath = path.join(migratedRoot, "config", "providers.json");
-    const providers = JSON.parse(fs.readFileSync(providersPath, "utf8"));
-    providers.providers = {};
-    providers.models = null;
-    fs.writeFileSync(providersPath, JSON.stringify(providers));
-    const recoveryPath = path.join(
-      migratedRoot,
-      "config",
-      "recovery-paths.json",
-    );
-    const recovery = JSON.parse(fs.readFileSync(recoveryPath, "utf8"));
-    recovery.paths = ["/valid", 123, null];
-    fs.writeFileSync(recoveryPath, JSON.stringify(recovery));
+    await migrated.replaceRecoveryPaths(["/valid"]);
 
     const hydrated = migrated.readHydratedStateSync();
     expect(hydrated.selfHostedDeviceId).toBeNull();
@@ -972,6 +880,7 @@ describe("renderer persistence migration", () => {
   it("keeps local Agent identity stable without provisioning sync identity", async () => {
     const root = createRoot();
     const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
       rootPath: root,
       encryption,
     });
@@ -983,39 +892,17 @@ describe("renderer persistence migration", () => {
       }),
       selfHostedDeviceId: null,
     });
-    const agentPath = path.join(root, "config", "devices", "agents.json");
-    const rendererPath = path.join(root, "config", "devices", "renderer.json");
-    const initialAgentId = JSON.parse(
-      fs.readFileSync(agentPath, "utf8"),
-    ).deviceId;
-
-    expect(initialAgentId).toMatch(/^device-[a-f0-9]{32}$/u);
-    expect(
-      JSON.parse(fs.readFileSync(rendererPath, "utf8")).selfHostedDeviceId,
-    ).toBeNull();
-
-    const legacyAgentDocument = JSON.parse(fs.readFileSync(agentPath, "utf8"));
-    legacyAgentDocument.deviceId = "desktop-legacy-agent";
-    fs.writeFileSync(agentPath, JSON.stringify(legacyAgentDocument), "utf8");
+    expect(fs.existsSync(path.join(root, "config/devices/agents.json"))).toBe(
+      false,
+    );
+    expect(store.readHydratedStateSync().selfHostedDeviceId).toBeNull();
     expect(
       store.readHydratedStateSync().settings.agentIdentityPreferences,
-    ).toBeUndefined();
-
-    await store.replaceSettings({
-      ...store.readHydratedStateSync().settings,
-      language: "zh",
-    });
-    expect(JSON.parse(fs.readFileSync(agentPath, "utf8")).deviceId).toBe(
-      "desktop-legacy-agent",
-    );
-
-    const syncDeviceId = await store.getOrCreateSelfHostedDeviceId();
-    expect(syncDeviceId).toMatch(/^desktop-/u);
-    expect(JSON.parse(fs.readFileSync(agentPath, "utf8")).deviceId).toBe(
-      "desktop-legacy-agent",
-    );
+    ).toEqual({ codex: { name: "codex", icon: "codex" } });
+    await store.replaceSettings({ language: "zh" });
+    expect(await store.getOrCreateSelfHostedDeviceId()).toMatch(/^desktop-/);
     expect(
       store.readHydratedStateSync().settings.agentIdentityPreferences,
-    ).toBeUndefined();
+    ).toEqual({ codex: { name: "codex", icon: "codex" } });
   });
 });

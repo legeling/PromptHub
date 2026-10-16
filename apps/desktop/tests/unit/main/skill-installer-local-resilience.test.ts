@@ -797,6 +797,33 @@ describe("SkillInstaller.scanLocal (with real DB)", () => {
     expect(result.skipped).toContain("existing-skill");
     expect(result.skipped).toHaveLength(1);
     expect(skillDb.getByName("new-skill")).not.toBeNull();
+    expect(
+      skillDb
+        .getAll()
+        .map((skill) => skill.name)
+        .sort(),
+    ).toEqual(["existing-skill", "new-skill"]);
+  });
+
+  it("does not rediscover historical packages as new Skills", async () => {
+    const skill = skillDb.create({
+      name: "current",
+      content: "Current",
+      protocol_type: "skill",
+      is_favorite: false,
+    });
+    const version = skillDb.createVersion(skill.id, "Past name", [
+      {
+        relativePath: "SKILL.md",
+        content:
+          "---\nname: historical-only\ndescription: Historical\n---\nOld body",
+      },
+      { relativePath: "asset.bin", content: "AP8=", encoding: "base64" },
+    ]);
+    const result = await SkillInstaller.scanLocal(skillDb);
+    expect(result).toEqual({ imported: 0, skipped: [] });
+    expect(skillDb.getAll().map((entry) => entry.id)).toEqual([skill.id]);
+    expect(skillDb.getVersions(skill.id)).toEqual([version]);
   });
 
   it("returns zero imported and empty skipped for empty directories", async () => {

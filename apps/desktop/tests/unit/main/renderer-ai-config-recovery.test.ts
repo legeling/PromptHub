@@ -1,3 +1,8 @@
+import { planSettingsSqliteUpgrade } from "@prompthub/core/migrations/settings-sqlite-v1";
+import {
+  rendererTestDatabase,
+  closeRendererTestDatabases,
+} from "../../../../../packages/core/tests/helpers/renderer-database";
 /**
  * @vitest-environment node
  */
@@ -81,20 +86,63 @@ async function createAffectedRoot(
     imageGeneration: "model-image",
   },
 ) {
-  const store = createRendererPersistenceStore({ rootPath: root, encryption });
-  await store.migrate({
-    settings: {
-      aiProvider: "openai",
-      aiApiProtocol: "openai",
-      aiApiUrl: "https://api.example.test/v1",
-      aiApiKey: "legacy-flat-secret",
-      aiModel: "gpt-chat",
-      aiProviders: [],
-      aiModels: [],
-      modelRouteDefaults,
+  const seed = (relative: string, value: unknown): void => {
+    const file = path.join(root, relative);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(value));
+  };
+  seed("data/operations/migrations/renderer-persistence-v1.json", {
+    kind: "prompthub-renderer-persistence-migration",
+    version: 1,
+    state: "complete",
+    completedAt: "2026-08-18T00:00:00.000Z",
+    indexedDbMigrationDone: true,
+  });
+  seed("config/app.json", {
+    kind: "prompthub-app-config",
+    version: 1,
+    settings: {},
+    secretRefs: {},
+  });
+  seed("config/providers.json", {
+    kind: "prompthub-provider-config",
+    version: 1,
+    settings: { modelRouteDefaults },
+    providers: [],
+    models: [],
+    secretRefs: { aiApiKey: "renderer:aiApiKey" },
+  });
+  seed("config/sync-providers.json", {
+    kind: "prompthub-sync-provider-config",
+    version: 1,
+    settings: {},
+    secretRefs: {},
+  });
+  seed("secrets/vault.enc", {
+    kind: "prompthub-device-secret-vault",
+    version: 1,
+    secrets: {
+      "renderer:aiApiKey": Buffer.from("encrypted:legacy-flat-secret").toString(
+        "base64",
+      ),
     },
   });
-  return store;
+  return {
+    readHydratedStateSync: () => {
+      const upgrade = planSettingsSqliteUpgrade(
+        rendererTestDatabase(root),
+        root,
+        encryption,
+      );
+      return upgrade
+        ? { settings: upgrade.settings }
+        : createRendererPersistenceStore({
+            database: rendererTestDatabase(root),
+            rootPath: root,
+            encryption,
+          }).readHydratedStateSync();
+    },
+  };
 }
 
 function writeBackup(
@@ -142,6 +190,7 @@ function writeManagedBackup(root: string): string {
 }
 
 afterEach(() => {
+  closeRendererTestDatabases();
   vi.restoreAllMocks();
   for (const root of roots.splice(0)) {
     fs.rmSync(root, { recursive: true, force: true });
@@ -155,6 +204,7 @@ describe("renderer AI config recovery", () => {
     const backupPath = writeBackup(root);
 
     const result = await repairRendererAIConfigFromUpgradeBackups({
+      database: rendererTestDatabase(root),
       activeRoot: root,
       encryption,
       listBackups: async () => [{ backupId: "candidate", backupPath }],
@@ -178,7 +228,7 @@ describe("renderer AI config recovery", () => {
     });
     expect(JSON.stringify(hydrated.settings)).toContain("chat-backup-secret");
 
-    const persisted = ["config/providers.json", "config/ai-models.json"]
+    const persisted = ["data/prompthub.db", "secrets/vault.enc"]
       .map((relativePath) => fs.readFileSync(path.join(root, relativePath)))
       .join("\n");
     expect(persisted).not.toContain("provider-backup-secret");
@@ -186,6 +236,7 @@ describe("renderer AI config recovery", () => {
 
     await expect(
       repairRendererAIConfigFromUpgradeBackups({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
         listBackups: async () => [{ backupId: "candidate", backupPath }],
@@ -200,6 +251,7 @@ describe("renderer AI config recovery", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
     const state = await readRendererSettingsWithAIRecovery({
+      database: rendererTestDatabase(root),
       activeRoot: root,
       encryption,
     });
@@ -210,27 +262,35 @@ describe("renderer AI config recovery", () => {
     );
   });
 
-  it("keeps startup usable and retryable when encrypted publication fails", async () => {
+  it("preserves upgrade inputs and reports unavailable device encryption instead of committing an incomplete upgrade", async () => {
     const root = createRoot();
     await createAffectedRoot(root);
     writeManagedBackup(root);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    const state = await readRendererSettingsWithAIRecovery({
-      activeRoot: root,
-      encryption: {
-        ...encryption,
-        encryptString: () => {
-          throw new Error("encryption unavailable");
-        },
-      },
-    });
-
-    expect(state.settings.aiModels).toEqual([]);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("preserving current files"),
-      expect.objectContaining({ message: "encryption unavailable" }),
+    const before = fs.readFileSync(path.join(root, "secrets/vault.enc"));
+    await expect(
+      readRendererSettingsWithAIRecovery({
+        database: rendererTestDatabase(root),
+        activeRoot: root,
+        encryption: { ...encryption, isEncryptionAvailable: () => false },
+      }),
+    ).rejects.toThrow(/desktop.*upgrade/i);
+    expect(fs.readFileSync(path.join(root, "secrets/vault.enc"))).toEqual(
+      before,
     );
+    expect(
+      rendererTestDatabase(root)
+        .prepare("SELECT name FROM schema_migrations WHERE name = ?")
+        .get("settings-sqlite-v1"),
+    ).toBeNull();
+    expect(
+      (
+        await readRendererSettingsWithAIRecovery({
+          database: rendererTestDatabase(root),
+          activeRoot: root,
+          encryption,
+        })
+      ).settings.aiModels,
+    ).toHaveLength(2);
   });
 
   it.each([
@@ -245,6 +305,7 @@ describe("renderer AI config recovery", () => {
       await createAffectedRoot(root, modelRouteDefaults);
 
       const state = await readRendererSettingsWithAIRecovery({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
       });
@@ -259,6 +320,7 @@ describe("renderer AI config recovery", () => {
 
     await expect(
       repairRendererAIConfigFromUpgradeBackups({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
         listBackups,
@@ -313,6 +375,7 @@ describe("renderer AI config recovery", () => {
 
     await expect(
       repairRendererAIConfigFromUpgradeBackups({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
         listBackups: async () => [
@@ -341,6 +404,7 @@ describe("renderer AI config recovery", () => {
 
     await expect(
       repairRendererAIConfigFromUpgradeBackups({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
         listBackups: async () => [
@@ -358,9 +422,10 @@ describe("renderer AI config recovery", () => {
 
     await expect(
       repairRendererAIConfigFromUpgradeBackups({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
-        failPublicationAt: "config/providers.json",
+        failPublicationAt: "secrets/vault.enc",
         listBackups: async () => [{ backupId: "candidate", backupPath }],
       }),
     ).rejects.toThrow(/publication failure/iu);
@@ -368,10 +433,36 @@ describe("renderer AI config recovery", () => {
 
     await expect(
       repairRendererAIConfigFromUpgradeBackups({
+        database: rendererTestDatabase(root),
         activeRoot: root,
         encryption,
         listBackups: async () => [{ backupId: "candidate", backupPath }],
       }),
     ).resolves.toMatchObject({ status: "recovered" });
+  });
+  it("never resurrects an intentionally cleared SQL inventory after the upgrade", async () => {
+    const root = createRoot();
+    await createAffectedRoot(root);
+    writeManagedBackup(root);
+    await readRendererSettingsWithAIRecovery({
+      database: rendererTestDatabase(root),
+      activeRoot: root,
+      encryption,
+    });
+    const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
+      rootPath: root,
+      encryption,
+    });
+    await store.patchSettings({ aiModels: [], aiProviders: [] });
+    expect(
+      (
+        await readRendererSettingsWithAIRecovery({
+          database: rendererTestDatabase(root),
+          activeRoot: root,
+          encryption,
+        })
+      ).settings.aiModels,
+    ).toEqual([]);
   });
 });

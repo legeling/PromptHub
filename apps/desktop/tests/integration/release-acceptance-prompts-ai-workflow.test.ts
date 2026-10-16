@@ -67,7 +67,7 @@ function registerDomain(): void {
   const prompts = new PromptDB(database);
   const folders = new FolderDB(database);
   registerPromptIPC(prompts, folders, database);
-  registerFolderIPC(folders, prompts);
+  registerFolderIPC(folders);
   registerGenerationIPC(database);
   registerSettingsIPC(database);
 }
@@ -352,7 +352,7 @@ describe("Prompt and AI public workflows", () => {
     expect(await startupDecision()).toEqual({ status: "already-canonical" });
   });
 
-  it("persists model-service provider, model and route via settings and the config file", async () => {
+  it("persists model-service provider, model and route through shared SQL settings", async () => {
     const provider = {
       id: "fixture-provider",
       name: "Fixture",
@@ -385,17 +385,24 @@ describe("Prompt and AI public workflows", () => {
       ],
       modelRouteDefaults: { mainText: model.id },
     });
-    const config: unknown = JSON.parse(
-      fs.readFileSync(
-        path.join(currentRuntime().profile, "config", "ai-models.json"),
-        "utf8",
+    expect(
+      fs.existsSync(
+        path.join(currentRuntime().profile, "config/ai-models.json"),
       ),
+    ).toBe(false);
+    const rows = getDatabase()
+      .prepare("SELECT key, value FROM settings WHERE key IN (?, ?, ?)")
+      .all("aiProviders", "aiModels", "modelRouteDefaults");
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { key: "aiProviders", value: expect.stringContaining(provider.id) },
+        { key: "aiModels", value: expect.stringContaining(model.id) },
+        {
+          key: "modelRouteDefaults",
+          value: JSON.stringify({ mainText: model.id }),
+        },
+      ]),
     );
-    expect(config).toMatchObject({
-      providers: [expect.objectContaining({ id: provider.id })],
-      models: [expect.objectContaining({ id: model.id })],
-      modelRouteDefaults: { mainText: model.id },
-    });
   });
 });
 
@@ -428,10 +435,15 @@ describe("Release acceptance regressions (PA-01, PA-02, PA-04)", () => {
       userPrompt: "remove",
       tags: ["retired"],
     });
-    await promptApi.delete(deleted.id);
     const trashRoot = path.join(currentRuntime().profile, "data", ".trash");
+    // Existing Markdown recovery material is an upgrade input. Canonical
+    // deletion no longer exports a second Markdown workspace or creates trash.
+    const legacyTrash = path.join(trashRoot, "legacy", "deleted.md");
+    fs.mkdirSync(path.dirname(legacyTrash), { recursive: true });
+    fs.writeFileSync(legacyTrash, "# Previous deleted content\n");
     const recoveryBytes = recoveryFileBytes(trashRoot);
     expect(recoveryBytes.length).toBeGreaterThan(0);
+    await promptApi.delete(deleted.id);
     let mutationError: unknown;
     try {
       await promptApi.update(survivor.id, { userPrompt: "after deletion" });

@@ -130,9 +130,7 @@ export function getSkillsDir(): string {
 }
 
 export function getRulesDir(): string {
-  return getRuntimeStorageContext().localAuthority === "canonical-files"
-    ? path.join(getCacheDir(), "rules-workspace")
-    : path.join(getDataDir(), "rules");
+  return path.join(getDataDir(), "rule-files");
 }
 
 export function getLegacyWorkspaceDir(): string {
@@ -148,13 +146,11 @@ export function getPromptsDir(): string {
 }
 
 export function getWorkspaceDir(): string {
-  return getRuntimeStorageContext().workspacePath;
+  return path.join(getCacheDir(), "prompt-workspace");
 }
 
 export function getPromptsWorkspaceDir(): string {
-  return getRuntimeStorageContext().localAuthority === "canonical-files"
-    ? path.join(getCacheDir(), "prompt-workspace")
-    : getPromptsDir();
+  return path.join(getWorkspaceDir(), "prompts");
 }
 
 export function getLegacyImagesDir(): string {
@@ -170,10 +166,7 @@ export function getGenerationsDir(): string {
 }
 
 export function getGeneratedImagesDir(): string {
-  const context = getRuntimeStorageContext();
-  return context.localAuthority === "canonical-files"
-    ? path.join(context.cachePath, "generated-images")
-    : path.join(getGenerationsDir(), "assets");
+  return path.join(getGenerationsDir(), "assets");
 }
 
 export function getLegacyGeneratedImagesDir(): string {

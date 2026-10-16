@@ -81,7 +81,7 @@ function hashDescriptor(
   return { hash: hash.digest("hex"), size };
 }
 
-function hashRegularFile(filePath: string, maxBytes: number) {
+export function hashRegularFile(filePath: string, maxBytes: number): { hash: string; size: number } {
   const descriptor = openRegularFile(filePath);
   try {
     return hashDescriptor(descriptor, maxBytes);

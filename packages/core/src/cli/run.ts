@@ -240,6 +240,7 @@ async function runCliOperation(
         commandArgs,
         commandIo,
         configured.output,
+        databaseHooks,
       );
     }
 

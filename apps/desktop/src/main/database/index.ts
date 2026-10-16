@@ -1,4 +1,12 @@
+import { migrateGenerationSqliteV1 } from "@prompthub/core/migrations/generation-sqlite-v1";
+import { migrateSkillSqliteV1 } from "@prompthub/core/migrations/skill-sqlite-v1";
+import { migrateSkillPayloadFilesV1 } from "@prompthub/core/migrations/skill-payload-files-v1";
+import { migrateRuleMetadataV1 } from "@prompthub/core/migrations/rule-metadata-v1";
+import { migratePromptWorkspaceV1 } from "@prompthub/core/migrations/prompt-workspace-v1";
 import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
+import { migratePluginSqliteV1 } from "@prompthub/core/migrations/plugin-sqlite-v1";
+import { migrateAgentProviderSqliteV1 } from "@prompthub/core/migrations/agent-provider-sqlite-v1";
+import { migratePromptSqliteV1 } from "@prompthub/core/migrations/prompt-sqlite-v1";
 import { migrateGeminiDefaultDisabled } from "@prompthub/core/migrations/gemini-default-disabled-v1";
 import { initializeDesktopMcpStorage } from "../services/desktop-mcp-library";
 /**
@@ -21,11 +29,9 @@ import {
 } from "@prompthub/db";
 import {
   assertStorageMaintenanceAvailable,
-  CanonicalRuleDB,
-  CanonicalSkillDB,
   getRuntimeStorageContext,
   recoverCanonicalResourcePublications,
-  recoverCanonicalEntryPublications,
+  recoverStorageEntryPublications,
 } from "@prompthub/core";
 import type { RecoveryContentCounts } from "@prompthub/shared/types";
 import {
@@ -174,7 +180,7 @@ function resolveSkillRepoPath(skill: {
  */
 export function initDatabase(): DatabaseAdapter.Database {
   assertStorageMaintenanceAvailable(getUserDataPath());
-  recoverCanonicalEntryPublications(getUserDataPath());
+  recoverStorageEntryPublications(getUserDataPath());
   recoverCanonicalResourcePublications(getDataDir());
   const dbPath = getDatabasePath();
   const database = dbInit(dbPath, {
@@ -182,10 +188,7 @@ export function initDatabase(): DatabaseAdapter.Database {
     recoverUnregisteredLock: true,
   });
   try {
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      new CanonicalSkillDB(database).reconcileCanonicalWorkspaces();
-      new CanonicalRuleDB(database).reconcileCanonicalWorkspaces();
-    } else {
+    if (getRuntimeStorageContext().localAuthority !== "canonical-files") {
       reconcileDesktopSkillRepoPaths(
         database,
         path.join(
@@ -197,6 +200,39 @@ export function initDatabase(): DatabaseAdapter.Database {
         resolveSkillRepoPath,
       );
     }
+    migrateSkillSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migrateSkillPayloadFilesV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: dbPath,
+      skillsRoot: getSkillsDir(),
+    });
+    migrateAgentProviderSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: dbPath,
+    });
+    migratePromptSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: dbPath,
+    });
+    migratePromptWorkspaceV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: dbPath,
+    });
+    migrateGenerationSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: dbPath,
+    });
+    migrateRuleMetadataV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+    migratePluginSqliteV1(database, {
+      rootPath: getUserDataPath(),
+      databasePath: dbPath,
+    });
     migrateAgentSettingsV1(database, getUserDataPath());
     initializeDesktopMcpStorage(database);
     migrateGeminiDefaultDisabled(database);

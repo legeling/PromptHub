@@ -474,8 +474,8 @@ describe("scanLocalPreview DB conflict detection (M6)", () => {
   beforeEach(async () => {
     await SkillInstaller.init();
 
-    // Real in-memory DB
-    const sqliteDb = new Database(":memory:");
+    // Real database with managed package files in the isolated profile.
+    const sqliteDb = new Database(path.join(tmpDir, "skills-test.db"));
     sqliteDb.exec(SCHEMA_TABLES);
     applySkillMigrationColumns(sqliteDb);
     sqliteDb.exec(SCHEMA_INDEXES);
@@ -601,7 +601,7 @@ describe("L3: JSON export/import preserves source_url", () => {
 
   it("importFromJson round-trips source_url through export → import", async () => {
     // Create a real in-memory DB
-    const sqliteDb = new Database(":memory:");
+    const sqliteDb = new Database(path.join(tmpDir, "skills-test.db"));
     sqliteDb.exec(SCHEMA_TABLES);
     applySkillMigrationColumns(sqliteDb);
     sqliteDb.exec(SCHEMA_INDEXES);
@@ -641,7 +641,7 @@ describe("L3: JSON export/import preserves source_url", () => {
   });
 
   it("importFromJson preserves source_id alongside source metadata", async () => {
-    const sqliteDb = new Database(":memory:");
+    const sqliteDb = new Database(path.join(tmpDir, "skills-test.db"));
     sqliteDb.exec(SCHEMA_TABLES);
     applySkillMigrationColumns(sqliteDb);
     sqliteDb.exec(SCHEMA_INDEXES);
@@ -678,7 +678,7 @@ describe("L3: JSON export/import preserves source_url", () => {
   });
 
   it("importFromJson handles missing source_url gracefully", async () => {
-    const sqliteDb = new Database(":memory:");
+    const sqliteDb = new Database(path.join(tmpDir, "skills-test.db"));
     sqliteDb.exec(SCHEMA_TABLES);
     applySkillMigrationColumns(sqliteDb);
     sqliteDb.exec(SCHEMA_INDEXES);

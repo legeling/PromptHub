@@ -1,53 +1,34 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 import type { McpEncryptedSecret } from "@prompthub/shared/types/mcp-storage";
-import type { Entry } from "@napi-rs/keyring";
 
-const KEY_BYTES = 32;
+import {
+  createDeviceMasterKeyStore,
+  DEVICE_MASTER_KEY_BYTES,
+  type DeviceMasterKeyStore,
+} from "./device-keyring";
 const IV_BYTES = 12;
 const KEYRING_SERVICE = "PromptHub.MCP";
 
-export interface McpMasterKeyStore {
-  read(keyId: string): Buffer | null;
-  write(keyId: string, key: Buffer): void;
-}
+export type McpMasterKeyStore = DeviceMasterKeyStore;
 export class McpCredentialError extends Error {
   readonly code = "MCP_RESOURCE_SECRET_STORE_UNAVAILABLE";
   constructor(cause?: unknown) {
     super("MCP device credential store is unavailable", { cause });
   }
 }
-function entry(keyId: string): Entry {
-  // Native keyring remains external in CJS app bundles and is loaded only for secret access.
-  const requireNative = createRequire(
-    typeof __filename === "string"
-      ? __filename
-      : fileURLToPath(import.meta.url),
-  );
-  const native: typeof import("@napi-rs/keyring") =
-    requireNative("@napi-rs/keyring");
-  return new native.Entry(KEYRING_SERVICE, keyId, {
-    linux: { store: "secret-service" },
-  });
-}
 export function createMcpMasterKeyStore(): McpMasterKeyStore {
+  const store = createDeviceMasterKeyStore(KEYRING_SERVICE);
   return {
     read(keyId) {
       try {
-        const value = entry(keyId).getPassword();
-        if (value === null) return null;
-        const key = Buffer.from(value, "base64");
-        if (key.length !== KEY_BYTES || key.toString("base64") !== value)
-          throw new Error("Invalid MCP master key");
-        return key;
+        return store.read(keyId);
       } catch (cause) {
         throw new McpCredentialError(cause);
       }
     },
     write(keyId, key) {
       try {
-        entry(keyId).setPassword(key.toString("base64"));
+        store.write(keyId, key);
       } catch (cause) {
         throw new McpCredentialError(cause);
       }
@@ -61,10 +42,11 @@ function readKey(
 ): Buffer {
   let key = store.read(id);
   if (key === null && create) {
-    key = randomBytes(KEY_BYTES);
+    key = randomBytes(DEVICE_MASTER_KEY_BYTES);
     store.write(id, key);
   }
-  if (key === null || key.length !== KEY_BYTES) throw new McpCredentialError();
+  if (key === null || key.length !== DEVICE_MASTER_KEY_BYTES)
+    throw new McpCredentialError();
   return key;
 }
 function associatedData(

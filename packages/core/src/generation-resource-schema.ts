@@ -1,3 +1,4 @@
+import { validateGenerationManifest } from "@prompthub/shared/utils/generation-manifest";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -5,7 +6,6 @@ import path from "node:path";
 import type {
   GenerationBatchManifest,
   GenerationOutputRecord,
-  GenerationSlotStatus,
 } from "@prompthub/shared/types";
 
 import {
@@ -22,20 +22,18 @@ import {
   type ResourceBundleWritePolicy,
 } from "./resource-bundle-publication";
 
-const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const GENERATION_RESOURCE_TYPE = "generation";
 const GENERATION_PAYLOAD_PATH = "batch.json";
 const GENERATION_SCHEMA_VERSION = 1;
 const MAX_GENERATION_MANIFEST_BYTES = 8 * 1024 * 1024;
-const SLOT_STATUSES = new Set<GenerationSlotStatus>([
-  "pending",
-  "running",
-  "succeeded",
-  "failed",
-  "cancelled",
-  "interrupted",
-]);
 
+/** Historical standalone manifests are accepted only by explicit migration/import. */
+export function readGenerationManifestFile(file: string): GenerationBatchManifest {
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_GENERATION_MANIFEST_BYTES)
+    throw new Error("Historical generation manifest is unsafe");
+  return validateGenerationManifest(JSON.parse(fs.readFileSync(file, "utf8"))).manifest;
+}
 export interface MaterializeGenerationResourceInput {
   bundlePath: string;
   objectsRoot: string;
@@ -53,145 +51,6 @@ export interface ReadGenerationResourceResult {
   manifest: GenerationBatchManifest;
   outputs: GenerationOutputRecord[];
   bundleManifest: ResourceBundleManifest;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function assertString(value: unknown, label: string): asserts value is string {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`generation resource ${label} is invalid`);
-  }
-}
-
-function assertTimestamp(
-  value: unknown,
-  label: string,
-): asserts value is string {
-  if (
-    typeof value !== "string" ||
-    !Number.isFinite(Date.parse(value)) ||
-    new Date(value).toISOString() !== value
-  ) {
-    throw new Error(`generation resource ${label} is invalid`);
-  }
-}
-
-function assertSafeFileName(value: unknown): asserts value is string {
-  if (
-    typeof value !== "string" ||
-    !value ||
-    path.basename(value) !== value ||
-    /[\u0000-\u001f\u007f/\\]/u.test(value)
-  ) {
-    throw new Error("generation resource output fileName is invalid");
-  }
-}
-
-function validateOutput(
-  value: unknown,
-  slotIndex: number,
-): GenerationOutputRecord {
-  if (!isRecord(value))
-    throw new Error("generation resource output is invalid");
-  assertString(value.id, "output id");
-  if (value.slotIndex !== slotIndex) {
-    throw new Error("generation resource output slotIndex is invalid");
-  }
-  assertSafeFileName(value.fileName);
-  assertString(value.mimeType, "output mimeType");
-  if (!Number.isSafeInteger(value.byteSize) || Number(value.byteSize) < 1) {
-    throw new Error("generation resource output byteSize is invalid");
-  }
-  if (typeof value.sha256 !== "string" || !SHA256_PATTERN.test(value.sha256)) {
-    throw new Error("generation resource output sha256 is invalid");
-  }
-  if (typeof value.favorite !== "boolean") {
-    throw new Error("generation resource output favorite is invalid");
-  }
-  assertTimestamp(value.createdAt, "output createdAt");
-  return value as unknown as GenerationOutputRecord;
-}
-
-function countStatuses(statuses: readonly GenerationSlotStatus[]) {
-  const count = (status: GenerationSlotStatus) =>
-    statuses.filter((value) => value === status).length;
-  return {
-    total: statuses.length,
-    pending: count("pending"),
-    running: count("running"),
-    succeeded: count("succeeded"),
-    failed: count("failed"),
-    cancelled: count("cancelled"),
-    interrupted: count("interrupted"),
-  };
-}
-
-function validateSlots(
-  value: Record<string, unknown>,
-): GenerationOutputRecord[] {
-  if (!Array.isArray(value.slots) || value.slots.length !== value.targetCount) {
-    throw new Error("generation resource slots do not match targetCount");
-  }
-  const statuses: GenerationSlotStatus[] = [];
-  const outputs: GenerationOutputRecord[] = [];
-  value.slots.forEach((slotValue, index) => {
-    if (
-      !isRecord(slotValue) ||
-      slotValue.index !== index ||
-      !SLOT_STATUSES.has(slotValue.status as GenerationSlotStatus)
-    ) {
-      throw new Error("generation resource slot is invalid");
-    }
-    const status = slotValue.status as GenerationSlotStatus;
-    statuses.push(status);
-    if (status === "succeeded") {
-      outputs.push(validateOutput(slotValue.output, index));
-    } else if (slotValue.output !== undefined) {
-      throw new Error("generation resource non-succeeded slot has an output");
-    }
-  });
-  if (
-    JSON.stringify(value.counts) !== JSON.stringify(countStatuses(statuses))
-  ) {
-    throw new Error("generation resource counts do not match slots");
-  }
-  return outputs;
-}
-
-function validateGenerationManifest(value: unknown): {
-  manifest: GenerationBatchManifest;
-  outputs: GenerationOutputRecord[];
-} {
-  if (!isRecord(value))
-    throw new Error("generation resource manifest is invalid");
-  if (value.kind !== "prompthub-generation-batch" || value.version !== 1) {
-    throw new Error("generation resource manifest header is unsupported");
-  }
-  assertString(value.id, "id");
-  assertString(value.title, "title");
-  assertString(value.resolvedPrompt, "resolvedPrompt");
-  if (!isRecord(value.model))
-    throw new Error("generation resource model is invalid");
-  assertString(value.model.id, "model id");
-  assertString(value.model.provider, "model provider");
-  assertString(value.model.model, "model name");
-  if (!isRecord(value.parameters))
-    throw new Error("generation resource parameters are invalid");
-  if (
-    !Number.isSafeInteger(value.targetCount) ||
-    Number(value.targetCount) < 1 ||
-    Number(value.targetCount) > 1000
-  ) {
-    throw new Error("generation resource targetCount is invalid");
-  }
-  assertTimestamp(value.createdAt, "createdAt");
-  assertTimestamp(value.updatedAt, "updatedAt");
-  if (value.completedAt !== undefined)
-    assertTimestamp(value.completedAt, "completedAt");
-  const outputs = validateSlots(value);
-  return { manifest: value as unknown as GenerationBatchManifest, outputs };
 }
 
 function validateOutputSources(

@@ -1,3 +1,7 @@
+import {
+  configureRuntimePaths,
+  resetRuntimePaths,
+} from "@prompthub/core/runtime-paths";
 /**
  * @vitest-environment node
  */
@@ -70,6 +74,7 @@ describe("SkillDB source update baseline fields", () => {
     tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "prompthub-skill-source-update-db-"),
     );
+    configureRuntimePaths({ userDataPath: tempDir });
     dbPath = path.join(tempDir, "prompthub.db");
     db = new Database(dbPath);
     db.exec(SCHEMA);
@@ -79,6 +84,7 @@ describe("SkillDB source update baseline fields", () => {
   afterEach(() => {
     db.close();
     closeDatabase();
+    resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -155,11 +161,13 @@ describe("source update baseline migration", () => {
     tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "prompthub-skill-source-update-migration-"),
     );
+    configureRuntimePaths({ userDataPath: tempDir });
     dbPath = path.join(tempDir, "prompthub.db");
   });
 
   afterEach(() => {
     closeDatabase();
+    resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 

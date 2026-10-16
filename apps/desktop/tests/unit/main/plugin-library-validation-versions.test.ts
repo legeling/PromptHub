@@ -1,6 +1,7 @@
 /**
  * @vitest-environment node
  */
+import { initDatabase, closeDatabase } from "@prompthub/db";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -127,13 +128,8 @@ function createInstalledPluginLibrary(userDataPath: string): {
     updatedAt: "2026-06-16T00:00:00.000Z",
     plugins: [plugin],
   };
-  fs.mkdirSync(path.dirname(getPluginLibraryFilePath()), { recursive: true });
-  fs.writeFileSync(
-    getPluginLibraryFilePath(),
-    `${JSON.stringify(library, null, 2)}\n`,
-    "utf8",
-  );
-  return { library, plugin, packagePath };
+  const stored = new CorePluginLibraryService().write(library);
+  return { library: stored, plugin: stored.plugins[0], packagePath: stored.plugins[0].localPackagePath! };
 }
 
 function writePluginSourcePackage(options: {
@@ -182,9 +178,11 @@ describe("CorePluginLibraryService", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-"));
     configureRuntimePaths({ userDataPath });
+    initDatabase(path.join(userDataPath, "data", "prompthub.db"));
   });
 
   afterEach(() => {
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
@@ -431,27 +429,27 @@ describe("CorePluginLibraryService", () => {
       path.join(os.tmpdir(), "plugin-library-restore-"),
     );
     try {
+      closeDatabase();
       configureRuntimePaths({ userDataPath: restoredDataPath });
+      initDatabase(path.join(restoredDataPath, "data", "prompthub.db"));
       const restoredLibrary = new CorePluginLibraryService().restoreSnapshot(
         snapshot,
       );
       const restoredPlugin = restoredLibrary.plugins[0];
 
       expect(restoredPlugin?.managedPath).toBe(
-        path.join(restoredDataPath, "data", "plugins", "test-market-bundle"),
+        path.join(restoredDataPath, "data", "plugin-files", "test-market%3Abundle"),
       );
       expect(restoredPlugin?.localPackagePath).toBe(
         path.join(
           restoredDataPath,
           "data",
-          "plugins",
-          "test-market-bundle",
-          "package",
+          "plugin-files",
+          "test-market%3Abundle",
+          "current",
         ),
       );
-      expect(restoredPlugin?.source.localPackagePath).toBe(
-        restoredPlugin?.localPackagePath,
-      );
+      expect(restoredPlugin?.source.localPackagePath).toBeUndefined();
       expect(restoredPlugin?.nativeTargetIds).toEqual(["codex"]);
       expect(
         fs.readFileSync(
@@ -465,6 +463,7 @@ describe("CorePluginLibraryService", () => {
         ),
       ).toBe(false);
     } finally {
+      closeDatabase();
       fs.rmSync(restoredDataPath, { recursive: true, force: true });
     }
   });
@@ -527,7 +526,7 @@ describe("CorePluginLibraryService", () => {
       displayName: "Bundle Plugin",
     });
     expect(restoredPlugin?.localPackagePath).toContain(
-      path.join("data", "plugins", "test-market-bundle", "package"),
+      path.join("data", "plugin-files", "test-market%3Abundle", "current"),
     );
     expect(
       fs.readFileSync(

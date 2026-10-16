@@ -1,99 +1,88 @@
-import { describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { coreAIConfigService } from "@prompthub/core";
+import { IPC_CHANNELS } from "@prompthub/shared/constants";
+import {
+  createSkillTestRuntime,
+  invokeSkillIPC,
+  type SkillTestRuntime,
+} from "../../integration/helpers/skill-runtime";
+import { getDatabase } from "../../../src/main/database";
+import { registerSettingsIPC } from "../../../src/main/ipc/settings.ipc";
+import { settingsApi } from "../../../src/preload/api/settings";
 
-vi.mock("electron", () => ({
-  ipcMain: {
-    handle: vi.fn(),
-  },
-}));
-
-vi.mock("@prompthub/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@prompthub/core")>();
-  return {
-    ...actual,
-    coreAIConfigService: {
-      read: vi.fn(),
-      replace: vi.fn(),
-    },
-  };
+let runtime: SkillTestRuntime | undefined;
+afterEach(() => {
+  runtime?.dispose();
+  runtime = undefined;
 });
 
-import {
-  mergeAISettingsPayload,
-  stripAISettingsPayload,
-} from "../../../src/main/ipc/settings.ipc";
-
-describe("settings IPC AI config helpers", () => {
-  it("strips AI fields from the SQLite settings payload", () => {
+describe("settings IPC and shared AI configuration", () => {
+  it("writes through preload, shares the SQL owner with CLI service and clears after reopen", async () => {
+    runtime = await createSkillTestRuntime();
+    registerSettingsIPC(getDatabase());
+    const provider = {
+      id: "provider-work",
+      provider: "openai",
+      apiProtocol: "openai",
+      apiKey: "synthetic-provider-secret",
+      apiUrl: "https://api.example.test/v1",
+    };
+    await invokeSkillIPC(IPC_CHANNELS.SETTINGS_SET, {
+      language: "fr",
+      aiProviders: [provider],
+    });
+    expect(coreAIConfigService.read().providers).toEqual([
+      expect.objectContaining(provider),
+    ]);
+    const model = coreAIConfigService.addModel({
+      provider: provider.id,
+      model: "fixture-model",
+    });
+    expect(await settingsApi.get()).toMatchObject({
+      language: "fr",
+      aiModels: [
+        expect.objectContaining({ id: model.id, apiKey: provider.apiKey }),
+      ],
+    });
     expect(
-      stripAISettingsPayload({
-        language: "en",
-        aiModels: [
-          {
-            id: "model-1",
-            type: "chat",
-            provider: "openai",
-            apiProtocol: "openai",
-            apiKey: "secret",
-            apiUrl: "https://api.openai.com/v1",
-            model: "gpt-4.1",
-          },
-        ],
-        modelRouteDefaults: { mainText: "model-1" },
-      } as any),
-    ).toEqual({ language: "en" });
+      JSON.stringify(getDatabase().prepare("SELECT * FROM settings").all()),
+    ).not.toContain(provider.apiKey);
+    for (const name of ["app", "providers", "ai-models", "sync-providers"])
+      expect(
+        fs.existsSync(path.join(runtime.profile, `config/${name}.json`)),
+      ).toBe(false);
+    await invokeSkillIPC(IPC_CHANNELS.SETTINGS_SET, {
+      aiProviders: [],
+      aiModels: [],
+    });
+    await runtime.reopen();
+    registerSettingsIPC(getDatabase());
+    expect(coreAIConfigService.read()).toMatchObject({
+      providers: [],
+      models: [],
+    });
+    expect(await settingsApi.get()).toMatchObject({
+      aiProviders: [],
+      aiModels: [],
+    });
   });
 
-  it("merges desktop AI payloads into the JSON config shape", () => {
-    const next = mergeAISettingsPayload(
-      {
-        aiProviders: [
-          {
-            id: "provider-work",
-            name: "Work",
-            provider: "openai",
-            apiProtocol: "openai",
-            apiKey: "secret",
-            apiUrl: "https://api.openai.com/v1",
-          },
-        ],
-        aiModels: [
-          {
-            id: "model-work",
-            providerId: "provider-work",
-            type: "chat",
-            provider: "openai",
-            apiProtocol: "openai",
-            apiKey: "secret",
-            apiUrl: "https://api.openai.com/v1",
-            model: "gpt-4.1",
-          },
-        ],
-        modelRouteDefaults: { mainText: "model-work" },
-      } as any,
-      {
-        kind: "prompthub-ai-config",
-        version: 1,
-        updatedAt: "2026-06-01T00:00:00.000Z",
-        providers: [],
-        models: [],
-        modelRouteDefaults: {},
-      },
-    );
-
-    expect(next).toEqual({
-      providers: [
-        expect.objectContaining({
-          id: "provider-work",
-          provider: "openai",
-        }),
-      ],
-      models: [
-        expect.objectContaining({
-          id: "model-work",
-          providerId: "provider-work",
-        }),
-      ],
-      modelRouteDefaults: { mainText: "model-work" },
-    });
+  it("does not expose or replace the master password through ordinary settings", async () => {
+    runtime = await createSkillTestRuntime();
+    registerSettingsIPC(getDatabase());
+    getDatabase()
+      .prepare("INSERT INTO settings (key, value) VALUES (?, ?)")
+      .run("master_password", JSON.stringify({ hash: "fixture-hash" }));
+    expect(await settingsApi.get()).not.toHaveProperty("master_password");
+    await expect(
+      invokeSkillIPC(IPC_CHANNELS.SETTINGS_SET, { master_password: null }),
+    ).rejects.toThrow(/owner/);
+    expect(
+      getDatabase()
+        .prepare("SELECT value FROM settings WHERE key = ?")
+        .get("master_password"),
+    ).toEqual({ value: JSON.stringify({ hash: "fixture-hash" }) });
   });
 });

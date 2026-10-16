@@ -82,16 +82,34 @@
   subsequent restore failure triggers rollback; rollback failure is reported
   separately and never presented as a successful sync. An empty local data
   directory uses a manifest-only baseline instead of skipping rollback safety.
-- WebDAV/S3 whole-snapshot freshness remains last-writer-wins rather than a
-  per-record conflict-free merge. The UI and docs must not describe this as a
-  conflict-free multi-writer protocol.
-- Online-sync freshness includes timestamped Skills, Rules, prompt graph
-  records, MCP/Plugin libraries, and settings in addition to Prompts and
-  Folders. A failed freshness snapshot is an explicit sync failure.
-- MCP/Plugin libraries, package files, store sources, and agent asset files are
-  transported as snapshots. Native reapply ownership, delete tombstones,
-  conflict resolution, and encryption policy remain follow-up work and are not
-  implied by the prompt snapshot contract.
+- Desktop startup, interval and save-triggered synchronization use the main-process
+  causal workflow at `prompthub-sync/head.json`. Explicit legacy/incremental
+  backup and restore remain separate operations; timestamps do not choose live
+  sync authority. Existing backups are not silently adopted as a live baseline.
+- The complete inventory includes Prompt graphs and referenced media, whole Skill
+  packages/history, Rules/history, MCP/history, Plugin packages/history, Agent
+  provider profiles, Generation outputs, portable settings and remote marketplace
+  sources. Credentials, native deployment bindings, Agent installation roots,
+  local-directory marketplace sources and device recovery paths stay local.
+- Independent resource edits merge against the common base; absent resources
+  become tombstones. Conflicts require explicit per-resource selection. Unrelated
+  nonempty libraries require an explicit complete-library baseline choice.
+  Review tokens pin local content, common base and observed remote ETag; stale
+  choices require a refreshed review. Both inventories are preserved under
+  `recovery/causal-sync/` before resolution, and immutable remote generation
+  archives retain previous committed metadata.
+- Targets must pass real conditional-write behavior probes. Unsupported targets
+  expose manual backup capabilities only. Optional encryption wraps every new
+  live-sync payload with the existing AES-GCM/PBKDF2 codec, retaining ciphertext
+  ETags for conditional publication; wrong passwords never trigger plaintext
+  fallback. In-flight calls for one target share its single persisted operation.
+- SQL/file application and the common baseline share one publication receipt.
+  Renderer settings writes are awaited before capture; incoming updates refresh
+  domain stores while preserving an unsaved Rule draft. No-change synchronization
+  advances metadata without rewriting domain packages.
+- Source integration passes controlled HTTP/SDK two-profile tests and isolated
+  built Electron baseline selection with two cold reopens. These fixtures do
+  not establish deployed WebDAV/S3 vendor acceptance.
 - Skill safety provenance in portable snapshots uses `scanMethod: ai |
 preflight`. Legacy `static` values normalize to `preflight`; an unknown
   string provenance drops only that auxiliary safety report, while malformed

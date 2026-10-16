@@ -31,6 +31,16 @@
 将它与可重建扫描字段区分即可。canonical_resources 及逐记录 JSON 目录按旧投影体系
 审查退役条件，不能在转换验证前删除。配置 JSON、IndexedDB/LocalStorage 为升级输入。
 
+2026-10-15 当前实现：Prompt、Folder、版本、关系和输出格式的业务 repository
+已直接使用 SQLite；`canonical-prompt-graph-db.ts` 及普通操作的 JSON 发布调用已移除。
+`prompt-sqlite-v1` 保全并合并历史图、复制媒体、保存恢复副本后退役旧目录，目录维护
+显式保留 SQL Prompt 数据。Core/Desktop 旧 Markdown workspace 已通过
+`prompt-workspace-v1` 启动转换并停止普通操作写回；显式导出使用 cache 工作区。
+Web 的历史 data/prompts 与嵌套版本目录已通过独立 web-prompt-workspace-v1
+迁移，保留租户归属和 SQL 字段；普通 Web CRUD 不再写 Markdown，显式导出使用 cache。
+Agent Provider、Prompt 与 Rule 已按当前证据收敛；Skill/Generation/设置等领域仍未全部转换。下列旧方案表格和代码行号
+保留为历史盘点，不能用作当前写入入口。
+
 ## 旧方案逐表映射（字段盘点仍有效）
 
 字段来自 `packages/db/src/schema.ts` 及迁移历史建表语句。目标描述覆盖该行全部字段；
@@ -82,30 +92,30 @@
 ### `skills`
 
 - 当前字段：`id`, `owner_user_id`, `visibility`, `name`, `description`, `content`, `mcp_config`, `protocol_type`, `version`, `author`, `tags`, `is_favorite`, `source_url`, `source_id`, `source_label`, `source_branch`, `source_directory`, `canonical_skill_path`, `logical_name`, `variant_key`, `local_repo_path`, `directory_fingerprint`, `icon_url`, `icon_emoji`, `icon_background`, `category`, `is_builtin`, `registry_slug`, `content_url`, `installed_content_hash`, `installed_directory_fingerprint`, `fingerprint_algorithm`, `source_last_checked_at`, `source_last_error`, `source_binding_state`, `installed_version`, `installed_at`, `updated_from_store_at`, `prerequisites`, `compatibility`, `original_tags`, `safety_level`, `safety_score`, `safety_report`, `safety_scanned_at`, `current_version`, `version_tracking_enabled`, `created_at`, `updated_at`。
-- 唯一所有者：Core Skill；canonical 完整包；设备路径为投影。
-- 0.6.0 目标结构：保留查询投影。名称/逻辑身份、元数据、来源绑定、安装基准、用户标签、扫描报告与版本状态保全；local_repo_path 为本机工作区派生路径，不能作为 portable 身份。mcp_config/protocol_type 不因字段旧就删除。
+- 唯一所有者：Core Skill；SQLite 元数据与来源绑定，当前包为实际文件目录。Web 由服务器 Skill 服务持有元数据和权限，实际包仅按服务器 ID 存于 `data/skill-files/<encoded-id>/files/`，旧 JSON 镜像由版本化迁移退役。
+- 0.6.0 目标结构：保留现有表作为结构化元数据权威。名称/逻辑身份、来源绑定、安装基准、用户标签、扫描报告与版本状态保全；local_repo_path 指向唯一受管包或明确的外部绑定，不能作为 portable 身份。mcp_config/protocol_type 不因字段旧就删除。
 - 迁移方式：逐包保全 files、skill.json、版本及 hash；目录指纹与来源身份分别核对；旧字段只有证明已转换且无调用方后才能删除。
 
 ### `skill_versions`
 
 - 当前字段：`id`, `skill_id`, `version`, `content`, `files_snapshot`, `note`, `created_at`。
-- 唯一所有者：Core Skill；canonical 版本及包快照。
+- 唯一所有者：Core Skill；SQLite 持有版本身份；正文和包快照由 `skill-payload-files-v1` 迁至 `<skills-root>/.prompthub/versions/<encoded-skill-id>/<encoded-version-id>/`。旧 payload 列保留为 NULL，仅历史输入与隔离 staging 使用旧 codec。
 - 0.6.0 目标结构：保留版本目录；files_snapshot 代表包内容，不是仅 SKILL.md 文本。
 - 迁移方式：覆盖二进制/编码快照及 schemaVersion 1/2；版本和完整文件库存均一致。
 
 ### `rules`
 
-- 当前字段：`id`, `scope`, `platform_id`, `platform_name`, `platform_icon`, `platform_description`, `canonical_file_name`, `description`, `managed_path`, `target_path`, `project_root_path`, `sync_status`, `current_version`, `content_hash`, `created_at`, `updated_at`。
-- 唯一所有者：Core Rules；canonical Rule 资源及本机部署状态。
-- 0.6.0 目标结构：保留资源投影。description/current_version 属资产；managed_path 为本机物化路径；target_path/project_root_path 是设备绑定，当前格式仍携带，保全并标记不可直接跨机使用；sync_status/content_hash 可从实际发布/目标核验得到。
-- 迁移方式：先保全 rule.md、rule.json、历史正文及绑定，再重建；平台展示字段可由平台注册表派生，但本轮不据此删列。
+- 当前字段：`owner_user_id`, `id`, `scope`, `platform_id`, `platform_name`, `platform_icon`, `platform_description`, `canonical_file_name`, `description`, `managed_path`, `target_path`, `project_root_path`, `sync_status`, `current_version`, `content_hash`, `created_at`, `updated_at`。
+- 唯一所有者：Core Rules；SQLite 元数据与设备部署绑定。Web 按已认证 `owner_user_id` 隔离；空 owner 仅代表 Desktop/CLI 本机集合。
+- 0.6.0 目标结构：`(owner_user_id, id)` 联合主键；managed_path 引用 data/rule-files 实际正文。外部工具路径不是另一个业务真源，跨设备导入不得自动部署。
+- 迁移方式：schema v6 保留 v5 全部本机行；rule-metadata-v1 转换 Desktop/CLI 历史源，web-rule-metadata-v1 转换旧 Web 租户目录，源树完整保全后退出。catalog 维护保留 SQL。正常 CRUD 不写元数据 JSON。
 
 ### `rule_versions`
 
-- 当前字段：`id`, `rule_id`, `version`, `file_path`, `source`, `created_at`。
-- 唯一所有者：Core Rules；canonical 历史正文与元数据。
-- 0.6.0 目标结构：保留目录；file_path 只是本机定位，正文、source、版本、ID、创建时间才是需要保全的内容。
-- 迁移方式：验证版本文件存在且可读，不能只复制 SQL 路径。
+- 当前字段：`owner_user_id`, `id`, `rule_id`, `version`, `file_path`, `source`, `created_at`。
+- 唯一所有者：Core Rules；SQLite 版本元数据，文件系统历史正文。
+- 0.6.0 目标结构：主键、规则外键和 ordinal 唯一约束均包含 owner。版本 ID 可以跨用户复用；当前正文不因删除历史而回退。文件引用按稳定身份校验，缺失历史不能静默删除索引。
+- 迁移方式：正文与引用、身份、source、顺序一起保全；历史转换不裁剪。SQL/file publication 收据协调失败恢复。实际检查和限制见 implementation 的 Rule 两个批次。
 
 ### `users`
 
@@ -125,35 +135,35 @@
 
 - 当前字段：`user_id`, `key`, `value`, `updated_at`。
 - 唯一所有者：Web 用户配置 owner；服务端数据库权威。
-- 0.6.0 目标结构：按 user_id/key 保存服务端设置，与 Desktop config/app.json 属不同产品边界。
-- 迁移方式：客户端基线不改服务端结构；历史本地行保全、分类，不混入当前桌面用户配置。
+- 0.6.0 目标结构：按 user_id/key 保存服务端设置，与 Desktop settings 属不同用户边界；正常读写无 JSON 镜像。
+- 迁移方式：服务端表结构不变；web-settings-sqlite-v1 在启动时转换文件独有的用户设置，已有 SQL 按原合同优先。原始文件私有恢复副本与 DB 安全点配对，提交后退役 config/settings，失败全部回滚；历史本地行不混入当前桌面用户配置。
 
 ### `generation_batches`
 
-- 当前字段：`id`, `manifest_path`, `status`, `title`, `source_prompt_id`, `provider`, `model`, `requested_count`, `succeeded_count`, `failed_count`, `cancelled_count`, `interrupted_count`, `created_at`, `updated_at`, `completed_at`。
-- 唯一所有者：Core Generation 领域；canonical batch.json，Desktop 负责任务运行。
-- 0.6.0 目标结构：保留列表/统计投影；counts/status 从 slots 推导，成品和 source_prompt_id 关系持久保全。运行 attempt 不能仅用批次展示状态替代。
-- 迁移方式：核对 batch、slots、输出对象与关联；中断任务明确 interrupted，不能伪造成功；当前字段不足以宣称 attempt 机制已完成。
+- 当前字段：`id`, `request_json`, `status`, `title`, `source_prompt_id`, `provider`, `model`, `requested_count`, `succeeded_count`, `failed_count`, `cancelled_count`, `interrupted_count`, `created_at`, `updated_at`, `completed_at`。
+- 唯一所有者：SQLite GenerationDB；Core 协调图片提交，Desktop 运行任务。请求快照只存关系型列未表达的参数、模型 ID/name、变量和参考图标识。
+- schema v7 保留旧索引行；generation-sqlite-v1 核对历史 manifest 与索引、完整图片后填充请求快照并退役旧源。无法核对时保留源并报错，不把缺失快照当空任务。
+- 任务恢复只在启动时进行，列表只读；运行 attempt 的完整生命周期仍未由当前结构独立建模。
 
 ### `generation_outputs`
 
-- 当前字段：`id`, `batch_id`, `slot_index`, `status`, `file_name`, `mime_type`, `byte_size`, `favorite`, `created_at`, `deleted_at`。
-- 唯一所有者：Core Generation；canonical slot/output 与对象文件。
-- 0.6.0 目标结构：保留输出投影；favorite/deleted_at 是持久选择/删除语义，file_name 不是内容来源。
-- 迁移方式：核对字节数/hash/收藏/删除。当前 indexManifest 不写 deleted_at，需确认其有效来源并建立行为回归后决定移除或补投影。
+- 当前字段：`id`, `batch_id`, `slot_index`, `status`, `file_name`, `mime_type`, `byte_size`, `sha256`, `favorite`, `created_at`, `deleted_at`, `error_json`, `revised_prompt`。
+- 唯一所有者：SQLite GenerationDB；实际图片在 `data/generations/assets/<batch-id>/<file-name>`，正常读写不再镜像到对象库或缓存。
+- 收藏、错误和完整输出引用持久保存；新图片与 SQL 通过 receipt publication 一次提交，SQL 失败撤销图片。备份从 SQL 与图片生成临时包。
+- 现有业务没有 deleted_at 写入入口；结构迁移保留该字段，若历史行非空且 manifest 无法表达，迁移明确报告冲突，不静默清除删除信息。
 
 ### `agent_provider_profiles`
 
 - 当前字段：`id`, `platform_id`, `name`, `provider_kind`, `protocol`, `endpoint`, `config_json`, `secret_ref`, `source`, `archived`, `created_at`, `updated_at`。
-- 唯一所有者：Core Agent Provider；canonical provider 包；secret_ref 属设备秘密绑定。
-- 0.6.0 目标结构：保留公开配置查询投影。config_json 维持领域 schema；secret_ref 不进入公开配置正文。允许同名 profile，ID 是身份。
-- 迁移方式：保全公开字段与 model mappings，秘密按既有 vault/设备绑定保留；两个 beta 的唯一索引差异须显式归一。
+- 唯一所有者：Core Agent Provider；SQLite 领域表；secret_ref 属设备秘密绑定。
+- 0.6.0 目标结构：配置及稳定 ID 由 SQLite 持久化。config_json 维持领域 schema；secret_ref 不进入公开导出正文。允许同名 profile，ID 是身份。
+- 迁移方式：`agent-provider-sqlite-v1` 在启动开放读写前合并历史包与 SQL；相同 ID 的公开字段和映射不一致时报错保留双方，SQL 既有 secret_ref 原样保留。旧包原字节留在 recovery 后退役；正常读取不再导入包。缺失或不可读 SQL 要求恢复，不能从包重建完整业务库。
 
 ### `agent_provider_model_mappings`
 
 - 当前字段：`id`, `provider_profile_id`, `route_key`, `model_id`, `parameters_json`。
-- 唯一所有者：Core Agent Provider；同一 provider canonical 包。
-- 0.6.0 目标结构：保留路由投影，(provider_profile_id,route_key) 唯一；parameters_json 有当前结构。
+- 唯一所有者：Core Agent Provider；SQLite 领域表，与 profile 同一事务。
+- 0.6.0 目标结构：持久路由记录，(provider_profile_id,route_key) 唯一；parameters_json 有当前结构。
 - 迁移方式：与 profile 一批转换，逐路由核对 model_id 与参数，删除级联一致。
 
 ### `agent_provider_snapshots`
@@ -166,23 +176,23 @@
 ### `agent_session_sources`
 
 - 当前字段：`id`, `platform_id`, `root_path`, `adapter_id`, `adapter_version`, `enabled`, `scan_cursor`, `last_status`, `last_scanned_at`, `last_error_code`, `created_at`, `updated_at`。
-- 唯一所有者：Core Agent 设备配置 + 扫描 repository，需拆字段责任。
-- 0.6.0 目标结构：id/platform_id/root_path/adapter_id/enabled 是需保全的设备选择；adapter_version/scan_cursor/last_* 是扫描进度。当前整表保存在 DB。目标将来源配置纳入 Agent 设备配置 schema，扫描状态留 SQL。
-- 迁移方式：先保全来源 ID 与配置，再允许扫描索引重建；root_path 不跨设备直接使用。设备配置格式扩展尚待实施。
+- 唯一所有者：SQLite `AgentSessionIndexDB`；设备选择与扫描进度由同一来源记录维护。
+- 0.6.0 目标结构：保留现有 SQL 表；id/platform_id/root_path/adapter_id/enabled 是设备选择，adapter_version/scan_cursor/last_* 是扫描进度。无需再创建设备 JSON 或拆分重复状态。
+- 迁移方式：既有数据已在 SQL，不做内容搬迁。维护重建完整保留来源 ID 与配置；root_path 不跨设备直接启用。
 
 ### `agent_session_index`
 
 - 当前字段：`id`, `source_id`, `external_id`, `title`, `project_path`, `created_at`, `updated_at`, `model`, `message_count`, `redacted_preview`, `source_path`, `source_mtime_ms`, `source_size_bytes`, `source_digest`, `source_status`, `tags_json`, `note`, `indexed_at`, `annotation_updated_at`。
 - 唯一所有者：外部 Agent 日志为会话正文权威；Core Agent 拥有用户批注。
-- 0.6.0 目标结构：扫描字段可重建；tags_json/note/annotation_updated_at 不可重建，目标移入会话批注 canonical 资源后作为 SQL 投影。当前仍整表 SQL 保存。
-- 迁移方式：建立 source_id/external_id 与 agent/session 标识映射后转换批注；不能先丢表再扫描，不能把另一张 metadata 表简单覆盖过来。
+- 0.6.0 目标结构：保留现有 SQL 表。tags_json/note/annotation_updated_at 与稳定 ID 是持久记录，不生成 canonical 批注副本。扫描只更新原生日志字段；缺失日志标记 missing，保留批注。
+- 迁移方式：既有 SQL 无需转写；维护重建保全整表。`source_id/external_id` 是来源作用域身份，不能推断等同于 conversation 的 `agent_id/session_id`，同一 external_id 在不同来源中保持独立。
 
 ### `agent_conversation_metadata`
 
 - 当前字段：`id`, `agent_id`, `session_id`, `title`, `project_id`, `project_path`, `tags_json`, `note`, `is_favorite`, `archived_at`, `created_at`, `updated_at`。
-- 唯一所有者：Core Agent 会话批注；目标 canonical 资源。
+- 唯一所有者：SQLite `AgentConversationDB`；Agent 会话批注。
 - 0.6.0 目标结构：id、agent_id/session_id、title/project 关联、tags/note/favorite/archived_at、时间均是持久选择。当前 DB-only，不能当 operational 缓存丢弃。
-- 迁移方式：与 session_index 的批注统一到一个 owner；未证明两类身份等价前保留两份来源及冲突。资源格式/路径与身份映射待实现冻结。
+- 迁移方式：保留既有 SQL 稳定身份与数据，不从扫描索引覆盖它，不新增文件副本；维护重建复制完整记录。显式删除后普通启动不得恢复旧批注。
 
 ### `agent_conversation_handoffs`
 
@@ -197,6 +207,23 @@
 - 唯一所有者：Core 领域资源 manifest；DB catalog。
 - 0.6.0 目标结构：全字段为索引投影；不是第二份资源 authority。revision 与 schema_version 不混用。
 - 迁移方式：由验证过的 canonical manifest 重建，核对路径、资源类型、ID、revision、hash。
+
+### `storage_publication_receipts`
+
+- 字段：`operation_key` 主键、`operation_id`、`committed_at`（Unix 毫秒）。
+- 唯一所有者：packages/db 的 SQL 提交凭据；Core 文件 publication 只引用对应操作。
+- schema v5 新增，每个操作键只保留最近一次 SQL 提交，与业务修改在同一事务写入；
+  不复制正文、元数据或版本。普通纯 SQL CRUD 不使用该表。
+- 启动恢复先按 operation ID 判定 SQL 是否已提交，再清理或回滚文件；目录维护必须
+  保留凭据。数据库缺失、损坏或旧 SQL 日志无可证明的提交状态时保留恢复材料。
+
+### `sync_targets`
+
+- 当前字段：`id`, `device_id`, `sync_id`, `base_json`, `pending_json`。
+- 唯一所有者：Core CausalSyncSession；SQLite 持有共同基线、未决操作身份与条件写观察值。
+- 内容边界：只保存同步元数据和资源引用，不存凭据或领域内容。设备间业务备份不能覆盖目的设备的本机状态。
+- 迁移方式：schema v8 事务建表；旧库无状态时为空，维护重建保留现有状态，失败回滚并使用既有数据库安全点恢复。
+- 验收：两设备删除/冲突、重开、未决提交恢复、迟到本地编辑、晚期 SQL 失败与升级重试。自动同步入口接入仍待完成。
 
 ### `schema_migrations`
 
@@ -226,18 +253,18 @@
 | 当前存储 | 唯一所有者与目标 | 迁移/退役方式 |
 | --- | --- | --- |
 | `data/prompts/`、旧 `workspace/prompts/`，以及 SQL Prompt/Folder/关系 | Core Prompt graph；完整 canonical 资源与历史 | 校验整图、IDs、正文、历史、关系和媒体；旧 workspace 只作明确升级输入，完成后停用旧 writer |
-| `data/skills/` 与 Skill 工作区、外部工具目录 | Core Skill canonical 包拥有内容/历史；工作区和工具目录是投影 | 保存 `skill.json`、版本、`files/` 整包；外部目录差异走显式导入/部署，不在读取时覆盖资源 |
-| `data/rules/`、Rule 工作区与工具规则文件 | Core Rules 资源/版本；设备部署绑定由同领域管理 | 正文与历史文件核对 hash，设备路径单独分类；目标文件不作为另一份永久真源 |
+| `data/skills/` 与 Skill 工作区、外部工具目录 | Core Skill 的 SQLite 元数据与实际 `data/skills/<id>/files/` 包 | 旧 bundle、设备绑定和缓存只在版本化迁移读取并保全至 recovery；不在读取时补造缺失文件 |
+| `data/rule-files/`、旧 `data/rules/` 与工具规则文件 | Core Rules SQL 元数据；当前/历史正文为文件，Web 按用户目录隔离 | 旧元数据 JSON/index 由一次迁移保全并退役；外部目标只由明确部署修改 |
 | `data/mcp/`、旧 `library.json` | Core MCP canonical server/版本；`config/devices/mcp-bindings.json` 拥有设备绑定 | 逐条比对旧 library 与新包，冲突保留；不能以新库非空为由删旧库 |
-| `data/plugins/`、旧 `library.json`/`versions.json`/市场缓存 | Core Plugin canonical 包与历史；`config/devices/plugin-projections.json` 拥有设备投影 | library 与 versions 必须联合转换，完整目录核对；市场缓存单独可重建 |
+| SQLite `plugins` / `plugin_versions` 与 `data/plugin-files/` | Core PluginStorage；SQL 元数据、真实当前/历史包文件；本机来源与分发目标保留在本机行 | `plugin-sqlite-v1` 联合迁移旧 `data/plugins/`、library/versions JSON 与 device projection，保留原始恢复副本；市场缓存单独可重建 |
 | `data/agents/` Provider 包 | Core Agent Provider 定义；秘密引用属于设备绑定 | 不与第三方 Agent 会话正文混淆；会话批注 canonical 格式尚缺，不把所有 `agents` 文件推定为同种资源 |
 | `data/generations/`、生成缓存、`data/assets/objects/` 和 images/videos | Core Generation/媒体资源；缓存由资源重建 | batch/slots 与对象文件一同校验；收藏/删除语义保留；不可只复制 SQL 文件名 |
-| `config/app.json`、SQLite settings、Zustand 持久状态 | Core 配置 owner；`APP_SETTING_KEYS` 为现有分类入口 | 已 canonical 的设置不可被 SQL/renderer 补值覆盖；迁移前逐 key 优先级按设置规范执行 |
-| `config/providers.json`、`config/ai-models.json` | Core AI 配置 owner；当前 provider/model 配置按既有文档分工 | 清理平行持久写入前确认字段覆盖和重载行为；秘密移至 vault 引用，不复制原始 token |
-| `config/sync-providers.json` | Core 同步配置 owner；`SYNC_SETTING_KEYS` | endpoint/开关与凭据分别处理；此次仅配置归属，不改远端同步协议 |
-| `config/marketplace-sources.json` | Core Marketplace 来源配置 | Skill/MCP/Plugin 来源按稳定 ID 保全，临时搜索/市场响应另归缓存 |
-| `config/devices/agents.json`、`config/devices/renderer.json` | Core 设备配置/身份 owner | 自定义 Agent 根、设备 ID、开关和身份偏好按现有 schema 保留；session source 配置纳入此领域前需明确 schema 变更 |
-| `config/recovery-paths.json` | Core 本机恢复路径 owner | 路径是本机设置，不随普通 portable 导出直接应用到另一设备 |
+| SQLite `settings`、旧 `config/app.json` 与浏览器持久状态 | CoreSettingsStore；结构化值只写 SQL | 旧文件与 SQL 行由 settings-sqlite-v1 保全转换；renderer 仅一次导入，普通读取不补值 |
+| SQLite AI 设置、旧 `config/providers.json` 与 `config/ai-models.json` | Desktop/CLI 共用 CoreSettingsStore | provider/model/route 只存 SQL，apiKey 只存 vault；历史 AI 备份修复限于升级 |
+| SQLite 同步设置、旧 `config/sync-providers.json` | CoreSettingsStore；`SYNC_SETTING_KEYS` | endpoint/开关写 SQL，平铺与嵌套凭据写 vault 引用；不改远端同步协议 |
+| SQLite `settings.marketplaceSources` | Core renderer persistence | Skill/MCP/Plugin 来源按稳定 ID 与顺序保全；历史 `config/marketplace-sources.json` 仅由 `renderer-state-sqlite-v1` 读取并退出 |
+| SQLite Agent settings 与 `settings.selfHostedDeviceId` | Core 设备配置/身份 owner | Agent 由现有 Agent 迁移保全；同步设备身份由 `renderer-state-sqlite-v1` 导入，历史设备 JSON 不再是日常写入目标 |
+| SQLite `settings.recoveryPaths` | Core renderer persistence | 历史 `config/recovery-paths.json` 仅在升级中导入；本机路径不随普通 portable 导出应用到另一设备 |
 | `secrets/vault.enc`、OS secret facility、settings 中 `master_password` | 设备秘密/安全元数据 owner | vault 保存秘密；主密码 salt/hash 是验证材料，不是明文密码也不是普通缓存。其迁移与解锁初始化需要独立回归，不能直接删 settings 表 |
 | IndexedDB、renderer localStorage | 旧版输入或临时 UI 状态 | 资产/持久设置先转换并验证，再登记；空 renderer 不覆盖现有资产；普通界面选择/弹窗状态无需升级成永久配置 |
 | `data/operations/`、`.authority-state.json`、布局状态、数据库迁移 intent/history | Core root/提交恢复 owner 与 DB runner 各管本边界 | 保留提交决定、完成状态与历史；版本轴独立，不能整合成一个应用版本号 |
@@ -298,7 +325,7 @@ Validation on 2026-10-03:
 
 | 优先次序 | 当前证据 | 必须收敛的结果 |
 | --- | --- | --- |
-| 1 | `packages/core/src/canonical-storage-shadow.ts:142` 把 session_index、conversation_metadata 整表归入 operational；`packages/db/src/agent-session-index.ts:470` 直接更新 tags/note | 先迁移持久批注与设备来源配置，再允许索引重建；原生会话日志只读，不改写第三方数据 |
+| 1 | session_index 和 conversation_metadata 已归入 SQL sessions 保全集合；扫描字段与批注仍在现有表中 | 维护重建复制整表；正常扫描只标记 missing，不清除批注。无须迁往文件；原生会话日志保持第三方权威 |
 | 2 | `apps/desktop/src/main/ipc/settings.ipc.ts:276` 先读全部 SQL 设置再覆盖 canonical；`:391` 保存仍写 SQL，专门预写 canonical 的是 closeAction | 收敛到已接受的配置 patch/发布入口；迁移完成后去掉 SQL 补值，缺字段要报告契约缺口 |
 | 3 | `apps/desktop/src/main/security.ts:11` 的 master_password 仍存在 settings 中 | 设置去 SQL 化之前保全解锁验证材料；不能因为它不在一般 settings allowlist 就清除 |
 | 4 | `packages/db/src/init.ts:650` 为 prompts/folders/skills 添加 visibility 时缺少新建 schema 的 CHECK；已发布 beta 同版本不同索引见设计盘点 | 基线检查实际默认值、约束、索引、trigger/FTS；有差异的表通过受控迁移统一，不只补列/改版本号 |
@@ -308,8 +335,8 @@ Validation on 2026-10-03:
 | 8 | `packages/core/src/canonical-storage-shadow.ts:480` 保全表要求完整列列表相同，并通过 all() 读取整表 | 旧结构先规范转换再保全；读取/复制按实际行数分批，避免整张会话索引常驻内存；不是新增用户数量限制 |
 
 不要误删合法投影/恢复代码：Desktop database 包装与 `packages/core/src/database.ts`
-导出的 PromptDB/SkillDB/RuleDB 是 canonical 类别名；不能仅搜索 `new PromptDB` 判断
-绕过。shadow builder、catalog projector、受控 restore 内的原始 DB 操作有明确用途。
+导出的 PromptDB 已直接来自 db 包，RuleDB 已转换为 SQL/文件提交协调器，SkillDB 已是 SQL/实际包发布协调器；不能只按
+类名判断存储权威。shadow builder、catalog projector、受控 restore 内的原始 DB 操作有明确用途。
 `skill-repo-reconciliation.ts` 对 local_repo_path 的更新属于设备投影；它本身不等于
 另一个 Skill 内容 owner。Web 的原始 DB repository 属服务端边界，不应一律替换为本地文件写入。
 
@@ -336,6 +363,19 @@ Core `renderer-persistence-migration.test.ts` 与 Desktop `idb-migration.test.ts
 
 
 ## 正常业务路径兼容审查（2026-09-15）
+
+2026-10-14 BC01 修复：Plugin 普通读取已移除迁移/删除动作；Core 启动执行
+`migrations/plugin-metadata-v1.ts`，合并独有条目和历史，核对同 ID 元数据及包字节，
+保留原始元数据恢复副本后通过现有发布 journal 同批退役旧文件。冲突、缺包、
+无主历史及非法源不会被静默丢弃。原清理 helper 和无人调用的 MCP wrapper 已删除。
+`plugin-metadata-migration.test.ts` 的 11 项回归与既有 canonical Plugin 的 14 项测试
+通过；包含真实 Core initDatabase、两次重开、删除后不复活、注入失败回滚与重试。
+Core typecheck 与两项 Desktop 启动回归通过。审查脚本现在运行同一注册测试，
+不再依赖已删除 helper。新构建的签名 ARM64 DMG 已通过隔离共存数据的原生界面验收：
+两个条目、历史与包内容可读，收藏写入及两次冷启动保留，二进制字节与恢复副本核对通过。
+这不代替完整稳定版升级、Windows 或自动恢复重启验收，也不代表 SQLite authority
+和因果同步改造完成。
+迁移和恢复约定见 `spec/knowledge/behavior/data-recovery.md`。下文保留原始反例。
 
 2026-09-24 实现进度：BC02 的 Renderer CRUD/整图恢复后端 fallback 已移除；BC03 的
 IDB 迁移失败、读取错误透传和超时放行已修正并通过定向验证，详见 implementation.md。
@@ -371,7 +411,7 @@ Skill、Rule、MCP、Plugin、Agent 配置、Generation 与路径选择。未穷
 - MCP `mcp-market-reconciliation.ts:109` 缺失安装基准时保护用户外部修改，不能通过
   迁移猜出从未记录的旧 hash。迁移应把它转换成当前结构的明确“基准未知”状态，
   后续按统一冲突处理执行，不新增旧版本专用更新算法。
-- 当前 `skills/library-commands.ts:31` 拒绝未完成 canonical 迁移，而不是切回旧实现；
+- 当前 `skills/library-commands.ts` 统一委托 SQL/文件发布，不再按 canonical marker 切换或拒绝正常 CRUD；
   其阻断原则可保留，但完成条件必须切换到已确认的 SQLite + 文件系统目标。
 
 ### 测试问题与复核方式
@@ -397,3 +437,19 @@ distinct-existing-data 场景中 sourceRead、sourcePreserved、sourceRepresente
 确认旧源未读取、未迁入且已删除。临时目录在 finally 中清理，输出 temporaryRootRemoved:true。
 BC02–BC08 为源码调用链审查，尚未进行完整业务或 GUI 复现。变更追溯校验及新增文档
 链接/锚点检查通过；未运行全量测试，未修改业务实现。
+
+
+### BC07 explicit Rule history upgrade (2026-10-14)
+
+Normal list/read materialization no longer reads `rule-history`. The versioned `migrations/rule-history-v1.ts` conversion is called by Rules bootstrap at Desktop startup, CLI Rules/workspace boundaries and Rule imports. It preserves exact historical source text under recovery, merges existing histories without migration truncation, and atomically retires source files with publication. Failure prevents the affected entrypoint from proceeding. The 32-case migration suite, related CLI/Desktop checks and signed ARM64 native migration/edit/history/backup/automatic-restore-relaunch flow pass; see implementation.md for evidence and limits. This does not close the broader SQLite authority transition.
+
+### 2026-10-16 Skill payload migration
+
+The migration moves `skills.content` and both Skill version
+payload columns to the file owner described in `spec/knowledge/behavior/skills.md`.
+Only nullable retired columns remain in SQLite for historical input; after
+`skill-payload-files-v1`, triggers prohibit non-null runtime payload writes.
+Metadata and version identities remain relational. Real SQLite/file checks pass
+for old-data upgrade, two reopens, pre-commit rollback, post-commit receipt recovery,
+binary history, linked packages and discovery exclusion. Exact affected checks
+and remaining acceptance boundaries are recorded in implementation.md.

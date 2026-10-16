@@ -16,9 +16,8 @@ import {
   getImagesDir,
   getPromptsWorkspaceDir,
   getRuntimeStorageContext,
-  getSkillsDir,
-  getVideosDir,
   resetRuntimePaths,
+  getWorkspaceDir,
 } from "../../../src/main/runtime-paths";
 
 function makeTmpDir(prefix: string): string {
@@ -35,6 +34,16 @@ describe("runtime-paths database selection", () => {
   afterEach(() => {
     resetRuntimePaths();
     fs.rmSync(tmpBase, { recursive: true, force: true });
+  });
+
+  it("keeps explicit Prompt workspace exports in cache for every data layout", () => {
+    configureRuntimePaths({ userDataPath: tmpBase });
+    expect(getWorkspaceDir()).toBe(
+      path.join(tmpBase, "cache", "prompt-workspace"),
+    );
+    expect(getPromptsWorkspaceDir()).toBe(
+      path.join(getWorkspaceDir(), "prompts"),
+    );
   });
 
   it("rejects a partial migration that left both database layouts active", () => {

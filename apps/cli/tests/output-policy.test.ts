@@ -83,10 +83,12 @@ describe("CLI output detail policy", () => {
     ]);
     expect(full.exitCode).toBe(0);
     expect(full.json.content).toContain("# Body");
-    expect(full.json.local_repo_path).toContain("output-policy-skill");
+    expect(full.json.local_repo_path).toBe(
+      path.join(root, "user-data", "data", "skills", full.json.id, "files"),
+    );
   });
 
-  it("does not materialize a database-only Skill just to build a summary", async () => {
+  it("does not rewrite the imported package just to build a summary", async () => {
     const root = makeTempRoot(tempDirs);
     const jsonPath = path.join(root, "database-only.json");
     fs.writeFileSync(
@@ -115,9 +117,13 @@ describe("CLI output detail policy", () => {
       "user-data",
       "data",
       "skills",
-      "database-only-skill",
+      imported.json.id,
+      "files",
     );
-    expect(fs.existsSync(managedPath)).toBe(false);
+    const original = fs.readFileSync(path.join(managedPath, "SKILL.md"));
+    const originalMtime = fs.statSync(
+      path.join(managedPath, "SKILL.md"),
+    ).mtimeMs;
 
     const detail = await execCli([
       ...withDataDir(root),
@@ -127,7 +133,12 @@ describe("CLI output detail policy", () => {
     ]);
     expect(detail.exitCode).toBe(0);
     expect(detail.json.fileCount).toBe(1);
-    expect(fs.existsSync(managedPath)).toBe(false);
+    expect(fs.readFileSync(path.join(managedPath, "SKILL.md"))).toEqual(
+      original,
+    );
+    expect(fs.statSync(path.join(managedPath, "SKILL.md")).mtimeMs).toBe(
+      originalMtime,
+    );
   });
 
   it("summarizes version snapshots without returning file contents", async () => {

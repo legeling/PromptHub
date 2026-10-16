@@ -1,10 +1,12 @@
+import { runDesktopCausalSync } from "./causal-sync";
 /**
  * WebDAV Sync Service - Support incremental backup, image sync, version history and bidirectional sync
  * WebDAV 同步服务 - 支持增量备份、图片同步、版本历史和双向同步
  */
 
+import type { RemoteWriteCondition } from "@prompthub/shared/types/remote-sync";
+import { remoteWriteHeaders } from "@prompthub/shared/utils/remote-write-condition";
 import {
-  autoSyncBackup,
   BACKUP_DIR,
   computeHash,
   DATA_FILENAME,
@@ -50,14 +52,11 @@ async function uploadFile(
   url: string,
   config: WebDAVConfig,
   content: string,
+  condition?: RemoteWriteCondition,
 ): Promise<RemoteUploadResult> {
   try {
     if (window.electron?.webdav?.upload) {
-      const result = await window.electron.webdav.upload(url, config, content);
-      return {
-        success: result.success,
-        error: result.error,
-      };
+      return await window.electron.webdav.upload(url, config, content, condition);
     }
 
     const response = await fetch(url, {
@@ -65,17 +64,19 @@ async function uploadFile(
       headers: {
         Authorization: buildAuthHeader(config),
         "Content-Type": "application/json",
+        ...remoteWriteHeaders(condition),
         "User-Agent": "PromptHub/1.0",
       },
       body: content,
     });
 
     if (response.ok || response.status === 201 || response.status === 204) {
-      return { success: true };
+      return { success: true, etag: response.headers.get("etag") ?? undefined };
     }
 
     return {
       success: false,
+      ...(condition !== undefined && [404, 409, 412].includes(response.status) ? { conflict: true } : {}),
       error: `${response.status} ${response.statusText}`,
     };
   } catch (error) {
@@ -112,6 +113,7 @@ async function downloadFile(
       return {
         success: true,
         data: await response.text(),
+        etag: response.headers.get("etag") ?? undefined,
       };
     }
 
@@ -229,8 +231,13 @@ function createWebDAVAdapter(config: WebDAVConfig): RemoteSyncAdapter {
       await ensureDirectory(imagesDirUrl, config);
       await ensureDirectory(videosDirUrl, config);
     },
-    uploadText: (path, content) => uploadFile(path, config, content),
+    uploadText: (path, content, condition) => uploadFile(path, config, content, condition),
     downloadText: (path) => downloadFile(path, config),
+    deleteText: async (path) => {
+      if (window.electron?.webdav) return window.electron.webdav.delete(path, config);
+      const response = await fetch(path, { method: "DELETE", headers: { Authorization: buildAuthHeader(config) } });
+      return response.ok || response.status === 404 ? { success: true } : { success: false, error: `WebDAV deletion failed: ${response.status}` };
+    },
     stat: (path) => statFile(path, config),
   };
 }
@@ -342,10 +349,10 @@ export async function getRemoteBackupTimestamp(config: WebDAVConfig): Promise<{
 }
 
 export async function bidirectionalSync(
-  config: WebDAVConfig,
-  options?: WebDAVSyncOptions,
+  _config: WebDAVConfig,
+  _options?: WebDAVSyncOptions,
 ): Promise<SyncResult> {
-  return autoSyncBackup(createWebDAVAdapter(config), options);
+  return runDesktopCausalSync("webdav");
 }
 
 export async function autoSync(

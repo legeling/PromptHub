@@ -12,7 +12,7 @@ import { getDatabase } from "../../src/main/database";
 import { invalidateCustomPathsCache } from "../../src/main/services/skill-installer-utils";
 import { getSkillScanStatus } from "../../src/renderer/services/skill-scan-status";
 import { isManagedRepoPath } from "../../src/main/services/skill-installer-repo";
-import { getCanonicalSkillWorkspacesDir } from "@prompthub/core";
+import { getSkillsDir } from "@prompthub/core";
 
 vi.mock("../../src/renderer/services/webdav-save-sync", () => ({
   scheduleAllSaveSync: vi.fn(),
@@ -87,7 +87,7 @@ afterEach(() => {
 });
 
 it("does not classify arbitrary cache folders or links escaping the managed workspace as owned", async () => {
-  const workspaceRoot = getCanonicalSkillWorkspacesDir();
+  const workspaceRoot = getSkillsDir();
   const external = path.join(runtime.root, "external");
   fs.mkdirSync(workspaceRoot, { recursive: true });
   fs.mkdirSync(external);

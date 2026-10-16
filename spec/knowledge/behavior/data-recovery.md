@@ -9,9 +9,40 @@
 ### 1. Recovery Safety
 
 - 高风险的数据恢复、目录迁移和升级路径必须优先保证数据不丢失。
+- SQLite 与文件联合发布由同一 SQL 事务写入业务记录和 operation ID 提交凭据。
+  文件 journal v3 在恢复时按凭据确认完成或回滚，不能仅凭文件日志仍是 prepared
+  就撤销已提交记录引用的文件。数据库缺失、不可读、凭据不一致或旧 v2 SQL
+  迁移日志缺少可证明的提交状态时，保留新旧文件和日志并要求恢复，不建立空库。
+  schema v5 增加的凭据表每个操作键只保留最近一行，目录维护必须保留它；回退前
+  恢复升级前完整数据库安全点及匹配文件，不单独删除表或降低版本号。
 - 用户文件状态会被改变的动作必须以可理解方式提示用户，而不是静默进行。
+- Portable 恢复的暂存目录使用最终目标的 root identity 校验，但所有文件读写仍限制在暂存目录。完整 ZIP 中 Provider model mapping 的身份与 Generation bundle revision 必须保全；逻辑配置导入不承担完整包身份恢复。
+- 保留设置的目录重建必须保留已执行的应用迁移及原始执行时间，避免恢复后重新执行一次性迁移而覆盖用户选择。
+- CLI 工作区备份与桌面 MCP 文件快照共用 Core 的 SQLite 快照及历史文件实现。定义摘要保持脱敏，不能仅复制历史目录却漏掉版本索引，也不能把旧 `library.json` 当作当前存储真源。
+
+### Private Folder Visibility
+
+- 私密目录只提供应用内隐藏，进入时验证主密码；本地正文、历史、附件及备份不因私密标记而加密。不得宣称本地加密存储。
+- 全部、搜索和收藏视图不展示私密目录及其子目录中的 Prompt；只有在已解锁目录内才显示。锁定和重开不得改写正文、历史或私密标记。
+- 此边界不改变模型、MCP 等凭据的独立加密合同，也不改变用户显式选择的备份加密。
 
 ### 2. Pre-Change Safety Net
+
+- Plugin 的历史 `library.json` / `versions.json` 仅由 Core 和 Desktop 启动调用共享迁移
+  `plugin-metadata-v1` 转换，canonical 日常读取不再迁移或清理旧元数据。
+  迁移按 ID 合并独有条目、核对重复条目的正文元数据、部署目标和包字节，
+  合并历史版本；同 ID 内容冲突、版本冲突、孤儿历史、无效条目或缺失包必须
+  保留原始来源并报告具体错误，不能按时间戳覆盖或过滤掉错误条目。
+- Plugin 迁移不改变当前领域存储模型或 schema。完整原始元数据先以内容散列
+  保存到 `recovery/plugin-metadata-v1/<hash>.json`，现有包源不删除；复用 bundle
+  journal 在同一次发布中写入合并结果并退役旧元数据。发布失败回滚文件和
+  配置，成功后记录 `schema_migrations`。中断重开先恢复 journal，重复启动
+  不再导入已退役来源，也不复活用户随后删除的 Plugin。
+- 回滚或人工恢复以该恢复副本及原包源为输入，在隔离副本中处理冲突后走正式
+  导入/迁移；不要把旧元数据直接覆盖到正在写入的根。该局部修复不代表
+  Foundation 的 SQLite 权威转换已完成。合并扫描为 O(条目数 + 历史数)，输出排序
+  为 O(n log n)，包核对
+  为 O(文件字节数)，逐文件计算散列，不把整个包复制进内存。
 
 - 在高风险布局迁移或升级前，应具备保险快照、预备份或等价的可回滚手段。
 - 恢复或迁移失败后，不应把用户留在半恢复或半迁移状态。
@@ -128,9 +159,9 @@
   功能管理的根 `agent-appearance` 普通目录；MCP bundle 枚举可忽略市场源注册表
   `market-sources.json` 和已被 canonical bundle 取代的 `library.json` 普通文件；Plugin
   bundle 枚举可忽略已被取代的 `library.json`、`market-cache.json` 与 `versions.json`
-  普通文件。若 canonical bundle 为空但旧 library 仍有记录，所属服务必须先通过现有
-  journaled writer 完整迁移并验证，成功后才删除旧元数据；已有 canonical bundle 时
-  不得由旧文件覆盖或复活记录。MCP 凭据必须进入设备绑定的加密存储，不能写入 bundle
+  普通文件。Plugin 旧元数据按本文件的启动迁移约定合并独有条目和历史，成功后通过
+  journaled writer 退役源；普通读取不得覆盖或复活已迁入后删除的记录。
+  MCP 凭据必须进入设备绑定的加密存储，不能写入 bundle
   JSON。尚未配置自托管同步、renderer device ID 为 null 时，本地 MCP binding 与
   Plugin projection 使用稳定的存储根身份，不得因此阻断兼容迁移。类型替换、符号
   链接和其它未声明路径仍必须 fail closed。
@@ -138,9 +169,20 @@
   占位状态，应保留在资源文件中；只有非空 literal 凭据进入设备加密 vault。设备
   vault 不可读不得让 renderer 的 My MCP 清单变为空：已验证文件定义仍须以脱敏值
   返回，但需要真实凭据的执行和写入继续 fail closed，文件结构错误不得降级忽略。
-- 已存在 canonical authority marker 时，启动必须验证完整文件图。文件图有效时，
-  SQLite 仅作为派生目录自动校验并在缺失、损坏或逻辑陈旧时原子重建。Prompt 图被
-  旧写入器破坏但当前 Markdown workspace 唯一、严格可解析且媒体来源确定时，启动应
+- 已存在 canonical authority marker 时，启动必须验证尚未转换的文件领域；已转换
+  的结构化领域只使用 SQLite。尚未迁移的派生目录可在业务 SQLite 可读、全部
+  SQL 权威表被保全时校验和修复。
+  SQLite 缺失或损坏必须进入恢复；文件图不能替代其中的配置、秘密引用和操作记录。
+  Agent Provider 通过 `agent-provider-sqlite-v1` 启动迁移后仅使用 SQLite；旧包原字节
+  保存在 `recovery/agent-provider-sqlite-v1/`，同 ID 冲突不覆盖，删除后不从旧包复活。
+  Prompt/Folder/历史/关系/输出格式由 `prompt-sqlite-v1` 合并转换；同 ID 内容冲突
+  或媒体同名不同字节不得覆盖。原图与清单保存到 `recovery/prompt-sqlite-v1/`，
+  引用媒体复制到 runtime path 指定目录，SQL 提交核对后退役旧图。正常 CRUD 不写
+  canonical Prompt JSON；目录维护从 SQL 保留 Prompt 图。已完成后再次出现的旧图
+  只有与完整 SQL 图一致才能退役，不一致必须显式恢复，禁止复活删除记录。
+  回滚这些升级前先保留当前数据，再恢复迁移前完整安全点及其匹配文件；不得单独
+  回填旧 JSON。仅在 Prompt 尚未转换、旧图被写入器破坏但当前 Markdown workspace
+  唯一、严格可解析且媒体来源确定时，启动应
   自动 stage、验证并 journal 发布修复结果；重复 ID、解析错误、危险路径、缺失或
   digest 冲突等歧义才进入 recovery-required。canonical 模式不得再执行 DB 到旧
   Markdown workspace 的反向导出。混合目录自愈可跳过同时含普通非符号链接
@@ -149,15 +191,20 @@
   Prompt ID 的完整已验证 bundle 读取 kind/reference 到对象哈希映射，并在对象库再次
   校验声明哈希与字节数；不得借此采用旧 bundle 的 Prompt 正文或元数据。残缺伪装目录、
   损坏对象和其它未声明文件仍须拒绝。
+- 旧 Markdown 工作区由 `prompt-workspace-v1` 在启动时一次转换到 SQLite；同 ID
+  冲突不得按更新时间覆盖。源文件完整保留在 `recovery/prompt-workspace-v1/` 后退役，
+  完成记录阻止重放。恢复标记即使面对空库也禁止旧文件复活记录；失败保留源并回滚。
+  显式 Markdown 导出写入 `cache/prompt-workspace/`，不参与自动恢复或普通 CRUD。
+  回退旧版本前保全当前数据，再在隔离根同时恢复迁移前数据库 safety point 和对应
+  Markdown 恢复副本；不得仅回填文件到正在使用的数据库。
 - 文件自愈对 Prompt 与 Folder 父子图执行线性依赖排序，并拒绝缺失父项、环、
   符号链接、特殊文件、未声明文件、超限文件和超限清单；SQLite 缺失或不可读
   时仍可展示有效文件候选。替换 SQLite 前必须持有迁移/维护意图且没有活跃或
   未知数据库客户端。
 - `rules/.versions` 与 `rules/projects` 只可作为普通空兼容目录与 canonical Rule
   bundle 共存，非空、符号链接或类型替换必须 fail closed。派生 SQLite 对缺失对应
-  用户行的 Skill owner 投影为 null；同平台同名的活跃 Agent profile 按
-  `updatedAt`、id 稳定选择最新项，其余仅在派生目录中标记 archived。两种投影都
-  不得改写源 bundle。
+  用户行的 Skill owner 投影为 null。Agent profile 允许同名并保持独立 ID，catalog
+  修复保留 SQL 的 archived 状态及 model mappings，不能按时间选择或归档用户配置。
 - WebDAV、S3、自部署快照恢复和手动整包导入在改变本地数据前必须创建安全快照。
   任一数据库、文件、媒体、Rule、Skill、MCP 或 Plugin 恢复步骤失败时，必须尝试
   恢复安全快照；空数据目录必须创建仅含清单的空基线，不能因本地无数据而跳过

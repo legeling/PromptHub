@@ -172,6 +172,30 @@ export class McpDB {
       ),
     );
   }
+  putServers(inputs: McpStoredServer[]): void {
+    rejectNullBytes(inputs);
+    this.database.transaction(() => {
+      const occupied = new Set([
+        ...this.servers().map((row) => row.server.name),
+        ...inputs.map((row) => row.server.name),
+      ]);
+      let sequence = 0;
+      // Release changed names inside this transaction without deleting rows or their credentials.
+      for (const input of inputs) {
+        let temporary: string;
+        do {
+          temporary = `__prompthub_name_transfer_${sequence++}`;
+        } while (occupied.has(temporary));
+        occupied.add(temporary);
+        this.database.run(
+          "UPDATE mcp_servers SET name = ? WHERE id = ?",
+          temporary,
+          input.server.id,
+        );
+      }
+      for (const input of inputs) this.putServer(input);
+    })();
+  }
   putServer(input: McpStoredServer): void {
     rejectNullBytes(input);
     const {

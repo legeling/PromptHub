@@ -3,6 +3,10 @@ export { default as DatabaseAdapter } from "./adapter";
 export type { default as Database } from "./adapter";
 
 // Schema
+export { SettingsDB } from "./settings";
+export { PluginDB, PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "./plugin";
+export type { StoredPluginVersion } from "./plugin";
+export { GenerationDB } from "./generation";
 export { SCHEMA_TABLES, SCHEMA_INDEXES, SCHEMA } from "./schema";
 
 // Initialization
@@ -85,7 +89,11 @@ export { PromptRelationDB } from "./prompt-relation";
 export { PromptOutputFormatDB } from "./prompt-output-format";
 export { FolderDB } from "./folder";
 export { SkillDB } from "./skill";
+export { SkillMetadataDB } from "./skill-metadata";
+export { VersionImportConflictError } from "./version-import";
 export { RuleDB } from "./rule";
+export { StoragePublicationDB } from "./storage-publication";
+export { SyncTargetDB, SYNC_TARGET_SCHEMA_VERSION, type SyncTargetRow } from "./sync-target";
 export { AgentProviderProfileDB } from "./agent-provider-profile";
 export {
   CanonicalResourceDB,

@@ -113,6 +113,16 @@ export const FLAT_SECRET_FIELDS = [
   "githubToken",
 ] as const;
 
+/** Machine paths, native behavior and remote targets stay on the destination device. */
+export const DEVICE_RENDERER_SETTING_KEYS = new Set([
+  ...SYNC_SETTING_KEYS,
+  ...FLAT_SECRET_FIELDS,
+  "networkProxy", "sync", "dataPath", "settingsUpdatedAt",
+  "backgroundImageEnabled", "backgroundImageFileName", "backgroundImageOpacity", "backgroundImageBlur",
+  "launchAtStartup", "minimizeOnLaunch", "localSessionIndexEnabled",
+  "sourceHistory", "skillProjects", "projectSkillImportPreferencesByProjectId",
+]);
+
 export const REDACT_LEGACY_KEYS = [
   "prompthub-settings",
   "settings-storage",

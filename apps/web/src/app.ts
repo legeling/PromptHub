@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { FolderDB, PromptDB, SkillDB } from "@prompthub/db";
 import rootPackage from "../../../package.json";
 import { getServerDatabase } from "./database.js";
 import { logger } from "./middleware/logger.js";
@@ -19,14 +18,10 @@ import syncRoutes from "./routes/sync.js";
 import importExportRoutes from "./routes/import-export.js";
 import devicesRoutes from "./routes/devices.js";
 import backupRoutes from "./routes/backups.js";
-import { bootstrapPromptWorkspace } from "./services/prompt-workspace.js";
 import { bootstrapRuleWorkspace } from "./services/rule-workspace.js";
-import { bootstrapSkillWorkspace } from "./services/skill-workspace.js";
 
 export function createApp(): Hono {
-  const db = getServerDatabase();
-  bootstrapPromptWorkspace(db, new PromptDB(db), new FolderDB(db));
-  bootstrapSkillWorkspace(db, new SkillDB(db));
+  getServerDatabase();
   bootstrapRuleWorkspace();
 
   const app = new Hono();

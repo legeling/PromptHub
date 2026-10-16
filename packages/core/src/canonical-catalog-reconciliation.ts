@@ -1,3 +1,9 @@
+import { migrateSkillPayloadFilesV1 } from "./migrations/skill-payload-files-v1";
+import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
+import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
+import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
+import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
+import { migratePromptWorkspaceV1 } from "./migrations/prompt-workspace-v1";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -10,12 +16,13 @@ import {
   FolderDB,
   inspectDatabaseClientLeases,
   PromptDB,
+  initDatabase,
+  closeDatabase,
+  CURRENT_DATABASE_SCHEMA_VERSION,
 } from "@prompthub/db";
 import { assertDatabaseCompatibility } from "@prompthub/db/database-migration-state";
-import {
-  publishCanonicalEntries,
-  recoverCanonicalEntryPublications,
-} from "./canonical-entry-publication";
+import { publishCanonicalEntries } from "./canonical-entry-publication";
+import { recoverStorageEntryPublications } from "./sqlite-entry-publication";
 import {
   calculateCanonicalResourceCatalogHash,
   stageCanonicalStorageDatabase,
@@ -25,18 +32,16 @@ import { collectPromptCanonicalGraph } from "./prompt-canonical-export";
 import { recoverCanonicalResourcePublications } from "./resource-bundle-publication";
 import { assertStoragePathComponentsSafe } from "./runtime-storage-context";
 import { acquireStorageMaintenanceIntent } from "./storage-maintenance-intent";
-import { migrateCanonicalSkillSources } from "./canonical-skill-sources";
 
 import { migrateSkillPackageInternalsV1 } from "./migrations/skill-package-internals-v1";
-import { migratePluginResourcePathsV1 } from "./migrations/plugin-resource-paths-v1";
+import { migrateAgentProviderSqliteV1 } from "./migrations/agent-provider-sqlite-v1";
+import { migratePromptSqliteV1 } from "./migrations/prompt-sqlite-v1";
 
 const DATABASE_SIDECARS = ["-journal", "-shm", "-wal"] as const;
 
 export interface ReconcileCanonicalStorageCatalogOptions {
   activeRoot: string;
   databasePath: string;
-  /** Desktop's existing recovery flow can explicitly accept lost unreadable operational state. */
-  unreadableDatabase?: "reject" | "rebuild";
 }
 
 interface CatalogHashes {
@@ -85,7 +90,7 @@ function currentCatalogHashes(databasePath: string): CatalogHashes | undefined {
 
 function operationalSource(
   options: ReconcileCanonicalStorageCatalogOptions,
-): string | undefined {
+): string {
   try {
     const stats = fs.lstatSync(options.databasePath);
     if (!stats.isFile())
@@ -101,8 +106,9 @@ function operationalSource(
         "Missing canonical database has sidecar recovery material",
       );
     }
-    assertMcpSqliteRecoveryNotRequired(options.activeRoot);
-    return undefined;
+    throw new Error("Authoritative SQLite is missing; recovery is required", {
+      cause: error,
+    });
   }
   try {
     const database = new DatabaseAdapter(options.databasePath, {
@@ -114,10 +120,6 @@ function operationalSource(
       database.close();
     }
   } catch (cause) {
-    if (options.unreadableDatabase === "rebuild") {
-      assertMcpSqliteRecoveryNotRequired(options.activeRoot);
-      return undefined;
-    }
     throw new Error(
       "Canonical database is not readable; operational state cannot be preserved",
       { cause },
@@ -126,24 +128,6 @@ function operationalSource(
   // Never turn an unsupported future schema into a freshly rebuilt older one.
   assertDatabaseCompatibility(options.databasePath);
   return options.databasePath;
-}
-
-function assertMcpSqliteRecoveryNotRequired(root: string): void {
-  const mcpRoot = path.join(root, "data", "mcp");
-  if (!fs.existsSync(mcpRoot)) return;
-  assertStoragePathComponentsSafe(root, mcpRoot);
-  for (const entry of fs.readdirSync(mcpRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const directory = path.join(mcpRoot, entry.name);
-    if (
-      fs.existsSync(path.join(directory, "versions")) &&
-      !fs.existsSync(path.join(directory, "manifest.json"))
-    ) {
-      throw new Error(
-        "MCP definitions require recovery of authoritative SQLite; catalog rebuild cannot discard them",
-      );
-    }
-  }
 }
 
 function sameHashes(
@@ -193,21 +177,63 @@ function reconcileWithMaintenance(
       "Canonical catalog repair requires all database clients to be closed",
     );
   }
-  recoverCanonicalEntryPublications(options.activeRoot);
+  recoverStorageEntryPublications(options.activeRoot);
   const dataPath = path.dirname(options.databasePath);
   recoverCanonicalResourcePublications(dataPath);
   migrateSkillPackageInternalsV1(options.activeRoot);
-  migratePluginResourcePathsV1(options.activeRoot);
   const sourcePath = operationalSource(options);
-  if (sourcePath) migrateCanonicalSkillSources(options.activeRoot, sourcePath);
-  const current = sourcePath ? currentCatalogHashes(sourcePath) : undefined;
+  const source = new DatabaseAdapter(sourcePath);
+  try {
+    migrateAgentProviderSqliteV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+    migratePromptSqliteV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+    migratePluginSqliteV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+    migrateSkillSqliteV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+    migrateSkillPayloadFilesV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+      skillsRoot: path.join(options.activeRoot, "data", "skills"),
+    });
+    migrateRuleMetadataV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+    migrateGenerationSqliteV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+    migratePromptWorkspaceV1(source, {
+      rootPath: options.activeRoot,
+      databasePath: sourcePath,
+    });
+  } finally {
+    source.close();
+  }
+  const current = currentCatalogHashes(sourcePath);
   const stagedPath = createOwnedTemporaryDatabasePath(
     dataPath,
     "catalog-rebuild",
   );
   try {
     const staged = stageCanonicalStorageDatabase(dataPath, stagedPath, {
+      skillSourceDatabasePath: sourcePath,
+      ruleSourceDatabasePath: sourcePath,
+      promptSourceDatabasePath: sourcePath,
       operationalSourceDatabasePath: sourcePath,
+      agentProviderSourceDatabasePath: sourcePath,
+      pluginSourceDatabasePath: sourcePath,
+      generationSourceDatabasePath: sourcePath,
       publishedCanonicalRootPath: dataPath,
     });
     if (sameHashes(current, staged)) return { status: "current" };
@@ -215,6 +241,34 @@ function reconcileWithMaintenance(
     return { status: "rebuilt" };
   } finally {
     cleanupOwnedTemporaryDatabase(stagedPath);
+  }
+}
+
+function upgradeSourceSchema(databasePath: string): void {
+  const probe = new DatabaseAdapter(databasePath, { readOnly: true });
+  let current: boolean;
+  try {
+    const rows = probe.pragma("user_version");
+    current =
+      Array.isArray(rows) &&
+      rows.length === 1 &&
+      typeof rows[0] === "object" &&
+      rows[0] !== null &&
+      "user_version" in rows[0] &&
+      rows[0].user_version === CURRENT_DATABASE_SCHEMA_VERSION;
+  } finally {
+    probe.close();
+  }
+  if (current) return;
+  const clients = inspectDatabaseClientLeases(databasePath);
+  if (clients.livePids.length > 0 || clients.unknownEntries.length > 0)
+    throw new Error(
+      "Canonical catalog repair requires all database clients to be closed",
+    );
+  try {
+    initDatabase(databasePath);
+  } finally {
+    closeDatabase();
   }
 }
 
@@ -232,6 +286,11 @@ export function reconcileCanonicalStorageCatalog(
     operationKind: "catalog-reconcile",
   });
   try {
+    recoverStorageEntryPublications(activeRoot);
+    // Catalog maintenance preserves an already upgraded business database. Domain
+    // conversions below must not write into an older schema before its migration.
+    const sourcePath = operationalSource({ activeRoot, databasePath });
+    upgradeSourceSchema(sourcePath);
     const migration = acquireDatabaseMigrationIntent(databasePath, {
       timeoutMs: 0,
     });

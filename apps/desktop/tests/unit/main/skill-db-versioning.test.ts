@@ -1,3 +1,7 @@
+import {
+  configureRuntimePaths,
+  resetRuntimePaths,
+} from "@prompthub/core/runtime-paths";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -14,6 +18,7 @@ describe("SkillDB versioning", () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-skill-db-"));
+    configureRuntimePaths({ userDataPath: tempDir });
     db = new Database(path.join(tempDir, "prompthub.db"));
     db.exec(SCHEMA);
     skillDb = new SkillDB(db);
@@ -21,6 +26,7 @@ describe("SkillDB versioning", () => {
 
   afterEach(() => {
     db.close();
+    resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -87,11 +93,14 @@ describe("SkillDB versioning", () => {
       currentVersion: 0,
     });
 
+    const packagePath = path.join(tempDir, "install-package");
+    fs.mkdirSync(packagePath);
+    fs.writeFileSync(path.join(packagePath, "SKILL.md"), "# Installed");
     const result = skillDb.finalizePackageInstall(
       pending.id,
       {
         content: "# Installed",
-        local_repo_path: "/skills/install-baseline/repo",
+        local_repo_path: packagePath,
         installed_directory_fingerprint: "a".repeat(64),
         source_last_error: null,
       },

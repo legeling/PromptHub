@@ -3,14 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CanonicalSkillDB } from "../src/canonical-skill-db";
-import {
-  getCanonicalSkillWorkspacePath,
-  hydrateCanonicalSkillWorkspace,
-  publishCanonicalSkill,
-} from "../src/canonical-skill-library";
-import { mutateCanonicalSkillPackage } from "../src/skills/canonical-package-mutation";
-import { readSkillResourceBundle } from "../src/skill-resource-schema";
+import { SkillStorageDB } from "../src/skill-storage";
+import { getManagedSkillPackagePath } from "../src/skill-storage-files";
+import { mutateSkillPackage } from "../src/skills/package-mutation";
 import {
   configureRuntimePaths,
   resetRuntimePaths,
@@ -24,9 +19,8 @@ import {
 describe("Skill package durability", () => {
   let root: string;
   let database: DatabaseAdapter.Database;
-  let db: CanonicalSkillDB;
+  let db: SkillStorageDB;
   let id: string;
-  let bundle: string;
   let cache: string;
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-durability-"));
@@ -36,9 +30,9 @@ describe("Skill package durability", () => {
       consistencyId: "d".repeat(64),
       operationId: "skill-test",
     });
-    database = new DatabaseAdapter(":memory:");
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
     database.exec(SCHEMA);
-    db = new CanonicalSkillDB(database);
+    db = new SkillStorageDB(database);
     const source = path.join(root, "source");
     fs.mkdirSync(source);
     fs.writeFileSync(path.join(source, "SKILL.md"), "# Skill");
@@ -50,8 +44,7 @@ describe("Skill package durability", () => {
       content: "# Skill",
       is_favorite: false,
     }).id;
-    bundle = path.join(root, "data", "skills", id);
-    cache = getCanonicalSkillWorkspacePath(id);
+    cache = getManagedSkillPackagePath(id);
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -60,48 +53,44 @@ describe("Skill package durability", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it("retains canonical bytes and reconstructs missing cache on favorite update", () => {
+  it("updates favorite without regenerating a missing package", () => {
     fs.rmSync(cache, { recursive: true });
     expect(db.update(id, { is_favorite: true })?.is_favorite).toBe(true);
-    expect(readSkillResourceBundle(bundle).packageFiles).toHaveLength(2);
+    expect(fs.existsSync(cache)).toBe(false);
+  });
+  it("rejects a missing replacement source without touching current bytes", () => {
+    const before = db.getById(id);
+    expect(() =>
+      db.update(id, { local_repo_path: path.join(root, "missing") }),
+    ).toThrow();
+    expect(db.getById(id)).toEqual(before);
     expect(fs.readFileSync(path.join(cache, "helper.py"), "utf8")).toBe(
       "print(1)",
     );
   });
-
-  it("rejects an explicitly missing package source without replacing canonical bytes", () => {
-    const before = fs.readFileSync(path.join(bundle, "manifest.json"));
-    expect(() =>
-      publishCanonicalSkill({
-        skill: db.getById(id)!,
-        versions: db.getVersions(id),
-        packageSourcePath: path.join(root, "missing"),
-      }),
-    ).toThrow();
-    expect(fs.readFileSync(path.join(bundle, "manifest.json"))).toEqual(before);
-  });
-
-  it("publishes edits, nested renames and deletes and survives reconstruction", async () => {
-    await mutateCanonicalSkillPackage(db, id, {
+  it("publishes edits, nested renames and deletes and survives reopening", async () => {
+    await mutateSkillPackage(db, id, {
       kind: "write",
       relativePath: "docs/嵌套.txt",
       content: "new",
     });
-    await mutateCanonicalSkillPackage(db, id, {
+    await mutateSkillPackage(db, id, {
       kind: "write",
       relativePath: "helper.py",
       content: "print(2)",
     });
-    await mutateCanonicalSkillPackage(db, id, {
+    await mutateSkillPackage(db, id, {
       kind: "rename",
       relativePath: "docs",
       newRelativePath: "notes",
     });
-    await mutateCanonicalSkillPackage(db, id, {
+    await mutateSkillPackage(db, id, {
       kind: "delete",
       relativePath: "helper.py",
     });
-    hydrateCanonicalSkillWorkspace(id);
+    database.close();
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
+    db = new SkillStorageDB(database);
     expect(fs.existsSync(path.join(cache, "helper.py"))).toBe(false);
     expect(fs.existsSync(path.join(cache, "docs"))).toBe(false);
     expect(fs.readFileSync(path.join(cache, "notes/嵌套.txt"), "utf8")).toBe(
@@ -110,12 +99,12 @@ describe("Skill package durability", () => {
     expect(db.getById(id)?.directory_fingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it("does not touch cache/canonical when publication fails", async () => {
+  it("does not touch stored package bytes when publication fails", async () => {
     vi.spyOn(db, "update").mockImplementation(() => {
       throw new Error("publication denied");
     });
     await expect(
-      mutateCanonicalSkillPackage(db, id, {
+      mutateSkillPackage(db, id, {
         kind: "write",
         relativePath: "helper.py",
         content: "bad",
@@ -124,14 +113,6 @@ describe("Skill package durability", () => {
     expect(fs.readFileSync(path.join(cache, "helper.py"), "utf8")).toBe(
       "print(1)",
     );
-    expect(
-      fs.readFileSync(
-        readSkillResourceBundle(bundle).packageFiles.find(
-          (f) => f.path === "helper.py",
-        )!.absolutePath,
-        "utf8",
-      ),
-    ).toBe("print(1)");
   });
 
   it.each([
@@ -146,16 +127,14 @@ describe("Skill package durability", () => {
   ] as const)(
     "rejects unsafe or incomplete resulting packages (%#)",
     async (mutation) => {
-      await expect(
-        mutateCanonicalSkillPackage(db, id, mutation),
-      ).rejects.toThrow();
+      await expect(mutateSkillPackage(db, id, mutation)).rejects.toThrow();
       expect(fs.readFileSync(path.join(cache, "SKILL.md"), "utf8")).toBe(
         "# Skill",
       );
     },
   );
 
-  it("restores binary snapshots into canonical authority and keeps bytes in history", async () => {
+  it("restores binary snapshots into the managed package and keeps bytes in history", async () => {
     const files = [
       { relativePath: "SKILL.md", content: "# Restored" },
       {
@@ -164,27 +143,25 @@ describe("Skill package durability", () => {
         encoding: "base64" as const,
       },
     ];
-    await mutateCanonicalSkillPackage(db, id, { kind: "replace", files });
+    await mutateSkillPackage(db, id, { kind: "replace", files });
     db.createVersion(id, "binary", files);
-    fs.rmSync(cache, { recursive: true });
-    hydrateCanonicalSkillWorkspace(id);
+    database.close();
+    database = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
+    db = new SkillStorageDB(database);
     expect(fs.readFileSync(path.join(cache, "asset.bin"))).toEqual(
       Buffer.from([0, 255, 128]),
     );
     expect(db.getVersions(id)[0].filesSnapshot).toEqual(files);
-    expect(readSkillResourceBundle(bundle).versions[0].filesSnapshot).toEqual(
-      files,
-    );
   });
 
-  it("serializes overlapping edits with a revision conflict instead of silently losing one", async () => {
+  it("serializes overlapping edits with a SQL baseline conflict instead of silently losing one", async () => {
     const results = await Promise.allSettled([
-      mutateCanonicalSkillPackage(db, id, {
+      mutateSkillPackage(db, id, {
         kind: "write",
         relativePath: "one.txt",
         content: "one",
       }),
-      mutateCanonicalSkillPackage(db, id, {
+      mutateSkillPackage(db, id, {
         kind: "write",
         relativePath: "two.txt",
         content: "two",
@@ -203,23 +180,23 @@ describe("Skill package durability", () => {
     ).toEqual([]);
   });
 
-  it("keeps legacy and internal metadata operations on their existing owners", async () => {
+  it("keeps external and internal metadata operations on their existing owners", async () => {
     expect(
-      await mutateCanonicalSkillPackage(db, id, {
+      await mutateSkillPackage(db, id, {
         kind: "write",
         relativePath: ".prompthub/state.json",
         content: "{}",
       }),
     ).toBe(false);
     await expect(
-      mutateCanonicalSkillPackage(db, "missing", {
+      mutateSkillPackage(db, "missing", {
         kind: "delete",
         relativePath: "x",
       }),
     ).rejects.toThrow("Skill not found");
     configureRuntimePaths({ userDataPath: path.join(root, "legacy") });
     expect(
-      await mutateCanonicalSkillPackage(db, id, {
+      await mutateSkillPackage(db, id, {
         kind: "delete",
         relativePath: "helper.py",
       }),
@@ -229,7 +206,7 @@ describe("Skill package durability", () => {
   it("cleans staging when the owning Skill disappears before publication", async () => {
     vi.spyOn(db, "update").mockReturnValue(null);
     await expect(
-      mutateCanonicalSkillPackage(db, id, {
+      mutateSkillPackage(db, id, {
         kind: "write",
         relativePath: "helper.py",
         content: "new",

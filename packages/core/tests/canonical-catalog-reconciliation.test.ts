@@ -97,6 +97,22 @@ function staleCatalog(): void {
   );
 }
 
+function dirtyResourceCatalog(): void {
+  reconcile();
+  withDatabase((db) =>
+    db.run(
+      "INSERT INTO canonical_resources VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "prompt",
+      "retired-resource",
+      1,
+      1,
+      "a".repeat(64),
+      "prompts/retired/manifest.json",
+      new Date().toISOString(),
+    ),
+  );
+}
+
 function expectNoMaintenanceArtifacts(): void {
   expect(fs.existsSync(getStorageMaintenanceIntentPath(root))).toBe(false);
   expect(fs.existsSync(`${databasePath}.migration-intent.json`)).toBe(false);
@@ -161,6 +177,13 @@ beforeEach(() => {
   }
   stageCanonicalStorageDatabase(dataPath, databasePath);
   seedOperationalState();
+  withDatabase((db) =>
+    db.run(
+      "INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+      "agent-provider-sqlite-v1",
+      Date.now(),
+    ),
+  );
   configureRuntimePaths({ userDataPath: root });
   writeRuntimeLayoutState(root);
   writeCanonicalStorageAuthority(root, {
@@ -182,25 +205,17 @@ it("does not rebuild unreadable SQLite over authoritative MCP history", () => {
   const content = path.join(history, "000001.json");
   fs.writeFileSync(content, "retained historical content");
   fs.writeFileSync(databasePath, "unreadable database");
-  expect(() => reconcile({ unreadableDatabase: "rebuild" })).toThrow(
-    /MCP.*SQLite/i,
-  );
+  expect(() => reconcile()).toThrow(/not readable/i);
   expect(fs.readFileSync(content, "utf8")).toBe("retained historical content");
   expect(fs.readFileSync(databasePath, "utf8")).toBe("unreadable database");
 });
 
-it("rebuilds a stale graph, preserving histories, relationships and every registered operational table", () => {
+it("rejects conflicting historical and SQL records without choosing a winner", () => {
   const preserved = preservedRows();
   staleCatalog();
-  withDatabase((db) =>
-    db.run("DELETE FROM prompt_versions WHERE prompt_id = ?", firstId),
-  );
-  expect(reconcile()).toEqual({ status: "rebuilt" });
-  expect(
-    withDatabase((db) =>
-      collectPromptCanonicalGraph(new PromptDB(db), new FolderDB(db), db),
-    ),
-  ).toEqual(originalGraph);
+  const before = fs.readFileSync(databasePath);
+  expect(() => reconcile()).toThrow(/migration conflict/i);
+  expect(fs.readFileSync(databasePath)).toEqual(before);
   expect(preservedRows()).toEqual(preserved);
   expect(readPromptCanonicalGraph(dataPath).snapshot).toEqual(
     originalFileGraph,
@@ -209,6 +224,7 @@ it("rebuilds a stale graph, preserving histories, relationships and every regist
 });
 
 it("does not replace a current database and cleans the unused stage", () => {
+  reconcile();
   const before = fs.readFileSync(databasePath);
   const inode = fs.statSync(databasePath).ino;
   expect(reconcile()).toEqual({ status: "current" });
@@ -218,29 +234,29 @@ it("does not replace a current database and cleans the unused stage", () => {
 });
 
 it("rebuilds when only the resource catalog is stale", () => {
-  withDatabase((db) => db.run("DELETE FROM canonical_resources"));
+  dirtyResourceCatalog();
   expect(reconcile()).toEqual({ status: "rebuilt" });
   expect(
     withDatabase((db) => db.all("SELECT resource_id FROM canonical_resources")),
-  ).toHaveLength(2);
+  ).toHaveLength(0);
 });
 
-it("rebuilds a missing database without publishing an empty writable graph", () => {
+it("requires recovery for a missing authoritative database and preserves the file graph", () => {
   fs.unlinkSync(databasePath);
-  const db = initDatabase();
-  expect(new PromptDB(db).getById(firstId)?.title).toBe("Canonical first");
+  expect(() => initDatabase()).toThrow(/SQLite.*recovery/i);
+  expect(fs.existsSync(databasePath)).toBe(false);
   expect(readPromptCanonicalGraph(dataPath).snapshot).toEqual(
     originalFileGraph,
   );
 });
 
-it("Core startup repairs stale state once and reuses its open handle", () => {
+it("Core startup preserves authoritative SQL edits and reuses its open handle", () => {
   initDatabase();
   closeDatabase();
   const preserved = preservedRows();
   staleCatalog();
   const db = initDatabase();
-  expect(new PromptDB(db).getById(firstId)?.title).toBe("Canonical first");
+  expect(new PromptDB(db).getById(firstId)?.title).toBe("stale");
   const inode = fs.statSync(databasePath).ino;
   expect(initDatabase()).toBe(db);
   expect(fs.statSync(databasePath).ino).toBe(inode);
@@ -249,7 +265,8 @@ it("Core startup repairs stale state once and reuses its open handle", () => {
   expect(initDatabase()).not.toBe(db);
 });
 
-it("CLI lists the recovered content and releases its database lease", async () => {
+it("CLI lists migrated content and releases its database lease", async () => {
+  reconcile();
   staleCatalog();
   const output: string[] = [];
   const errors: string[] = [];
@@ -260,22 +277,20 @@ it("CLI lists the recovered content and releases its database lease", async () =
     }),
   ).toBe(0);
   expect(errors).toEqual([]);
-  expect(output.join("\n")).toContain("Canonical first");
-  expect(output.join("\n")).not.toContain('"title":"stale"');
+  expect(output.join("\n")).toContain("stale");
   expect(() => getDatabase()).toThrow(/not initialized/);
   expectNoMaintenanceArtifacts();
 });
 
-it("invalidates and closes an already-open stale handle without overwriting the files", () => {
+it("keeps an open SQL handle current without replaying a retired file graph", () => {
   const db = initDatabase();
-  db.run("UPDATE prompts SET title = 'stale'");
-  expect(() => initDatabase()).toThrow(/catalog.*recovery/);
-  expect(() => getDatabase()).toThrow(/not initialized/);
-  expect(readPromptCanonicalGraph(dataPath).snapshot).toEqual(
-    originalFileGraph,
-  );
+  db.run("UPDATE prompts SET title = 'SQL change'");
+  expect(initDatabase()).toBe(db);
+  expect(new PromptDB(db).getById(firstId)?.title).toBe("SQL change");
+  expect(fs.existsSync(path.join(dataPath, "catalog.json"))).toBe(false);
+  closeDatabase();
   expect(new PromptDB(initDatabase()).getById(firstId)?.title).toBe(
-    "Canonical first",
+    "SQL change",
   );
 });
 
@@ -342,14 +357,11 @@ it.each([
   expectNoMaintenanceArtifacts();
 });
 
-it("retains the Desktop compatibility policy for unreadable catalogs", () => {
+it("does not replace unreadable business data even with a valid canonical graph", () => {
   fs.writeFileSync(databasePath, "corrupt catalog");
-  expect(reconcile({ unreadableDatabase: "rebuild" })).toEqual({
-    status: "rebuilt",
-  });
-  expect(withDatabase((db) => new PromptDB(db).getById(firstId)?.title)).toBe(
-    "Canonical first",
-  );
+  expect(() => reconcile()).toThrow(/not readable/i);
+  expect(fs.readFileSync(databasePath, "utf8")).toBe("corrupt catalog");
+  expectNoMaintenanceArtifacts();
 });
 
 it("rejects future database versions without downgrading them", () => {
@@ -363,10 +375,10 @@ it("rejects future database versions without downgrading them", () => {
 });
 
 it("preserves incompatible operational tables instead of replacing them", () => {
+  dirtyResourceCatalog();
   withDatabase((db) =>
     db.exec("ALTER TABLE settings ADD COLUMN future_field TEXT"),
   );
-  staleCatalog();
   const before = fs.readFileSync(databasePath);
   expect(() => reconcile()).toThrow(/preserve incompatible table/);
   expect(fs.readFileSync(databasePath)).toEqual(before);
@@ -444,8 +456,8 @@ it.each(["database", "data-directory"])(
 );
 
 it("rejects malformed non-Prompt bundles before publication", () => {
+  dirtyResourceCatalog();
   fs.mkdirSync(path.join(dataPath, "skills", "invalid"), { recursive: true });
-  staleCatalog();
   const before = fs.readFileSync(databasePath);
   expect(() => reconcile()).toThrow();
   expect(fs.readFileSync(databasePath)).toEqual(before);
@@ -453,7 +465,7 @@ it("rejects malformed non-Prompt bundles before publication", () => {
 });
 
 it("rolls back a failed replacement and succeeds on the next startup", () => {
-  staleCatalog();
+  dirtyResourceCatalog();
   const before = fs.readFileSync(databasePath);
   const rename = fs.renameSync.bind(fs);
   let failed = false;
@@ -476,13 +488,19 @@ it("rolls back a failed replacement and succeeds on the next startup", () => {
 });
 
 it("rolls back if verification finds a mismatched published catalog", () => {
-  staleCatalog();
+  dirtyResourceCatalog();
   const before = fs.readFileSync(databasePath);
   const rename = fs.renameSync.bind(fs);
   vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
     const result = rename(from, to);
     if (String(from).includes(".stage-") && String(to) === databasePath) {
-      withDatabase((db) => db.run("DELETE FROM canonical_resources"));
+      withDatabase((db) =>
+        db.run(
+          "UPDATE prompts SET title = ? WHERE id = ?",
+          "corrupted replacement",
+          firstId,
+        ),
+      );
     }
     return result;
   });

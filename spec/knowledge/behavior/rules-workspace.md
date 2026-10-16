@@ -24,11 +24,13 @@
 ### 3. Current Project vs Added Project
 
 - `Rules` 不再内置“当前项目”伪规则项。
-- 用户手动添加的项目目录会被迁移为 `data/rules/projects/` 下的托管规则记录。
+- 用户手动添加的项目目录由 SQLite 记录绑定，受管正文位于 runtime paths 定义的 `data/rule-files/projects/`。
 - 每个手动项目目录当前只管理一个 canonical 文件：`AGENTS.md`。
 
 ### 4. Rule File Identifier Model
 
+- SQLite 中更新 Rule 元数据必须原位保留父记录及其版本；版本只能由明确的
+  版本替换、版本删除或规则删除操作改变，不能因父记录的 REPLACE 触发级联删除。
 - 内置全局规则文件使用稳定 id，例如：
   - `claude-global`
   - `codex-global`
@@ -38,9 +40,8 @@
 - 手动项目规则使用动态 id：`project:<project-id>`
 - Claude 目录规则复用 `custom:<id>` 合同，以 `custom:claude-rule:<相对路径的 base64url>`
   保持稳定身份；SQLite 继续拥有记录，实际原文及版本沿用现有 Rules 文件存储。
-  托管副本置于 `data/rules/global/claude/scoped/<id的SHA-256>/<文件名>`，每个规则独立
-  `_rule.json` 和版本目录，不与 `CLAUDE.md` 或相邻规则共享元数据。无需结构迁移。
-  Scoped Rule 的版本目录使用 `claude-scoped-<id的SHA-256>`，避免合法长文件名经编码后超过单个目录名的文件系统限制。
+  受管正文及历史沿用第 9 节的统一布局；旧 scoped `_rule.json` 和版本索引由启动迁移转换。
+  Scoped Rule 的目录身份使用 `claude-scoped-<完整id的SHA-256>`，支持合法长文件名与嵌套路径。
   外部修改保持 out-of-sync，外部删除保留托管副本为 target-missing；扫描不自动覆盖。
 - CLI 操作项目规则时必须支持 cwd-aware 初始化：
   - `prompthub rules project-init` 默认把当前工作目录注册为项目规则目录
@@ -108,100 +109,20 @@
 
 ### 9. Persistence Model
 
-- 全局规则平台注册表来自 `packages/shared/constants/rules.ts`
-- Rules 的业务真相源位于 `userData/data/rules/`
-- 每条规则保存在 `data/rules/<rule-id>/` canonical bundle 中：`rule.md`
-  是当前正文，`rule.json` 是逻辑元数据与外部 placement，`versions/` 保存版本正文。
-- `cache/rules-workspace/` 只用于运行期兼容工作区和索引 hydration，可以删除并从 canonical bundle 重建。
-- `prompthub.db` 仅承担 Rules 的索引/状态缓存角色，业务正文不应只存在于数据库中
-- 已绑定项目规则的 `targetPath` 与 `projectRootPath` 必须随 canonical Rule 文件保存，
-  使删除或迁移 SQLite 后仍能恢复项目绑定；全局规则路径由当前设备 agent
-  配置派生，`managedPath` 和 `syncStatus` 是可重建状态。
-- portable 恢复的未部署项目规则保留正文、文件名和完整历史；当前 DB 的空
-  `targetPath` 在 bundle 输入转换处归一为省略字段，不重新采用源设备的旧路径。
-  非空路径仍执行现有校验。以上描述当前恢复格式；SQLite 权威转换仍按
-  [foundation](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants)
-  推进，不能据此将旧 catalog 重建模式视为目标已完成。
-- Hydrated 项目 `_rule.json` 使用 `targetPath: ""` 与
-  `projectRootPath: null` 表示明确未部署状态。启动读取必须保留该配对和
-  项目身份，并在找到它时结束旧绑定扫描，不恢复之前设备的部署路径。
-  当前规范受管目录的绑定优先于历史目录，不由文件枚举顺序决定部署状态。
-  非字符串、null byte、空目标配非空项目根仍须拒绝；正文、历史、列表和
-  删除行为沿用当前合同。此修复不改变 bundle schema 或增加迁移，旧代码
-  回退后仍保全 bundle，但可能再次拒绝第二次启动；升级后可正常重试。
-- 内置全局规则在读取时以当前设备平台注册表和 agent override 重新派生外部目标，
-  不得把 canonical `rule.md` 或旧设备路径当作部署目标。
-- 旧版 settings 里的 `ruleProjects` 只作为迁移来源，不再是长期真相源
-- 旧版 user data 同级 `rule-history/*.json` 只作为首次 materialize 时的迁移来源：
-  - 目标文件存在时，目标内容成为当前托管正文，legacy history 合并为更早版本快照。
-  - 目标文件缺失时，最新 legacy history 恢复为托管正文，同步状态保持 `target-missing`，等待用户显式部署。
-  - 旧版来源值必须归一化到现有版本来源枚举：`create`、`manual-save`、`ai-rewrite`。
-- Shared Rules project ids supplied by callers or backup imports must be safe
-  single path segments before they are used in managed project directories.
-  Valid ids start with an alphanumeric character and may contain only letters,
-  numbers, dots, underscores, and hyphens.
-- Canonical Rule bundles under `data/rules/` use the shared journaled bundle
-  publication boundary. Hydrated compatibility files under
-  `cache/rules-workspace/`, including `_rule.json` and version indexes, use
-  same-directory temporary writes followed by rename so interrupted writes do
-  not replace the previous readable file with partial content.
-- Canonical `rule.json` history is chronological from oldest to newest, while
-  the compatibility `index.json` is newest first for the runtime workspace.
-  Hydration and reads must normalize that boundary before rebuilding SQLite;
-  an older reversed compatibility index is repaired atomically without
-  changing any Rule body or durable version file.
-- Backup, snapshot, Desktop fallback, and CLI Rule imports publish only
-  PromptHub-managed state. They never write or create the external target;
-  target status is derived after publication, and only explicit save, deploy,
-  or conflict resolution may write the target.
-- Successful import merges existing and incoming history by content, protects
-  the pre-import managed body and imported current body, and retains at most 20
-  versions. Imported history selection uses bounded per-Rule memory.
-- Rule import stages version replacement and treats managed body, metadata,
-  versions, and SQLite projection as one recoverable publication unit. A failed
-  publish restores readable pre-import state, and replace cleanup starts only
-  after every imported record publishes successfully.
-- Web rule workspace imports must preserve the previous readable rule record
-  when a rewrite fails: managed content, `_rule.json`, version files, and
-  `index.json` must not be left in a half-new/half-old state after an
-  interrupted version write.
-- A forced scan reconciles registered project targets with the filesystem and
-  persists a changed `syncStatus` to `_rule.json` and RuleDB. A missing target
-  remains visible as `target-missing`; its managed body and versions remain
-  recoverable until the user explicitly deploys or cleans it up.
-- Missing-project cleanup is confirmation-gated and accepts only selected safe
-  `project:` IDs whose targets are still absent. It deletes PromptHub-managed
-  rule/version data and the matching RuleDB row, never the external project
-  root or target path, and reports removed, skipped, and failed IDs.
-- Project workspace creation, canonical hydration and import cleanup share
-  `getProjectRuleManagedDirectory`: the cache directory is keyed by stable
-  project ID, never by its display name. Workspace and Cursor project rules
-  retain their declared `AGENTS.md` or `prompthub.mdc` filename.
-  Reusing an existing project ID for another target is rejected before any
-  managed body, binding, version or external file is overwritten.
-- Project deletion validates every `_rule.json` binding with the requested
-  Rule ID before any mutation. The bound directory must contain the declared
-  managed path and a supported project filename. All verified current and
-  historical cache bindings, versions and the canonical bundle are removed in
-  the existing journaled publication transaction; a pre-commit failure restores
-  the files and database record. Matching directory names alone never authorize
-  removal. External targets and bindings to other Rule IDs remain untouched;
-  repeated removal is harmless and scan/reopen must not restore a deleted Rule.
-- This correction changes rebuildable workspace paths only, not the canonical
-  Rule schema or the foundation redesign's SQLite ownership requirement.
-  Existing name-prefixed cache bindings remain discoverable by their metadata
-  until explicit removal; they are not a second path-construction convention.
-  Rollback to earlier code preserves canonical bodies and versions but can
-  recreate the duplicate-cache defect; upgrading again and removing the selected
-  Rule cleans its validated bindings without deleting the external file.
-- legacy cached-list API 必须直接委托给一次有界文件扫描并重建 SQLite 投影，
-  不得从 DB 复制另一套可见性或路径判定；用户不需要先点击 Rescan 才能看到
-  文件持有的规则。
-- 单次文件权威扫描只创建一个 SQLite Rule 投影适配器；同一个已打开的数据库
-  连接只执行一次 canonical Skill workspace hydration，避免 Rule 枚举把 Skill
-  全量 hydration 放大为 `Rules x Skills`。
-- Agent Rules 冷启动只加载 descriptor inventory，再按 Agent 声明路径/平台读取
-  对应 Rule；不得先读取列表首项或其他 Agent 的 Rule。
+- [Foundation 数据权威要求](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants) 是现行合同。Desktop/CLI 的 Rule 元数据、项目绑定、版本身份与顺序由 SQLite 的 `rules` / `rule_versions` 独占；当前正文和历史正文位于 runtime paths 定义的 `data/rule-files/`。历史文件名由版本 ID 摘要生成，顺序由 SQL 决定。
+- 当前正文和历史可以独立存在；删除历史不回退当前正文。空正文是合法文件。尚未创建的全局规则占位行使用空 `content_hash` 和零版本；实际空文件使用空内容的 SHA-256，丢失实际文件不能被当成占位。
+- 日常编辑、历史删除、项目删除和整批导入通过同一文件 publication 与 SQLite 提交收据提交。SQL 失败恢复文件；提交结果未知时先恢复确认，不能靠逐条补偿覆盖已提交内容。普通读取不删丢失历史、不从旧 JSON 重建 SQL，也不以外部目标修复丢失的受管正文。
+- 显式保存先提交本地资产，再部署外部目标。部署失败返回 `sync-error`，保留本地编辑。扫描和读取比较受管文件与目标文件，将 `syncStatus` 写回 SQL；目标缺失仍保留项目列表和历史。全局规则的部署路径随当前设备 agent 配置派生，已存在元数据的业务字段不被模板重写。
+- 新发现的全局外部文件仍经扫描导入。项目创建保留外部已有正文；新项目 ID 必须是安全单段，受管目录由稳定 ID 决定，不能重用 ID 覆盖另一项目。`AGENTS.md` / `prompthub.mdc` 文件名保留。
+- 导入、备份和恢复只写受管状态，不创建或修改外部目标。新导入项目使用 `targetPath: ""` / `projectRootPath: null`；已有本机项目保留绑定。导入按内容合并历史，保留导入前正文与导入正文，沿用 20 条日常历史策略；整批先验证再提交，后续条目失败不能留下前面条目已更新的状态。
+- 缺失项目清理只处理用户选择且目标仍不存在的安全 `project:` ID。删除先核对 SQL 文件引用与该身份的规范受管目录；从不删除外部项目根或目标。结果区分 removed / skipped / failed，重复删除幂等。
+- `rule-metadata-v1` 在启动边界一次性转换旧 `data/rules/` bundle 与 `cache/rules-workspace/` 的 `_rule.json`、`index.json`；同身份正文或历史不一致时保留来源并阻止启动。旧目录按摘要备份到 `recovery/rule-metadata-v1/`，文件迁移、来源退出和 SQL 完成记录一起提交。SQL 中已删除的身份不能被后来出现的旧目录复活。catalog 维护复制 Rule SQL 表，不把数据库视为可丢索引。
+- `rule-history-v1` 仍只在显式 bootstrap 读取旧同级 `rule-history/*.json`。当前受管正文优先；没有当前正文时导入外部目标或最后一条历史。全部原历史保留，不在迁移时套用 20 条策略。同 ID 不同内容/时间/来源与跨 Rule 版本归属冲突拒绝整个批次。原 JSON 保存在 recovery；普通列表和正文读取不查询旧历史。
+- ZIP/checkpoint 从 SQL 与受管文件生成归档。Rule 归档文档 schema 2 允许当前正文独立于历史及空历史；schema 1 只作为显式历史导入读取并保留其原校验。元数据版本未知时拒绝。旧版程序不支持 schema 2，应使用升级前完整 user data 备份回退，不能把新布局交给旧版直接写入。
+- 单次扫描复用一个 RuleDB 适配器；迁移按记录和文件线性扫描，单条历史排序为 O(v log v)。丢失文件、失败恢复、真实关闭重开及 ZIP 归档由所属回归覆盖；实际检查结果见 Foundation implementation。
+- Core/Desktop/CLI 收敛已通过当前记录的服务与真实 ZIP 检查；self-hosted Web 的租户隔离、升级、真实 HTTP 与独立进程重开检查也已通过；其他 Foundation 门禁未完成，不能据此声明全产品发布完成。
+- Web Rule 元数据使用同一 SQLite 表，并按 `owner_user_id` 与公开 Rule ID 联合标识；不同用户可以保留相同 Rule/版本 ID。空 owner 仅表示本机 Desktop/CLI 集合，Web 只接受数据库中已存在的用户。服务器正文与历史位于 `data/rule-files/<userId>/`。
+- Web 启动迁移 `web-rule-metadata-v1` 保全旧 `data/rules/<userId>/` 并退出 JSON 元数据/索引写入；未知用户、冲突和缺失历史阻止升级，失败可重试。普通 CRUD 和备份只访问受管文件，不触碰记录中的客户端项目路径。旧 schema v5 的本机行通过 schema v6 保持身份与引用，Web 历史迁移不裁剪版本。
 
 ### 10. Path Derivation Constraints
 

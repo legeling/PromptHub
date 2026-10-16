@@ -18,6 +18,11 @@ function deriveKey(password: string, salt: Buffer): Buffer {
   return crypto.scryptSync(password, salt, 32);
 }
 
+function deriveContentKey(password: string, salt: Buffer): Buffer {
+  // The persisted password verifier must never be usable as a content key.
+  return crypto.scryptSync(password, Buffer.concat([salt, Buffer.from('PromptHub content key')]), 32);
+}
+
 function isStoredMasterPassword(value: unknown): value is StoredMasterPassword {
   if (!value || typeof value !== 'object') {
     return false;
@@ -80,7 +85,7 @@ export function setMasterPassword(db: Database.Database, password: string) {
   const salt = crypto.randomBytes(16);
   const key = deriveKey(password, salt);
   saveStored(db, { salt: salt.toString('base64'), hash: key.toString('base64') });
-  inMemoryKey = key;
+  inMemoryKey = deriveContentKey(password, salt);
   isUnlocked = true;
 }
 
@@ -129,7 +134,7 @@ export function unlock(db: Database.Database, password: string): boolean {
   const derived = deriveKey(password, decoded.salt);
   const ok = crypto.timingSafeEqual(derived, decoded.hash);
   if (ok) {
-    inMemoryKey = derived;
+    inMemoryKey = deriveContentKey(password, decoded.salt);
     isUnlocked = true;
   } else {
     clearUnlockedState();

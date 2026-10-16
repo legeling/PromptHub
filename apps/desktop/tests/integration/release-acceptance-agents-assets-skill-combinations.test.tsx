@@ -101,6 +101,7 @@ let runtime: SkillTestRuntime;
 function register(): void {
   registerSettingsIPC(getDatabase(), {
     rendererPersistence: createRendererPersistenceStore({
+      database: getDatabase(),
       rootPath: runtime.profile,
       encryption: safeStorage,
     }),
@@ -316,12 +317,8 @@ it("persists local store source configuration, refreshes its real catalog, insta
     const directory = skill.name === "store-first" ? "first" : "second";
     const managed = fileInventory(skill.local_repo_path);
     expect(
-      fs.readFileSync(
-        path.join(skill.local_repo_path, ".canonical-bundle-hash"),
-        "utf8",
-      ),
-    ).toMatch(/^[a-f0-9]{64}$/);
-    delete managed[".canonical-bundle-hash"];
+      fs.existsSync(path.join(skill.local_repo_path, ".canonical-bundle-hash")),
+    ).toBe(false);
     expect(managed).toEqual(
       fileInventory(path.join(runtime.source, directory)),
     );

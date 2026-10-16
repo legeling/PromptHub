@@ -8,6 +8,7 @@ import path from "path";
 
 import {
   createPortableSnapshot,
+  createRendererPersistenceStore,
   AgentSettingsRepository,
   materializeCanonicalStorageShadow,
   stageCanonicalStorageDatabase,
@@ -27,10 +28,13 @@ import {
   SCHEMA_INDEXES,
   SCHEMA_TABLES,
   recordCurrentDatabaseMigration,
+  recordCurrentLegacySchemaMigrations,
 } from "@prompthub/db";
 import type { GenerationBatchManifest, Prompt } from "@prompthub/shared/types";
 import { afterEach, describe, expect, it } from "vitest";
 import { zipSync } from "fflate";
+import { GenerationDB } from "@prompthub/db";
+import { migrateGenerationSqliteV1 } from "@prompthub/core/migrations/generation-sqlite-v1";
 
 import {
   restorePortableLogicalSnapshot,
@@ -142,6 +146,8 @@ describe("portable snapshot restore", () => {
       database.exec(SCHEMA_TABLES);
       database.exec(SCHEMA_INDEXES);
       recordCurrentDatabaseMigration(database, 0);
+      recordCurrentLegacySchemaMigrations(database);
+      createRendererPersistenceStore({ database, rootPath: root, encryption });
       new PromptDB(database).insertPromptDirect(prompt("old", "Old"));
       new PromptDB(database).insertVersionDirect({
         id: "old-version",
@@ -477,6 +483,32 @@ describe("portable snapshot restore", () => {
     expect(
       fs.existsSync(path.join(root, "data", "generations", "old-batch")),
     ).toBe(false);
+    const databasePath = path.join(root, "data", "prompthub.db");
+    const database = new DatabaseAdapter(databasePath);
+    try {
+      expect(new GenerationDB(database).get("batch-1")).toEqual(
+        resource.manifest,
+      );
+      migrateGenerationSqliteV1(database, { rootPath: root, databasePath });
+      expect(new GenerationDB(database).list()).toEqual([resource.manifest]);
+      expect(
+        fs.readFileSync(
+          path.join(
+            root,
+            "data",
+            "generations",
+            "assets",
+            "batch-1",
+            output.fileName,
+          ),
+        ),
+      ).toEqual(Buffer.from("new generation"));
+      expect(
+        fs.existsSync(path.join(root, "data", "generations", "batch-1")),
+      ).toBe(false);
+    } finally {
+      database.close();
+    }
   });
 
   it("keeps active state unchanged when candidate validation fails", async () => {

@@ -1,215 +1,105 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+/** @vitest-environment node */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  configureRuntimePaths,
+  resetRuntimePaths,
+} from "@prompthub/core/runtime-paths";
+import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
 import { SkillDB } from "../../../src/main/database/skill";
 
-function createMockDatabase() {
-  return {
-    prepare: vi.fn().mockReturnValue({
-      get: vi.fn(),
-      all: vi.fn(),
-      run: vi.fn(),
-    }),
-  } as any;
-}
-
 describe("SkillDB", () => {
+  let root: string;
+  let database: DatabaseAdapter;
   let db: SkillDB;
-
+  const draft = (name: string, source_id?: string) => ({
+    name,
+    source_id,
+    protocol_type: "skill" as const,
+    is_favorite: false,
+  });
   beforeEach(() => {
-    db = new SkillDB(createMockDatabase());
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "ph-skill-db-"));
+    configureRuntimePaths({ userDataPath: root });
+    database = new DatabaseAdapter(path.join(root, "skills.db"));
+    database.exec(SCHEMA);
+    db = new SkillDB(database);
   });
-
+  afterEach(() => {
+    database.close();
+    resetRuntimePaths();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
   it("rejects duplicate skill creation by default", () => {
-    vi.spyOn(db, "getByName").mockReturnValue({
-      id: "skill-1",
-      name: "demo-skill",
-    } as any);
-
-    expect(() =>
-      db.create({
-        name: "demo-skill",
-        protocol_type: "skill",
-        is_favorite: false,
-      } as any),
-    ).toThrow("Skill already exists: demo-skill");
+    const original = db.create(draft("demo-skill"));
+    expect(() => db.create(draft("demo-skill"))).toThrow(
+      "Skill already exists: demo-skill",
+    );
+    expect(db.getAll()).toEqual([original]);
   });
-
   it("allows overwriteExisting creates during managed restore flows", () => {
-    const existing = {
-      id: "skill-1",
-      name: "demo-skill",
-    } as any;
-
-    vi.spyOn(db, "getByName").mockReturnValue(existing);
-    const updateSpy = vi.spyOn(db, "update").mockReturnValue(existing);
-
+    const original = db.create(draft("demo-skill"));
     const restored = db.create(
-      {
-        name: "demo-skill",
-        protocol_type: "skill",
-        is_favorite: false,
-      } as any,
+      { ...draft("demo-skill"), description: "Restored" },
       { overwriteExisting: true },
     );
-
-    expect(updateSpy).toHaveBeenCalledWith(
-      "skill-1",
-      expect.objectContaining({ name: "demo-skill" }),
-    );
-    expect(restored).toBe(existing);
+    expect(restored.id).toBe(original.id);
+    expect(db.getById(original.id)?.description).toBe("Restored");
+    expect(db.getAll()).toHaveLength(1);
   });
-
   it("rejects duplicate skill creation by source id even when the name differs", () => {
-    vi.spyOn(db, "getBySourceId").mockReturnValue({
-      id: "skill-1",
-      name: "writer-main",
-    } as any);
-
-    expect(() =>
-      db.create({
-        name: "writer-dev",
-        source_id: "source-writer-main",
-        protocol_type: "skill",
-        is_favorite: false,
-      } as any),
-    ).toThrow("Skill source already exists: source-writer-main");
+    const original = db.create(draft("writer-main", "source-writer-main"));
+    expect(() => db.create(draft("writer-dev", "source-writer-main"))).toThrow(
+      "Skill source already exists: source-writer-main",
+    );
+    expect(db.getAll()).toEqual([original]);
   });
-
   it("uses source id for overwriteExisting creates during managed restore flows", () => {
-    const existing = {
-      id: "skill-1",
-      name: "writer-main",
-      source_id: "source-writer-main",
-    } as any;
-
-    vi.spyOn(db, "getBySourceId").mockReturnValue(existing);
-    const updateSpy = vi.spyOn(db, "update").mockReturnValue(existing);
-
-    const restored = db.create(
-      {
-        name: "writer-dev",
-        source_id: "source-writer-main",
-        protocol_type: "skill",
-        is_favorite: false,
-      } as any,
-      { overwriteExisting: true },
-    );
-
-    expect(updateSpy).toHaveBeenCalledWith(
-      "skill-1",
-      expect.objectContaining({
-        name: "writer-dev",
-        source_id: "source-writer-main",
-      }),
-    );
-    expect(restored).toBe(existing);
+    const original = db.create(draft("writer-main", "source-writer-main"));
+    const restored = db.create(draft("writer-dev", "source-writer-main"), {
+      overwriteExisting: true,
+    });
+    expect(restored.id).toBe(original.id);
+    expect(db.getById(original.id)?.name).toBe("writer-dev");
+    expect(db.getAll()).toHaveLength(1);
   });
-
   it("rejects renaming a skill to another existing name", () => {
-    vi.spyOn(db, "getById").mockReturnValue({
-      id: "skill-1",
-      name: "alpha-skill",
-      protocol_type: "skill",
-      is_favorite: false,
-      created_at: 1,
-      updated_at: 1,
-    } as any);
-    vi.spyOn(db, "getByName").mockReturnValue({
-      id: "skill-2",
-      name: "beta-skill",
-    } as any);
-
-    expect(() => db.update("skill-1", { name: "beta-skill" })).toThrow(
+    const original = db.create(draft("alpha-skill"));
+    db.create(draft("beta-skill"));
+    expect(() => db.update(original.id, { name: "beta-skill" })).toThrow(
       "Skill already exists: beta-skill",
     );
+    expect(db.getById(original.id)).toEqual(original);
   });
-
   it("rejects updating a skill to another existing source id", () => {
-    vi.spyOn(db, "getById").mockReturnValue({
-      id: "skill-1",
-      name: "writer-main",
-      source_id: "source-writer-main",
-      protocol_type: "skill",
-      is_favorite: false,
-      created_at: 1,
-      updated_at: 1,
-    } as any);
-    vi.spyOn(db, "getBySourceId").mockReturnValue({
-      id: "skill-2",
-      name: "writer-dev",
-      source_id: "source-writer-dev",
-    } as any);
-
+    const original = db.create(draft("writer-main", "source-writer-main"));
+    db.create(draft("writer-dev", "source-writer-dev"));
     expect(() =>
-      db.update("skill-1", { source_id: "source-writer-dev" }),
+      db.update(original.id, { source_id: "source-writer-dev" }),
     ).toThrow("Skill source already exists: source-writer-dev");
+    expect(db.getById(original.id)).toEqual(original);
   });
-
-  it("passes source metadata through create and update paths", () => {
-    const run = vi.fn();
-    const stmt = { get: vi.fn(), all: vi.fn(), run };
-    const prepare = vi.fn().mockReturnValue(stmt);
-    const concreteDb = new SkillDB({ prepare } as any);
-
-    vi.spyOn(concreteDb, "getByName").mockReturnValue(null);
-    vi.spyOn(concreteDb, "getById").mockReturnValue({
-      id: "skill-1",
-      name: "writer",
-      source_id: "source-writer-main",
-      protocol_type: "skill",
-      is_favorite: false,
-      created_at: 1,
-      updated_at: 1,
-    } as any);
-
-    const getBySourceIdSpy = vi
-      .spyOn(concreteDb, "getBySourceId")
-      .mockReturnValue(null);
-
-    vi.spyOn(concreteDb, "getById").mockReturnValueOnce({
-      id: "skill-created",
-      name: "writer",
-      protocol_type: "skill",
-      is_favorite: false,
-      created_at: 1,
-      updated_at: 1,
-    } as any);
-
-    concreteDb.create({
-      name: "writer",
-      protocol_type: "skill",
-      is_favorite: false,
-      source_id: "source-writer-main",
+  it("persists source metadata through create and update paths", () => {
+    const metadata = {
       source_label: "openai/skills",
       source_branch: "main",
       source_directory: "skills/.curated/writer",
       canonical_skill_path: "skills/.curated/writer/SKILL.md",
-    } as any);
-
-    expect(run).toHaveBeenCalledWith(
-      expect.objectContaining({
-        "@source_label": "openai/skills",
-        "@source_branch": "main",
-        "@source_directory": "skills/.curated/writer",
-        "@canonical_skill_path": "skills/.curated/writer/SKILL.md",
-      }),
-    );
-
-    getBySourceIdSpy.mockReturnValue(null);
-    concreteDb.update("skill-1", {
-      source_label: "openai/skills",
-      source_branch: "dev",
-      source_directory: "skills/.curated/writer",
-      canonical_skill_path: "skills/.curated/writer/SKILL.md",
+    };
+    const created = db.create({
+      ...draft("writer", "source-writer-main"),
+      ...metadata,
     });
-
-    expect(run.mock.calls.at(-1)?.slice(1)).toEqual(
-      expect.arrayContaining([
-        "openai/skills",
-        "dev",
-        "skills/.curated/writer",
-        "skills/.curated/writer/SKILL.md",
-        "skill-1",
-      ]),
-    );
+    expect(db.getById(created.id)).toMatchObject(metadata);
+    db.update(created.id, { source_branch: "dev" });
+    database.close();
+    database = new DatabaseAdapter(path.join(root, "skills.db"));
+    db = new SkillDB(database);
+    expect(db.getById(created.id)).toMatchObject({
+      ...metadata,
+      source_branch: "dev",
+    });
   });
 });

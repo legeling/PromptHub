@@ -1,3 +1,4 @@
+import { assertVersionImportMatches } from "./version-import";
 import Database from "./adapter";
 import { v4 as uuidv4 } from "uuid";
 import { assertPromptContent } from "@prompthub/shared/utils/prompt-content";
@@ -93,6 +94,71 @@ function assertPromptTextHasNoNullBytes(
     }
   }
 }
+
+function normalizeImportedPromptVersion(
+  version: PromptVersion,
+): PromptVersionRow {
+  assertPromptTextHasNoNullBytes(version);
+  return {
+    id: version.id,
+    prompt_id: version.promptId,
+    version: version.version,
+    system_prompt: version.systemPrompt ?? null,
+    system_prompt_en: version.systemPromptEn ?? null,
+    user_prompt: version.userPrompt,
+    user_prompt_en: version.userPromptEn ?? null,
+    variables: JSON.stringify(version.variables ?? []),
+    note: version.note ?? null,
+    ai_response: version.aiResponse ?? null,
+    created_at: version.createdAt
+      ? new Date(version.createdAt).getTime()
+      : Date.now(),
+  };
+}
+
+const INSERT_PROMPT_VERSION_SQL = `INSERT INTO prompt_versions (
+  id, prompt_id, version, system_prompt, system_prompt_en, user_prompt,
+  user_prompt_en, variables, note, ai_response, created_at
+) VALUES (
+  @id, @prompt_id, @version, @system_prompt, @system_prompt_en, @user_prompt,
+  @user_prompt_en, @variables, @note, @ai_response, @created_at
+)`;
+
+// Stable-ID import updates must not cascade-delete dependent records.
+const UPSERT_PROMPT_SQL = `INSERT INTO prompts (
+  id, owner_user_id, visibility, title, description, prompt_type, system_prompt, system_prompt_en, user_prompt,
+  user_prompt_en, variables, tags, folder_id, parent_id, sort_order, images, videos, is_favorite, is_pinned,
+  current_version, usage_count, source, notes, last_ai_response, created_at, updated_at
+) VALUES (
+  @id, @owner_user_id, @visibility, @title, @description, @prompt_type, @system_prompt, @system_prompt_en, @user_prompt,
+  @user_prompt_en, @variables, @tags, @folder_id, @parent_id, @sort_order, @images, @videos, @is_favorite, @is_pinned,
+  @current_version, @usage_count, @source, @notes, @last_ai_response, @created_at, @updated_at
+) ON CONFLICT(id) DO UPDATE SET
+  owner_user_id = excluded.owner_user_id,
+  visibility = excluded.visibility,
+  title = excluded.title,
+  description = excluded.description,
+  prompt_type = excluded.prompt_type,
+  system_prompt = excluded.system_prompt,
+  system_prompt_en = excluded.system_prompt_en,
+  user_prompt = excluded.user_prompt,
+  user_prompt_en = excluded.user_prompt_en,
+  variables = excluded.variables,
+  tags = excluded.tags,
+  folder_id = excluded.folder_id,
+  parent_id = excluded.parent_id,
+  sort_order = excluded.sort_order,
+  images = excluded.images,
+  videos = excluded.videos,
+  is_favorite = excluded.is_favorite,
+  is_pinned = excluded.is_pinned,
+  current_version = excluded.current_version,
+  usage_count = excluded.usage_count,
+  source = excluded.source,
+  notes = excluded.notes,
+  last_ai_response = excluded.last_ai_response,
+  created_at = excluded.created_at,
+  updated_at = excluded.updated_at`;
 
 export class PromptDB {
   constructor(protected readonly db: Database.Database) {}
@@ -599,81 +665,76 @@ export class PromptDB {
    * Insert a version row directly (for backup restore).
    * 直接插入版本行（用于备份恢复）。
    */
-  insertVersionDirect(version: PromptVersion): void {
-    assertPromptTextHasNoNullBytes(version);
-    this.db
-      .prepare(
-        `INSERT OR IGNORE INTO prompt_versions (
-          id, prompt_id, version, system_prompt, system_prompt_en, user_prompt,
-          user_prompt_en, variables, note, ai_response, created_at
-        ) VALUES (
-          @id, @prompt_id, @version, @system_prompt, @system_prompt_en, @user_prompt,
-          @user_prompt_en, @variables, @note, @ai_response, @created_at
-        )`,
-      )
-      .run({
-        "@id": version.id,
-        "@prompt_id": version.promptId,
-        "@version": version.version,
-        "@system_prompt": version.systemPrompt || null,
-        "@system_prompt_en": version.systemPromptEn || null,
-        "@user_prompt": version.userPrompt,
-        "@user_prompt_en": version.userPromptEn || null,
-        "@variables": JSON.stringify(version.variables),
-        "@note": version.note || null,
-        "@ai_response": version.aiResponse || null,
-        "@created_at": version.createdAt
-          ? new Date(version.createdAt).getTime()
-          : Date.now(),
-      });
+  insertVersionDirect(version: PromptVersion): PromptVersion {
+    const row = normalizeImportedPromptVersion(version);
+    const candidate = this.rowToVersion(row);
+    return this.db.transaction(() => {
+      // The typed adapter row is normalized before semantic JSON comparison.
+      const existing = this.db
+        .prepare(
+          "SELECT * FROM prompt_versions WHERE id = ? OR (prompt_id = ? AND version = ?)",
+        )
+        .all(row.id, row.prompt_id, row.version) as PromptVersionRow[];
+      if (existing.length > 0) {
+        assertVersionImportMatches(
+          "Prompt",
+          row.id,
+          existing.map((value) => this.rowToVersion(value)),
+          candidate,
+        );
+        return this.rowToVersion(existing[0]);
+      }
+      this.db
+        .prepare(INSERT_PROMPT_VERSION_SQL)
+        .run(
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [`@${key}`, value]),
+          ),
+        );
+      // Readback catches unsupported text representations before committing.
+      const stored = this.db
+        .prepare("SELECT * FROM prompt_versions WHERE id = ?")
+        .get(row.id) as PromptVersionRow | undefined;
+      const persisted = stored ? [this.rowToVersion(stored)] : [];
+      assertVersionImportMatches("Prompt", row.id, persisted, candidate);
+      return persisted[0];
+    })();
   }
 
   insertPromptDirect(prompt: Prompt): void {
     assertPromptTextHasNoNullBytes(prompt);
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO prompts (
-          id, owner_user_id, visibility, title, description, prompt_type, system_prompt, system_prompt_en, user_prompt,
-          user_prompt_en, variables, tags, folder_id, parent_id, sort_order, images, videos, is_favorite, is_pinned,
-          current_version, usage_count, source, notes, last_ai_response, created_at, updated_at
-        ) VALUES (
-          @id, @owner_user_id, @visibility, @title, @description, @prompt_type, @system_prompt, @system_prompt_en, @user_prompt,
-          @user_prompt_en, @variables, @tags, @folder_id, @parent_id, @sort_order, @images, @videos, @is_favorite, @is_pinned,
-          @current_version, @usage_count, @source, @notes, @last_ai_response, @created_at, @updated_at
-        )`,
-      )
-      .run({
-        "@id": prompt.id,
-        "@owner_user_id": prompt.ownerUserId ?? null,
-        "@visibility": prompt.visibility ?? "private",
-        "@title": prompt.title,
-        "@description": prompt.description ?? null,
-        "@prompt_type": prompt.promptType ?? "text",
-        "@system_prompt": prompt.systemPrompt ?? null,
-        "@system_prompt_en": prompt.systemPromptEn ?? null,
-        "@user_prompt": prompt.userPrompt,
-        "@user_prompt_en": prompt.userPromptEn ?? null,
-        "@variables": JSON.stringify(prompt.variables ?? []),
-        "@tags": JSON.stringify(prompt.tags ?? []),
-        "@folder_id": prompt.folderId ?? null,
-        "@parent_id": prompt.parentId ?? null,
-        "@sort_order": prompt.order ?? 0,
-        "@images": JSON.stringify(prompt.images ?? []),
-        "@videos": JSON.stringify(prompt.videos ?? []),
-        "@is_favorite": prompt.isFavorite ? 1 : 0,
-        "@is_pinned": prompt.isPinned ? 1 : 0,
-        "@current_version": prompt.currentVersion ?? prompt.version ?? 1,
-        "@usage_count": prompt.usageCount ?? 0,
-        "@source": prompt.source ?? null,
-        "@notes": prompt.notes ?? null,
-        "@last_ai_response": prompt.lastAiResponse ?? null,
-        "@created_at": prompt.createdAt
-          ? new Date(prompt.createdAt).getTime()
-          : Date.now(),
-        "@updated_at": prompt.updatedAt
-          ? new Date(prompt.updatedAt).getTime()
-          : Date.now(),
-      });
+    this.db.prepare(UPSERT_PROMPT_SQL).run({
+      "@id": prompt.id,
+      "@owner_user_id": prompt.ownerUserId ?? null,
+      "@visibility": prompt.visibility ?? "private",
+      "@title": prompt.title,
+      "@description": prompt.description ?? null,
+      "@prompt_type": prompt.promptType ?? "text",
+      "@system_prompt": prompt.systemPrompt ?? null,
+      "@system_prompt_en": prompt.systemPromptEn ?? null,
+      "@user_prompt": prompt.userPrompt,
+      "@user_prompt_en": prompt.userPromptEn ?? null,
+      "@variables": JSON.stringify(prompt.variables ?? []),
+      "@tags": JSON.stringify(prompt.tags ?? []),
+      "@folder_id": prompt.folderId ?? null,
+      "@parent_id": prompt.parentId ?? null,
+      "@sort_order": prompt.order ?? 0,
+      "@images": JSON.stringify(prompt.images ?? []),
+      "@videos": JSON.stringify(prompt.videos ?? []),
+      "@is_favorite": prompt.isFavorite ? 1 : 0,
+      "@is_pinned": prompt.isPinned ? 1 : 0,
+      "@current_version": prompt.currentVersion ?? prompt.version ?? 1,
+      "@usage_count": prompt.usageCount ?? 0,
+      "@source": prompt.source ?? null,
+      "@notes": prompt.notes ?? null,
+      "@last_ai_response": prompt.lastAiResponse ?? null,
+      "@created_at": prompt.createdAt
+        ? new Date(prompt.createdAt).getTime()
+        : Date.now(),
+      "@updated_at": prompt.updatedAt
+        ? new Date(prompt.updatedAt).getTime()
+        : Date.now(),
+    });
   }
 
   /**

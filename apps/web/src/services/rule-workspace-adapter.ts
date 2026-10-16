@@ -1,20 +1,24 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import crypto from "node:crypto";
+import { RULE_VERSION_LIMIT } from "@prompthub/core/rules-workspace-support";
 import type {
   RuleBackupRecord,
   RuleFileContent,
   RuleFileId,
   RuleVersionSnapshot,
-} from '@prompthub/shared';
+} from "@prompthub/shared";
 import {
   createProjectRule,
   exportRuleBackupRecords,
   importRuleBackupRecords,
   removeProjectRule,
-} from './rule-workspace.js';
+  readRuleBackupRecord,
+} from "./rule-workspace.js";
 
-function getRuleRecord(userId: string, ruleId: RuleFileId): RuleBackupRecord | null {
-  return exportRuleBackupRecords(userId).find((record) => record.id === ruleId) ?? null;
+function getRuleRecord(
+  userId: string,
+  ruleId: RuleFileId,
+): RuleBackupRecord | null {
+  return readRuleBackupRecord(userId, ruleId);
 }
 
 export function saveRuleContent(
@@ -29,13 +33,13 @@ export function saveRuleContent(
 
   const nextVersions: RuleVersionSnapshot[] = [
     {
-      id: `${encodeURIComponent(ruleId)}-${Date.now()}`,
+      id: crypto.randomUUID(),
       savedAt: new Date().toISOString(),
-      source: record.content.trim().length > 0 ? 'manual-save' : 'create',
+      source: record.content.trim().length > 0 ? "manual-save" : "create",
       content,
     } satisfies RuleVersionSnapshot,
     ...record.versions,
-  ].slice(0, 20);
+  ].slice(0, RULE_VERSION_LIMIT);
 
   importRuleBackupRecords(userId, [
     {
@@ -60,7 +64,7 @@ export function saveRuleContent(
     description: updated.description,
     path: updated.targetPath || updated.path,
     exists: true,
-    group: updated.id.startsWith('project:') ? 'workspace' : 'assistant',
+    group: updated.id.startsWith("project:") ? "workspace" : "assistant",
     managedPath: updated.managedPath,
     targetPath: updated.targetPath,
     projectRootPath: updated.projectRootPath ?? null,
@@ -70,7 +74,10 @@ export function saveRuleContent(
   };
 }
 
-export function readRuleVersions(userId: string, ruleId: RuleFileId): RuleVersionSnapshot[] {
+export function readRuleVersions(
+  userId: string,
+  ruleId: RuleFileId,
+): RuleVersionSnapshot[] {
   return getRuleRecord(userId, ruleId)?.versions ?? [];
 }
 
@@ -84,7 +91,9 @@ export function removeRuleVersion(
     return [];
   }
 
-  const nextVersions = record.versions.filter((version) => version.id !== versionId);
+  const nextVersions = record.versions.filter(
+    (version) => version.id !== versionId,
+  );
   importRuleBackupRecords(userId, [
     {
       ...record,
@@ -100,4 +109,5 @@ export {
   exportRuleBackupRecords,
   importRuleBackupRecords,
   removeProjectRule,
+  readRuleBackupRecord,
 };

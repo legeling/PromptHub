@@ -14,11 +14,8 @@ import type {
 import {
   CorePluginError,
   type PluginMarketCacheFile,
-  getLegacyPluginLibraryFilePath,
   getLegacyPluginMarketCacheFilePath,
-  getPluginLibraryFilePath,
   getPluginMarketCacheFilePath,
-  getPluginVersionFilePath,
   nowIso,
   nowMs,
   parseJsonObject,
@@ -46,124 +43,41 @@ import {
   remapRestoredPluginPackage,
   writePluginPackageSnapshot,
 } from "./package-materialization";
-import {
-  readCanonicalPluginLibrary,
-  readCanonicalPluginVersions,
-  writeCanonicalPluginState,
-} from "../canonical-plugin-library";
-import { getRuntimeStorageContext } from "../runtime-paths";
-import { readCanonicalWithMetadataMigration } from "../canonical-metadata-migration";
-
-function readCanonicalPluginLibraryWithMigration(): PluginLibraryFile {
-  const canonical = normalizeLibrary(readCanonicalPluginLibrary());
-  const legacyPath = getPluginLibraryFilePath();
-  const versionPath = getPluginVersionFilePath();
-  return readCanonicalWithMetadataMigration({
-    canonical,
-    supersededPath: legacyPath,
-    cleanupPaths: [versionPath],
-    isPopulated: (library) => library.plugins.length > 0,
-    readSuperseded: () =>
-      normalizeLibrary(
-        parseJsonObject(fs.readFileSync(legacyPath, "utf8"), "Plugin library"),
-      ),
-    publish: (legacy) =>
-      writeCanonicalPluginState({
-        library: legacy,
-        versions: fs.existsSync(versionPath)
-          ? normalizePluginVersionsFile(
-              parseJsonObject(
-                fs.readFileSync(versionPath, "utf8"),
-                "Plugin versions",
-              ),
-            )
-          : defaultPluginVersions(),
-      }),
-    rereadCanonical: () => normalizeLibrary(readCanonicalPluginLibrary()),
-    unsafePathMessage: "Superseded Plugin metadata path is unsafe",
-  });
-}
+import { getUserDataPath } from "../runtime-paths";
+import { getDatabase } from "@prompthub/db";
+import { PluginStorage } from "../plugin-storage";
 
 export class PluginLibraryStorage {
+  private owner(): PluginStorage {
+    return new PluginStorage(getDatabase(), getUserDataPath());
+  }
+
   read(): PluginLibraryFile {
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      return readCanonicalPluginLibraryWithMigration();
-    }
-    const primaryPath = getPluginLibraryFilePath();
-    if (fs.existsSync(primaryPath)) {
-      const raw = parseJsonObject(
-        fs.readFileSync(primaryPath, "utf8"),
-        "Plugin library",
-      );
-      return normalizeLibrary(raw);
-    }
-
-    const legacyPath = getLegacyPluginLibraryFilePath();
-    if (!fs.existsSync(legacyPath)) {
-      return defaultLibrary();
-    }
-
-    const raw = parseJsonObject(
-      fs.readFileSync(legacyPath, "utf8"),
-      "Plugin library",
-    );
-    const migrated = normalizeLibrary(raw);
-    writeJsonFileAtomic(primaryPath, migrated);
-    return migrated;
+    const plugins = this.owner().read();
+    return { ...defaultLibrary(), plugins,
+      updatedAt: new Date(Math.max(0, ...plugins.map((plugin) => plugin.updatedAt))).toISOString() };
   }
 
   write(library: PluginLibraryFile): PluginLibraryFile {
-    const next = normalizeLibrary({
-      ...library,
-      updatedAt: nowIso(),
-    });
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      writeCanonicalPluginState({
-        library: next,
-        versions: this.readVersions(),
-      });
-      const restored = normalizeLibrary(readCanonicalPluginLibrary());
-      const restoredPaths = new Map(
-        restored.plugins.map((plugin) => [plugin.id, plugin.managedPath]),
-      );
-      for (const plugin of next.plugins) {
-        if (restoredPaths.get(plugin.id) !== plugin.managedPath) {
-          removePluginMaterialization(plugin.managedPath);
-        }
-      }
-      return restored;
-    } else {
-      writeJsonFileAtomic(getPluginLibraryFilePath(), next);
-    }
-    return next;
+    const next = normalizeLibrary(library), ids = new Set(next.plugins.map((plugin) => plugin.id));
+    this.owner().write(next.plugins, this.readVersions().versions.filter((version) => ids.has(version.pluginId)));
+    const restored = this.read();
+    const paths = new Map(restored.plugins.map((plugin) => [plugin.id, plugin.managedPath]));
+    for (const plugin of next.plugins)
+      if (paths.get(plugin.id) !== plugin.managedPath) removePluginMaterialization(plugin.managedPath);
+    return restored;
   }
 
   readVersions(): PluginVersionFile {
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      return normalizePluginVersionsFile(readCanonicalPluginVersions());
-    }
-    const versionPath = getPluginVersionFilePath();
-    if (!fs.existsSync(versionPath)) {
-      return defaultPluginVersions();
-    }
-    const raw = parseJsonObject(
-      fs.readFileSync(versionPath, "utf8"),
-      "Plugin versions",
-    );
-    return normalizePluginVersionsFile(raw);
+    const versions = this.owner().readVersions();
+    return { ...defaultPluginVersions(), versions,
+      updatedAt: versions.map((version) => version.createdAt).sort().at(-1) ?? new Date(0).toISOString() };
   }
 
   writeVersions(versionsFile: PluginVersionFile): PluginVersionFile {
-    const next = normalizePluginVersionsFile({
-      ...versionsFile,
-      updatedAt: nowIso(),
-    });
-    if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-      writeCanonicalPluginState({ library: this.read(), versions: next });
-    } else {
-      writeJsonFileAtomic(getPluginVersionFilePath(), next);
-    }
-    return next;
+    const next = normalizePluginVersionsFile(versionsFile);
+    this.owner().write(this.read().plugins, next.versions);
+    return this.readVersions();
   }
 
   getPluginVersions(pluginId: string): PluginVersion[] {
@@ -206,11 +120,13 @@ export class PluginLibraryStorage {
       plugin,
       packageSnapshot,
     };
-    this.writeVersions({
+    const persisted = this.writeVersions({
       ...versionsFile,
       versions: [...versionsFile.versions, version],
-    });
-    return version;
+    }).versions.find((entry) => entry.id === version.id);
+    if (!persisted)
+      throw new Error("Created Plugin version is missing from storage");
+    return persisted;
   }
 
   rollbackPluginVersion(
@@ -271,10 +187,12 @@ export class PluginLibraryStorage {
         plugin.id === pluginId ? restoredPlugin : plugin,
       ),
     };
-    this.write(nextLibrary);
+    const published = this.write(nextLibrary);
+    const plugin = published.plugins.find((entry) => entry.id === pluginId);
+    if (!plugin) throw new Error("Published Plugin rollback is missing its Plugin");
     return {
-      plugin: restoredPlugin,
-      library: nextLibrary,
+      plugin,
+      library: published,
       restoredVersion,
       safetyVersion,
     };

@@ -3,21 +3,15 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
-import { CanonicalSkillDB } from "../src/canonical-skill-db";
-import { getCanonicalSkillWorkspacePath } from "../src/canonical-skill-library";
-import {
-  CanonicalPromptDB,
-  publishCanonicalPromptGraph,
-} from "../src/canonical-prompt-graph-db";
-import { readPromptCanonicalGraph } from "../src/prompt-canonical-import";
-import { readSkillResourceBundle } from "../src/skill-resource-schema";
+import { SkillStorageDB } from "../src/skill-storage";
+import { getManagedSkillPackagePath } from "../src/skill-storage-files";
+import { PromptDB } from "../src/database";
 import {
   configureRuntimePaths,
   resetRuntimePaths,
   writeRuntimeLayoutState,
 } from "../src/runtime-paths";
 import { writeCanonicalStorageAuthority } from "../src/canonical-storage-authority";
-import { assertCanonicalPromptCatalogCurrent } from "../src/canonical-prompt-graph-db";
 
 let root: string;
 let db: DatabaseAdapter.Database;
@@ -29,7 +23,7 @@ beforeEach(() => {
     consistencyId: "c".repeat(64),
     operationId: "outcome-test",
   });
-  db = new DatabaseAdapter(":memory:");
+  db = new DatabaseAdapter(path.join(root, "data", "prompthub.db"));
   db.exec(SCHEMA);
   db.pragma("foreign_keys = ON");
 });
@@ -40,59 +34,44 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-it("rejects canonical commands inside an unrelated raw transaction before writing", () => {
-  publishCanonicalPromptGraph(db);
+it("joins an outer SQLite transaction and rolls back records and initial versions together", () => {
   expect(() =>
-    db.transaction(() =>
-      new CanonicalPromptDB(db).create({
-        title: "invalid outer transaction",
-        userPrompt: "body",
-      }),
-    )(),
-  ).toThrow(/command boundary/);
+    db.transaction(() => {
+      new PromptDB(db).create({ title: "Rolled back", userPrompt: "body" });
+      throw new Error("fixture outer command failure");
+    })(),
+  ).toThrow(/outer command failure/);
   expect(db.all("SELECT id FROM prompts")).toEqual([]);
-  expect(
-    readPromptCanonicalGraph(path.join(root, "data")).snapshot.prompts,
-  ).toEqual([]);
+  expect(db.all("SELECT id FROM prompt_versions")).toEqual([]);
+  expect(fs.existsSync(path.join(root, "data", "catalog.json"))).toBe(false);
 });
 
-it("blocks an old catalog from overwriting a newer canonical graph", () => {
-  const prompts = new CanonicalPromptDB(db);
-  publishCanonicalPromptGraph(db);
+it("keeps SQLite edits usable without a parallel JSON publication", () => {
+  const prompts = new PromptDB(db);
   const created = prompts.create({
     title: "committed",
     userPrompt: "new content",
   });
-  db.prepare("UPDATE prompts SET user_prompt = ? WHERE id = ?").run(
-    "stale catalog",
+  db.run(
+    "UPDATE prompts SET user_prompt = ? WHERE id = ?",
+    "SQL edit",
     created.id,
   );
-  expect(() => assertCanonicalPromptCatalogCurrent(db)).toThrow(
-    /catalog.*recovery/,
+  expect(prompts.update(created.id, { title: "Updated" })?.userPrompt).toBe(
+    "SQL edit",
   );
-  expect(() => prompts.update(created.id, { title: "overwrite" })).toThrow(
-    /catalog.*recovery/,
-  );
-  expect(
-    readPromptCanonicalGraph(path.join(root, "data")).snapshot.prompts[0]
-      .userPrompt,
-  ).toBe("new content");
+  expect(fs.existsSync(path.join(root, "data", "catalog.json"))).toBe(false);
 });
 
-it("keeps the new Skill in both stores when committed workspace hydration fails", () => {
-  const skills = new CanonicalSkillDB(db);
-  const source = path.join(root, "incoming");
-  fs.mkdirSync(source);
-  fs.writeFileSync(path.join(source, "SKILL.md"), "# old");
+it("retains the previous SQL record and package when a directory replacement fails", () => {
+  const skills = new SkillStorageDB(db);
   const created = skills.create({
     name: "outcome-skill",
     protocol_type: "skill",
     content: "old",
     is_favorite: false,
-    local_repo_path: source,
   });
-  const workspace = getCanonicalSkillWorkspacePath(created.id);
-  fs.writeFileSync(path.join(workspace, "SKILL.md"), "# new");
+  const workspace = getManagedSkillPackagePath(created.id);
   const rename = fs.renameSync.bind(fs);
   let failed = false;
   vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
@@ -103,15 +82,11 @@ it("keeps the new Skill in both stores when committed workspace hydration fails"
     return rename(from, to);
   });
   expect(() => skills.update(created.id, { content: "new" })).toThrow(
-    /committed/i,
+    "workspace rename failed",
   );
-  expect(skills.getById(created.id)?.content).toBe("new");
-  expect(
-    readSkillResourceBundle(path.join(root, "data", "skills", created.id)).skill
-      .content,
-  ).toBe("new");
-  skills.reconcileCanonicalWorkspaces();
-  expect(fs.readFileSync(path.join(workspace, "SKILL.md"), "utf8")).toBe(
-    "# new",
+  expect(skills.getById(created.id)).toEqual(created);
+  expect(fs.readFileSync(path.join(workspace, "SKILL.md"), "utf8")).toBe("old");
+  expect(skills.update(created.id, { content: "retried" })?.content).toBe(
+    "retried",
   );
 });

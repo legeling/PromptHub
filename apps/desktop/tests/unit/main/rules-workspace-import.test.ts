@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
-import fsp from "fs/promises";
+import { RuleDB as SqlRuleDB } from "@prompthub/db";
+import { RULE_VERSION_LIMIT } from "@prompthub/core/rules-workspace-support";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRulesWorkspaceService } from "@prompthub/core";
@@ -207,7 +208,35 @@ describe("rules workspace backup import", () => {
     });
   });
 
-  it("bounds history, normalizes invalid timestamps, and protects current bodies", async () => {
+  it("rejects malformed history timestamps without changing current files or SQL", async () => {
+    const projectRoot = path.join(tempDir, "invalid-history");
+    fs.mkdirSync(projectRoot);
+    await createProjectRule({
+      id: "invalid-history",
+      name: "Invalid history",
+      rootPath: projectRoot,
+    });
+    await saveRuleContent("project:invalid-history", "# Current");
+    const before = await readRuleContent("project:invalid-history");
+    await expect(
+      importRuleBackupRecords([
+        projectRecord("invalid-history", projectRoot, {
+          content: "# Replacement",
+          versions: [
+            {
+              id: "invalid",
+              savedAt: "not-a-date",
+              source: "manual-save",
+              content: "# Invalid",
+            },
+          ],
+        }),
+      ]),
+    ).rejects.toThrow();
+    expect(await readRuleContent("project:invalid-history")).toEqual(before);
+  });
+
+  it("bounds valid history and protects current bodies", async () => {
     const projectRoot = path.join(tempDir, "history-site");
     const targetPath = path.join(projectRoot, "AGENTS.md");
     fs.mkdirSync(projectRoot, { recursive: true });
@@ -227,10 +256,10 @@ describe("rules workspace backup import", () => {
 
     const importedVersions = [
       {
-        id: "invalid-time",
-        savedAt: "not-a-date",
+        id: "recent-history",
+        savedAt: new Date().toISOString(),
         source: "manual-save" as const,
-        content: "# invalid-time",
+        content: "# recent-history",
       },
       {
         id: "duplicate-old",
@@ -271,9 +300,9 @@ describe("rules workspace backup import", () => {
 
     const imported = await readRuleContent("project:history-site");
     const contents = imported.versions.map((version) => version.content);
-    expect(contents).toHaveLength(20);
-    expect(new Set(contents).size).toBe(20);
-    expect(contents).toContain("# invalid-time");
+    expect(contents).toHaveLength(RULE_VERSION_LIMIT);
+    expect(new Set(contents).size).toBe(RULE_VERSION_LIMIT);
+    expect(contents).toContain("# recent-history");
     expect(contents).toContain("# duplicate");
     expect(contents).toContain("# pre-import-only");
     expect(contents).toContain("# imported-current");
@@ -293,24 +322,31 @@ describe("rules workspace backup import", () => {
     await saveRuleContent("project:identity-site", "# existing-2");
     await saveRuleContent("project:identity-site", "# existing-3");
 
-    const versionDir = path.join(
-      getRulesDir(),
-      ".versions",
-      encodeURIComponent("project:identity-site"),
-    );
-    const indexPath = path.join(versionDir, "index.json");
-    const existingIndex = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+    const owner = new RuleDB(initDatabase());
+    const rule = owner.getById("project:identity-site");
+    if (!rule) throw new Error("Missing fixture Rule");
+    const existingVersions = owner.readVersions(rule.id);
     const sharedId = "shared-version-id";
-    existingIndex[0].id = sharedId;
-    existingIndex[1].id = sharedId;
-    existingIndex[2].id = sharedId;
     const importedContent = "# imported-history";
     const baseId = `${encodeURIComponent("project:identity-site")}-import-${crypto
       .createHash("sha256")
       .update(`project:identity-site\n${importedContent}`)
       .digest("hex")}`;
-    existingIndex[0].id = baseId;
-    fs.writeFileSync(indexPath, JSON.stringify(existingIndex, null, 2), "utf8");
+    owner.publishGraphs([
+      {
+        rule,
+        content: "# existing-3",
+        versions: existingVersions.map((version) => ({
+          ...version,
+          id:
+            version.content === "# existing-3"
+              ? baseId
+              : version.content === "# existing-2"
+                ? sharedId
+                : version.id,
+        })),
+      },
+    ]);
     await readRuleContent("project:identity-site");
 
     await importRuleBackupRecords([
@@ -370,7 +406,7 @@ describe("rules workspace backup import", () => {
         }),
       ]),
     ).rejects.toThrow("Invalid rule project id");
-    expect(fs.readdirSync(path.join(getRulesDir(), "projects"))).toEqual([]);
+    expect(fs.existsSync(path.join(getRulesDir(), "projects"))).toBe(false);
   });
 
   it("rolls back managed and history files when version staging fails", async () => {
@@ -382,16 +418,14 @@ describe("rules workspace backup import", () => {
       rootPath: projectRoot,
     });
     await saveRuleContent("project:version-failure-site", "# original");
-    const originalWriteFile = fsp.writeFile.bind(fsp);
-    vi.spyOn(fsp, "writeFile").mockImplementation(
-      async (file, data, options) => {
-        if (data === "# broken version") {
-          await originalWriteFile(file, "partial", options);
-          throw new Error("simulated version write failure");
-        }
-        return originalWriteFile(file, data, options);
-      },
-    );
+    const originalWriteFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation((file, data, options) => {
+      if (data === "# broken version") {
+        originalWriteFile(file, "partial", options);
+        throw new Error("simulated version write failure");
+      }
+      return originalWriteFile(file, data, options);
+    });
 
     await expect(
       importRuleBackupRecords([
@@ -431,10 +465,10 @@ describe("rules workspace backup import", () => {
       );
     }
     const before = await readRuleContent("project:publication-failure-site");
-    const originalReplaceVersions = RuleDB.prototype.replaceVersions;
+    const originalReplaceVersions = SqlRuleDB.prototype.replaceVersions;
     let failPublication = true;
-    vi.spyOn(RuleDB.prototype, "replaceVersions").mockImplementation(
-      function replaceVersionsWithFailure(this: RuleDB, ruleId, versions) {
+    vi.spyOn(SqlRuleDB.prototype, "replaceVersions").mockImplementation(
+      function replaceVersionsWithFailure(this: SqlRuleDB, ruleId, versions) {
         if (failPublication && ruleId === "project:publication-failure-site") {
           failPublication = false;
           throw new Error("simulated publication failure");
@@ -485,15 +519,13 @@ describe("rules workspace backup import", () => {
     await saveRuleContent("project:stale-site", "# stale");
     const brokenRoot = path.join(tempDir, "broken-site");
     fs.mkdirSync(brokenRoot, { recursive: true });
-    const originalWriteFile = fsp.writeFile.bind(fsp);
-    vi.spyOn(fsp, "writeFile").mockImplementation(
-      async (file, data, options) => {
-        if (data === "# broken version") {
-          throw new Error("simulated deferred failure");
-        }
-        return originalWriteFile(file, data, options);
-      },
-    );
+    const originalWriteFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation((file, data, options) => {
+      if (data === "# broken version") {
+        throw new Error("simulated deferred failure");
+      }
+      return originalWriteFile(file, data, options);
+    });
 
     await expect(
       importRuleBackupRecords(
@@ -545,10 +577,10 @@ describe("rules workspace backup import", () => {
     const service = createGlobalRulesTestService();
     const targetPath = path.join(tempDir, "home", "codex", "AGENTS.md");
     await service.resolveRuleMeta("codex-global");
-    const originalReplaceVersions = RuleDB.prototype.replaceVersions;
+    const originalReplaceVersions = SqlRuleDB.prototype.replaceVersions;
     let failPublication = true;
-    vi.spyOn(RuleDB.prototype, "replaceVersions").mockImplementation(
-      function replaceVersionsWithFailure(this: RuleDB, ruleId, versions) {
+    vi.spyOn(SqlRuleDB.prototype, "replaceVersions").mockImplementation(
+      function replaceVersionsWithFailure(this: SqlRuleDB, ruleId, versions) {
         if (
           failPublication &&
           ruleId === "codex-global" &&
@@ -589,7 +621,7 @@ describe("rules workspace backup import", () => {
     );
   });
 
-  it("normalizes new Cursor projects and falls back to the target directory", async () => {
+  it("imports new project Rules detached from historical machine paths", async () => {
     const cursorRoot = path.join(tempDir, "cursor-root");
     fs.mkdirSync(cursorRoot, { recursive: true });
     const cursorTarget = path.join(
@@ -631,7 +663,8 @@ describe("rules workspace backup import", () => {
     ]);
     expect(
       (await readRuleContent("project:fallback-import")).projectRootPath,
-    ).toBe(fallbackRoot);
+    ).toBeNull();
+    expect(fs.existsSync(fallbackTarget)).toBe(false);
 
     const pathOnlyRoot = path.join(tempDir, "path-only-root");
     const pathOnlyTarget = path.join(pathOnlyRoot, "AGENTS.md");
@@ -646,21 +679,20 @@ describe("rules workspace backup import", () => {
     ]);
     expect(
       (await readRuleContent("project:path-only-import")).projectRootPath,
-    ).toBe(pathOnlyRoot);
+    ).toBeNull();
+    expect(fs.existsSync(pathOnlyTarget)).toBe(false);
   });
 
   it("cleans a new project when import fails during version publication", async () => {
     const projectRoot = path.join(tempDir, "new-failure-site");
     fs.mkdirSync(projectRoot, { recursive: true });
-    const originalWriteFile = fsp.writeFile.bind(fsp);
-    vi.spyOn(fsp, "writeFile").mockImplementation(
-      async (file, data, options) => {
-        if (data === "# broken version") {
-          throw new Error("simulated new project failure");
-        }
-        return originalWriteFile(file, data, options);
-      },
-    );
+    const originalWriteFile = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation((file, data, options) => {
+      if (data === "# broken version") {
+        throw new Error("simulated new project failure");
+      }
+      return originalWriteFile(file, data, options);
+    });
 
     await expect(
       importRuleBackupRecords([
@@ -688,18 +720,15 @@ describe("rules workspace backup import", () => {
   it("cleans a new project when its initial database publication fails", async () => {
     const projectRoot = path.join(tempDir, "initial-failure-site");
     fs.mkdirSync(projectRoot, { recursive: true });
-    const originalReplaceVersions = RuleDB.prototype.replaceVersions;
-    vi.spyOn(RuleDB.prototype, "replaceVersions").mockImplementation(
-      function replaceVersionsWithFailure(this: RuleDB, ruleId, versions) {
-        if (
-          ruleId === "project:initial-failure-site" &&
-          versions.length === 0
-        ) {
-          throw new Error("simulated initial publication failure");
-        }
-        return originalReplaceVersions.call(this, ruleId, versions);
-      },
-    );
+    const originalUpsert = SqlRuleDB.prototype.upsert;
+    vi.spyOn(SqlRuleDB.prototype, "upsert").mockImplementation(function (
+      this: SqlRuleDB,
+      record,
+    ) {
+      if (record.id === "project:initial-failure-site")
+        throw new Error("simulated initial publication failure");
+      return originalUpsert.call(this, record);
+    });
 
     await expect(
       importRuleBackupRecords([

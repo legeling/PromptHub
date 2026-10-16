@@ -1,3 +1,6 @@
+import os from "node:os";
+import { DatabaseAdapter, SettingsDB } from "@prompthub/db";
+import "../../../packages/core/tests/helpers/settings-keyring";
 import fs from "fs";
 import path from "path";
 import { PassThrough } from "stream";
@@ -56,6 +59,15 @@ describe("ai config cli", () => {
     for (const dir of tempDirs.splice(0)) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("shows AI help without initializing a profile database", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-ai-help-"));
+    tempDirs.push(root);
+    const result = await execCli([...withDataDir(root), "ai", "--help"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.joinedStdout).toContain("provider-add");
+    expect(fs.existsSync(path.join(root, "user-data/data/prompthub.db"))).toBe(false);
   });
 
   it("adds a provider, adds models under it, and sets desktop model routes", async () => {
@@ -159,15 +171,41 @@ describe("ai config cli", () => {
       imageGeneration: { model: "gpt-image-2", configured: true },
     });
 
-    const configPath = path.join(root, "user-data", "config", "ai-models.json");
-    const saved = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    expect(saved.providers[0].apiKey).toBe("sk-test-secret");
-    expect(saved.models[0]).toMatchObject({
-      providerId,
-      provider: "openai",
-      model: "gpt-4.1",
-    });
-    expect(saved.modelRouteDefaults.visionText).toBe(chatModelRes.json.id);
+    expect(
+      fs.existsSync(path.join(root, "user-data/config/ai-models.json")),
+    ).toBe(false);
+    const database = new DatabaseAdapter(
+      path.join(root, "user-data/data/prompthub.db"),
+    );
+    try {
+      const settings = new SettingsDB(database);
+      expect(settings.get("aiProviders")).toEqual([
+        expect.objectContaining({
+          id: providerId,
+          apiKeyRef: expect.any(String),
+        }),
+      ]);
+      expect(settings.get("aiModels")).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            providerId,
+            provider: "openai",
+            model: "gpt-4.1",
+          }),
+        ]),
+      );
+      expect(settings.get("modelRouteDefaults")).toMatchObject({
+        visionText: chatModelRes.json.id,
+      });
+      expect(JSON.stringify(settings.rawEntries())).not.toContain(
+        "sk-test-secret",
+      );
+      expect(
+        fs.readFileSync(path.join(root, "user-data/secrets/vault.enc"), "utf8"),
+      ).not.toContain("sk-test-secret");
+    } finally {
+      database.close();
+    }
   });
 
   it("selects a compatible route model interactively when model id is omitted", async () => {

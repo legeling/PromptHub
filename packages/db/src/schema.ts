@@ -1,3 +1,6 @@
+import { GENERATION_SCHEMA } from "./generation-schema";
+import { PLUGIN_SCHEMA } from "./plugin";
+import { RULE_SCHEMA } from "./rule-schema";
 /**
  * 数据库表结构定义
  */
@@ -7,9 +10,14 @@
  * is a safe no-op for existing databases.
  */
 import { MCP_SCHEMA_TABLES } from "./mcp-schema";
+import { STORAGE_PUBLICATION_SCHEMA } from "./storage-publication";
+import { SYNC_TARGET_SCHEMA } from "./sync-target";
 
 export const SCHEMA_TABLES =
+  PLUGIN_SCHEMA +
   MCP_SCHEMA_TABLES +
+  STORAGE_PUBLICATION_SCHEMA +
+  SYNC_TARGET_SCHEMA +
   `
 -- Prompts 表
 CREATE TABLE IF NOT EXISTS prompts (
@@ -177,35 +185,7 @@ CREATE TABLE IF NOT EXISTS skill_versions (
   UNIQUE(skill_id, version)
 );
 
-CREATE TABLE IF NOT EXISTS rules (
-  id TEXT PRIMARY KEY,
-  scope TEXT NOT NULL CHECK(scope IN ('global', 'project')),
-  platform_id TEXT NOT NULL,
-  platform_name TEXT NOT NULL,
-  platform_icon TEXT NOT NULL,
-  platform_description TEXT NOT NULL,
-  canonical_file_name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  managed_path TEXT NOT NULL,
-  target_path TEXT NOT NULL,
-  project_root_path TEXT,
-  sync_status TEXT NOT NULL CHECK(sync_status IN ('synced', 'target-missing', 'out-of-sync', 'sync-error')),
-  current_version INTEGER NOT NULL DEFAULT 0,
-  content_hash TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS rule_versions (
-  id TEXT PRIMARY KEY,
-  rule_id TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  file_path TEXT NOT NULL,
-  source TEXT NOT NULL CHECK(source IN ('manual-save', 'ai-rewrite', 'create')),
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE CASCADE,
-  UNIQUE(rule_id, version)
-);
+${RULE_SCHEMA}
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -232,38 +212,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   PRIMARY KEY (user_id, key)
 );
 
-CREATE TABLE IF NOT EXISTS generation_batches (
-  id TEXT PRIMARY KEY,
-  manifest_path TEXT NOT NULL UNIQUE,
-  status TEXT NOT NULL,
-  title TEXT NOT NULL,
-  source_prompt_id TEXT REFERENCES prompts(id) ON DELETE SET NULL,
-  provider TEXT NOT NULL,
-  model TEXT NOT NULL,
-  requested_count INTEGER NOT NULL,
-  succeeded_count INTEGER NOT NULL DEFAULT 0,
-  failed_count INTEGER NOT NULL DEFAULT 0,
-  cancelled_count INTEGER NOT NULL DEFAULT 0,
-  interrupted_count INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  completed_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS generation_outputs (
-  id TEXT PRIMARY KEY,
-  batch_id TEXT NOT NULL REFERENCES generation_batches(id) ON DELETE CASCADE,
-  slot_index INTEGER NOT NULL,
-  status TEXT NOT NULL,
-  file_name TEXT,
-  mime_type TEXT,
-  byte_size INTEGER,
-  sha256 TEXT,
-  favorite INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT,
-  deleted_at TEXT,
-  UNIQUE(batch_id, slot_index)
-);
+${GENERATION_SCHEMA}
 
 CREATE TABLE IF NOT EXISTS agent_provider_profiles (
   id TEXT PRIMARY KEY,

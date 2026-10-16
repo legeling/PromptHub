@@ -38,6 +38,29 @@ describe("runtime storage context", () => {
     return path.join(activeRoot, "data", LAYOUT_STATE_FILE_NAME);
   }
 
+  it("resolves a restore stage against its intended root without accepting an unrelated identity", () => {
+    const activeRoot = root();
+    const stageRoot = root();
+    writeCanonicalStorageAuthority(stageRoot, {
+      identityRoot: activeRoot,
+      consistencyId: "a".repeat(64),
+      operationId: "restore-stage",
+    });
+    expect(() => resolveRuntimeStorageContext(stageRoot)).toThrow(
+      "root identity mismatch",
+    );
+    const context = resolveRuntimeStorageContext(stageRoot, {
+      identityRoot: activeRoot,
+    });
+    expect(context.databasePath).toBe(
+      path.join(stageRoot, "data", "prompthub.db"),
+    );
+    expect(context.rootIdentity).toBe(deriveStorageRootIdentity(activeRoot));
+    expect(() =>
+      resolveRuntimeStorageContext(stageRoot, { identityRoot: root() }),
+    ).toThrow("root identity mismatch");
+  });
+
   function writeRawState(activeRoot: string, value: unknown): void {
     fs.mkdirSync(path.join(activeRoot, "data"), { recursive: true });
     fs.writeFileSync(

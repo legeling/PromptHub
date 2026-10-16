@@ -1,3 +1,5 @@
+import { hashContent } from "@prompthub/core/rules-workspace-support";
+import { migrateSkillSqliteV1 } from "@prompthub/core/migrations/skill-sqlite-v1";
 /**
  * @vitest-environment node
  */
@@ -7,12 +9,20 @@ import path from "node:path";
 
 import {
   materializeCanonicalStorageShadow,
+  RuleStorageDB,
+  getRuleManagedPath,
   readPromptCanonicalGraph,
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
 } from "@prompthub/core";
-import { acquireDatabaseClientLease, PromptDB } from "@prompthub/db";
+import {
+  acquireDatabaseClientLease,
+  AgentProviderProfileDB,
+  PromptDB,
+  PluginDB,
+} from "@prompthub/db";
 import { afterEach, describe, expect, it } from "vitest";
+import type { AgentProviderProfile } from "@prompthub/shared";
 
 import DatabaseAdapter from "../../../src/main/database/sqlite";
 import {
@@ -49,6 +59,8 @@ describe("canonical storage startup self-heal", () => {
     const graphPath = path.join(activeRoot, "empty-graph");
     const canonicalMediaPath = path.join(activeRoot, "canonical-media.jpeg");
     fs.writeFileSync(canonicalMediaPath, "canonical image bytes", "utf8");
+    const skillEntrypoint = path.join(activeRoot, "canonical-skill.md");
+    fs.writeFileSync(skillEntrypoint, "# File skill\n");
     materializeCanonicalStorageShadow({
       targetPath: graphPath,
       prompts: {
@@ -101,7 +113,7 @@ describe("canonical storage startup self-heal", () => {
             updated_at: Date.parse("2026-01-01T00:00:00.000Z"),
           },
           versions: [],
-          packageFiles: [],
+          packageFiles: [{ path: "SKILL.md", sourcePath: skillEntrypoint }],
         },
       ],
     });
@@ -154,6 +166,10 @@ File current content.
     const database = new DatabaseAdapter(databasePath);
     database.exec(SCHEMA_TABLES);
     database.exec(SCHEMA_INDEXES);
+    database.exec(
+      "CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)",
+    );
+    migrateSkillSqliteV1(database, { rootPath: activeRoot, databasePath });
     const promptDb = new PromptDB(database);
     promptDb.insertPromptDirect({
       id: "shared-prompt",
@@ -339,18 +355,140 @@ File current content.
     }
   });
 
-  it("atomically rebuilds stale SQLite and is idempotent on the next startup", async () => {
+  it("preserves authoritative provider rows when repairing another domain", async () => {
+    const input = fixture();
+    const original = new DatabaseAdapter(input.databasePath);
+    let profile: AgentProviderProfile;
+    const plugin = {
+      id: "sql-plugin",
+      name: "sql-plugin",
+      displayName: "SQL Plugin",
+      trustLevel: "custom" as const,
+      classification: "bundle" as const,
+      inventory: {
+        skills: 0,
+        mcpServers: 0,
+        apps: 0,
+        commands: 0,
+        hooks: 0,
+        agents: 0,
+        assets: 0,
+        docs: 0,
+        lspServers: 0,
+        scripts: 0,
+      },
+      source: { kind: "local" as const },
+      installedAt: 1,
+      updatedAt: 1,
+    };
+    try {
+      new PluginDB(original).replace([plugin], []);
+      const id = "project:preserved-rule";
+      const managedPath = getRuleManagedPath({
+        id,
+        scope: "project",
+        canonicalFileName: "AGENTS.md",
+      });
+      const savedAt = "2026-10-16T00:00:00.000Z";
+      new RuleStorageDB(original).publishGraphs([
+        {
+          rule: {
+            id,
+            scope: "project",
+            platformId: "workspace",
+            platformName: "Preserved",
+            platformIcon: "Folder",
+            platformDescription: "Project",
+            canonicalFileName: "AGENTS.md",
+            description: "Preserved SQL rule",
+            contentHash: hashContent("# Preserve Rule"),
+            managedPath,
+            targetPath: "",
+            projectRootPath: null,
+            syncStatus: "target-missing",
+            currentVersion: 1,
+            createdAt: savedAt,
+            updatedAt: savedAt,
+          },
+          content: "# Preserve Rule",
+          versions: [
+            {
+              id: "preserved-rule-history",
+              savedAt,
+              source: "create",
+              content: "# Earlier Rule",
+            },
+          ],
+        },
+      ]);
+      profile = new AgentProviderProfileDB(original).createProfileWithMappings(
+        {
+          platformId: "codex",
+          name: "Retain SQL provider",
+          providerKind: "openai",
+          protocol: "openai-responses",
+          config: {},
+          source: "manual",
+          secretRef: "agent-provider:retain-device-reference",
+        },
+        [{ routeKey: "primary", modelId: "fixture", parameters: {} }],
+      );
+    } finally {
+      original.close();
+    }
+    await repairCanonicalStorageFromPromptWorkspace({
+      activeRoot: input.activeRoot,
+      sourceDatabasePath: input.databasePath,
+      trustedRoots: [],
+    });
+    const restored = new DatabaseAdapter(input.databasePath, {
+      readOnly: true,
+    });
+    try {
+      expect(new PluginDB(restored).list()).toEqual([plugin]);
+      const rules = new RuleStorageDB(restored);
+      const rule = rules.getById("project:preserved-rule");
+      if (!rule) throw new Error("Rule lost during recovery");
+      expect(rules.readContent(rule)).toBe("# Preserve Rule");
+      expect(rules.readVersions(rule.id)).toMatchObject([
+        { content: "# Earlier Rule" },
+      ]);
+      const providers = new AgentProviderProfileDB(restored);
+      expect(providers.getProfileById(profile.id)).toEqual(profile);
+      expect(providers.listModelMappings(profile.id)).toMatchObject([
+        { modelId: "fixture" },
+      ]);
+    } finally {
+      restored.close();
+    }
+  });
+
+  it("repairs the resource index without overwriting SQL edits and is idempotent", async () => {
     const input = fixture();
     await repairCanonicalStorageFromPromptWorkspace({
       activeRoot: input.activeRoot,
       sourceDatabasePath: input.databasePath,
       trustedRoots: [],
     });
+    reconcileCanonicalStorageCatalog({
+      activeRoot: input.activeRoot,
+      databasePath: input.databasePath,
+    });
     const stale = new DatabaseAdapter(input.databasePath);
     stale.run(
       "UPDATE prompts SET title = ? WHERE id = ?",
-      "Stale database title",
+      "Current SQL title",
       "shared-prompt",
+    );
+    stale.run(
+      "INSERT INTO canonical_resources VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "prompt",
+      "retired-resource",
+      1,
+      1,
+      "a".repeat(64),
+      "prompts/retired/manifest.json",
+      new Date().toISOString(),
     );
     stale.close();
 
@@ -370,8 +508,14 @@ File current content.
     const rebuilt = new DatabaseAdapter(input.databasePath, { readOnly: true });
     try {
       expect(new PromptDB(rebuilt).getById("shared-prompt")?.title).toBe(
-        "File title",
+        "Current SQL title",
       );
+      expect(
+        rebuilt.all(
+          "SELECT resource_id FROM canonical_resources WHERE resource_type = ?",
+          "prompt",
+        ),
+      ).toEqual([]);
       expect(
         rebuilt
           .prepare("SELECT value FROM settings WHERE key = ?")

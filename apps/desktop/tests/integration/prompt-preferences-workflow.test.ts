@@ -19,6 +19,7 @@ afterEach(() => {
 function registerSettings(profile: string): void {
   registerSettingsIPC(getDatabase(), {
     rendererPersistence: createRendererPersistenceStore({
+      database: getDatabase(),
       rootPath: profile,
       encryption: {
         isEncryptionAvailable: () => false,

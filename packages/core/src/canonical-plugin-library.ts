@@ -199,7 +199,7 @@ export function readCanonicalPluginVersions(): PluginVersionFile {
   };
 }
 
-function collectPackageFiles(
+export function collectPluginPackageFiles(
   directoryPath: string,
 ): PluginPackagePayloadSource[] {
   const root = path.resolve(directoryPath);
@@ -245,7 +245,7 @@ function packageSources(
   current: LoadedPlugin | undefined,
 ): PluginPackagePayloadSource[] {
   const candidate = plugin.localPackagePath ?? plugin.source.localPackagePath;
-  if (candidate) return collectPackageFiles(candidate);
+  if (candidate) return collectPluginPackageFiles(candidate);
   return (
     current?.resource.packageFiles.map((file) => ({
       path: file.path,
@@ -269,6 +269,7 @@ export function writeCanonicalPluginState(input: {
   library: PluginLibraryFile;
   versions: PluginVersionFile;
   injectPublicationFailure?: (targetPath: string) => void;
+  retireMetadataPaths?: readonly string[];
 }): void {
   recoverCanonicalEntryPublication(getUserDataPath(), OPERATION_KEY);
   const loaded = listBundles();
@@ -330,6 +331,16 @@ export function writeCanonicalPluginState(input: {
     targetPath: projectionPath(),
     prepare: (stagePath) => writeJsonStage(stagePath, projection),
   });
+  for (const targetPath of input.retireMetadataPaths ?? []) {
+    if (
+      path.dirname(targetPath) !== rootPath() ||
+      ![PLUGIN_LIBRARY_FILE_NAME, PLUGIN_VERSION_FILE_NAME].includes(
+        path.basename(targetPath),
+      )
+    )
+      throw new Error("Invalid Plugin migration metadata retirement path");
+    mutations.push({ targetPath, delete: true });
+  }
   publishCanonicalEntries({
     rootPath: getUserDataPath(),
     operationKey: OPERATION_KEY,

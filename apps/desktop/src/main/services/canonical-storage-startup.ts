@@ -1,4 +1,5 @@
 import { upgradeSkillPackageInternals } from "@prompthub/core/migrations/skill-package-internals-v1";
+import { hasPromptSqliteMigration } from "@prompthub/core/migrations/prompt-sqlite-v1";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,7 +10,7 @@ import {
   readPromptCanonicalGraph,
   readRendererPersistenceMigrationMarker,
   refreshRuntimeStorageContext,
-  recoverCanonicalEntryPublications,
+  recoverStorageEntryPublications,
 } from "@prompthub/core";
 
 import { DatabaseAdapter, repairPromptVersionConsistency } from "@prompthub/db";
@@ -127,11 +128,22 @@ async function ensureExistingCanonicalAuthority(
   activeRoot: string,
 ): Promise<CanonicalStorageAuthorityStartupResult> {
   upgradeSkillPackageInternals(activeRoot);
-  const graphError = canonicalPromptGraphError(activeRoot);
-  if (graphError) {
-    return repairInvalidAuthority(options, activeRoot, graphError);
-  }
   try {
+    const source = new DatabaseAdapter(
+      path.resolve(options.sourceDatabasePath),
+      { readOnly: true },
+    );
+    let migrated: boolean;
+    try {
+      migrated = hasPromptSqliteMigration(source);
+    } finally {
+      source.close();
+    }
+    if (!migrated) {
+      const graphError = canonicalPromptGraphError(activeRoot);
+      if (graphError)
+        return repairInvalidAuthority(options, activeRoot, graphError);
+    }
     const result = (
       options.reconcileCatalog ?? reconcileCanonicalStorageCatalog
     )({
@@ -278,7 +290,7 @@ export async function ensureCanonicalStorageAuthorityOnStartup(
   options: EnsureCanonicalStorageAuthorityOnStartupOptions,
 ): Promise<CanonicalStorageAuthorityStartupResult> {
   const activeRoot = path.resolve(options.activeRoot);
-  recoverCanonicalEntryPublications(activeRoot);
+  recoverStorageEntryPublications(activeRoot);
   if (readCanonicalStorageAuthority(activeRoot)) {
     // Existing authority: relocate any leftover prompt-workspace snapshot found
     // under the canonical root. Pure filesystem relocation is safe here; do NOT

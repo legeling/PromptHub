@@ -2,10 +2,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { acquireStorageMaintenanceIntent } from "../storage-maintenance-intent";
-import {
-  recoverCanonicalEntryPublications,
-  publishCanonicalEntries,
-} from "../canonical-entry-publication";
+import { publishCanonicalEntries } from "../canonical-entry-publication";
+import { recoverStorageEntryPublications } from "../sqlite-entry-publication";
 import {
   calculateResourceBundleContentHash,
   DEFAULT_RESOURCE_BUNDLE_LIMITS,
@@ -177,7 +175,7 @@ export function upgradeSkillPackageInternals(root: string): number {
     operationKind: "skill-package-migration",
   });
   try {
-    recoverCanonicalEntryPublications(root);
+    recoverStorageEntryPublications(root);
     return migrateSkillPackageInternalsV1(root);
   } finally {
     maintenance.release();

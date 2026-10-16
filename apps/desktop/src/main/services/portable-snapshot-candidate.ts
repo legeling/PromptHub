@@ -1,3 +1,8 @@
+import { readSkillVersionPayload } from "@prompthub/core/skill-version-files";
+import { readSkillEntrypoint } from "@prompthub/core/skill-storage-files";
+import { collectGenerationResources } from "@prompthub/core/generation-storage";
+import { PluginStorage } from "@prompthub/core/plugin-storage";
+import { collectSkillPackageFiles } from "@prompthub/core/skill-storage-files";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -22,6 +27,7 @@ import {
   resolveRuntimeStorageContext,
   MCP_STORAGE_SNAPSHOT_FILE,
   type CanonicalGenerationShadowInput,
+  type CanonicalAgentProviderShadowInput,
   type CanonicalSkillShadowInput,
   type PortableLogicalEnvelope,
   type RendererPersistenceEncryption,
@@ -51,6 +57,8 @@ interface CandidateOptions {
   operationId: string;
   envelope: PortableLogicalEnvelope;
   encryption: RendererPersistenceEncryption;
+  agentProviders?: readonly CanonicalAgentProviderShadowInput[];
+  generationSnapshot: boolean;
 }
 
 function candidatePath(
@@ -93,6 +101,14 @@ function collectSkills(
   options: CandidateOptions,
 ): CanonicalSkillShadowInput[] {
   const skills = new SkillDB(database);
+  const fileHistory =
+    options.envelope.scope.skills ||
+    Boolean(
+      database.get(
+        "SELECT name FROM schema_migrations WHERE name = ?",
+        "skill-payload-files-v1",
+      ),
+    );
   const legacyPackages = new Map<
     string,
     Array<{ path: string; sourcePath: string }>
@@ -125,8 +141,29 @@ function collectSkills(
           path: file.path,
           sourcePath: file.absolutePath,
         }))
-      : (legacyPackages.get(skill.name) ?? []);
-    return { skill, versions: skills.getVersions(skill.id), packageFiles };
+      : fs.existsSync(path.join(bundlePath, "files"))
+        ? collectSkillPackageFiles(path.join(bundlePath, "files"))
+        : (legacyPackages.get(skill.name) ?? []);
+    const entrypoint = packageFiles.find((file) => file.path === "SKILL.md");
+    const content = entrypoint
+      ? readSkillEntrypoint(entrypoint.sourcePath)
+      : skill.content;
+    const versions = skills
+      .getVersions(skill.id)
+      .map((version) =>
+        fileHistory
+          ? readSkillVersionPayload(
+              version,
+              path.join(options.stageRoot, "data", "skills"),
+              options.stageRoot,
+            )
+          : version,
+      );
+    return {
+      skill: { ...skill, content, instructions: content },
+      versions,
+      packageFiles,
+    };
   });
 }
 
@@ -210,7 +247,36 @@ function collectRules(
   });
 }
 
-function collectPlugins(options: CandidateOptions) {
+function collectPlugins(options: CandidateOptions, database: DatabaseAdapter) {
+  if (!options.envelope.scope.plugins) {
+    const storage = new PluginStorage(
+        database,
+        options.stageRoot,
+        options.activeRoot,
+      ),
+      histories = storage.readVersions();
+    const plugins = storage
+      .read()
+      .map((plugin) => ({
+        ...plugin,
+        ...(plugin.localPackagePath
+          ? {
+              localPackagePath: candidatePath(
+                options.stageRoot,
+                options.activeRoot,
+                plugin.localPackagePath,
+              ),
+            }
+          : {}),
+      }));
+    const pluginVersions = new Map<string, PluginVersion[]>();
+    for (const version of histories) {
+      const group = pluginVersions.get(version.pluginId) ?? [];
+      group.push(version);
+      pluginVersions.set(version.pluginId, group);
+    }
+    return { plugins, pluginVersions };
+  }
   const root = path.join(options.stageRoot, "data", "plugins");
   const resources = new Map(
     bundlePaths(root, ["library.json", "versions.json", "market-cache.json"])
@@ -249,11 +315,15 @@ function collectPlugins(options: CandidateOptions) {
       );
       return {
         ...plugin,
-        localPackagePath: candidatePath(
-          options.stageRoot,
-          options.activeRoot,
-          plugin.localPackagePath,
-        ),
+        ...(plugin.localPackagePath
+          ? {
+              localPackagePath: candidatePath(
+                options.stageRoot,
+                options.activeRoot,
+                plugin.localPackagePath,
+              ),
+            }
+          : {}),
       };
     }),
     pluginVersions: versions,
@@ -269,6 +339,7 @@ function collectGenerations(
       const resource = readGenerationResourceBundle(directory, objectsRoot);
       return {
         manifest: resource.manifest,
+        bundleRevision: resource.bundleManifest.revision,
         outputSources: Object.fromEntries(
           resource.outputs.map((output) => [
             output.fileName,
@@ -309,7 +380,9 @@ function prepareMcpSqliteCandidate(
   databasePath: string,
 ): void {
   if (!options.envelope.scope.mcp) return;
-  const context = resolveRuntimeStorageContext(options.stageRoot);
+  const context = resolveRuntimeStorageContext(options.stageRoot, {
+    identityRoot: options.activeRoot,
+  });
   const historyRoot = path.join(context.dataPath, "mcp"),
     image = path.join(historyRoot, MCP_STORAGE_SNAPSHOT_FILE);
   const target = new DatabaseAdapter(databasePath);
@@ -446,8 +519,10 @@ function publishCheckpointIntoCandidate(
     "output-formats",
     "skills",
     "rules",
+    "rule-files",
     "mcp",
     "plugins",
+    "plugin-files",
     "agents",
     "generations",
     "legacy-versions",
@@ -505,10 +580,13 @@ export async function prepareCanonicalPortableCandidate(
         publishedCanonicalRootPath: path.join(options.activeRoot, "data"),
         deviceId: deriveLocalResourceDeviceId(options.activeRoot),
         skills: collectSkills(database, options),
-        readRules: async () => collectRules(database, options),
-        ...collectPlugins(options),
+        readRules: () => collectRules(database, options),
+        ...collectPlugins(options, database),
         ...mcp,
-        generations: collectGenerations(options.stageRoot),
+        generations: options.generationSnapshot
+          ? collectGenerations(options.stageRoot)
+          : collectGenerationResources(database, options.stageRoot),
+        agentProviders: options.agentProviders,
         resolvePromptMediaSource: (_prompt, kind, reference) =>
           path.join(
             options.stageRoot,

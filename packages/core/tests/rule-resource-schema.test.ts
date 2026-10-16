@@ -169,7 +169,7 @@ describe("Rule canonical resource schema", () => {
     });
   });
 
-  it("rejects duplicate versions and current content that disagrees with history", () => {
+  it("rejects duplicate history identities and preserves a current body independent of history", () => {
     const base = root();
     const duplicate = rule();
     duplicate.versions[1].id = duplicate.versions[0].id;
@@ -182,12 +182,21 @@ describe("Rule canonical resource schema", () => {
 
     const mismatch = rule();
     mismatch.content = "# Different\n";
-    expect(() =>
-      materializeRuleResourceBundle({
-        bundlePath: path.join(base, "mismatch"),
-        rule: mismatch,
-      }),
-    ).toThrow(/current content/u);
+    materializeRuleResourceBundle({
+      bundlePath: path.join(base, "mismatch"),
+      rule: mismatch,
+    });
+    expect(
+      readRuleResourceBundle(path.join(base, "mismatch")).rule,
+    ).toMatchObject({ content: mismatch.content, versions: mismatch.versions });
+    mismatch.versions = [];
+    materializeRuleResourceBundle({
+      bundlePath: path.join(base, "without-history"),
+      rule: mismatch,
+    });
+    expect(
+      readRuleResourceBundle(path.join(base, "without-history")).rule,
+    ).toMatchObject({ content: mismatch.content, versions: [] });
   });
 
   it("fails closed on unsafe identities and payload tampering", () => {

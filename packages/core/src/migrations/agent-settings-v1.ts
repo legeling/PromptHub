@@ -19,9 +19,9 @@ import {
 } from "../agent-management/agent-settings-repository";
 import { parseAgentDeviceConfigDocument } from "../agent-resource-schema";
 import {
-  publishCanonicalEntries,
-  recoverCanonicalEntryPublication,
-} from "../canonical-entry-publication";
+  publishSqliteEntries,
+  recoverSqliteEntryPublication,
+} from "../sqlite-entry-publication";
 import { assertStoragePathComponentsSafe } from "../runtime-storage-context";
 
 const MIGRATION_NAME = "agent-settings-v1";
@@ -219,7 +219,7 @@ export function migrateAgentSettingsV1(
   database: DatabaseAdapter.Database,
   root: string,
 ): void {
-  recoverCanonicalEntryPublication(root, MIGRATION_NAME);
+  recoverSqliteEntryPublication(database, root, MIGRATION_NAME);
   const file = path.join(root, "config/devices/agents.json");
   const content = readDevice(root, file);
   const rows = database.prepare("SELECT key, value FROM settings").all() as {
@@ -263,7 +263,7 @@ export function migrateAgentSettingsV1(
   });
   if (content === null) commit();
   else
-    publishCanonicalEntries({
+    publishSqliteEntries(database, {
       rootPath: root,
       operationKey: MIGRATION_NAME,
       entries: [{ targetPath: file, delete: true }],

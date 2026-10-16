@@ -4,14 +4,14 @@ import path from "path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { saveRepo } from "../src/cli/skill/install";
+import { copyRepoToPlatform } from "../src/cli/skill/install";
 import {
   configureRuntimePaths,
   getSkillsDir,
   resetRuntimePaths,
 } from "../src/runtime-paths";
 
-describe("managed Skill repo replacement", () => {
+describe("Skill distribution replacement", () => {
   const tempDirs: string[] = [];
 
   afterEach(async () => {
@@ -24,7 +24,7 @@ describe("managed Skill repo replacement", () => {
     );
   });
 
-  it("preserves the previous managed copy when staging fails", async () => {
+  it("preserves the previous distribution copy when staging fails", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "prompthub-atomic-"));
     tempDirs.push(root);
     configureRuntimePaths({ userDataPath: path.join(root, "user-data") });
@@ -37,7 +37,7 @@ describe("managed Skill repo replacement", () => {
     await fs.writeFile(path.join(destinationDir, "SKILL.md"), "# Old", "utf8");
     vi.spyOn(fs, "cp").mockRejectedValueOnce(new Error("copy failed"));
 
-    await expect(saveRepo("atomic-skill", sourceDir)).rejects.toThrow(
+    await expect(copyRepoToPlatform(sourceDir, destinationDir)).rejects.toThrow(
       "copy failed",
     );
     await expect(

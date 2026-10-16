@@ -8,10 +8,17 @@
 import { ipcMain } from "electron";
 import https from "https";
 import http from "http";
-import { getE2EWebDAVMode, handleE2EWebDAVRequest, isE2EEnabled } from "./testing/e2e";
+import {
+  getE2EWebDAVMode,
+  handleE2EWebDAVRequest,
+  isE2EEnabled,
+} from "./testing/e2e";
 import { getHttpRequestAgent } from "./services/network-proxy";
+import { parseRemoteWriteCondition, remoteWriteHeaders } from "@prompthub/shared/utils/remote-write-condition";
+import type { RemoteTextStorage, RemoteUploadResult } from "@prompthub/shared/types/remote-sync";
+import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 
-interface WebDAVConfig {
+export interface WebDAVConfig {
   url: string;
   username: string;
   password: string;
@@ -22,6 +29,7 @@ interface WebDAVResponse {
   status?: number;
   statusText?: string;
   data?: string;
+  etag?: string;
   error?: string;
 }
 
@@ -72,6 +80,7 @@ async function sendWebDAVRequest(
             status: statusCode,
             statusText: response.statusMessage || "",
             data: responseData,
+            etag: response.headers.etag,
           });
         });
 
@@ -110,8 +119,8 @@ async function sendWebDAVRequest(
  * 注册 WebDAV IPC 处理器
  */
 export function registerWebDAVIPC() {
-  const useE2EWebDAVMock =
-    isE2EEnabled() && getE2EWebDAVMode() !== "off";
+  const useE2EWebDAVMock = isE2EEnabled() && getE2EWebDAVMode() !== "off";
+  registerWebDAVDelete(useE2EWebDAVMock);
 
   // Test connection
   // 测试连接
@@ -187,38 +196,32 @@ export function registerWebDAVIPC() {
   // 上传文件
   ipcMain.handle(
     "webdav:upload",
-    async (_event, fileUrl: string, config: WebDAVConfig, data: string) => {
-      if (useE2EWebDAVMock) {
-        return handleE2EWebDAVRequest("upload", fileUrl);
-      }
-
-      const authHeader =
-        "Basic " +
-        Buffer.from(`${config.username}:${config.password}`).toString("base64");
-
-      const response = await sendWebDAVRequest(
-        "PUT",
-        fileUrl,
-        authHeader,
-        {
-          "Content-Type": "application/json",
-          "Content-Length": String(Buffer.byteLength(data, "utf8")),
-        },
-        data,
-      );
-
-      if (
-        response.success ||
-        response.status === 201 ||
-        response.status === 204
-      ) {
-        return { success: true };
-      } else {
+    async (
+      _event,
+      fileUrl: string,
+      config: WebDAVConfig,
+      data: string,
+      condition?: unknown,
+    ): Promise<RemoteUploadResult> => {
+      let parsedCondition: ReturnType<typeof parseRemoteWriteCondition>;
+      try {
+        parsedCondition = parseRemoteWriteCondition(condition);
+      } catch (error) {
         return {
           success: false,
-          error: `${response.status} ${response.statusText || response.error}`,
+          error:
+            error instanceof Error ? error.message : "Invalid write condition",
         };
       }
+      if (useE2EWebDAVMock) {
+        const result = handleE2EWebDAVRequest("upload", fileUrl);
+        return {
+          success: result.success === true,
+          error: typeof result.error === "string" ? result.error : undefined,
+        };
+      }
+
+      return createWebDAVTextStorage(config).uploadText(fileUrl, data, parsedCondition);
     },
   );
 
@@ -277,24 +280,85 @@ export function registerWebDAVIPC() {
         return handleE2EWebDAVRequest("download", fileUrl);
       }
 
-      const authHeader =
-        "Basic " +
-        Buffer.from(`${config.username}:${config.password}`).toString("base64");
+      return createWebDAVTextStorage(config).downloadText(fileUrl);
+    },
+  );
+}
 
-      const response = await sendWebDAVRequest("GET", fileUrl, authHeader);
-
-      if (response.status === 404) {
-        return { success: false, notFound: true };
+function registerWebDAVDelete(useE2EWebDAVMock: boolean): void {
+  ipcMain.handle(
+    IPC_CHANNELS.WEBDAV_DELETE,
+    async (_event, fileUrl: string, config: WebDAVConfig) => {
+      if (
+        typeof fileUrl !== "string" ||
+        !fileUrl ||
+        !config ||
+        typeof config.url !== "string" ||
+        typeof config.username !== "string" ||
+        typeof config.password !== "string"
+      ) {
+        return { success: false, error: "Invalid WebDAV deletion request" };
       }
+      if (useE2EWebDAVMock)
+        return {
+          success: false,
+          error: "WebDAV probe deletion is unavailable in the E2E fixture",
+        };
+      return createWebDAVTextStorage(config).deleteText(fileUrl);
+    },
+  );
+}
 
-      if (response.success) {
-        return { success: true, data: response.data };
+export function createWebDAVTextStorage(config: WebDAVConfig): RemoteTextStorage {
+  const authHeader = "Basic " + Buffer.from(config.username + ":" + config.password).toString("base64");
+  return {
+    async uploadText(fileUrl, data, condition) {
+      const conditionalHeaders = remoteWriteHeaders(condition);
+      const response = await sendWebDAVRequest(
+        "PUT",
+        fileUrl,
+        authHeader,
+        {
+          "Content-Type": "application/json",
+          "Content-Length": String(Buffer.byteLength(data, "utf8")),
+          ...conditionalHeaders,
+        },
+        data,
+      );
+
+      if (
+        response.success ||
+        response.status === 201 ||
+        response.status === 204
+      ) {
+        return { success: true, etag: response.etag };
       } else {
         return {
           success: false,
+          ...(condition !== undefined &&
+          [404, 409, 412].includes(response.status ?? 0)
+            ? { conflict: true }
+            : {}),
           error: `${response.status} ${response.statusText || response.error}`,
         };
       }
     },
-  );
+    async downloadText(fileUrl) {
+      const response = await sendWebDAVRequest("GET", fileUrl, authHeader);
+      if (response.status === 404) return { success: false, notFound: true };
+      return response.success ? { success: true, data: response.data, etag: response.etag } : { success: false, error: response.error ?? response.statusText };
+    },
+    async deleteText(fileUrl) {
+      const response = await sendWebDAVRequest("DELETE", fileUrl, authHeader);
+      return response.success || response.status === 404 ? { success: true } : { success: false, error: response.error ?? response.statusText };
+    },
+  };
+}
+
+export async function ensureWebDAVDirectory(config: WebDAVConfig, directory: string): Promise<void> {
+  const authHeader = "Basic " + Buffer.from(config.username + ":" + config.password).toString("base64");
+  const check = await sendWebDAVRequest("PROPFIND", directory, authHeader, { Depth: "0" });
+  if (check.success || check.status === 207) return;
+  const created = await sendWebDAVRequest("MKCOL", directory, authHeader);
+  if (!created.success && created.status !== 405) throw new Error("WebDAV sync directory creation failed");
 }

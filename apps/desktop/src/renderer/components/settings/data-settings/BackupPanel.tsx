@@ -56,13 +56,10 @@ export function BackupPanel() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">
-                  {t("settings.selectiveExport", "选择性导出")}
+                  {t("settings.selectiveExport")}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  {t(
-                    "settings.selectiveExportDesc",
-                    "按需导出指定数据（仅导出，不提供导入）",
-                  )}
+                  {t("settings.selectiveExportDesc")}
                 </div>
               </div>
               <button
@@ -70,7 +67,7 @@ export function BackupPanel() {
                 onClick={handleSelectiveExport}
                 className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
               >
-                {t("settings.export", "导出")}
+                {t("settings.export")}
               </button>
             </div>
 
@@ -125,13 +122,10 @@ export function BackupPanel() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">
-                  {t("settings.fullBackup", "全量备份 / 恢复")}
+                  {t("settings.fullBackup")}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  {t(
-                    "settings.fullBackupDesc",
-                    "用于迁移/跨设备恢复：包含 prompts、图片、AI 配置、系统设置、规则与 Skill",
-                  )}
+                  {t("settings.fullBackupDesc")}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -139,18 +133,18 @@ export function BackupPanel() {
                   type="button"
                   onClick={() => handleFullBackup()}
                   className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
-                  title={t("settings.fullBackupExport", "全量备份")}
+                  title={t("settings.fullBackupExport")}
                 >
-                  {t("settings.fullBackupExport", "全量备份")}
+                  {t("settings.fullBackupExport")}
                 </button>
                 <button
                   type="button"
                   onClick={handleImportBackup}
-                  title={t("settings.import", "导入数据")}
-                  aria-label={t("settings.import", "导入数据")}
+                  title={t("settings.import")}
+                  aria-label={t("settings.import")}
                   className="h-9 px-4 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
                 >
-                  {t("settings.import", "导入数据")}
+                  {t("settings.import")}
                 </button>
               </div>
             </div>
@@ -206,16 +200,13 @@ export function BackupPanel() {
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="text-sm font-medium text-foreground">
-                    {t("settings.backupDropRestore", "拖拽恢复备份")}
+                    {t("settings.backupDropRestore")}
                   </div>
                   <div className="text-xs leading-5 text-muted-foreground">
                     {backupDropDescription}
                   </div>
                   <div className="text-[11px] text-muted-foreground/80">
-                    {t(
-                      "settings.backupDropRestoreFormats",
-                      "Supported: .json, .phub.gz, .gz, .zip, PromptHub SQLite backups",
-                    )}
+                    {t("settings.backupDropRestoreFormats")}
                   </div>
                 </div>
               </div>
@@ -227,13 +218,10 @@ export function BackupPanel() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold">
-                    {t("settings.upgradeBackups", "升级备份")}
+                    {t("settings.upgradeBackups")}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {t(
-                      "settings.upgradeBackupsDesc",
-                      "升级前自动创建的本地回滚点。恢复某个快照时，会先把当前状态保存为新快照，再回滚并自动重启。",
-                    )}
+                    {t("settings.upgradeBackupsDesc")}
                   </div>
                 </div>
                 <button
@@ -246,21 +234,15 @@ export function BackupPanel() {
                     className={`w-4 h-4 shrink-0 ${loadingUpgradeBackups || scanningRecoverySources ? "animate-spin" : ""}`}
                     aria-hidden="true"
                   />
-                  {t("common.refresh", "Refresh")}
+                  {t("common.refresh")}
                 </button>
               </div>
 
               {upgradeBackups.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
                   {loadingUpgradeBackups
-                    ? t(
-                        "settings.upgradeBackupsLoading",
-                        "Loading upgrade backups...",
-                      )
-                    : t(
-                        "settings.upgradeBackupsEmpty",
-                        "No automatic upgrade backups found yet.",
-                      )}
+                    ? t("settings.upgradeBackupsLoading")
+                    : t("settings.upgradeBackupsEmpty")}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -275,10 +257,7 @@ export function BackupPanel() {
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {showAllUpgradeBackups
-                          ? t(
-                              "settings.upgradeBackupsSummaryExpanded",
-                              "Showing full history in a scrollable list",
-                            )
+                          ? t("settings.upgradeBackupsSummaryExpanded")
                           : hiddenUpgradeBackupsCount > 0
                             ? t(
                                 "settings.upgradeBackupsSummaryCollapsed",
@@ -287,10 +266,7 @@ export function BackupPanel() {
                                   count: DEFAULT_VISIBLE_UPGRADE_BACKUPS,
                                 },
                               )
-                            : t(
-                                "settings.upgradeBackupsSummaryCompact",
-                                "All snapshots fit in the compact list",
-                              )}
+                            : t("settings.upgradeBackupsSummaryCompact")}
                       </span>
                     </div>
 
@@ -315,7 +291,7 @@ export function BackupPanel() {
                           />
                         )}
                         {showAllUpgradeBackups
-                          ? t("common.collapse", "Collapse")
+                          ? t("common.collapse")
                           : t(
                               "settings.upgradeBackupsShowAll",
                               "Show all {{count}}",
@@ -361,14 +337,13 @@ export function BackupPanel() {
 
                           <div className="text-xs text-muted-foreground space-y-1">
                             <div>
-                              {t("settings.upgradeBackupCreatedAt", "快照时间")}
-                              ：
+                              {t("settings.upgradeBackupCreatedAt")}：
                               {new Date(
                                 backup.manifest.createdAt,
                               ).toLocaleString()}
                             </div>
                             <div>
-                              {t("settings.upgradeBackupItems", "包含项目")}：
+                              {t("settings.upgradeBackupItems")}：
                               {backup.manifest.copiedItems
                                 .filter((item) =>
                                   [
@@ -391,7 +366,7 @@ export function BackupPanel() {
                               disabled={busy}
                               className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors disabled:opacity-50"
                             >
-                              {t("common.delete", "Delete")}
+                              {t("common.delete")}
                             </button>
                             <button
                               type="button"
@@ -405,10 +380,7 @@ export function BackupPanel() {
                                   aria-hidden="true"
                                 />
                               ) : null}
-                              {t(
-                                "settings.upgradeBackupRestoreAction",
-                                "回滚到此快照",
-                              )}
+                              {t("settings.upgradeBackupRestoreAction")}
                             </button>
                           </div>
                         </div>

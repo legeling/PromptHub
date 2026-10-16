@@ -694,6 +694,7 @@ function createWindowElectronDefaults() {
     imageExists: vi.fn(),
     clearImages: vi.fn(),
     webdav: {
+      delete: vi.fn(),
       testConnection: vi.fn(),
       ensureDirectory: vi.fn(),
       upload: vi.fn(),

@@ -126,8 +126,9 @@ async function openSkillRuntime(
 async function prepareFreshProfile(profile: string): Promise<void> {
   configureRuntimePaths({ userDataPath: profile });
   writeRuntimeLayoutState(profile);
-  initDatabase();
+  const database = initDatabase();
   const rendererPersistence = createRendererPersistenceStore({
+      database: database,
     rootPath: profile,
     encryption: {
       isEncryptionAvailable: () => false,

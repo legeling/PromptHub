@@ -217,6 +217,26 @@ function validateMappings(
   );
 }
 
+export function parseAgentProviderResourceDocument(
+  value: unknown,
+): AgentProviderResourceDocument {
+  if (
+    !isRecord(value) ||
+    value.kind !== AGENT_PROVIDER_RESOURCE_KIND ||
+    value.schemaVersion !== AGENT_PROVIDER_RESOURCE_SCHEMA_VERSION ||
+    typeof value.requiresSecret !== "boolean" ||
+    !Array.isArray(value.modelMappings)
+  ) throw new Error("Agent provider resource header is unsupported");
+  const profile = validateProfile(value.profile);
+  return {
+    kind: AGENT_PROVIDER_RESOURCE_KIND,
+    schemaVersion: AGENT_PROVIDER_RESOURCE_SCHEMA_VERSION,
+    profile,
+    modelMappings: validateMappings(value.modelMappings, profile.id),
+    requiresSecret: value.requiresSecret,
+  };
+}
+
 function writeDocumentSource(directory: string, document: unknown): string {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const filePath = path.join(directory, "agent.json");

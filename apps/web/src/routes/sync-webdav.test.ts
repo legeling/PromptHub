@@ -444,8 +444,9 @@ describe("web sync WebDAV transport", () => {
             path.join(
               dataDir,
               "data",
-              "skills",
-              "remote-skill__remote-skill-1",
+              "skill-files",
+              "remote-skill-1",
+              "files",
               "templates",
               "review.md",
             ),

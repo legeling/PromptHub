@@ -191,6 +191,7 @@ export async function handlePluginCommand(
       return EXIT_CODES.OK;
     }
 
+    databaseHooks.initDatabase();
     const action = requirePositional(args, 0, "plugin 子命令");
     const targets =
       action === "delete" && args.includes("--remove-targets")

@@ -13,6 +13,7 @@ import { GenerationLibrary } from "../services/generation-library";
 
 export function registerGenerationIPC(db: Database.Database): void {
   const library = new GenerationLibrary(db);
+  library.recoverInterrupted();
   ipcMain.handle(IPC_CHANNELS.GENERATION_LIST, () => library.listBatches());
   ipcMain.handle(IPC_CHANNELS.GENERATION_GET, (_event, batchId: string) =>
     library.getBatch(batchId),

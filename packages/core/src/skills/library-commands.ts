@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import type { SkillDB } from "@prompthub/db";
 import type {
   CreateSkillParams,
@@ -11,13 +12,7 @@ import {
   SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
 } from "@prompthub/shared/utils/skill-source-update";
 import { decodeSkillFileSnapshot } from "@prompthub/shared/utils/skill-file-snapshot";
-import {
-  getDataDir,
-  getOperationsDir,
-  getRuntimeStorageContext,
-} from "../runtime-paths";
-import { encodeCanonicalResourceDirectory } from "../canonical-resource-path";
-import { readSkillResourceBundle } from "../skill-resource-schema";
+import { getOperationsDir } from "../runtime-paths";
 import {
   readSkillFileSnapshots,
   writeSkillFileSnapshots,
@@ -31,13 +26,6 @@ export interface PreparedLibrarySkillEdit {
   draft: Skill;
   commit: () => Skill | null;
   dispose: () => Promise<void>;
-}
-
-export function requireCanonicalSkillLibrary(): void {
-  if (getRuntimeStorageContext().localAuthority !== "canonical-files")
-    throw new Error(
-      "Skill library requires completed canonical storage migration",
-    );
 }
 
 function validateEdit(data: UpdateSkillParams): void {
@@ -124,7 +112,7 @@ async function disposeStage(
   id: string | undefined,
   stage: string,
 ): Promise<void> {
-  // Keep the only recoverable source if publication committed but hydration failed.
+  // Raw storage adapters can retain the stage; only its owner may remove it.
   if (!id || db.getById(id)?.local_repo_path !== stage)
     await fs.rm(stage, { recursive: true, force: true });
 }
@@ -134,7 +122,6 @@ export async function createLibrarySkill(
   data: CreateSkillParams,
   options?: { skipInitialVersion?: boolean },
 ): Promise<Skill> {
-  requireCanonicalSkillLibrary();
   validateEdit(data);
   if (!data.name) throw new Error("Skill name is required");
   if (data.local_repo_path)
@@ -159,18 +146,11 @@ export async function prepareLibrarySkillEdit(
   id: string,
   data: UpdateSkillParams,
 ): Promise<PreparedLibrarySkillEdit | null> {
-  requireCanonicalSkillLibrary();
   validateEdit(data);
   if (data.local_repo_path !== undefined)
     throw new Error("Skill package relocation must use the package lifecycle");
   const previous = db.getById(id);
   if (!previous) return null;
-  const bundlePath = path.join(
-    getDataDir(),
-    "skills",
-    encodeCanonicalResourceDirectory(id),
-  );
-  const current = readSkillResourceBundle(bundlePath);
   const changesPackage = [
     "name",
     "content",
@@ -189,18 +169,20 @@ export async function prepareLibrarySkillEdit(
         stage,
         await readSkillFileSnapshots(linkedDirectory),
       );
-    else if (stage)
-      for (const file of current.packageFiles) {
-        const target = path.join(stage, ...file.path.split("/"));
-        await fs.mkdir(path.dirname(target), { recursive: true });
-        await fs.copyFile(file.absolutePath, target);
-      }
+    else if (stage) {
+      if (!previous.local_repo_path)
+        throw new Error("Skill package entrypoint is missing");
+      await writeSkillFileSnapshots(
+        stage,
+        await readSkillFileSnapshots(previous.local_repo_path),
+      );
+    }
     const beforeFiles = stage ? await readSkillFileSnapshots(stage) : undefined;
     const oldContent = beforeFiles?.find(
       (file) => file.relativePath === "SKILL.md",
     )?.content;
     if (stage && oldContent === undefined)
-      throw new Error("Canonical Skill package requires a SKILL.md entrypoint");
+      throw new Error("Skill package requires a SKILL.md entrypoint");
     const update = stage
       ? {
           ...data,
@@ -219,10 +201,7 @@ export async function prepareLibrarySkillEdit(
       previous,
       draft: { ...previous, ...update },
       commit: () => {
-        if (
-          readSkillResourceBundle(bundlePath).bundleManifest.revision !==
-          current.bundleManifest.revision
-        )
+        if (!isDeepStrictEqual(db.getById(id), previous))
           throw new Error("Skill changed during editing; reload and retry");
         if (stage && linkedDirectory) {
           if (

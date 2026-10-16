@@ -1,3 +1,4 @@
+import { SyncReviewHost } from "./components/ui/SyncReviewHost";
 import { ConfirmationHost } from "./components/ui/ConfirmationHost";
 import { getShortcutKey } from "./services/shortcut-key";
 import { migrateLegacyIndexedDbToMainProcess } from "./services/migrations/indexeddb";
@@ -1279,6 +1280,7 @@ function App() {
   return (
     <>
     <ConfirmationHost />
+    <SyncReviewHost />
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center bg-background">

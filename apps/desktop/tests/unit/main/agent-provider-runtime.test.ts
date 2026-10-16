@@ -6,11 +6,19 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { closeDatabase } from "@prompthub/db";
+import {
+  AgentProviderProfileDB,
+  closeDatabase,
+  initDatabase,
+} from "@prompthub/db";
+import { writeCanonicalStorageAuthority } from "@prompthub/core";
 import type { CreateAgentProviderProfileInput } from "@prompthub/shared";
 import Database from "../../../src/main/database/sqlite";
 import { createAgentProviderRuntime } from "../../../src/main/services/agent-provider-runtime";
-import { resetRuntimePaths } from "../../../src/main/runtime-paths";
+import {
+  getDatabasePath,
+  resetRuntimePaths,
+} from "../../../src/main/runtime-paths";
 import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
 
 describe("agent provider runtime", () => {
@@ -28,6 +36,44 @@ describe("agent provider runtime", () => {
     closeDatabase();
     resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("persists profiles in SQLite without publishing a second JSON authority", async () => {
+    writeCanonicalStorageAuthority(tempDir, {
+      consistencyId: "a".repeat(64),
+      operationId: "provider-sqlite-test",
+    });
+    const runtime = createAgentProviderRuntime({
+      database,
+      userDataPath: tempDir,
+      encryption: {
+        isEncryptionAvailable: () => true,
+        encryptString: (value) => Buffer.from(value, "utf8"),
+        decryptString: (value) => value.toString("utf8"),
+      },
+    });
+    const created = await runtime.profileService.create({
+      profile: {
+        platformId: "codex",
+        name: "SQL provider",
+        providerKind: "openai",
+        protocol: "openai-responses",
+        config: {},
+        source: "manual",
+      },
+      modelMappings: [
+        { routeKey: "primary", modelId: "fixture", parameters: {} },
+      ],
+    });
+    expect(fs.existsSync(path.join(tempDir, "data", "agents"))).toBe(false);
+    closeDatabase();
+    database = initDatabase(getDatabasePath());
+    const stored = new AgentProviderProfileDB(database);
+    expect(stored.listProfiles()).toMatchObject([{ name: "SQL provider" }]);
+    expect(stored.listModelMappings(stored.listProfiles()[0].id)).toMatchObject(
+      [{ modelId: "fixture" }],
+    );
+    expect(created).toBeDefined();
   });
 
   it("preserves historical unsupported profiles while refusing new writes and activation", async () => {

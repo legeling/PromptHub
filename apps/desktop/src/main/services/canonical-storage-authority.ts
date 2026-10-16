@@ -15,7 +15,6 @@ import {
   type StorageRestorePublicationStage,
 } from "@prompthub/core";
 import { DatabaseAdapter } from "@prompthub/db";
-import { migrateCanonicalSkillSources } from "@prompthub/core/canonical-skill-sources";
 
 import {
   createCanonicalCheckpointFromClosedDatabase,
@@ -136,6 +135,7 @@ function hashFile(filePath: string): string {
 function verifyPublishedCatalogPaths(
   databasePath: string,
   publishedDataPath: string,
+  metadataSource: "portable-bundles" | "local-sqlite",
 ): void {
   const database = new DatabaseAdapter(databasePath, { readOnly: true });
   try {
@@ -146,14 +146,17 @@ function verifyPublishedCatalogPaths(
       throw new Error("Canonical authority catalog failed quick_check");
     }
     const skillRoot = `${path.join(publishedDataPath, "skills")}${path.sep}`;
-    const ruleRoot = `${path.join(publishedDataPath, "rules")}${path.sep}`;
+    const ruleRoot = `${path.join(publishedDataPath, metadataSource === "local-sqlite" ? "rule-files" : "rules")}${path.sep}`;
     const skills = database.all(
       "SELECT local_repo_path AS path FROM skills WHERE local_repo_path IS NOT NULL",
     ) as Array<{ path: string }>;
     const rules = database.all(
       "SELECT managed_path AS path FROM rules WHERE managed_path IS NOT NULL",
     ) as Array<{ path: string }>;
-    if (skills.some((entry) => !entry.path.startsWith(skillRoot))) {
+    if (
+      metadataSource === "portable-bundles" &&
+      skills.some((entry) => !entry.path.startsWith(skillRoot))
+    ) {
       throw new Error(
         "Canonical authority catalog contains a stale Skill path",
       );
@@ -170,6 +173,7 @@ export function verifyCanonicalAuthorityRoot(
   rootPath: string,
   manifest: CanonicalStorageCheckpointManifest,
   identityRoot = rootPath,
+  metadataSource: "portable-bundles" | "local-sqlite" = "portable-bundles",
 ): void {
   const root = path.resolve(rootPath);
   const identity = path.resolve(identityRoot);
@@ -184,7 +188,6 @@ export function verifyCanonicalAuthorityRoot(
   if (!authority || authority.consistencyId !== manifest.consistencyId) {
     throw new Error("Canonical authority marker consistency mismatch");
   }
-  verifyCanonicalStorageCheckpointContent(dataPath, manifest);
   const databasePath = path.join(dataPath, "prompthub.db");
   const stats = fs.lstatSync(databasePath);
   if (
@@ -195,7 +198,17 @@ export function verifyCanonicalAuthorityRoot(
   ) {
     throw new Error("Canonical authority catalog digest mismatch");
   }
-  verifyPublishedCatalogPaths(databasePath, path.join(identity, "data"));
+  verifyCanonicalStorageCheckpointContent(
+    dataPath,
+    manifest,
+    databasePath,
+    metadataSource,
+  );
+  verifyPublishedCatalogPaths(
+    databasePath,
+    path.join(identity, "data"),
+    metadataSource,
+  );
 }
 
 function prepareAuthorityCandidate(
@@ -267,7 +280,6 @@ async function publishCanonicalStorageAuthorityInternal(
   });
   let ownsCheckpoint = false;
   try {
-    migrateCanonicalSkillSources(activeRoot, options.sourceDatabasePath);
     const checkpoint = await createCanonicalCheckpointFromClosedDatabase({
       ...options,
       activeRoot,

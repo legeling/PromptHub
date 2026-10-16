@@ -1,3 +1,4 @@
+import "../../../packages/core/tests/helpers/settings-keyring";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

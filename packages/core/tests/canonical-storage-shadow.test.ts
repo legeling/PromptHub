@@ -8,7 +8,6 @@ import {
   CanonicalResourceDB,
   DatabaseAdapter,
   CURRENT_DATABASE_SCHEMA_VERSION,
-  CURRENT_LEGACY_SCHEMA_MIGRATION_NAMES,
   recordCurrentDatabaseMigration,
   recordCurrentLegacySchemaMigrations,
   RuleDB,
@@ -506,6 +505,18 @@ describe("complete canonical storage shadow", () => {
     operational.exec(SCHEMA_INDEXES);
     recordCurrentLegacySchemaMigrations(operational, 1);
     recordCurrentDatabaseMigration(operational, 0);
+    const applicationMigration = {
+      name: "gemini-default-disabled-v1",
+      appliedAt: Date.parse("2026-08-10T00:00:00.000Z"),
+    };
+    operational.run(
+      "INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+      applicationMigration.name,
+      applicationMigration.appliedAt,
+    );
+    const originalMigrations = operational.all(
+      "SELECT name, applied_at FROM schema_migrations ORDER BY name",
+    );
     operational.run(
       "INSERT INTO settings (key, value) VALUES (?, ?)",
       "compatibility-key",
@@ -655,14 +666,10 @@ describe("complete canonical storage shadow", () => {
         { user_version: CURRENT_DATABASE_SCHEMA_VERSION },
       ]);
       expect(
-        Number(
-          (
-            database.get("SELECT COUNT(*) AS count FROM schema_migrations") as {
-              count: number;
-            }
-          ).count,
+        database.all(
+          "SELECT name, applied_at FROM schema_migrations ORDER BY name",
         ),
-      ).toBe(CURRENT_LEGACY_SCHEMA_MIGRATION_NAMES.length);
+      ).toEqual(originalMigrations);
       expect(database.pragma("quick_check")).toEqual([{ quick_check: "ok" }]);
     } finally {
       database.close();

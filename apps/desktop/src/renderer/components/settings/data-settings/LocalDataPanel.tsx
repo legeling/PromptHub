@@ -37,15 +37,12 @@ export function LocalDataPanel() {
                   className="text-xs text-primary font-mono mt-0.5 hover:underline flex items-center gap-1 cursor-pointer"
                   title={t("settings.openFolder")}
                 >
-                  {currentDataPath || t("common.loading", "Loading...")}
+                  {currentDataPath || t("common.loading")}
                   <ExternalLinkIcon className="w-3 h-3" aria-hidden="true" />
                 </button>
                 {pendingDataPath && pendingDataPath !== currentDataPath ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {t(
-                      "settings.pendingDataPath",
-                      "Will switch to this directory after restart:",
-                    )}{" "}
+                    {t("settings.pendingDataPath")}{" "}
                     <span className="font-mono">{pendingDataPath}</span>
                   </p>
                 ) : null}
@@ -57,7 +54,7 @@ export function LocalDataPanel() {
                 className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors"
               >
                 {dataPathActionLoading
-                  ? t("common.loading", "Loading...")
+                  ? t("common.loading")
                   : t("settings.change")}
               </button>
             </div>
@@ -66,64 +63,64 @@ export function LocalDataPanel() {
       ) : null}
 
       {!webRuntime && activeSubsection === "local" ? (
-        <DataSettingsSection title={t("settings.dbInfo", "数据目录")}>
+        <DataSettingsSection title={t("settings.dbInfo")}>
           <div className="divide-y divide-border">
             {normalizedDataPath ? (
               <>
                 {[
                   {
-                    label: t("settings.applicationData", "应用数据"),
+                    label: t("settings.applicationData"),
                     path: runtimePaths?.userDataPath ?? normalizedDataPath,
                     actionLabel: t("settings.openFolder"),
                   },
                   {
-                    label: t("settings.databaseFile", "主数据库"),
+                    label: t("settings.databaseFile"),
                     path:
                       runtimePaths?.databasePath ??
                       `${normalizedDataPath}/data/prompthub.db`,
                     actionLabel: t("settings.openFolder"),
                   },
                   {
-                    label: t("settings.promptsData", "Prompt 文件"),
+                    label: t("settings.promptsData"),
                     path:
                       runtimePaths?.promptsDir ??
                       `${normalizedDataPath}/data/prompts`,
                     actionLabel: t("settings.openFolder"),
                   },
                   {
-                    label: t("settings.applicationLogs", "应用日志"),
+                    label: t("settings.applicationLogs"),
                     path: runtimePaths?.logsDir ?? `${normalizedDataPath}/logs`,
-                    actionLabel: t("settings.openLogs", "打开日志"),
+                    actionLabel: t("settings.openLogs"),
                   },
                   {
-                    label: t("settings.autoSyncLogData", "自动同步日志"),
+                    label: t("settings.autoSyncLogData"),
                     path:
                       runtimePaths?.autoSyncLogPath ??
                       `${normalizedDataPath}/logs/auto-sync.jsonl`,
-                    actionLabel: t("settings.openLogs", "打开日志"),
+                    actionLabel: t("settings.openLogs"),
                   },
                   {
-                    label: t("settings.rulesData", "规则文件"),
+                    label: t("settings.rulesData"),
                     path:
                       runtimePaths?.rulesDir ??
                       `${normalizedDataPath}/data/rules`,
                     actionLabel: t("settings.openFolder"),
                   },
                   {
-                    label: t("settings.skillsData", "Skills 目录"),
+                    label: t("settings.skillsData"),
                     path:
                       runtimePaths?.skillsDir ??
                       `${normalizedDataPath}/data/skills`,
                     actionLabel: t("settings.openFolder"),
                   },
                   {
-                    label: t("settings.mcpData", "MCP 目录"),
+                    label: t("settings.mcpData"),
                     path:
                       runtimePaths?.mcpDir ?? `${normalizedDataPath}/data/mcp`,
                     actionLabel: t("settings.openFolder"),
                   },
                   {
-                    label: t("settings.backupsData", "备份目录"),
+                    label: t("settings.backupsData"),
                     path:
                       runtimePaths?.backupsDir ??
                       `${normalizedDataPath}/backups`,
@@ -158,7 +155,7 @@ export function LocalDataPanel() {
                 <div className="flex items-center justify-between gap-4 px-5 py-3.5">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground">
-                      {t("settings.cacheData", "应用缓存")}
+                      {t("settings.cacheData")}
                       {cacheSize !== null && (
                         <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                           ({formatBytes(cacheSize)})
@@ -166,10 +163,7 @@ export function LocalDataPanel() {
                       )}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {t(
-                        "settings.cacheDataDesc",
-                        "Electron 渲染进程缓存，不影响数据",
-                      )}
+                      {t("settings.cacheDataDesc")}
                     </p>
                   </div>
                   <button
@@ -179,15 +173,15 @@ export function LocalDataPanel() {
                     className="h-8 shrink-0 rounded-lg border border-border bg-muted px-3 text-sm text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50"
                   >
                     {clearingCache
-                      ? t("common.loading", "Loading...")
-                      : t("settings.clearCache", "清除缓存")}
+                      ? t("common.loading")
+                      : t("settings.clearCache")}
                   </button>
                 </div>
               </>
             ) : (
               <div className="px-5 py-4">
                 <p className="text-sm italic text-muted-foreground">
-                  {t("common.loading", "Loading...")}
+                  {t("common.loading")}
                 </p>
               </div>
             )}

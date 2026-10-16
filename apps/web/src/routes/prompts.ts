@@ -1,8 +1,8 @@
 import { directFolderSchema } from './folder-schemas.js';
+import { VersionImportConflictError } from '@prompthub/db';
 import { PromptContentValidationError } from '@prompthub/shared/utils/prompt-content';
 import { restorePromptGraph, GraphRestoreError } from '../services/prompt-graph-restore.js';
 import { getServerDatabase } from '../database.js';
-import { validatePromptWorkspaceSnapshotPaths } from '../services/prompt-workspace.js';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Context } from 'hono';
@@ -282,9 +282,7 @@ prompts.post('/graph/restore', async (c) => {
   });
   if (!parsed.success) return parsed.response;
   try {
-    validatePromptWorkspaceSnapshotPaths(parsed.data.folders, parsed.data.prompts, parsed.data.versions);
     const result = restorePromptGraph(getServerDatabase(), getAuthUser(c), parsed.data);
-    promptService.syncWorkspace();
     return success(c, result);
   } catch (restoreError) {
     if (restoreError instanceof GraphRestoreError) return error(c, 422, ErrorCode.VALIDATION_ERROR, restoreError.message);
@@ -656,6 +654,9 @@ prompts.post('/meta/tags/delete', async (c) => {
 });
 
 function toPromptErrorResponse(c: Context, routeError: unknown): Response {
+  if (routeError instanceof VersionImportConflictError) {
+    return error(c, 409, ErrorCode.CONFLICT, 'Version import conflicts with stored history');
+  }
   if (routeError instanceof PromptContentValidationError) {
     return error(c, 422, ErrorCode.VALIDATION_ERROR, routeError.message);
   }

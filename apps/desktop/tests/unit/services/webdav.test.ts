@@ -169,11 +169,13 @@ describe("WebDAV Service", () => {
         expect.stringMatching(/data\.json\.[0-9a-f]{64}$/),
         mockConfig,
         expect.any(String),
+        undefined,
       );
       expect(mockUpload).toHaveBeenCalledWith(
         expect.stringContaining("manifest.json"),
         mockConfig,
         expect.any(String),
+        undefined,
       );
 
       expect(result.success).toBe(true);
@@ -291,6 +293,7 @@ describe("WebDAV Service", () => {
         expect.stringContaining("manifest.json"),
         mockConfig,
         expect.any(String),
+        undefined,
       );
     });
   });
@@ -448,72 +451,13 @@ describe("WebDAV Service", () => {
       expect(window.api.skill.create).not.toHaveBeenCalled();
     });
 
-    it("prefers manifest timestamps during auto sync when incremental backup exists", async () => {
-      const manifest = JSON.stringify({
-        version: "4.0",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-02T00:00:00.000Z",
-        dataHash: "deadbeef00000000",
-        images: {},
-        videos: {},
-        encrypted: false,
-      });
-      const data = JSON.stringify({
-        version: "4.0",
-        exportedAt: "2026-01-02T00:00:00.000Z",
-        prompts: [],
-        folders: [],
-        versions: [],
-      });
-
-      const mockDownload = vi.fn(async (url: string) => {
-        if (url.includes("manifest.json")) {
-          return { success: true, data: manifest };
-        }
-        if (url.includes("data.json")) {
-          return { success: true, data };
-        }
-        return { success: false, notFound: true };
-      });
-      const mockStat = vi.fn(async (url: string) => {
-        if (url.includes("manifest.json")) {
-          return {
-            success: true,
-            lastModified: "2026-01-02T00:00:00.000Z",
-          };
-        }
-
-        return { success: false, notFound: true };
-      });
-
-      window.electron = {
-        ...window.electron,
-        webdav: {
-          ensureDirectory: vi.fn().mockResolvedValue(undefined),
-          download: mockDownload,
-          upload: vi.fn(),
-          stat: mockStat,
-        },
-      } as any;
-
-      const result = await autoSync(mockConfig);
-
-      expect(mockStat).toHaveBeenCalledTimes(1);
-      expect(mockStat).toHaveBeenCalledWith(
-        expect.stringContaining("manifest.json"),
-        mockConfig,
-      );
-      expect(mockDownload).toHaveBeenCalledWith(
-        expect.stringContaining("manifest.json"),
-        mockConfig,
-      );
-      expect(mockDownload).toHaveBeenCalledWith(
-        expect.stringContaining("data.json"),
-        mockConfig,
-      );
-      expect(backup.restoreFromBackup).toHaveBeenCalled();
-      expect(result.success).toBe(true);
-      expect(result.localChanged).toBe(true);
+    it("routes automatic sync through the main causal workflow without timestamp backup reads", async () => {
+      const invoke = vi.fn().mockResolvedValue({status:"committed",localChanged:false,cleanupPending:false});
+      window.electron = { ...window.electron, causalSync: invoke };
+      expect(await autoSync(mockConfig)).toMatchObject({success:true,localChanged:false});
+      expect(invoke).toHaveBeenCalledWith({provider:"webdav",resolution:undefined});
+      expect(backup.restoreFromBackup).not.toHaveBeenCalled();
+      expect(backup.exportDatabase).not.toHaveBeenCalled();
     });
   });
 });

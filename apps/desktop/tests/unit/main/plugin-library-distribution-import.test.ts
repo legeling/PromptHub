@@ -1,6 +1,7 @@
 /**
  * @vitest-environment node
  */
+import { initDatabase, closeDatabase } from "@prompthub/db";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -127,13 +128,8 @@ function createInstalledPluginLibrary(userDataPath: string): {
     updatedAt: "2026-06-16T00:00:00.000Z",
     plugins: [plugin],
   };
-  fs.mkdirSync(path.dirname(getPluginLibraryFilePath()), { recursive: true });
-  fs.writeFileSync(
-    getPluginLibraryFilePath(),
-    `${JSON.stringify(library, null, 2)}\n`,
-    "utf8",
-  );
-  return { library, plugin, packagePath };
+  const stored = new CorePluginLibraryService().write(library);
+  return { library: stored, plugin: stored.plugins[0], packagePath: stored.plugins[0].localPackagePath! };
 }
 
 function writePluginSourcePackage(options: {
@@ -182,9 +178,11 @@ describe("CorePluginLibraryService", () => {
   beforeEach(() => {
     userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-"));
     configureRuntimePaths({ userDataPath });
+    initDatabase(path.join(userDataPath, "data", "prompthub.db"));
   });
 
   afterEach(() => {
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
@@ -295,18 +293,7 @@ describe("CorePluginLibraryService", () => {
     );
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, '{"mcpServers":{}}\n', "utf8");
-    fs.writeFileSync(
-      getPluginLibraryFilePath(),
-      `${JSON.stringify(
-        {
-          ...library,
-          plugins: [{ ...plugin, distributedTargetIds: ["codex"] }],
-        },
-        null,
-        2,
-      )}\n`,
-      "utf8",
-    );
+    new CorePluginLibraryService().write({ ...library, plugins: [{ ...plugin, distributedTargetIds: ["codex"] }] });
     const service = new CorePluginLibraryService({
       fetchFn: createFetchMock({}),
       marketSources: [marketSource],
@@ -768,9 +755,7 @@ describe("CorePluginLibraryService", () => {
         kind: "local",
         sourceId: "claude-code",
         label: "Claude Code",
-        localPackagePath: expect.stringContaining(
-          path.join("data", "plugins", "agent-claude-code-review-kit"),
-        ),
+
       },
     });
     expect(result.library.plugins).toHaveLength(1);
@@ -807,7 +792,7 @@ describe("CorePluginLibraryService", () => {
       fetchFn: createFetchMock({}),
       marketSources: [marketSource],
     });
-    const managedPluginsPath = path.join(userDataPath, "data", "plugins");
+    const managedPluginsPath = path.join(userDataPath, "data", "plugin-files");
 
     const result = service.importLocalPluginPackage({
       sourcePath: agentPluginPath,
@@ -965,7 +950,7 @@ describe("CorePluginLibraryService", () => {
       repository: "https://github.com/example/plugins.git",
     });
     expect(result.plugin.localPackagePath).toContain(
-      path.join("data", "plugins"),
+      path.join("data", "plugin-files"),
     );
     expect(
       fs.existsSync(

@@ -1,21 +1,16 @@
+import { safeStorage } from "electron";
+import { CoreSettingsStore } from "@prompthub/core/settings-store";
+import { getUserDataPath } from "@prompthub/core/runtime-paths";
 import type Database from "../database/sqlite";
-
-let canonicalGithubTokenReader: (() => string | null) | null = null;
-
-export function configureCanonicalGithubTokenReader(
-  reader: (() => string | null) | null,
-): void {
-  canonicalGithubTokenReader = reader;
-}
 
 export function readBooleanSetting(
   db: Database.Database,
   key: string,
 ): boolean | null {
   try {
-    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
-      | { value: string }
-      | undefined;
+    const row = db
+      .prepare("SELECT value FROM settings WHERE key = ?")
+      .get(key) as { value: string } | undefined;
     if (!row) {
       return null;
     }
@@ -31,35 +26,14 @@ export function getMinimizeOnLaunchSetting(db: Database.Database): boolean {
 }
 
 export function readGithubTokenSetting(db: Database.Database): string | null {
-  try {
-    const canonical = canonicalGithubTokenReader?.();
-    if (canonical) return canonical;
-    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(
-      "githubToken",
-    ) as { value: string } | undefined;
-    if (!row) {
-      return null;
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(row.value);
-    } catch {
-      parsed = row.value;
-    }
-
-    if (typeof parsed !== "string") {
-      return null;
-    }
-
-    if (/[\r\n\x00-\x1f\x7f]/.test(parsed)) {
-      return null;
-    }
-
-    const trimmed = parsed.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch (error) {
-    console.error("Failed to read githubToken setting:", error);
+  const token = new CoreSettingsStore({
+    database: db,
+    rootPath: getUserDataPath(),
+    legacyEncryption: safeStorage,
+  }).read().githubToken;
+  if (token === undefined) return null;
+  if (typeof token !== "string" || /[\r\n\x00-\x1f\x7f]/.test(token))
     return null;
-  }
+  const trimmed = token.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }

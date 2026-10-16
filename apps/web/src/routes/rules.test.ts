@@ -341,7 +341,7 @@ describe('web rule routes', () => {
       };
       expect(importPayload.error).toEqual({
         code: 'VALIDATION_ERROR',
-        message: 'Sync snapshot is invalid: unsafe rule path segment for rule project:../escape name',
+        message: 'Sync snapshot is invalid: unsafe rule path segment',
       });
 
       const listResponse = await app.request(

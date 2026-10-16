@@ -300,17 +300,7 @@ describe("web import/export routes", () => {
 
       try {
         vi.resetModules();
-        vi.doMock("../services/rule-workspace.js", async () => {
-          const actual = await vi.importActual<
-            typeof import("../services/rule-workspace.js")
-          >("../services/rule-workspace.js");
-          return {
-            ...actual,
-            importRuleBackupRecords: vi.fn(() => {
-              throw new Error("Simulated rule import failure");
-            }),
-          };
-        });
+
 
         const app = await createTestApp(dataDir);
         const { payload: registerPayload } = await registerUser(
@@ -319,6 +309,8 @@ describe("web import/export routes", () => {
           "debugpass001",
         );
         const token = registerPayload.data.accessToken;
+        const { getServerDatabase } = await import('../database');
+        getServerDatabase().exec("CREATE TRIGGER reject_import_rule BEFORE INSERT ON rules BEGIN SELECT RAISE(ABORT, 'Simulated rule import failure'); END");
 
         const response = await app.request(
           new Request("http://local/api/import", {
@@ -406,7 +398,6 @@ describe("web import/export routes", () => {
           ),
         ).toBe(false);
       } finally {
-        vi.doUnmock("../services/rule-workspace.js");
         fs.rmSync(dataDir, { recursive: true, force: true });
       }
     },

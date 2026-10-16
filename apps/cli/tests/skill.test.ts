@@ -6,6 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   closeDatabase,
+  SkillDB,
+  initDatabase,
+  configureRuntimePaths,
   createCliSkillService,
   resetRuntimePaths,
   runCli,
@@ -191,7 +194,11 @@ describe("CLI skill commands", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toEqual([]);
     expect(fetchImpl).toHaveBeenCalledWith("https://example.com/skill.md");
-    expect(JSON.parse(stdout.join("\n")).name).toBe("remote-skill");
+    const installed = JSON.parse(stdout.join("\n"));
+    expect(installed.name).toBe("remote-skill");
+    expect(
+      fs.readdirSync(path.join(root, "user-data", "data", "skills")),
+    ).toEqual([installed.id]);
   });
 
   it("installs a github skill with injected git clone", async () => {
@@ -300,7 +307,12 @@ describe("CLI skill commands", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toEqual([]);
     const installed = JSON.parse(stdout.join("\n"));
-    expect(installed.local_repo_path).toContain("acme-nested-skill-repo");
+    expect(installed.local_repo_path).toBe(
+      path.join(root, "user-data", "data", "skills", installed.id, "files"),
+    );
+    expect(
+      fs.readdirSync(path.join(root, "user-data", "data", "skills")),
+    ).toEqual([installed.id]);
     expect(
       fs.readFileSync(
         path.join(installed.local_repo_path, "assets", "helper.txt"),
@@ -962,5 +974,39 @@ describe("CLI skill commands", () => {
     } finally {
       process.env.HOME = originalHome;
     }
+  });
+  it("reports a missing package on read and distribution without reconstructing it from SQL", async () => {
+    const root = makeTempRoot(tempDirs);
+    const source = path.join(root, "missing-skill.md");
+    fs.writeFileSync(source, "---\nname: missing-package\n---\nOriginal");
+    const installed = await execCli([
+      ...withDataDir(root),
+      "--full",
+      "skill",
+      "install",
+      source,
+    ]);
+    expect(installed.exitCode).toBe(0);
+    const packagePath = installed.json.local_repo_path;
+    fs.rmSync(packagePath, { recursive: true });
+    const service = createCliSkillService();
+    configureRuntimePaths({ userDataPath: path.join(root, "user-data") });
+    const database = new SkillDB(initDatabase());
+    await expect(
+      service.readLocalFile(database, installed.json.id, "SKILL.md"),
+    ).rejects.toThrow();
+    await expect(
+      service.installSkillMd(
+        database,
+        "missing-package",
+        "Original",
+        "claude",
+        installed.json.id,
+      ),
+    ).rejects.toThrow("Skill package is missing");
+    expect(fs.existsSync(packagePath)).toBe(false);
+    const retained = database.getById(installed.json.id);
+    expect(retained?.name).toBe("missing-package");
+    expect(retained?.content).toBeUndefined();
   });
 });

@@ -205,7 +205,7 @@ const folderSchema = z.object({
   updatedAt: z.union([z.string(), z.number().int().nonnegative()]),
 });
 
-const skillSchema = z.object({
+export const skillSchema = z.object({
   id: z.string(),
   ownerUserId: z.string().nullable().optional(),
   visibility: z.enum(["private", "shared"]).optional(),
@@ -283,7 +283,7 @@ const skillSchema = z.object({
   safetyReport: skillSafetyReportSchema.optional(),
 });
 
-const skillVersionSchema = z.object({
+export const skillVersionSchema = z.object({
   id: z.string(),
   skillId: z.string(),
   version: z.number().int().nonnegative(),

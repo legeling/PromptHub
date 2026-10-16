@@ -1,4 +1,4 @@
-import { runS3Upload, runWebDAVUpload } from "./backup-orchestrator";
+import { runS3AutoSync, runWebDAVAutoSync } from "./backup-orchestrator";
 import { hasValidS3Config, hasValidWebDAVConfig } from "./app-background";
 import { useSettingsStore } from "../stores/settings.store";
 
@@ -104,7 +104,7 @@ async function runWebDAVSaveSync(): Promise<void> {
   schedulerState.webdav.isSyncInFlight = true;
 
   try {
-    const result = await runWebDAVUpload(buildWebDAVUploadInput());
+    const result = await runWebDAVAutoSync(buildWebDAVUploadInput());
     if (!result.success) {
       console.warn("[WebDAV save sync] Upload failed:", result.message);
     }
@@ -128,7 +128,7 @@ async function runS3SaveSync(): Promise<void> {
   schedulerState.s3.isSyncInFlight = true;
 
   try {
-    const result = await runS3Upload(buildS3UploadInput());
+    const result = await runS3AutoSync(buildS3UploadInput());
     if (!result.success) {
       console.warn("[S3 save sync] Upload failed:", result.message);
     }

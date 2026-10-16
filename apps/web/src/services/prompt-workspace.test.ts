@@ -133,13 +133,14 @@ describe('web prompt workspace storage', () => {
         userPrompt: 'Draft a launch message for {{audience}} with urgency.',
       });
 
-      const result = workspaceModule.syncPromptWorkspaceFromDatabase(db, promptDb, folderDb);
+      const result = workspaceModule.syncPromptWorkspaceFromDatabase(
+        promptDb, folderDb);
 
       expect(result.promptCount).toBe(2);
       expect(result.folderCount).toBe(1);
       expect(result.versionCount).toBe(3);
 
-      const promptsDir = path.join(dataDir, 'data', 'prompts');
+      const promptsDir = path.join(dataDir, "cache", "prompt-workspace");
 
       // Per-folder _folder.json must exist (no global folders.json)
       const folderMetaFile = path.join(promptsDir, 'team-writing', '_folder.json');
@@ -173,256 +174,12 @@ describe('web prompt workspace storage', () => {
       const versionFile = path.join(promptsDir, '.versions', prompt.id, '0002.md');
       expect(fs.existsSync(versionFile)).toBe(true);
     } finally {
+      (await import("@prompthub/db")).closeDatabase();
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   }, 20000);
 
-  it('imports workspace files into an empty database and preserves ownership metadata', async () => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-workspace-test-'));
-
-    try {
-      configureTestEnv(dataDir);
-      const { db, folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
-      const owner = await createOwnerUser();
-
-      const promptsDir = path.join(dataDir, 'data', 'prompts');
-
-      // Per-folder _folder.json (replaces global folders.json)
-      const opsFolderDir = path.join(promptsDir, 'ops');
-      fs.mkdirSync(opsFolderDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(opsFolderDir, '_folder.json'),
-        JSON.stringify(
-          {
-            id: 'folder_ops',
-            name: 'Ops',
-            sortOrder: 0,
-            isPrivate: false,
-            ownerUserId: owner.user.id,
-            visibility: 'shared',
-            createdAt: '2026-04-13T00:00:00.000Z',
-            updatedAt: '2026-04-13T00:00:00.000Z',
-          },
-          null,
-          2,
-        ),
-        'utf8',
-      );
-
-      // Deliberately sort after the child fixture to prove hierarchy import
-      // does not depend on filesystem traversal order.
-      fs.writeFileSync(
-        path.join(opsFolderDir, 'z-parent.md'),
-        `---
-id: "parent_1"
-ownerUserId: ${JSON.stringify(owner.user.id)}
-visibility: "shared"
-title: "Deploy Parent"
-folderId: "folder_ops"
-promptType: "text"
-variables: []
-tags: []
-isFavorite: false
-isPinned: false
-createdAt: "2026-04-13T00:00:00.000Z"
-updatedAt: "2026-04-13T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-Parent deployment checks.
-`,
-        'utf8',
-      );
-
-      // Prompt file: <slug>.md
-      fs.writeFileSync(
-        path.join(opsFolderDir, 'deploy-check.md'),
-        `---
-id: "prompt_1"
-ownerUserId: ${JSON.stringify(owner.user.id)}
-visibility: "shared"
-title: "Deploy Check"
-folderId: "folder_ops"
-parentId: "parent_1"
-order: 4
-promptType: "text"
-variables: [{"name":"service","type":"text","required":true}]
-tags: ["ops","deploy"]
-isFavorite: false
-isPinned: false
-usageCount: 11
-lastAiResponse: "healthy"
-createdAt: "2026-04-13T00:00:00.000Z"
-updatedAt: "2026-04-13T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-You verify production deployment safety.
-
-<!-- PROMPTHUB:USER -->
-Check deployment health for {{service}}.
-`,
-        'utf8',
-      );
-
-      // Version file: .versions/<promptId>/NNNN.md
-      const versionsDir = path.join(promptsDir, '.versions', 'prompt_1');
-      fs.mkdirSync(versionsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(versionsDir, '0001.md'),
-        `---
-id: "version_1"
-promptId: "prompt_1"
-version: 1
-variables: [{"name":"service","type":"text","required":true}]
-createdAt: "2026-04-13T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-You verify production deployment safety.
-
-<!-- PROMPTHUB:USER -->
-Check deployment health for {{service}}.
-`,
-        'utf8',
-      );
-
-      const imported = workspaceModule.importPromptWorkspaceIntoDatabase(db, promptDb, folderDb);
-
-      expect(imported.promptCount).toBe(2);
-      expect(imported.folderCount).toBe(1);
-      expect(imported.versionCount).toBe(1);
-
-      const folderRow = db.prepare('SELECT owner_user_id, visibility FROM folders WHERE id = ?').get('folder_ops') as
-        | { owner_user_id: string | null; visibility: 'private' | 'shared' }
-        | undefined;
-      expect(folderRow?.owner_user_id).toBe(owner.user.id);
-      expect(folderRow?.visibility).toBe('shared');
-
-      const prompt = promptDb.getById('prompt_1');
-      expect(prompt?.folderId).toBe('folder_ops');
-      expect(prompt?.parentId).toBe('parent_1');
-      expect(prompt?.order).toBe(4);
-      expect(promptDb.getById('parent_1')?.title).toBe('Deploy Parent');
-      expect(prompt?.systemPrompt).toBe('You verify production deployment safety.');
-      expect(prompt?.usageCount).toBe(11);
-      expect(prompt?.lastAiResponse).toBe('healthy');
-      expect(prompt?.variables).toEqual([{ name: 'service', type: 'text', required: true }]);
-
-      const promptRow = db.prepare('SELECT owner_user_id, visibility FROM prompts WHERE id = ?').get('prompt_1') as
-        | { owner_user_id: string | null; visibility: 'private' | 'shared' }
-        | undefined;
-      expect(promptRow?.owner_user_id).toBe(owner.user.id);
-      expect(promptRow?.visibility).toBe('shared');
-
-      const versions = promptDb.getVersions('prompt_1');
-      expect(versions).toHaveLength(1);
-      expect(versions[0]?.id).toBe('version_1');
-    } finally {
-      fs.rmSync(dataDir, { recursive: true, force: true });
-    }
-  }, 20000);
-
-  it('rejects invalid prompt hierarchies without partially importing records', async () => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-workspace-test-'));
-
-    try {
-      configureTestEnv(dataDir);
-      const { db, folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
-      const promptsDir = path.join(dataDir, 'data', 'prompts');
-      fs.mkdirSync(promptsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(promptsDir, 'orphan.md'),
-        `---
-id: "orphan_prompt"
-title: "Orphan Prompt"
-parentId: "missing_parent"
-promptType: "text"
-variables: []
-tags: []
-isFavorite: false
-isPinned: false
-createdAt: "2026-04-13T00:00:00.000Z"
-updatedAt: "2026-04-13T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-This prompt has no valid parent.
-`,
-        'utf8',
-      );
-
-      expect(() => workspaceModule.importPromptWorkspaceIntoDatabase(db, promptDb, folderDb)).toThrow(
-        'Prompt workspace hierarchy contains a missing parent or cycle',
-      );
-      expect(promptDb.getAll()).toEqual([]);
-    } finally {
-      fs.rmSync(dataDir, { recursive: true, force: true });
-    }
-  }, 20000);
-
-  it('ignores interrupted export scratch directories during workspace import', async () => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-workspace-test-'));
-
-    try {
-      configureTestEnv(dataDir);
-      const { db, folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
-      const owner = await createOwnerUser();
-
-      const promptsDir = path.join(dataDir, 'data', 'prompts');
-      const scratchDir = path.join(promptsDir, '.prompts-staging-leftover');
-      fs.mkdirSync(scratchDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(scratchDir, '_folder.json'),
-        JSON.stringify({
-          id: 'folder_scratch',
-          name: 'Scratch',
-          ownerUserId: owner.user.id,
-          visibility: 'shared',
-          createdAt: '2026-04-13T00:00:00.000Z',
-          updatedAt: '2026-04-13T00:00:00.000Z',
-        }),
-        'utf8',
-      );
-      fs.writeFileSync(
-        path.join(scratchDir, 'partial.md'),
-        `---
-id: "prompt_scratch"
-ownerUserId: ${JSON.stringify(owner.user.id)}
-visibility: "shared"
-title: "Scratch Prompt"
-promptType: "text"
-isFavorite: false
-isPinned: false
-createdAt: "2026-04-13T00:00:00.000Z"
-updatedAt: "2026-04-13T00:00:00.000Z"
----
-<!-- PROMPTHUB:SYSTEM -->
-
-<!-- PROMPTHUB:USER -->
-This partial prompt must not import.
-`,
-        'utf8',
-      );
-
-      const imported = workspaceModule.importPromptWorkspaceIntoDatabase(db, promptDb, folderDb);
-
-      expect(imported).toEqual({
-        promptCount: 0,
-        folderCount: 0,
-        versionCount: 0,
-      });
-      expect(promptDb.getById('prompt_scratch')).toBeNull();
-      const folderRow = db.prepare('SELECT id FROM folders WHERE id = ?').get('folder_scratch') as
-        | { id: string }
-        | undefined;
-      expect(folderRow).toBeNull();
-    } finally {
-      fs.rmSync(dataDir, { recursive: true, force: true });
-    }
-  }, 20000);
-
-  it('writes workspace files after authenticated prompt and folder mutations', async () => {
+  it("writes Markdown only on an explicit authenticated export", async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-workspace-test-'));
 
     try {
@@ -473,17 +230,34 @@ This partial prompt must not import.
         data: { id: string };
       };
 
-      const foldersFile = path.join(dataDir, 'data', 'prompts', 'personal-vault', '_folder.json');
+      expect(fs.existsSync(path.join(dataDir, 'data', 'prompts'))).toBe(false);
+      const exportPath = path.join(dataDir, "cache", "prompt-workspace");
+      expect(fs.existsSync(exportPath)).toBe(false);
+      const exported = await app.request(
+        new Request("http://local/api/prompts/workspace/sync", {
+          method: "POST",
+          headers: authHeaders(token),
+        }),
+      );
+      expect(exported.status).toBe(200);
+      const foldersFile = path.join(
+        exportPath, 'personal-vault', '_folder.json',
+      );
+      const promptFile = path.join(
+        exportPath,
+        "personal-vault",
+        "daily-summary.md",
+      );
       expect(fs.existsSync(foldersFile)).toBe(true);
-
-      const promptFile = path.join(dataDir, 'data', 'prompts', 'personal-vault', 'daily-summary.md');
       expect(fs.existsSync(promptFile)).toBe(true);
 
       const rawPrompt = fs.readFileSync(promptFile, 'utf8');
+      expect(rawPrompt).toContain(`id: ${JSON.stringify(promptPayload.data.id)}`);
       expect(rawPrompt).toContain('title: "Daily Summary"');
       expect(rawPrompt).toContain('ownerUserId: "');
       expect(rawPrompt).toContain('visibility: "private"');
     } finally {
+      (await import("@prompthub/db")).closeDatabase();
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   }, 20000);
@@ -493,7 +267,7 @@ This partial prompt must not import.
 
     try {
       configureTestEnv(dataDir);
-      const { db, folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
+      const { folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
 
       const folder = folderDb.create({ name: 'Stable Folder' });
       promptDb.create({
@@ -502,9 +276,11 @@ This partial prompt must not import.
         folderId: folder.id,
       });
 
-      workspaceModule.syncPromptWorkspaceFromDatabase(db, promptDb, folderDb);
+      workspaceModule.syncPromptWorkspaceFromDatabase(promptDb, folderDb);
 
-      const stablePromptFile = path.join(dataDir, 'data', 'prompts', 'stable-folder', 'stable-prompt.md');
+      const stablePromptFile = path.join(dataDir,
+        "cache",
+        "prompt-workspace", 'stable-folder', 'stable-prompt.md');
       expect(fs.existsSync(stablePromptFile)).toBe(true);
 
       const folderCount = 180;
@@ -520,13 +296,14 @@ This partial prompt must not import.
         });
       }
 
-      expect(() => workspaceModule.syncPromptWorkspaceFromDatabase(db, promptDb, folderDb)).toThrow(
+      expect(() => workspaceModule.syncPromptWorkspaceFromDatabase(promptDb, folderDb)).toThrow(
         'prompt workspace path is too long',
       );
       expect(fs.readFileSync(stablePromptFile, 'utf8')).toContain(
         'This prompt should remain on disk after failed sync.',
       );
     } finally {
+      (await import("@prompthub/db")).closeDatabase();
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   }, 20000);
@@ -536,7 +313,7 @@ This partial prompt must not import.
 
     try {
       configureTestEnv(dataDir);
-      const { db, folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
+      const { folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
 
       const folder = folderDb.create({ name: 'Stable Folder' });
       const prompt = promptDb.create({
@@ -545,9 +322,11 @@ This partial prompt must not import.
         folderId: folder.id,
       });
 
-      workspaceModule.syncPromptWorkspaceFromDatabase(db, promptDb, folderDb);
+      workspaceModule.syncPromptWorkspaceFromDatabase(promptDb, folderDb);
 
-      const stablePromptFile = path.join(dataDir, 'data', 'prompts', 'stable-folder', 'stable-prompt.md');
+      const stablePromptFile = path.join(dataDir,
+        "cache",
+        "prompt-workspace", 'stable-folder', 'stable-prompt.md');
       const stableContent = fs.readFileSync(stablePromptFile, 'utf8');
 
       promptDb.update(prompt.id, {
@@ -562,7 +341,7 @@ This partial prompt must not import.
         return originalWriteFileSync(file, data, options);
       });
 
-      expect(() => workspaceModule.syncPromptWorkspaceFromDatabase(db, promptDb, folderDb)).toThrow(
+      expect(() => workspaceModule.syncPromptWorkspaceFromDatabase(promptDb, folderDb)).toThrow(
         'simulated prompt workspace write failure',
       );
 
@@ -570,6 +349,7 @@ This partial prompt must not import.
       expect(fs.readFileSync(stablePromptFile, 'utf8')).toBe(stableContent);
     } finally {
       vi.restoreAllMocks();
+      (await import("@prompthub/db")).closeDatabase();
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   }, 20000);
@@ -587,7 +367,7 @@ This partial prompt must not import.
         path.join(recoveredDir, 'draft.md'),
         `---
 id: "prompt_recovered"
-ownerUserId: "missing-user"
+ownerUserId: null
 visibility: "private"
 title: "Recovered Draft"
 promptType: "text"
@@ -637,6 +417,7 @@ Recovered body
       expect(listPayload.data[0]?.id).toBe('prompt_recovered');
       expect(listPayload.data[0]?.title).toBe('Recovered Draft');
     } finally {
+      (await import("@prompthub/db")).closeDatabase();
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   }, 20000);

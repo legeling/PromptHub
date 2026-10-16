@@ -35,7 +35,7 @@
 ### 2.3 Windows Close Choice
 
 - Windows 关闭窗口对话框的“记住我的选择”必须先把 `ask | minimize | exit` 写入 main
-  process 拥有的 canonical renderer settings，并同步 SQLite 兼容设置，再执行最小化或
+  process 的共享设置入口，提交到 SQLite，再执行最小化或
   退出；不得依赖可能在进程退出后才完成的 renderer 后台订阅。
 - 下次启动从 canonical settings hydrate 后必须立即把规范化 close action 重新应用到
   main process 内存；不得继续使用 renderer hydrate 之前的默认 `ask`。
@@ -82,7 +82,7 @@
 - renderer、`packages/core` 与 Web 服务的 endpoint、鉴权头和旧配置协议推断统一由 `packages/shared/utils/ai-protocol.ts` 派生；业务调用层不得维护自己的副本。URL 尾部 `#` 表示在标准化后禁止继续自动追加协议路径。
 - `Anthropic` 当前稳定行为为原生 `POST /v1/messages` 非流式聊天与 `GET /v1/models` 模型发现；在补齐原生 SSE 解析前，桌面端不应把 Claude 原生协议暴露为可流式聊天能力。
 - AI workbench 的“测试模型 / 测试默认模型 / 测试连接”是轻量探活，不是长文本生成或性能压测；聊天模型测试必须使用短 prompt、小 token 上限、非流式、关闭 thinking，并带显式测试超时，避免本地 OpenAI-compatible 模型因为继承 2048 token、stream 或 thinking 配置而被拖慢。
-- renderer persistence 迁移前，非空 `config/ai-models.json` 是模型清单的文件真相源，Zustand 默认空数组不得覆盖它。迁移后由 `config/providers.json` 与设备加密 vault 持有 canonical 配置，`ai-models.json` 仅保留脱敏兼容投影。若 beta 迁移留下“模型为空但路由仍指向模型 id”的状态，启动只可从统一总量策略实际保留的最多五个受管升级安全点中选择包含全部路由 id 的精确候选并原子修复；无精确候选或无悬空路由时不得自动恢复。
+- `settings-sqlite-v1` 前，非空 CLI AI 文件拥有模型清单；完成旧 renderer 迁移的 profile 则采用 provider 配置与旧设备 vault。升级后 Desktop/CLI 只读写 SQLite 模型与路由，凭据保留在加密 vault。初次浏览器迁移不得用默认空清单覆盖已有模型。空模型路由统一为 `{}`。历史 beta 清单丢失修复限于升级事务：只采用受管升级安全点中包含全部悬空路由 id 的候选；SQL 升级完成后绝不从旧备份复活清空的清单。
 
 ### 5.1 Agent Provider And Model Configuration
 
@@ -270,6 +270,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 ### 9.5 Agent Conversation Storage Actions
 
 - Agent 会话历史的项目筛选必须合并 PromptHub 已登记项目与当前原生会话报告的精确项目路径；同名不同路径必须保持为可区分的独立筛选项，不得只按目录 basename 合并。
+- 会话来源配置、索引批注及独立会话元数据由 SQLite 持有；维护重建须保留稳定 ID、批注、收藏、归档和交接记录。扫描发现原生日志消失时只标记 missing，不清空批注。来源 ID 加 external_id 与 Agent ID 加 session_id 是不同作用域，不能自动合并；显式删除的记录不得由旧快照在普通启动时恢复。
 - 每个已支持历史适配器返回的会话都必须显示与永久删除目标一致的非负占用：单文件使用精确字节，多文件求和，目录进行不跟随软链接的有界遍历，共享数据库计算该会话及子行的逻辑字节；不得把整个共享数据库大小重复算到每个会话。
 - 永久删除只允许通过已验证的适配器操作，并在 renderer 中二次确认、在 main 中按 `agentId + sessionId` 重新解析当前会话。文件、多文件、目录、共享 SQLite 行和提供官方删除命令的 CLI 分别使用自己的 adapter-owned 策略；不得删除 renderer 提供的 `sourcePath`，也不得把软链接、越界或已变化目标当作原会话。
 - 永久删除先执行适配器拥有的原生删除；原生删除失败不得修改 PromptHub 元数据。原生删除成功后应硬删除对应 PromptHub 元数据并由 renderer 立即移除会话；元数据清理失败不得把已删除的原生会话重新显示为可恢复状态。该操作不可撤销，且不得自动重试。
@@ -449,3 +450,25 @@ When a user needs installation or usage help:
 ### Shortcut key identity
 
 快捷键录入和局部触发共用按键识别：Option/Alt 修饰的字母和数字使用 KeyboardEvent.code，避免 macOS 把 J、N 等转换为符号或 dead key 后保存错误 accelerator。没有 Alt 的普通按键保留键盘布局的 key 语义。快捷键设置仍为既有持久配置，不迁移或猜测已保存的符号快捷键；受影响的用户可重新录入。
+
+### Renderer 辅助状态的 SQLite 所有权
+
+市场源、手动恢复路径、自部署同步设备 ID 由 Core renderer persistence 入口读写
+SQLite `settings`，键分别为 `marketplaceSources`、`recoveryPaths`、
+`selfHostedDeviceId`。普通设置 GET/SET 不读写这三个领域键；renderer 专用入口保持
+原有请求/响应合同。历史三个 JSON 文件只在 `renderer-state-sqlite-v1` 升级中读取，
+原始字节保留在 recovery，退出后不得作为日常 fallback。SQL 与旧文件不同值需要
+显式恢复处理；已清空的来源和路径不会因旧文件重现而复活。
+
+首次 renderer 导入同时提交设置与辅助状态 SQL 行、vault 和完成标记；SQLite
+提交失败回滚全部文件。便携恢复工厂显式绑定暂存数据库。
+
+### Shared application settings storage
+
+应用、AI、同步设置的结构化值只存 SQLite settings；Desktop 与 CLI 使用同一个 Core
+入口。凭据由设备 keyring 主密钥保护的 AES-256-GCM vault 保存，SQL 只存引用。
+旧 app/providers/sync-providers/ai-models JSON 仅在 settings-sqlite-v1 中转换并保留
+私有原始恢复材料，之后不再补写镜像。已有 Electron safeStorage 密文须先用新版
+桌面端完成一次升级，再通过 CLI 使用。普通设置接口不得读取或修改主密码验证材料。
+显式清空模型或设置在重开后保持；升级备份不能在普通读取时补回删除内容。
+回退需恢复升级前数据库、原始配置与 vault，并保全升级后的 SQL 修改。

@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { closeDatabase } from "@prompthub/db";
-import { DEFAULT_SETTINGS } from "@prompthub/shared";
 
 import {
   ENV_KEYS,
@@ -35,7 +34,7 @@ describe("web import/export routes", () => {
   });
 
   it(
-    "rejects folder hierarchies that exceed prompt workspace path limits before importing records",
+    "imports deep folder hierarchies into SQLite without Markdown path limits",
     async () => {
       const dataDir = fs.mkdtempSync(
         path.join(os.tmpdir(), "prompthub-web-import-export-test-"),
@@ -69,8 +68,8 @@ describe("web import/export routes", () => {
               prompts: [
                 {
                   id: "deep-folder-prompt",
-                  title: "Should Not Import",
-                  userPrompt: "This prompt must not survive a rejected import",
+                  title: "Deep Prompt",
+                  userPrompt: "Retained SQL content",
                   variables: [],
                   tags: [],
                   images: [],
@@ -93,18 +92,20 @@ describe("web import/export routes", () => {
           }),
         );
 
-        expect(response.status).toBe(422);
-        const body = (await response.json()) as {
-          error: { code: string; message: string };
-        };
-        expect(body.error.code).toBe("VALIDATION_ERROR");
-        expect(body.error.message).toContain(
-          "prompt workspace path is too long",
-        );
+        expect(response.status).toBe(201);
 
         const { payload: exportedPayload } = await exportPayload(app, token);
-        expect(exportedPayload.prompts).toEqual([]);
-        expect(exportedPayload.folders).toEqual([]);
+        expect(exportedPayload.prompts).toMatchObject([
+          {
+            id: "deep-folder-prompt",
+            folderId: `deep-folder-${folderCount - 1}`,
+            userPrompt: "Retained SQL content",
+          },
+        ]);
+        expect(exportedPayload.folders).toHaveLength(folderCount);
+        expect(fs.existsSync(path.join(dataDir, "data", "prompts"))).toBe(
+          false,
+        );
       } finally {
         fs.rmSync(dataDir, { recursive: true, force: true });
       }
@@ -113,7 +114,7 @@ describe("web import/export routes", () => {
   );
 
   it(
-    "rejects skill workspace paths that exceed filesystem limits before importing records",
+    "imports long Skill names using stable ID package paths",
     async () => {
       const dataDir = fs.mkdtempSync(
         path.join(os.tmpdir(), "prompthub-web-import-export-test-"),
@@ -139,8 +140,8 @@ describe("web import/export routes", () => {
               prompts: [
                 {
                   id: "long-skill-prompt",
-                  title: "Should Not Import",
-                  userPrompt: "This prompt must not survive a rejected import",
+                  title: "Imported with long Skill name",
+                  userPrompt: "This prompt survives the package import",
                   variables: [],
                   tags: [],
                   images: [],
@@ -173,18 +174,13 @@ describe("web import/export routes", () => {
           }),
         );
 
-        expect(response.status).toBe(422);
-        const body = (await response.json()) as {
-          error: { code: string; message: string };
-        };
-        expect(body.error.code).toBe("VALIDATION_ERROR");
-        expect(body.error.message).toContain(
-          "skill workspace path segment is too long",
-        );
-
+        expect(response.status).toBe(201);
         const { payload: exportedPayload } = await exportPayload(app, token);
-        expect(exportedPayload.prompts).toEqual([]);
-        expect(exportedPayload.skills).toEqual([]);
+        expect(exportedPayload.prompts).toHaveLength(1);
+        expect(exportedPayload.skills).toEqual([
+          expect.objectContaining({ id: 'long-skill-name', name: longSkillName }),
+        ]);
+        expect(fs.readFileSync(path.join(dataDir, 'data', 'skill-files', 'long-skill-name', 'files', 'SKILL.md'), 'utf8')).toBe('echo too long');
       } finally {
         fs.rmSync(dataDir, { recursive: true, force: true });
       }

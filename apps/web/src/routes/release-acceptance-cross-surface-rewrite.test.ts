@@ -41,7 +41,7 @@ function respond(content: string, status = 200): void {
 }
 
 function ruleFiles(): Record<string, string> {
-  const directory = path.join(root, 'data', 'rules');
+  const directory = path.join(root, 'data', 'rule-files');
   return Object.fromEntries(fs.readdirSync(directory, { recursive: true }).flatMap((name) => {
     const filename = path.join(directory, String(name));
     return fs.statSync(filename).isFile() ? [[String(name), fs.readFileSync(filename, 'utf8')]] : [];

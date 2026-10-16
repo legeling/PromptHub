@@ -69,6 +69,19 @@ the test proves the retained sample has not been lost or changed.
 
 ## Uncovered source modes
 
+Current Core upgrade coverage is maintained in
+`../../historical-runtime-upgrade.test.ts`. It regenerates these same sources
+in temporary roots and upgrades each profile in place, preserving absolute
+paths instead of rewriting the retained archives. Three normal upgrade/edit/
+reopen cases and three transaction-failure/retry cases passed on 2026-10-14.
+Run it with the normal Core test entrypoint:
+
+```sh
+pnpm --filter @prompthub/core exec vitest run tests/historical-runtime-upgrade.test.ts --minWorkers 1 --maxWorkers 1
+```
+
+The following source-mode limits still apply.
+
 - Desktop canonical startup requires its renderer migration and checkpoint
   publication. These CLI/Core samples do not handwrite authority or layout
   markers to imitate that startup. A genuine Desktop source sample is a

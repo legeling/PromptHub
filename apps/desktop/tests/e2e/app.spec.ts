@@ -77,112 +77,120 @@ test.describe("E2E: Skill smoke", () => {
     }
   });
 
-  test("delays startup WebDAV sync until a hidden launch becomes visible", { tag: nativeWindowTestTag }, async () => {
-    const { app, page, userDataDir } = await launchPromptHub(
-      "background-sync.seed.json",
-      {
-        env: {
-          PROMPTHUB_E2E_WEBDAV_MODE: "remote-empty",
-        },
-      },
-    );
-
-    try {
-      await expect(page).toHaveTitle(/PromptHub/);
-      await expect
-        .poll(async () => Boolean((await getE2EStats(page))?.webdav))
-        .toBe(true);
-      await expect.poll(() => isAppWindowVisible(app)).toBe(false);
-      await setAppSettings(page, {
-        syncProvider: "webdav",
-        webdavEnabled: true,
-        webdavUrl: "https://e2e.example.com/dav",
-        webdavUsername: "e2e-user",
-        webdavPassword: "e2e-pass",
-        webdavSyncOnStartup: true,
-        webdavSyncOnStartupDelay: 1,
-        webdavAutoSyncInterval: 0,
-        autoCheckUpdate: false,
-      });
-      await expect.poll(() => isAppWindowVisible(app)).toBe(false);
-      await resetE2EStats(page);
-
-      await page.waitForTimeout(1500);
-
-      await expect
-        .poll(async () => (await getE2EStats(page))?.webdav.upload ?? -1)
-        .toBe(0);
-      await expect
-        .poll(async () => (await getE2EStats(page))?.webdav.stat ?? -1)
-        .toBe(0);
-
-      await page.evaluate(() => window.electron?.toggleVisibility());
-      await expect.poll(() => isAppWindowVisible(app)).toBe(true);
-
-      await expect
-        .poll(
-          () =>
-            page.evaluate(async () => {
-              const settings = await window.api.settings.get();
-              return (
-                settings.autoSyncHistory?.find(
-                  (entry) => entry.provider === "webdav",
-                ) ?? null
-              );
-            }),
-          {
-            message:
-              "resumed WebDAV startup sync should reach a terminal state",
+  test(
+    "delays startup WebDAV sync until a hidden launch becomes visible",
+    { tag: nativeWindowTestTag },
+    async () => {
+      const { app, page, userDataDir } = await launchPromptHub(
+        "background-sync.seed.json",
+        {
+          env: {
+            PROMPTHUB_E2E_WEBDAV_MODE: "remote-empty",
           },
-        )
-        .toEqual(
-          expect.objectContaining({
-            provider: "webdav",
-            reason: "startup-resume",
-            status: "success",
-          }),
-        );
-
-      await expect
-        .poll(async () => (await getE2EStats(page))?.webdav.upload ?? 0)
-        .toBeGreaterThan(0);
-      await expect
-        .poll(
-          async () => (await getE2EStats(page))?.webdav.ensureDirectory ?? 0,
-        )
-        .toBeGreaterThan(0);
-    } finally {
-      await closePromptHub(app, userDataDir);
-    }
-  });
-
-  test("toggles app visibility from the local showApp shortcut", { tag: nativeWindowTestTag }, async () => {
-    const { app, page, userDataDir } = await launchPromptHub(
-      "skills-smoke.seed.json",
-    );
-
-    try {
-      await expect(page).toHaveTitle(/PromptHub/);
-      await expect.poll(() => isAppWindowVisible(app)).toBe(true);
-
-      await setAppSettings(page, {
-        shortcutModes: {
-          showApp: "local",
         },
-        autoCheckUpdate: false,
-      });
+      );
 
-      await page.locator("body").click({ position: { x: 20, y: 20 } });
-      await page.keyboard.press("Alt+Shift+P");
+      try {
+        await expect(page).toHaveTitle(/PromptHub/);
+        await expect
+          .poll(async () => Boolean((await getE2EStats(page))?.webdav))
+          .toBe(true);
+        await expect.poll(() => isAppWindowVisible(app)).toBe(false);
+        await setAppSettings(page, {
+          syncProvider: "webdav",
+          webdavEnabled: true,
+          webdavUrl: "https://e2e.example.com/dav",
+          webdavUsername: "e2e-user",
+          webdavPassword: "e2e-pass",
+          webdavSyncOnStartup: true,
+          webdavSyncOnStartupDelay: 1,
+          webdavAutoSyncInterval: 0,
+          autoCheckUpdate: false,
+        });
+        await expect.poll(() => isAppWindowVisible(app)).toBe(false);
+        await resetE2EStats(page);
 
-      await expect.poll(() => isAppWindowVisible(app)).toBe(false);
+        await page.waitForTimeout(1500);
 
-      await showAppWindow(app);
-      await expect.poll(() => isAppWindowVisible(app)).toBe(true);
-    } finally {
-      await closePromptHub(app, userDataDir);
-    }
-  });
+        await expect
+          .poll(async () => (await getE2EStats(page))?.webdav.upload ?? -1)
+          .toBe(0);
+        await expect
+          .poll(async () => (await getE2EStats(page))?.webdav.stat ?? -1)
+          .toBe(0);
+
+        await page.evaluate(() => window.electron?.toggleVisibility());
+        await expect.poll(() => isAppWindowVisible(app)).toBe(true);
+
+        await expect
+          .poll(
+            () =>
+              page.evaluate(async () => {
+                const settings = await window.api.settings.get();
+                return (
+                  settings.autoSyncHistory?.find(
+                    (entry) => entry.provider === "webdav",
+                  ) ?? null
+                );
+              }),
+            {
+              message:
+                "resumed WebDAV startup sync should reach a terminal state",
+            },
+          )
+          .toEqual(
+            expect.objectContaining({
+              provider: "webdav",
+              reason: "startup-resume",
+              status: "success",
+            }),
+          );
+
+        await expect
+          .poll(async () => (await getE2EStats(page))?.webdav.upload ?? 0)
+          .toBeGreaterThan(0);
+        await expect
+          .poll(
+            async () => (await getE2EStats(page))?.webdav.ensureDirectory ?? 0,
+          )
+          .toBeGreaterThan(0);
+      } finally {
+        await closePromptHub(app, userDataDir);
+      }
+    },
+  );
+
+  test(
+    "toggles app visibility from the local showApp shortcut",
+    { tag: nativeWindowTestTag },
+    async () => {
+      const { app, page, userDataDir } = await launchPromptHub(
+        "skills-smoke.seed.json",
+      );
+
+      try {
+        await expect(page).toHaveTitle(/PromptHub/);
+        await expect.poll(() => isAppWindowVisible(app)).toBe(true);
+
+        await setAppSettings(page, {
+          shortcutModes: {
+            showApp: "local",
+          },
+          autoCheckUpdate: false,
+        });
+
+        await page.locator("body").click({ position: { x: 20, y: 20 } });
+        await page.keyboard.press("Alt+Shift+P");
+
+        await expect.poll(() => isAppWindowVisible(app)).toBe(false);
+
+        await showAppWindow(app);
+        await expect.poll(() => isAppWindowVisible(app)).toBe(true);
+      } finally {
+        await closePromptHub(app, userDataDir);
+      }
+    },
+  );
 
   test("opens lazy asset and quick-add workflows from main-process app commands", async () => {
     const { app, page, userDataDir } = await launchPromptHub(null);
@@ -222,27 +230,45 @@ test.describe("E2E: Skill smoke", () => {
     }
   });
 
-  test("exports seeded prompts into workspace files on startup", async () => {
-    const { app, page, userDataDir } = await launchPromptHub(
+  test("preserves seeded prompts and history in SQLite across cold startup", async () => {
+    let { app, page, userDataDir } = await launchPromptHub(
       "prompt-workspace.seed.json",
     );
-
     try {
-      await expect(page).toHaveTitle(/PromptHub/);
-
-      const promptFile = path.join(
-        userDataDir,
-        "data",
-        "prompts",
-        "ops",
-        "deploy-checklist.md",
-      );
-
-      await expect.poll(() => fs.existsSync(promptFile)).toBe(true);
-
-      const raw = fs.readFileSync(promptFile, "utf8");
-      expect(raw).toContain('title: "Deploy Checklist"');
-      expect(raw).toContain("Review deploy health for {{service}}.");
+      for (const startup of [1, 2]) {
+        await expect(page).toHaveTitle(/PromptHub/);
+        const prompt = await page.evaluate(() =>
+          window.api.prompt.get("prompt_ops_1"),
+        );
+        expect(prompt).toMatchObject({
+          id: "prompt_ops_1",
+          title: "Deploy Checklist",
+          userPrompt: "Review deploy health for {{service}}.",
+          folderId: "folder_ops",
+          currentVersion: 1,
+        });
+        const versions = await page.evaluate(() =>
+          window.api.version.getAll("prompt_ops_1"),
+        );
+        expect(versions).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: "version_ops_1",
+              promptId: "prompt_ops_1",
+              userPrompt: prompt.userPrompt,
+            }),
+          ]),
+        );
+        expect(
+          fs.existsSync(
+            path.join(userDataDir, "data/prompts/prompt_ops_1/prompt.json"),
+          ),
+        ).toBe(false);
+        if (startup === 1) {
+          await app.close();
+          ({ app, page } = await launchPromptHub(null, { userDataDir }));
+        }
+      }
     } finally {
       await closePromptHub(app, userDataDir);
     }

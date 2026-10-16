@@ -1,4 +1,3 @@
-
 import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
 let mcpStorage: ReturnType<typeof createMcpTestStorage>;
 /**
@@ -482,7 +481,12 @@ describe("CoreMcpLibraryService", () => {
       "/Users/test/Library/Application Support/Code/User/mcp.json",
     );
     expect(presets.every((preset) => preset.scope === "global")).toBe(true);
-    expect(presets.every((preset) => Boolean(preset.platformId))).toBe(true);
+    expect(byId.vscode.platformId).toBeUndefined();
+    expect(
+      presets
+        .filter((preset) => preset.id !== "vscode")
+        .every((preset) => Boolean(preset.platformId)),
+    ).toBe(true);
 
     const winPresets = getMcpTargetPresets("C:\\Users\\test", "win32");
     const winById = Object.fromEntries(

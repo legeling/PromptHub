@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import type { RemoteWriteCondition, RemoteUploadResult, RemoteDownloadResult, RemoteDeleteResult } from "@prompthub/shared/types/remote-sync";
+import type { DesktopCausalSyncRequest, DesktopCausalSyncResult } from "@prompthub/shared/types/causal-sync";
 import { aiApi } from "./api/ai";
 import { agentApi } from "./api/agent";
 import { cliApi } from "./api/cli";
@@ -374,6 +376,7 @@ contextBridge.exposeInMainWorld("electron", {
   // WebDAV (bypass CORS via main process)
   // WebDAV（通过主进程绕过 CORS）
   webdav: {
+    delete: (fileUrl: string, config: { url: string; username: string; password: string }) => ipcRenderer.invoke(IPC_CHANNELS.WEBDAV_DELETE, fileUrl, config),
     testConnection: (config: {
       url: string;
       username: string;
@@ -387,7 +390,8 @@ contextBridge.exposeInMainWorld("electron", {
       fileUrl: string,
       config: { url: string; username: string; password: string },
       data: string,
-    ) => ipcRenderer.invoke("webdav:upload", fileUrl, config, data),
+      condition?: RemoteWriteCondition,
+    ) => ipcRenderer.invoke("webdav:upload", fileUrl, config, data, condition),
     download: (
       fileUrl: string,
       config: { url: string; username: string; password: string },
@@ -397,7 +401,9 @@ contextBridge.exposeInMainWorld("electron", {
       config: { url: string; username: string; password: string },
     ) => ipcRenderer.invoke("webdav:stat", fileUrl, config),
   },
+  causalSync: (request: DesktopCausalSyncRequest): Promise<DesktopCausalSyncResult> => ipcRenderer.invoke(IPC_CHANNELS.CAUSAL_SYNC_RUN, request),
   s3: {
+    delete: (key: string, config: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string }) => ipcRenderer.invoke(IPC_CHANNELS.S3_DELETE, key, config),
     testConnection: (config: {
       endpoint: string;
       region: string;
@@ -415,7 +421,8 @@ contextBridge.exposeInMainWorld("electron", {
         secretAccessKey: string;
       },
       data: string,
-    ) => ipcRenderer.invoke(IPC_CHANNELS.S3_UPLOAD, key, config, data),
+      condition?: RemoteWriteCondition,
+    ) => ipcRenderer.invoke(IPC_CHANNELS.S3_UPLOAD, key, config, data, condition),
     download: (
       key: string,
       config: {
@@ -508,6 +515,7 @@ declare global {
   interface Window {
     api: API;
     electron?: {
+      causalSync?: (request: DesktopCausalSyncRequest) => Promise<DesktopCausalSyncResult>;
       minimize?: () => void;
       maximize?: () => void;
       close?: () => void;
@@ -680,6 +688,7 @@ declare global {
       // WebDAV (bypass CORS via main process)
       // WebDAV（通过主进程绕过 CORS）
       webdav?: {
+        delete: (fileUrl: string, config: { url: string; username: string; password: string }) => Promise<RemoteDeleteResult>;
         testConnection: (config: {
           url: string;
           username: string;
@@ -693,16 +702,12 @@ declare global {
           fileUrl: string,
           config: { url: string; username: string; password: string },
           data: string,
-        ) => Promise<{ success: boolean; error?: string }>;
+          condition?: RemoteWriteCondition,
+        ) => Promise<RemoteUploadResult>;
         download: (
           fileUrl: string,
           config: { url: string; username: string; password: string },
-        ) => Promise<{
-          success: boolean;
-          data?: string;
-          notFound?: boolean;
-          error?: string;
-        }>;
+        ) => Promise<RemoteDownloadResult>;
         stat: (
           fileUrl: string,
           config: { url: string; username: string; password: string },
@@ -714,6 +719,7 @@ declare global {
         }>;
       };
       s3?: {
+        delete: (key: string, config: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string }) => Promise<RemoteDeleteResult>;
         testConnection: (config: {
           endpoint: string;
           region: string;
@@ -731,7 +737,8 @@ declare global {
             secretAccessKey: string;
           },
           data: string,
-        ) => Promise<{ success: boolean; error?: string }>;
+          condition?: RemoteWriteCondition,
+        ) => Promise<RemoteUploadResult>;
         download: (
           key: string,
           config: {
@@ -741,12 +748,7 @@ declare global {
             accessKeyId: string;
             secretAccessKey: string;
           },
-        ) => Promise<{
-          success: boolean;
-          data?: string;
-          notFound?: boolean;
-          error?: string;
-        }>;
+        ) => Promise<RemoteDownloadResult>;
         stat: (
           key: string,
           config: {

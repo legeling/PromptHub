@@ -15,7 +15,7 @@ export type AntigravityMigrationCheckpoint =
   | "ownership-published"
   | "sources-retired";
 
-type SkillIdentity = Pick<Skill, "id" | "name">;
+type SkillIdentity = Pick<Skill, "id" | "name" | "local_repo_path">;
 interface MigrationOptions {
   profile: string;
   oldRoot: string;
@@ -143,7 +143,10 @@ function prepareRecord(
   assertName(skill.id);
   const source = path.join(options.oldRoot, skill.name);
   const target = path.join(options.newRoot, skill.name);
-  const workspace = path.join(options.workspaceRoot, skill.id);
+  const legacyWorkspace = path.join(options.workspaceRoot, skill.id);
+  const workspace = skill.local_repo_path;
+  if (!workspace)
+    throw new Error("Antigravity migration source package is missing");
   const backup = path.join(
     options.profile,
     "recovery",
@@ -157,7 +160,8 @@ function prepareRecord(
   if (stat && !stat.isSymbolicLink()) return null;
   if (!stat && !prior) return null;
   const storedTarget = stat ? fs.readlinkSync(source) : prior!.storedTarget;
-  if (!isManagedTarget(options, source, storedTarget, workspace)) return null;
+  if (!isManagedTarget(options, source, storedTarget, legacyWorkspace))
+    return null;
   const record = {
     skillId: skill.id,
     skillName: skill.name,

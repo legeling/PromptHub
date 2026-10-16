@@ -1,3 +1,5 @@
+import { DatabaseAdapter, initDatabase, closeDatabase } from "@prompthub/db";
+import { migratePluginMetadataV1 } from "../src/migrations/plugin-metadata-v1";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -14,12 +16,20 @@ import {
   writeCanonicalPluginState,
 } from "../src/canonical-plugin-library";
 import { CorePluginLibraryService } from "../src/plugin-library";
-import { readPluginResourceBundle } from "../src/plugin-resource-schema";
 import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
 import {
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
 } from "../src";
+
+function migrateMetadata(): void {
+  const database = new DatabaseAdapter(":memory:");
+  try {
+    migratePluginMetadataV1(database);
+  } finally {
+    database.close();
+  }
+}
 
 function plugin(packagePath: string): PluginLibraryEntry {
   return {
@@ -67,6 +77,7 @@ describe("canonical Plugin library", () => {
       path.join(os.tmpdir(), "prompthub-canonical-plugin-"),
     );
     configureRuntimePaths({ userDataPath: root });
+    initDatabase(path.join(root, "data", "prompthub.db"));
     writeRuntimeLayoutState(root);
     writeCanonicalStorageAuthority(root, {
       consistencyId: "c".repeat(64),
@@ -87,43 +98,42 @@ describe("canonical Plugin library", () => {
   });
 
   afterEach(() => {
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it("routes production reads, metadata writes, versions, and deletion through bundles", () => {
+  it("routes production reads, metadata writes, versions, and deletion through SQLite", () => {
     const service = new CorePluginLibraryService();
     service.write(library([plugin(packagePath)]));
-    const bundlePath = path.join(root, "data", "plugins", "plugin-1");
+    const bundlePath = path.join(root, "data", "plugin-files", "plugin-1");
 
     expect(service.read().plugins[0]).toMatchObject({
       id: "plugin-1",
       distributedTargetIds: ["codex"],
-      localPackagePath: path.join(bundlePath, "files"),
+      localPackagePath: path.join(bundlePath, "current"),
     });
     expect(
       fs.readFileSync(
-        path.join(bundlePath, "files", ".codex-plugin", "plugin.json"),
+        path.join(bundlePath, "current", ".codex-plugin", "plugin.json"),
         "utf8",
       ),
     ).toContain("writing-tools");
     const createdVersion = service.createPluginVersion("plugin-1", "baseline");
     expect(createdVersion.version).toBe(1);
-    expect(readCanonicalPluginVersions().versions).toHaveLength(1);
+    expect(service.getPluginVersions("plugin-1")).toHaveLength(1);
 
     const metadata = service.updatePluginMetadata("plugin-1", {
       userNotes: "daily",
     });
     expect(metadata.plugins[0].userNotes).toBe("daily");
-    expect(readPluginResourceBundle(bundlePath).bundleManifest.revision).toBe(
-      3,
-    );
+    expect(service.read().plugins[0].userNotes).toBe("daily");
     expect(
-      fs.existsSync(path.join(root, "data", "plugins", "library.json")),
+      fs.existsSync(path.join(root, "data", "plugin-files", "library.json")),
     ).toBe(false);
 
     service.deletePlugin("plugin-1");
-    expect(readCanonicalPluginLibrary().plugins).toEqual([]);
+    expect(service.read().plugins).toEqual([]);
     expect(fs.existsSync(bundlePath)).toBe(false);
   });
 
@@ -168,32 +178,29 @@ describe("canonical Plugin library", () => {
     const bundlePath = path.join(
       root,
       "data",
-      "plugins",
+      "plugin-files",
       "agent-codex%3Awriting-tools",
     );
 
-    expect(result.plugin.localPackagePath).toBe(path.join(bundlePath, "files"));
+    expect(result.plugin.localPackagePath).toBe(
+      path.join(bundlePath, "current"),
+    );
     expect(result.plugin.source.url).toBe(packagePath);
     expect(
       fs.readFileSync(
-        path.join(bundlePath, "files", "commands", "review.md"),
+        path.join(bundlePath, "current", "commands", "review.md"),
         "utf8",
       ),
     ).toBe("review\n");
-    expect(fs.readdirSync(path.join(root, "data", "plugins")).sort()).toEqual([
-      "agent-codex%3Awriting-tools",
-    ]);
     expect(
-      fs.readFileSync(path.join(bundlePath, "plugin.json"), "utf8"),
-    ).not.toContain(packagePath);
+      fs.readdirSync(path.join(root, "data", "plugin-files")).sort(),
+    ).toEqual(["agent-codex%3Awriting-tools"]);
+    expect(service.read().plugins[0].source.url).toBe(packagePath);
     expect(
-      JSON.parse(
-        fs.readFileSync(
-          path.join(root, "config", "devices", "plugin-projections.json"),
-          "utf8",
-        ),
-      ).sources,
-    ).toEqual({ "agent-codex:writing-tools": packagePath });
+      fs.existsSync(
+        path.join(root, "config", "devices", "plugin-projections.json"),
+      ),
+    ).toBe(false);
     service.distributePlugin({
       pluginId: result.plugin.id,
       targetIds: ["codex"],
@@ -229,37 +236,34 @@ describe("canonical Plugin library", () => {
     ).resolves.toMatchObject({ status: "updated" });
     expect(
       fs.readFileSync(
-        path.join(bundlePath, "files", "commands", "review.md"),
+        path.join(bundlePath, "current", "commands", "review.md"),
         "utf8",
       ),
     ).toBe("review v2\n");
     expect(
-      readCanonicalPluginVersions().versions[0].packageSnapshot?.files.find(
-        (file) => file.relativePath === "commands/review.md",
-      )?.contentBase64,
+      service
+        .getPluginVersions(result.plugin.id)[0]
+        .packageSnapshot?.files.find(
+          (file) => file.relativePath === "commands/review.md",
+        )?.contentBase64,
     ).toBe(Buffer.from("review\n").toString("base64"));
 
     const sourceTarget = `${packagePath}-target`;
     fs.renameSync(packagePath, sourceTarget);
     fs.symlinkSync(sourceTarget, packagePath, "dir");
-    const revision =
-      readPluginResourceBundle(bundlePath).bundleManifest.revision;
+    const beforeFailure = service.read();
     await expect(
       restarted.getPluginSourceUpdateStatus(result.plugin.id),
     ).rejects.toMatchObject({ code: "INVALID_PATH" });
-    expect(readPluginResourceBundle(bundlePath).bundleManifest.revision).toBe(
-      revision,
-    );
-    expect(readCanonicalPluginVersions().versions).toHaveLength(1);
+    expect(service.read()).toEqual(beforeFailure);
+    expect(service.getPluginVersions(result.plugin.id)).toHaveLength(1);
 
     fs.rmSync(packagePath);
     fs.rmSync(sourceTarget, { recursive: true });
     await expect(
       restarted.getPluginSourceUpdateStatus(result.plugin.id),
     ).rejects.toMatchObject({ code: "MISSING_SOURCE" });
-    expect(readPluginResourceBundle(bundlePath).bundleManifest.revision).toBe(
-      revision,
-    );
+    expect(service.read()).toEqual(beforeFailure);
   });
 
   it("rolls back bundle and device projection publication together", () => {
@@ -340,7 +344,8 @@ describe("canonical Plugin library", () => {
       }),
     );
 
-    const migrated = new CorePluginLibraryService().read();
+    migrateMetadata();
+    const migrated = readCanonicalPluginLibrary();
 
     expect(migrated.plugins).toHaveLength(1);
     expect(migrated.plugins[0]).toMatchObject({
@@ -354,12 +359,13 @@ describe("canonical Plugin library", () => {
     ).toBe(true);
   });
 
-  it("keeps canonical Plugin bundles authoritative over stale metadata", () => {
+  it("keeps SQL Plugin metadata authoritative over stale files", () => {
     const service = new CorePluginLibraryService();
     service.write(library([plugin(packagePath)]));
     const pluginRoot = path.join(root, "data", "plugins");
     const libraryPath = path.join(pluginRoot, "library.json");
     const versionsPath = path.join(pluginRoot, "versions.json");
+    fs.mkdirSync(pluginRoot, { recursive: true });
     fs.writeFileSync(libraryPath, JSON.stringify(library([])));
     fs.writeFileSync(
       versionsPath,
@@ -372,6 +378,9 @@ describe("canonical Plugin library", () => {
     );
 
     expect(service.read().plugins).toHaveLength(1);
+    expect(fs.existsSync(libraryPath)).toBe(true);
+    expect(fs.existsSync(versionsPath)).toBe(true);
+    migrateMetadata();
     expect(fs.existsSync(libraryPath)).toBe(false);
     expect(fs.existsSync(versionsPath)).toBe(false);
   });
@@ -385,7 +394,8 @@ describe("canonical Plugin library", () => {
       JSON.stringify(library([plugin(packagePath)])),
     );
 
-    expect(new CorePluginLibraryService().read().plugins).toHaveLength(1);
+    migrateMetadata();
+    expect(readCanonicalPluginLibrary().plugins).toHaveLength(1);
     expect(fs.existsSync(libraryPath)).toBe(false);
   });
 
@@ -407,7 +417,8 @@ describe("canonical Plugin library", () => {
       JSON.stringify(library([plugin(packagePath)])),
     );
 
-    const migrated = new CorePluginLibraryService().read();
+    migrateMetadata();
+    const migrated = readCanonicalPluginLibrary();
     const projection = JSON.parse(
       fs.readFileSync(
         path.join(root, "config", "devices", "plugin-projections.json"),
@@ -426,7 +437,8 @@ describe("canonical Plugin library", () => {
     fs.mkdirSync(pluginRoot, { recursive: true });
     fs.writeFileSync(libraryPath, JSON.stringify(library([])));
 
-    expect(new CorePluginLibraryService().read().plugins).toEqual([]);
+    migrateMetadata();
+    expect(readCanonicalPluginLibrary().plugins).toEqual([]);
     expect(fs.existsSync(libraryPath)).toBe(false);
   });
 

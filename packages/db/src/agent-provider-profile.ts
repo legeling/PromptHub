@@ -487,6 +487,41 @@ export class AgentProviderProfileDB {
     })();
   }
 
+  /** Replaces public graph data without deleting the profile's local snapshot links. */
+  replaceProfileGraphDirect(
+    profile: AgentProviderProfile,
+    mappings: AgentProviderModelMapping[],
+  ): void {
+    this.db.transaction(() => {
+      if (!this.getProfileById(profile.id)) {
+        this.insertProfileGraphDirect(profile, mappings);
+        return;
+      }
+      this.db.run(
+        `UPDATE agent_provider_profiles SET
+          platform_id = ?, name = ?, provider_kind = ?, protocol = ?, endpoint = ?,
+          config_json = ?, secret_ref = ?, source = ?, archived = ?, created_at = ?, updated_at = ?
+         WHERE id = ?`,
+        requireText(profile.platformId, "platformId"), requireText(profile.name, "name"),
+        requireText(profile.providerKind, "providerKind"), requireText(profile.protocol, "protocol"),
+        normalizeAgentProviderEndpoint(profile.endpoint), serializeObject(profile.config, "config", true),
+        profile.secretRef?.trim() || null, profile.source, profile.archived ? 1 : 0,
+        profile.createdAt, profile.updatedAt, profile.id,
+      );
+      this.db.run("DELETE FROM agent_provider_model_mappings WHERE provider_profile_id = ?", profile.id);
+      for (const mapping of mappings) {
+        if (mapping.providerProfileId !== profile.id)
+          throw new Error("Provider model mapping does not belong to profile");
+        this.db.run(
+          `INSERT INTO agent_provider_model_mappings
+           (id, provider_profile_id, route_key, model_id, parameters_json) VALUES (?, ?, ?, ?, ?)`,
+          mapping.id, profile.id, requireText(mapping.routeKey, "routeKey"),
+          requireText(mapping.modelId, "modelId"), serializeObject(mapping.parameters, "parameters", true),
+        );
+      }
+    })();
+  }
+
   getLatestVerifiedSnapshot(platformId: string): AgentProviderSnapshot | null {
     const row = this.db.get(
       `SELECT * FROM agent_provider_snapshots

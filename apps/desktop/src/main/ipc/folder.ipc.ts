@@ -1,30 +1,23 @@
 import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import { FolderDB } from "../database/folder";
-import { PromptDB } from "../database/prompt";
 import type {
   CreateFolderDTO,
   Folder,
   UpdateFolderDTO,
 } from "@prompthub/shared/types";
-import { syncPromptWorkspaceAfterMutation } from "../services/prompt-workspace";
 
 /**
  * Register folder-related IPC handlers
  * 注册文件夹相关 IPC 处理器
  */
-export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
-  const syncWorkspace = () => {
-    syncPromptWorkspaceAfterMutation(promptDb, db);
-  };
-
+export function registerFolderIPC(db: FolderDB): void {
   // Create folder
   // 创建文件夹
   ipcMain.handle(
     IPC_CHANNELS.FOLDER_CREATE,
     async (_event, data: CreateFolderDTO) => {
       const created = db.create(data);
-      syncWorkspace();
       return created;
     },
   );
@@ -41,9 +34,6 @@ export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
     IPC_CHANNELS.FOLDER_UPDATE,
     async (_event, id: string, data: UpdateFolderDTO) => {
       const updated = db.update(id, data);
-      if (updated) {
-        syncWorkspace();
-      }
       return updated;
     },
   );
@@ -52,9 +42,6 @@ export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
   // 删除文件夹
   ipcMain.handle(IPC_CHANNELS.FOLDER_DELETE, async (_event, id: string) => {
     const deleted = db.delete(id);
-    if (deleted) {
-      syncWorkspace();
-    }
     return deleted;
   });
 
@@ -62,7 +49,6 @@ export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
   // 重新排序文件夹
   ipcMain.handle(IPC_CHANNELS.FOLDER_REORDER, async (_event, ids: string[]) => {
     db.reorder(ids);
-    syncWorkspace();
     return true;
   });
 
@@ -70,8 +56,6 @@ export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
     IPC_CHANNELS.FOLDER_INSERT_DIRECT,
     async (_event, folder: Folder) => {
       db.insertFolderDirect(folder);
-      promptDb.publishCanonicalGraph();
-      syncWorkspace();
       return true;
     },
   );

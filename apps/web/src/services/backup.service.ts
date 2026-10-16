@@ -1,11 +1,25 @@
+import { WebSkillStorage } from "./skill-storage.js";
+import { getWebSkillPackagePath } from "./skill-workspace.js";
+import {
+  skillVersionPayloadEntry,
+  getSkillVersionPayloadPath,
+} from "@prompthub/core/skill-version-files";
+import { getSkillsDir } from "../runtime-paths.js";
+import type { CanonicalEntryMutation } from "@prompthub/core/canonical-entry-publication";
+import { publishSqliteEntries } from "@prompthub/core/sqlite-entry-publication";
+import { getRootDir } from "../runtime-paths.js";
 import {
   FolderDB,
   PromptDB,
   PromptOutputFormatDB,
   PromptRelationDB,
-  SkillDB,
-} from '@prompthub/db';
-import { decodeSkillFileSnapshot, hasEncodedSkillSnapshots, SKILL_SNAPSHOT_SYNC_VERSION } from '@prompthub/shared/utils/skill-file-snapshot';
+  SkillMetadataDB,
+} from "@prompthub/db";
+import {
+  decodeSkillFileSnapshot,
+  hasEncodedSkillSnapshots,
+  SKILL_SNAPSHOT_SYNC_VERSION,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   AgentAssetFilesSnapshot,
   AgentAssetStoreSourcesSnapshot,
@@ -23,31 +37,27 @@ import type {
   SkillFileSnapshot,
   SkillSafetyReport,
   SkillVersion,
-} from '@prompthub/shared';
-import { getServerDatabase } from '../database.js';
+} from "@prompthub/shared";
+import { getServerDatabase } from "../database.js";
 import {
   readAgentAssetsSnapshot,
   writeAgentAssetsSnapshotFromPayload,
-} from './agent-assets-sync.js';
-import { SettingsService } from './settings.service.js';
-import {
-  syncPromptWorkspaceFromDatabase,
-  validatePromptWorkspaceSnapshotPaths,
-} from './prompt-workspace.js';
+} from "./agent-assets-sync.js";
+import { SettingsService } from "./settings.service.js";
 import {
   exportRuleBackupRecords,
-  importRuleBackupRecords,
+  prepareRuleBackupImport,
   validateRuleWorkspaceSnapshotPaths,
-} from './rule-workspace.js';
+} from "./rule-workspace.js";
 import {
   collectSkillWorkspaceFiles,
-  syncSkillWorkspaceFromDatabase,
+  prepareWebSkillPackage,
   validateSkillWorkspaceSnapshotPaths,
-} from './skill-workspace.js';
+} from "./skill-workspace.js";
 
 export interface BackupActor {
   userId: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
 }
 
 export interface WebBackupPayload {
@@ -93,19 +103,19 @@ export interface BackupImportOptions {
 interface PromptRecordRow {
   id: string;
   owner_user_id: string | null;
-  visibility: 'private' | 'shared';
+  visibility: "private" | "shared";
 }
 
 interface FolderRecordRow {
   id: string;
   owner_user_id: string | null;
-  visibility: 'private' | 'shared';
+  visibility: "private" | "shared";
 }
 
 interface SkillRecordRow {
   id: string;
   owner_user_id: string | null;
-  visibility: 'private' | 'shared';
+  visibility: "private" | "shared";
 }
 
 interface DependencyImportStats {
@@ -119,7 +129,8 @@ export class BackupService {
   private readonly promptRelationDb = new PromptRelationDB(this.db);
   private readonly promptOutputFormatDb = new PromptOutputFormatDB(this.db);
   private readonly folderDb = new FolderDB(this.db);
-  private readonly skillDb = new SkillDB(this.db);
+  private readonly skillDb = new WebSkillStorage(this.db);
+  private readonly skillMetadata = new SkillMetadataDB(this.db);
   private readonly settingsService = new SettingsService();
 
   export(actor: BackupActor): WebBackupPayload {
@@ -152,7 +163,9 @@ export class BackupService {
     const agentAssets = readAgentAssetsSnapshot(actor.userId);
 
     return {
-      version: hasEncodedSkillSnapshots({ skillFiles, skillVersions }) ? SKILL_SNAPSHOT_SYNC_VERSION : 'web-backup-v2',
+      version: hasEncodedSkillSnapshots({ skillFiles, skillVersions })
+        ? SKILL_SNAPSHOT_SYNC_VERSION
+        : "web-backup-v2",
       exportedAt: new Date().toISOString(),
       prompts,
       promptVersions,
@@ -170,7 +183,10 @@ export class BackupService {
       storeSources: agentAssets.storeSources,
       agentAssetFiles: agentAssets.agentAssetFiles,
       settings,
-      settingsUpdatedAt: this.settingsService.getUpdatedAt(actor.userId),
+      // An untouched default snapshot predates every user edit without writing defaults on read.
+      settingsUpdatedAt:
+        this.settingsService.getUpdatedAt(actor.userId) ??
+        new Date(0).toISOString(),
     };
   }
 
@@ -179,15 +195,6 @@ export class BackupService {
     payload: WebBackupPayload,
     options?: BackupImportOptions,
   ): BackupImportResult {
-    const promptVersions =
-      payload.promptVersions.length > 0
-        ? payload.promptVersions
-        : (payload.versions ?? []);
-    validatePromptWorkspaceSnapshotPaths(
-      payload.folders,
-      payload.prompts,
-      promptVersions,
-    );
     validateSkillWorkspaceSnapshotPaths(
       payload.skills,
       payload.skillVersions,
@@ -195,94 +202,102 @@ export class BackupService {
     );
     validateRuleWorkspaceSnapshotPaths(actor.userId, payload.rules ?? []);
 
-    const result = this.db.transaction(() => {
-      let promptsImported = 0;
-      let foldersImported = 0;
-      const rulesImported = payload.rules?.length ?? 0;
-      let skillsImported = 0;
+    const skillPublication = this.prepareSkillImport(actor, payload);
+    const rulePublication = prepareRuleBackupImport(
+      actor.userId,
+      payload.rules ?? [],
+    );
+    let result: BackupImportResult | undefined;
+    publishSqliteEntries(this.db, {
+      rootPath: getRootDir(),
+      operationKey: "web-backup-import",
+      entries: [...rulePublication.entries, ...skillPublication.entries],
+      commit: () => {
+        let promptsImported = 0;
+        let foldersImported = 0;
+        const rulesImported = payload.rules?.length ?? 0;
+        let skillsImported = 0;
 
-      const folderDepths = this.buildFolderDepthMap(payload.folders);
-      const folders = [...payload.folders].sort(
-        (left, right) =>
-          (folderDepths.get(left.id) ?? 0) - (folderDepths.get(right.id) ?? 0),
-      );
+        const folderDepths = this.buildFolderDepthMap(payload.folders);
+        const folders = [...payload.folders].sort(
+          (left, right) =>
+            (folderDepths.get(left.id) ?? 0) -
+            (folderDepths.get(right.id) ?? 0),
+        );
 
-      for (const folder of folders) {
-        if (this.mergeFolder(actor, folder)) {
-          foldersImported += 1;
+        for (const folder of folders) {
+          if (this.mergeFolder(actor, folder)) {
+            foldersImported += 1;
+          }
         }
-      }
 
-      for (const prompt of payload.prompts) {
-        if (this.mergePrompt(actor, prompt)) {
-          promptsImported += 1;
+        for (const prompt of payload.prompts) {
+          if (this.mergePrompt(actor, prompt)) {
+            promptsImported += 1;
+          }
         }
-      }
 
-      this.mergePromptVersions(payload);
-      const promptRelations = this.mergePromptRelations(
-        actor,
-        payload.promptRelations ?? [],
-      );
-      const outputFormatItems = this.mergeOutputFormatItems(
-        actor,
-        payload.outputFormatItems ?? [],
-      );
+        this.mergePromptVersions(payload);
+        const promptRelations = this.mergePromptRelations(
+          actor,
+          payload.promptRelations ?? [],
+        );
+        const outputFormatItems = this.mergeOutputFormatItems(
+          actor,
+          payload.outputFormatItems ?? [],
+        );
 
-      for (const skill of payload.skills) {
-        if (this.mergeSkill(actor, skill)) {
+        for (const skill of skillPublication.skills) {
+          this.skillMetadata.insertSkillDirect(skill);
           skillsImported += 1;
         }
-      }
 
-      this.mergeSkillVersions(payload);
-      this.applyImportedSkillFileContent(payload);
+        this.mergeSkillVersions(skillPublication.skillVersions);
 
-      importRuleBackupRecords(actor.userId, payload.rules ?? []);
+        rulePublication.commit();
 
-      const settingsUpdated = this.mergeSettings(actor, payload, options);
+        const settingsUpdated = this.mergeSettings(actor, payload, options);
 
-      return {
-        promptsImported,
-        foldersImported,
-        rulesImported,
-        skillsImported,
-        ...(payload.promptRelations?.length
-          ? {
-              promptRelationsImported: promptRelations.imported,
-              promptRelationsSkipped: promptRelations.skipped,
-            }
-          : {}),
-        ...(payload.outputFormatItems?.length
-          ? {
-              outputFormatItemsImported: outputFormatItems.imported,
-              outputFormatItemsSkipped: outputFormatItems.skipped,
-            }
-          : {}),
-        mcpServersImported: payload.mcpLibrary?.servers.length ?? 0,
-        pluginsImported: payload.pluginLibrary?.plugins.length ?? 0,
-        settingsUpdated,
-      };
-    })();
-
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
-    syncSkillWorkspaceFromDatabase(this.db, this.skillDb, payload.skillFiles);
+        result = {
+          promptsImported,
+          foldersImported,
+          rulesImported,
+          skillsImported,
+          ...(payload.promptRelations?.length
+            ? {
+                promptRelationsImported: promptRelations.imported,
+                promptRelationsSkipped: promptRelations.skipped,
+              }
+            : {}),
+          ...(payload.outputFormatItems?.length
+            ? {
+                outputFormatItemsImported: outputFormatItems.imported,
+                outputFormatItemsSkipped: outputFormatItems.skipped,
+              }
+            : {}),
+          mcpServersImported: payload.mcpLibrary?.servers.length ?? 0,
+          pluginsImported: payload.pluginLibrary?.plugins.length ?? 0,
+          settingsUpdated,
+        };
+      },
+    });
     writeAgentAssetsSnapshotFromPayload(actor.userId, payload);
 
+    if (!result) throw new Error("Backup import did not produce a result");
     return result;
   }
 
   private listVisiblePrompts(actor: BackupActor): Prompt[] {
-    const includeShared = actor.role === 'admin';
+    const includeShared = actor.role === "admin";
     const rows = this.db
       .prepare(
-        'SELECT id, owner_user_id, visibility FROM prompts WHERE (owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?) ORDER BY updated_at DESC',
+        "SELECT id, owner_user_id, visibility FROM prompts WHERE (owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?) ORDER BY updated_at DESC",
       )
       .all(
         actor.userId,
-        'private',
+        "private",
         includeShared ? 1 : 0,
-        'shared',
+        "shared",
       ) as PromptRecordRow[];
 
     const prompts: Prompt[] = [];
@@ -306,16 +321,16 @@ export class BackupService {
   }
 
   private listVisibleFolders(actor: BackupActor): Folder[] {
-    const includeShared = actor.role === 'admin';
+    const includeShared = actor.role === "admin";
     const rows = this.db
       .prepare(
-        'SELECT id, owner_user_id, visibility FROM folders WHERE (owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?) ORDER BY sort_order ASC',
+        "SELECT id, owner_user_id, visibility FROM folders WHERE (owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?) ORDER BY sort_order ASC",
       )
       .all(
         actor.userId,
-        'private',
+        "private",
         includeShared ? 1 : 0,
-        'shared',
+        "shared",
       ) as FolderRecordRow[];
 
     const folders: Folder[] = [];
@@ -339,16 +354,16 @@ export class BackupService {
   }
 
   private listVisibleSkills(actor: BackupActor): Skill[] {
-    const includeShared = actor.role === 'admin';
+    const includeShared = actor.role === "admin";
     const rows = this.db
       .prepare(
-        'SELECT id, owner_user_id, visibility FROM skills WHERE (owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?) ORDER BY updated_at DESC',
+        "SELECT id, owner_user_id, visibility FROM skills WHERE (owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?) ORDER BY updated_at DESC",
       )
       .all(
         actor.userId,
-        'private',
+        "private",
         includeShared ? 1 : 0,
-        'shared',
+        "shared",
       ) as SkillRecordRow[];
 
     const skills: Skill[] = [];
@@ -407,12 +422,12 @@ export class BackupService {
 
   private resolveVisibility(
     actor: BackupActor,
-    visibility: 'private' | 'shared' | undefined,
-  ): 'private' | 'shared' {
-    if (visibility === 'shared' && actor.role === 'admin') {
-      return 'shared';
+    visibility: "private" | "shared" | undefined,
+  ): "private" | "shared" {
+    if (visibility === "shared" && actor.role === "admin") {
+      return "shared";
     }
-    return 'private';
+    return "private";
   }
 
   private shouldReplaceByTimestamp(
@@ -435,10 +450,10 @@ export class BackupService {
   }
 
   private toMillis(value: string | number | undefined): number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       return value;
     }
-    if (typeof value !== 'string' || !value.trim()) {
+    if (typeof value !== "string" || !value.trim()) {
       return null;
     }
     const parsed = Date.parse(value);
@@ -468,7 +483,7 @@ export class BackupService {
     });
     this.db
       .prepare(
-        'UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?',
+        "UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?",
       )
       .run(actor.userId, visibility, folder.id);
     return true;
@@ -496,7 +511,7 @@ export class BackupService {
     });
     this.db
       .prepare(
-        'UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?',
+        "UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?",
       )
       .run(actor.userId, visibility, prompt.id);
     return true;
@@ -514,7 +529,7 @@ export class BackupService {
 
       const existing = this.db
         .prepare(
-          'SELECT id, created_at FROM prompt_versions WHERE prompt_id = ? AND version = ?',
+          "SELECT id, created_at FROM prompt_versions WHERE prompt_id = ? AND version = ?",
         )
         .get(version.promptId, version.version) as
         | { id: string; created_at: number }
@@ -532,7 +547,7 @@ export class BackupService {
         }
         this.db
           .prepare(
-            'DELETE FROM prompt_versions WHERE prompt_id = ? AND version = ?',
+            "DELETE FROM prompt_versions WHERE prompt_id = ? AND version = ?",
           )
           .run(version.promptId, version.version);
       }
@@ -567,12 +582,12 @@ export class BackupService {
   }
 
   private canReadPrompt(actor: BackupActor, promptId: string): boolean {
-    const includeShared = actor.role === 'admin' ? 1 : 0;
+    const includeShared = actor.role === "admin" ? 1 : 0;
     const row = this.db
       .prepare(
-        'SELECT id FROM prompts WHERE id = ? AND ((owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?))',
+        "SELECT id FROM prompts WHERE id = ? AND ((owner_user_id = ? AND visibility = ?) OR (? = 1 AND visibility = ?))",
       )
-      .get(promptId, actor.userId, 'private', includeShared, 'shared') as
+      .get(promptId, actor.userId, "private", includeShared, "shared") as
       | { id: string }
       | undefined;
     return Boolean(row);
@@ -634,56 +649,89 @@ export class BackupService {
     return stats;
   }
 
-  private resolveSkillId(skill: Skill): string {
-    const exact = this.skillDb.getById(skill.id);
-    if (exact) {
-      return exact.id;
-    }
-
-    const byName = this.db
-      .prepare('SELECT id FROM skills WHERE LOWER(name) = LOWER(?)')
-      .get(skill.name) as { id?: string } | undefined;
-    return byName?.id ?? skill.id;
-  }
-
-  private mergeSkill(actor: BackupActor, skill: Skill): boolean {
-    const resolvedSkillId = this.resolveSkillId(skill);
-    const existing = this.skillDb.getById(resolvedSkillId);
-    if (
-      existing &&
-      !this.shouldReplaceByTimestamp(existing.updated_at, skill.updated_at)
-    ) {
-      return false;
-    }
-
-    const visibility = this.resolveVisibility(actor, skill.visibility);
-    this.skillDb.insertSkillDirect({
-      ...skill,
-      id: resolvedSkillId,
-      visibility,
-    });
-    this.db
-      .prepare(
-        'UPDATE skills SET owner_user_id = ?, visibility = ? WHERE id = ?',
+  private prepareSkillImport(
+    actor: BackupActor,
+    payload: WebBackupPayload,
+  ): {
+    skills: Skill[];
+    skillVersions: SkillVersion[];
+    entries: CanonicalEntryMutation[];
+  } {
+    const skills: Skill[] = [];
+    const entries: CanonicalEntryMutation[] = [];
+    const selected = new Set<string>();
+    for (const skill of payload.skills) {
+      const existing = this.skillDb.getById(skill.id);
+      if (
+        existing &&
+        !(existing.visibility === "shared"
+          ? actor.role === "admin"
+          : existing.ownerUserId === actor.userId)
       )
-      .run(actor.userId, visibility, resolvedSkillId);
-    return true;
+        throw new Error("Cannot restore Skill owned by another user");
+      if (
+        existing &&
+        !this.shouldReplaceByTimestamp(existing.updated_at, skill.updated_at)
+      )
+        continue;
+      const files = payload.skillFiles?.[skill.id];
+      const entrypoint = files?.find(
+        (file) => file.relativePath.toLowerCase() === "skill.md",
+      );
+      const content = entrypoint
+        ? new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+            decodeSkillFileSnapshot(entrypoint),
+          )
+        : (skill.instructions ?? skill.content);
+      const imported = {
+        ...skill,
+        content,
+        instructions: content,
+        ownerUserId: existing?.ownerUserId ?? actor.userId,
+        visibility: this.resolveVisibility(actor, skill.visibility),
+        local_repo_path: getWebSkillPackagePath(skill.id),
+      };
+      skills.push(imported);
+      selected.add(skill.id);
+      entries.push(prepareWebSkillPackage(imported, files, !existing));
+    }
+    const skillVersions = payload.skillVersions.filter((version) => {
+      if (!selected.has(version.skillId)) return false;
+      const existing = this.skillDb.getVersion(
+        version.skillId,
+        version.version,
+      );
+      if (
+        existing &&
+        !this.shouldReplaceByTimestamp(
+          this.toMillis(existing.createdAt) ?? undefined,
+          this.toMillis(version.createdAt) ?? undefined,
+        )
+      )
+        return false;
+      if (existing && existing.id !== version.id)
+        entries.push({
+          targetPath: getSkillVersionPayloadPath(
+            existing.skillId,
+            existing.id,
+            getSkillsDir(),
+          ),
+          delete: true,
+        });
+      entries.push(
+        skillVersionPayloadEntry(version, getSkillsDir(), getRootDir()),
+      );
+      return true;
+    });
+    return { skills, entries, skillVersions };
   }
 
-  private mergeSkillVersions(payload: WebBackupPayload): void {
-    const skillMap = new Map(payload.skills.map((skill) => [skill.id, skill]));
-    for (const version of payload.skillVersions) {
-      const sourceSkill = skillMap.get(version.skillId);
-      const resolvedSkillId = sourceSkill
-        ? this.resolveSkillId(sourceSkill)
-        : version.skillId;
-      if (!this.skillDb.getById(resolvedSkillId)) {
-        continue;
-      }
-
+  private mergeSkillVersions(versions: SkillVersion[]): void {
+    for (const version of versions) {
+      const resolvedSkillId = version.skillId;
       const existing = this.db
         .prepare(
-          'SELECT id, created_at FROM skill_versions WHERE skill_id = ? AND version = ?',
+          "SELECT id, created_at FROM skill_versions WHERE skill_id = ? AND version = ?",
         )
         .get(resolvedSkillId, version.version) as
         | { id: string; created_at: number }
@@ -701,12 +749,12 @@ export class BackupService {
         }
         this.db
           .prepare(
-            'DELETE FROM skill_versions WHERE skill_id = ? AND version = ?',
+            "DELETE FROM skill_versions WHERE skill_id = ? AND version = ?",
           )
           .run(resolvedSkillId, version.version);
       }
 
-      this.skillDb.insertVersionDirect({
+      this.skillMetadata.insertVersionDirect({
         ...version,
         skillId: resolvedSkillId,
       });
@@ -739,37 +787,6 @@ export class BackupService {
     return true;
   }
 
-  private applyImportedSkillFileContent(payload: WebBackupPayload): void {
-    if (!payload.skillFiles) {
-      return;
-    }
-
-    const skillMap = new Map(payload.skills.map((skill) => [skill.id, skill]));
-    for (const [skillId, files] of Object.entries(payload.skillFiles)) {
-      const sourceSkill = skillMap.get(skillId);
-      if (!sourceSkill) {
-        continue;
-      }
-
-      const resolvedSkillId = this.resolveSkillId(sourceSkill);
-      const resolvedSkill = this.skillDb.getById(resolvedSkillId);
-      if (!resolvedSkill) {
-        continue;
-      }
-
-      const primarySkillFile = files.find(
-        (file) => file.relativePath.toLowerCase() === 'skill.md',
-      );
-      if (primarySkillFile) {
-        const content = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(decodeSkillFileSnapshot(primarySkillFile));
-        this.skillDb.update(resolvedSkillId, {
-          content,
-          instructions: content,
-        });
-      }
-    }
-  }
-
   private cloneSafetyReport(report: SkillSafetyReport): SkillSafetyReport {
     return {
       ...report,
@@ -778,6 +795,6 @@ export class BackupService {
   }
 
   private normalizeIsoTimestamp(value: string | number): string {
-    return typeof value === 'number' ? new Date(value).toISOString() : value;
+    return typeof value === "number" ? new Date(value).toISOString() : value;
   }
 }

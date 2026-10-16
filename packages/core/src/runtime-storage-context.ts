@@ -342,11 +342,12 @@ function buildContext(
   layoutEpoch: RuntimeLayoutEpoch,
   rootIdentity: string,
   resolutionReason: StorageResolutionReason,
+  identityRoot: string,
 ): RuntimeStorageContext {
   const dataPath = path.join(activeRoot, "data");
   const canonical = layoutEpoch === CURRENT_LAYOUT_EPOCH;
   const assetsPath = path.join(dataPath, "assets");
-  const authority = readCanonicalStorageAuthority(activeRoot);
+  const authority = readCanonicalStorageAuthority(activeRoot, { identityRoot });
   return Object.freeze({
     activeRoot,
     rootIdentity,
@@ -385,11 +386,13 @@ function buildContext(
 
 export function resolveRuntimeStorageContext(
   rootPath: string,
+  options: { identityRoot?: string } = {},
 ): RuntimeStorageContext {
   const activeRoot = path.resolve(rootPath);
+  const identityRoot = path.resolve(options.identityRoot ?? activeRoot);
   const state = readRuntimeLayoutState(activeRoot);
   if (state) {
-    const expectedRootIdentity = deriveStorageRootIdentity(activeRoot);
+    const expectedRootIdentity = deriveStorageRootIdentity(identityRoot);
     if (state.rootIdentity !== expectedRootIdentity) {
       throw new Error(
         `PromptHub storage layout root identity mismatch: ${activeRoot}`,
@@ -400,6 +403,7 @@ export function resolveRuntimeStorageContext(
       state.layoutEpoch as RuntimeLayoutEpoch,
       state.rootIdentity,
       "layout-state",
+      identityRoot,
     );
   }
 
@@ -407,8 +411,9 @@ export function resolveRuntimeStorageContext(
   return buildContext(
     activeRoot,
     inferred.epoch,
-    deriveStorageRootIdentity(activeRoot),
+    deriveStorageRootIdentity(identityRoot),
     inferred.reason,
+    identityRoot,
   );
 }
 

@@ -25,6 +25,32 @@ const LEGACY_KEYS = {
 
 let initialized = false;
 let subscriptions: Array<() => void> = [];
+let flushSettings: (() => void) | null = null;
+let hydratingSources = false;
+const pendingWrites = new Set<Promise<unknown>>();
+const failedWrites = new Map<string, unknown>();
+
+function trackCanonicalWrite(key: string, write: Promise<unknown>): void {
+  pendingWrites.add(write);
+  void write
+    .then(
+      () => failedWrites.delete(key),
+      (error) => {
+        failedWrites.set(key, error);
+        console.warn(`Failed to persist canonical ${key}:`, error);
+      },
+    )
+    .finally(() => pendingWrites.delete(write));
+}
+
+export async function flushRendererPersistence(): Promise<void> {
+  flushSettings?.();
+  await Promise.all([...pendingWrites]);
+  if (failedWrites.size)
+    throw new Error(
+      "Canonical renderer persistence has an unresolved write failure",
+    );
+}
 
 function readStorageValue(storage: Storage, key: string): string | undefined {
   const value = storage.getItem(key);
@@ -93,6 +119,16 @@ function redactLegacyRendererPersistence(
   for (const key of result.redactLegacyKeys) storage.removeItem(key);
 }
 
+export async function refreshCanonicalSources(): Promise<void> {
+  const state = await window.api.settings.rendererPersistence.get();
+  hydratingSources = true;
+  try {
+    applyCanonicalSources(state);
+  } finally {
+    hydratingSources = false;
+  }
+}
+
 function applyCanonicalSources(state: RendererHydratedState): void {
   useSkillStore.setState({
     customStoreSources: state.marketplaceSources.skill,
@@ -108,6 +144,7 @@ function extractSettingsState(): Record<string, unknown> {
     Object.entries(useSettingsStore.getState()).filter(
       ([key, value]) =>
         typeof value !== "function" &&
+        value !== undefined &&
         !AGENT_SETTING_KEYS.some((agentKey) => agentKey === key) &&
         !PROMPT_WORKSPACE_PREFERENCE_KEYS.some(
           (preferenceKey) => preferenceKey === key,
@@ -126,10 +163,9 @@ function subscribeCanonicalSettings(): () => void {
     const next = pending;
     pending = null;
     if (!next) return;
-    void api.replaceSettings(next).catch((error: unknown) => {
-      console.warn("Failed to persist canonical renderer settings:", error);
-    });
+    trackCanonicalWrite("settings", api.replaceSettings(next));
   };
+  flushSettings = flush;
   return useSettingsStore.subscribe(() => {
     const next = extractSettingsState();
     const serialized = JSON.stringify(next);
@@ -155,9 +191,11 @@ function subscribeCanonicalSources(
     const serialized = JSON.stringify(sources);
     if (serialized === previous) return;
     previous = serialized;
-    void api.replaceSources(domain, sources).catch((error: unknown) => {
-      console.warn(`Failed to persist canonical ${domain} sources:`, error);
-    });
+    if (hydratingSources) return;
+    trackCanonicalWrite(
+      `${domain} sources`,
+      api.replaceSources(domain, sources),
+    );
   });
 }
 
@@ -246,4 +284,7 @@ export async function migrateRendererPersistence(): Promise<void> {
 export function resetRendererPersistenceForTests(): void {
   for (const unsubscribe of subscriptions.splice(0)) unsubscribe();
   initialized = false;
+  flushSettings = null;
+  pendingWrites.clear();
+  failedWrites.clear();
 }

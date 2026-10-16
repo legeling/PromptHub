@@ -3,9 +3,17 @@ import fs from "node:fs";
 import path from "node:path";
 
 const JOURNAL_KIND = "prompthub-canonical-entry-publication";
-const JOURNAL_VERSION = 2;
+const JOURNAL_VERSION = 3;
 const OPERATION_KEY_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/u;
 const activePublications = new Set<string>();
+const LEGACY_SQL_COMMIT_OPERATIONS = new Set([
+  "prompt-sqlite-v1",
+  "prompt-workspace-v1",
+  "web-prompt-workspace-v1",
+  "agent-provider-sqlite-v1",
+  "agent-settings-v1",
+  "rule-history-v1",
+]);
 
 interface JournalEntry {
   targetPath: string;
@@ -18,7 +26,7 @@ interface JournalEntry {
 
 interface CanonicalEntryPublicationJournal {
   kind: typeof JOURNAL_KIND;
-  version: 1 | typeof JOURNAL_VERSION;
+  version: 1 | 2 | typeof JOURNAL_VERSION;
   operationKey: string;
   operationId: string;
   rootPath: string;
@@ -26,7 +34,14 @@ interface CanonicalEntryPublicationJournal {
   ownerPid?: number;
   entries: JournalEntry[];
   createdAt: string;
+  sqliteDatabasePath?: string;
 }
+
+export type ResolveSqlitePublicationCommit = (
+  databasePath: string,
+  operationKey: string,
+  operationId: string,
+) => boolean;
 
 export interface CanonicalEntryMutation {
   targetPath: string;
@@ -38,8 +53,15 @@ export interface PublishCanonicalEntriesOptions {
   rootPath: string;
   operationKey: string;
   entries: readonly CanonicalEntryMutation[];
+  /** Runs after staging, before the journal permits any target replacement. */
+  beforePublish?: () => void;
   verify?: () => void;
   commit?: () => void;
+  sqliteCommit?: {
+    databasePath: string;
+    commit: (operationId: string) => void;
+    resolve: (operationId: string) => boolean;
+  };
   /** Projection work: failure here must never roll back committed files. */
   afterCommit?: () => void;
   injectFailure?: (targetPath: string) => void;
@@ -119,7 +141,7 @@ function assertOwnedPath(rootPath: string, candidatePath: string): string {
   return candidate;
 }
 
-function flushDirectory(directoryPath: string): void {
+export function flushDirectory(directoryPath: string): void {
   let descriptor: number | null = null;
   try {
     descriptor = fs.openSync(directoryPath, "r");
@@ -136,6 +158,7 @@ function flushDirectory(directoryPath: string): void {
     if (descriptor !== null) fs.closeSync(descriptor);
   }
 }
+
 
 function journalPath(rootPath: string, operationKey: string): string {
   assertOperationKey(operationKey);
@@ -202,17 +225,19 @@ function parseJournal(
   if (
     !isRecord(value) ||
     value.kind !== JOURNAL_KIND ||
-    (value.version !== 1 && value.version !== JOURNAL_VERSION) ||
+    (value.version !== 1 &&
+      value.version !== 2 &&
+      value.version !== JOURNAL_VERSION) ||
     value.operationKey !== operationKey ||
     typeof value.operationId !== "string" ||
     !/^[a-f0-9-]{36}$/u.test(value.operationId) ||
     value.rootPath !== root ||
     (value.state !== "prepared" &&
       !(
-        value.version === JOURNAL_VERSION &&
+        value.version !== 1 &&
         (value.state === "committed" || value.state === "preparing")
       )) ||
-    (value.version === JOURNAL_VERSION &&
+    (value.version !== 1 &&
       (!Number.isSafeInteger(value.ownerPid) || Number(value.ownerPid) <= 0)) ||
     !Array.isArray(value.entries) ||
     value.entries.length === 0 ||
@@ -220,6 +245,18 @@ function parseJournal(
     typeof value.createdAt !== "string"
   ) {
     throw new Error("Canonical entry publication journal is invalid");
+  }
+  if (value.sqliteDatabasePath !== undefined) {
+    if (
+      value.version !== JOURNAL_VERSION ||
+      typeof value.sqliteDatabasePath !== "string"
+    )
+      throw new Error("Canonical SQLite publication journal is invalid");
+    if (
+      assertOwnedPath(root, value.sqliteDatabasePath) !==
+      value.sqliteDatabasePath
+    )
+      throw new Error("Canonical SQLite publication database path is invalid");
   }
   const entries = value.entries.map((raw): JournalEntry => {
     if (
@@ -255,7 +292,7 @@ function parseJournal(
       throw new Error("Canonical entry publication journal action is invalid");
     }
     if (
-      value.version === JOURNAL_VERSION &&
+      value.version !== 1 &&
       value.state !== "preparing" &&
       (typeof raw.afterHash !== "string" ||
         (raw.delete
@@ -394,6 +431,13 @@ function verifyPublishedEntries(
   }
 }
 
+function flushEntryParent(entry: JournalEntry): void {
+  const directory = path.dirname(entry.targetPath);
+  // Deleting an already absent entry changes no directory when its parent never existed.
+  if (entry.delete && !entry.hadPrior && !fs.existsSync(directory)) return;
+  flushDirectory(directory);
+}
+
 function cleanupCommitted(
   filePath: string,
   journal: CanonicalEntryPublicationJournal,
@@ -402,7 +446,7 @@ function cleanupCommitted(
   for (const entry of journal.entries) {
     removePath(entry.priorPath);
     if (entry.stagePath) removePath(entry.stagePath);
-    flushDirectory(path.dirname(entry.targetPath));
+    flushEntryParent(entry);
   }
   fs.rmSync(filePath, { force: true });
   flushDirectory(path.dirname(filePath));
@@ -439,7 +483,7 @@ function rollback(
     }
     if (entry.stagePath) removePath(entry.stagePath);
     removePath(entry.priorPath);
-    flushDirectory(path.dirname(entry.targetPath));
+    flushEntryParent(entry);
   }
   fs.rmSync(filePath, { force: true });
   flushDirectory(path.dirname(filePath));
@@ -448,6 +492,7 @@ function rollback(
 export function recoverCanonicalEntryPublication(
   rootPath: string,
   operationKey: string,
+  resolveSqliteCommit?: ResolveSqlitePublicationCommit,
 ): "none" | "rolled-back" | "committed" {
   const activeKey = `${path.resolve(rootPath)}\u0000${operationKey}`;
   if (activePublications.has(activeKey)) return "none";
@@ -462,7 +507,27 @@ export function recoverCanonicalEntryPublication(
       if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
     }
   }
-  if (journal.state === "committed") {
+  let sqliteCommitted = false;
+  if (
+    journal.version === 2 &&
+    journal.state === "prepared" &&
+    LEGACY_SQL_COMMIT_OPERATIONS.has(operationKey)
+  )
+    throw new Error(
+      "Historical SQLite publication has no provable commit receipt; explicit recovery is required",
+    );
+  if (journal.sqliteDatabasePath && journal.state !== "preparing") {
+    if (!resolveSqliteCommit)
+      throw new Error("SQLite publication recovery requires a commit resolver");
+    sqliteCommitted = resolveSqliteCommit(
+      journal.sqliteDatabasePath,
+      operationKey,
+      journal.operationId,
+    );
+    if (journal.state === "committed" && !sqliteCommitted)
+      throw new Error("SQLite publication commit receipt is missing");
+  }
+  if (journal.state === "committed" || sqliteCommitted) {
     cleanupCommitted(filePath, journal);
     return "committed";
   }
@@ -470,7 +535,10 @@ export function recoverCanonicalEntryPublication(
   return "rolled-back";
 }
 
-export function recoverCanonicalEntryPublications(rootPath: string): Array<{
+export function recoverCanonicalEntryPublications(
+  rootPath: string,
+  resolveSqliteCommit?: ResolveSqlitePublicationCommit,
+): Array<{
   operationKey: string;
   status: "none" | "rolled-back" | "committed";
 }> {
@@ -489,7 +557,11 @@ export function recoverCanonicalEntryPublications(rootPath: string): Array<{
   }
   return keys.sort().map((operationKey) => ({
     operationKey,
-    status: recoverCanonicalEntryPublication(rootPath, operationKey),
+    status: recoverCanonicalEntryPublication(
+      rootPath,
+      operationKey,
+      resolveSqliteCommit,
+    ),
   }));
 }
 
@@ -498,6 +570,11 @@ export function publishCanonicalEntries(
 ): CanonicalEntryPublicationResult {
   const rootPath = path.resolve(options.rootPath);
   assertOperationKey(options.operationKey);
+  if (options.commit && options.sqliteCommit)
+    throw new Error("Canonical publication has two commit owners");
+  const sqliteDatabasePath = options.sqliteCommit
+    ? assertOwnedPath(rootPath, options.sqliteCommit.databasePath)
+    : undefined;
   if (options.entries.length === 0)
     return { status: "unchanged", cleanupPending: false };
   if (options.entries.length > 20_000)
@@ -506,10 +583,31 @@ export function publishCanonicalEntries(
   if (activePublications.has(activeKey)) {
     throw new Error("Canonical entry publication is already active");
   }
-  recoverCanonicalEntryPublication(rootPath, options.operationKey);
+  recoverCanonicalEntryPublication(
+    rootPath,
+    options.operationKey,
+    options.sqliteCommit
+      ? (databasePath, _key, id) => {
+          if (databasePath !== sqliteDatabasePath)
+            throw new Error(
+              "SQLite publication recovery database path mismatch",
+            );
+          return options.sqliteCommit!.resolve(id);
+        }
+      : undefined,
+  );
   const operationId = crypto.randomUUID();
   const entries = options.entries.map((entry): JournalEntry => {
     const targetPath = assertOwnedPath(rootPath, entry.targetPath);
+    if (
+      sqliteDatabasePath &&
+      (targetPath === sqliteDatabasePath ||
+        sqliteDatabasePath.startsWith(`${targetPath}${path.sep}`) ||
+        ["-journal", "-wal", "-shm"].some(
+          (suffix) => targetPath === `${sqliteDatabasePath}${suffix}`,
+        ))
+    )
+      throw new Error("SQLite publication cannot replace its commit database");
     if (fs.existsSync(targetPath)) {
       const stat = fs.lstatSync(targetPath);
       if (stat.isSymbolicLink() || (!stat.isFile() && !stat.isDirectory()))
@@ -561,6 +659,7 @@ export function publishCanonicalEntries(
   let journalWritten = false;
   let committed = false;
   let commitDecisionStarted = false;
+  let sqliteCommitAttempted = false;
   try {
     const preparingJournal: CanonicalEntryPublicationJournal = {
       kind: JOURNAL_KIND,
@@ -572,6 +671,7 @@ export function publishCanonicalEntries(
       ownerPid: process.pid,
       entries,
       createdAt: new Date().toISOString(),
+      sqliteDatabasePath,
     };
     writeJournal(filePath, preparingJournal);
     journalWritten = true;
@@ -588,6 +688,7 @@ export function publishCanonicalEntries(
       }
       entry.afterHash = entryHash(entry.stagePath, true);
     }
+    options.beforePublish?.();
     const journal: CanonicalEntryPublicationJournal = {
       kind: JOURNAL_KIND,
       version: JOURNAL_VERSION,
@@ -601,17 +702,22 @@ export function publishCanonicalEntries(
         afterHash: entry.afterHash ?? "deleted",
       })),
       createdAt: new Date().toISOString(),
+      sqliteDatabasePath,
     };
     writeJournal(filePath, journal, true);
     for (const entry of entries) {
       options.injectFailure?.(entry.targetPath);
       if (entry.hadPrior) fs.renameSync(entry.targetPath, entry.priorPath);
       if (entry.stagePath) fs.renameSync(entry.stagePath, entry.targetPath);
-      flushDirectory(path.dirname(entry.targetPath));
+      flushEntryParent(entry);
     }
     options.verify?.();
     verifyPublishedEntries(journal);
     options.commit?.();
+    if (options.sqliteCommit) {
+      sqliteCommitAttempted = true;
+      options.sqliteCommit.commit(operationId);
+    }
     const committedJournal = { ...journal, state: "committed" as const };
     commitDecisionStarted = true;
     writeJournal(filePath, committedJournal, true);
@@ -626,6 +732,15 @@ export function publishCanonicalEntries(
     return { status: "committed", operationId, cleanupPending };
   } catch (error) {
     if (committed) throw new CanonicalPostCommitError(operationId, error);
+    if (sqliteCommitAttempted && options.sqliteCommit) {
+      try {
+        if (options.sqliteCommit.resolve(operationId))
+          commitDecisionStarted = true;
+      } catch {
+        // Unreadable SQLite cannot prove rollback; retain journal and both file generations.
+        commitDecisionStarted = true;
+      }
+    }
     if (commitDecisionStarted)
       throw new CanonicalCommitOutcomeUnknownError(operationId, error);
     if (journalWritten) {

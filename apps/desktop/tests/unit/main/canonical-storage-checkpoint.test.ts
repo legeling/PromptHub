@@ -95,7 +95,7 @@ describe("canonical storage checkpoint", () => {
     const result = await createCanonicalStorageCheckpoint({
       database,
       targetPath,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: mcpLibrary("secret-value"),
       plugins: [],
       pluginVersions: new Map(),
@@ -144,7 +144,7 @@ describe("canonical storage checkpoint", () => {
       createCanonicalStorageCheckpoint({
         database,
         targetPath,
-        readRules: async () => [],
+        readRules: () => [],
         mcpLibrary: mcpLibrary("unmigrated-secret"),
         plugins: [],
         pluginVersions: new Map(),
@@ -158,7 +158,7 @@ describe("canonical storage checkpoint", () => {
       createCanonicalStorageCheckpoint({
         database,
         targetPath,
-        readRules: async () => [],
+        readRules: () => [],
         mcpLibrary: { ...mcpLibrary("ignored"), servers: [] },
         plugins: [],
         pluginVersions: new Map(),
@@ -187,7 +187,7 @@ describe("canonical storage checkpoint", () => {
       activeRoot: root,
       sourceDatabasePath,
       targetPath,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: {
         kind: "prompthub-mcp-library" as const,
         version: 1 as const,
@@ -260,7 +260,7 @@ describe("canonical storage checkpoint", () => {
     await createCanonicalStorageCheckpoint({
       ...input,
       targetPath: longTargetPath,
-      readRules: async () => [],
+      readRules: () => [],
       mcpLibrary: mcpLibrary("secret-value"),
       plugins: [],
       pluginVersions: new Map(),

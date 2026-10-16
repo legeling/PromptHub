@@ -9,7 +9,7 @@ import {
   readSkillFileSnapshots,
   replaceSkillFileSnapshots,
 } from "../../skills/file-snapshot";
-import { mutateCanonicalSkillPackage } from "../../skills/canonical-package-mutation";
+import { mutateSkillPackage } from "../../skills/package-mutation";
 import { withSkillSnapshotEntrypoint } from "@prompthub/shared/utils/skill-file-snapshot";
 
 import type { SkillDB } from "@prompthub/db";
@@ -70,8 +70,6 @@ import {
   installFromSkillContent,
   markNameConflicts,
   readManifest,
-  saveContent,
-  saveRepo,
   linkRepoToTarget,
   type FetchLike,
 } from "./install";
@@ -110,56 +108,16 @@ export function createCliSkillService(
   ): Promise<string | null> {
     const skill = await resolveSkill(skillDb, skillId);
 
-    if (
-      skill.local_repo_path &&
-      (await isManagedRepoPath(skill.local_repo_path))
-    ) {
-      return skill.local_repo_path;
+    if (!skill.local_repo_path) return null;
+    try {
+      return (await fs.stat(skill.local_repo_path)).isDirectory()
+        ? skill.local_repo_path
+        : null;
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT")
+        return null;
+      throw error;
     }
-
-    if (skill.local_repo_path) {
-      try {
-        const stat = await fs.stat(skill.local_repo_path);
-        if (stat.isDirectory()) {
-          const saved = await saveRepo(skill.name, skill.local_repo_path);
-          const directoryFingerprint =
-            await computeRepoDirectoryFingerprintByPath(saved);
-          if (saved !== skill.local_repo_path) {
-            skillDb.update(skill.id, {
-              local_repo_path: saved,
-              ...buildCliFingerprintFields(directoryFingerprint),
-            });
-          } else {
-            skillDb.update(skill.id, {
-              ...buildCliFingerprintFields(directoryFingerprint),
-            });
-          }
-          return saved;
-        }
-      } catch {
-        // fall through to content bootstrap
-      }
-    }
-
-    const content = skill.instructions || skill.content || "";
-    if (!content.trim()) {
-      return null;
-    }
-
-    const saved = await saveContent(skill.name, content);
-    const directoryFingerprint =
-      await computeRepoDirectoryFingerprintByPath(saved);
-    if (saved !== skill.local_repo_path) {
-      skillDb.update(skill.id, {
-        local_repo_path: saved,
-        ...buildCliFingerprintFields(directoryFingerprint),
-      });
-    } else {
-      skillDb.update(skill.id, {
-        ...buildCliFingerprintFields(directoryFingerprint),
-      });
-    }
-    return saved;
   }
 
   async function getRepoPathForSkillName(
@@ -262,7 +220,14 @@ export function createCliSkillService(
     relativePath: string,
     content: string,
   ): Promise<void> {
-    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "write", relativePath, content })) return;
+    if (
+      await mutateSkillPackage(skillDb, skillId, {
+        kind: "write",
+        relativePath,
+        content,
+      })
+    )
+      return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     const { fullPath } = await resolveRepoTargetPath(repoPath, relativePath, {
       ensureBaseExists: true,
@@ -277,7 +242,13 @@ export function createCliSkillService(
     skillId: string,
     relativePath: string,
   ): Promise<void> {
-    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "delete", relativePath })) return;
+    if (
+      await mutateSkillPackage(skillDb, skillId, {
+        kind: "delete",
+        relativePath,
+      })
+    )
+      return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     const { fullPath } = await resolveRepoTargetPath(repoPath, relativePath, {
       ensureBaseExists: false,
@@ -305,7 +276,14 @@ export function createCliSkillService(
     oldRelativePath: string,
     newRelativePath: string,
   ): Promise<void> {
-    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "rename", relativePath: oldRelativePath, newRelativePath })) return;
+    if (
+      await mutateSkillPackage(skillDb, skillId, {
+        kind: "rename",
+        relativePath: oldRelativePath,
+        newRelativePath,
+      })
+    )
+      return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     const { fullPath: oldFullPath } = await resolveRepoTargetPath(
       repoPath,
@@ -331,8 +309,17 @@ export function createCliSkillService(
       return;
     }
     const skill = await resolveSkill(skillDb, skillId);
-    filesSnapshot = withSkillSnapshotEntrypoint(filesSnapshot, entrypointContent ?? skill.content ?? skill.instructions ?? "");
-    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "replace", files: filesSnapshot })) return;
+    filesSnapshot = withSkillSnapshotEntrypoint(
+      filesSnapshot,
+      entrypointContent ?? skill.content ?? skill.instructions ?? "",
+    );
+    if (
+      await mutateSkillPackage(skillDb, skillId, {
+        kind: "replace",
+        files: filesSnapshot,
+      })
+    )
+      return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     await replaceSkillFileSnapshots(repoPath, filesSnapshot);
   }
@@ -374,7 +361,12 @@ export function createCliSkillService(
       currentFilesSnapshot,
       skill,
     );
-    await replaceRepoFiles(skillDb, skill.id, targetVersion.filesSnapshot, targetVersion.content);
+    await replaceRepoFiles(
+      skillDb,
+      skill.id,
+      targetVersion.filesSnapshot,
+      targetVersion.content,
+    );
     const updatedSkill = skillDb.update(skill.id, {
       content: targetVersion.content,
       instructions: targetVersion.content,
@@ -528,13 +520,13 @@ export function createCliSkillService(
   async function installSkillMd(
     skillDb: SkillDB,
     skillName: string,
-    skillMdContent: string,
+    _skillMdContent: string,
     platformId: string,
     skillId?: string,
   ): Promise<void> {
-    const canonicalRepoPath =
-      (await getRepoPathForSkillName(skillDb, skillName)) ??
-      (await saveContent(skillName, skillMdContent));
+    const canonicalRepoPath = await getRepoPathForSkillName(skillDb, skillName);
+    if (!canonicalRepoPath)
+      throw new Error(`Skill package is missing: ${skillName}`);
     if (platformId === SHARED_AGENT_SKILLS_TARGET_ID) {
       await sharedSkillDistributionService.install({
         skillId: skillId ?? skillName,

@@ -1,3 +1,5 @@
+import { SkillStorageDB as SkillDB } from "@prompthub/core/skill-storage";
+import { collectGenerationResources } from "@prompthub/core/generation-storage";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -9,10 +11,8 @@ import {
   copyMcpHistoricalContents,
   exportMcpStorageSnapshot,
   MCP_STORAGE_SNAPSHOT_FILE,
-  CorePluginLibraryService,
   collectPromptCanonicalGraph,
-  getGeneratedImagesDir,
-  getGenerationsDir,
+  getUserDataPath,
   getImagesDir,
   getVideosDir,
   materializeCanonicalStorageShadow,
@@ -20,23 +20,24 @@ import {
   ruleGroupForKnownId,
   stageCanonicalStorageDatabase,
   type CanonicalGenerationShadowInput,
+  type CanonicalAgentProviderShadowInput,
   type CanonicalPluginShadowInput,
   type CanonicalSkillShadowInput,
   type MaterializeCanonicalStorageShadowResult,
   type StageCanonicalStorageDatabaseResult,
 } from "@prompthub/core";
+import { PluginStorage } from "@prompthub/core/plugin-storage";
 import {
   AgentProviderProfileDB,
+  SkillDB as LegacySkillDB,
   FolderDB,
   PromptDB,
   McpDB,
   RuleDB,
-  SkillDB,
   cleanupOwnedTemporaryDatabase,
   createOwnedTemporaryDatabasePath,
 } from "@prompthub/db";
 import type {
-  GenerationBatchManifest,
   McpLibraryFile,
   PluginLibraryEntry,
   PluginVersion,
@@ -47,11 +48,8 @@ import type DatabaseAdapter from "../database/sqlite";
 
 const MAX_PACKAGE_FILES = 20_000;
 const MAX_PACKAGE_BYTES = 10 * 1024 * 1024 * 1024;
-const MAX_GENERATION_BATCHES = 10_000;
 const MAX_DOMAIN_RESOURCES = 100_000;
-const MAX_GENERATION_MANIFEST_BYTES = 16 * 1024 * 1024;
 const MAX_RULE_FILE_BYTES = 16 * 1024 * 1024;
-const GENERATION_BATCH_ID_PATTERN = /^[0-9a-f-]{36}$/u;
 const IGNORED_PACKAGE_DIRECTORIES = new Set([
   ".git",
   ".package-lifecycle",
@@ -64,7 +62,7 @@ const IGNORED_PACKAGE_DIRECTORIES = new Set([
 export interface CanonicalStorageProjectorOptions {
   database: DatabaseAdapter.Database;
   targetPath: string;
-  readRules?: () => Promise<RuleFileContent[]>;
+  readRules?: () => RuleFileContent[];
   skills?: readonly CanonicalSkillShadowInput[];
   mcpLibrary?: McpLibraryFile;
   mcpResourceBundles?: readonly string[];
@@ -73,6 +71,7 @@ export interface CanonicalStorageProjectorOptions {
   plugins?: readonly PluginLibraryEntry[];
   pluginVersions?: ReadonlyMap<string, readonly PluginVersion[]>;
   generations?: readonly CanonicalGenerationShadowInput[];
+  agentProviders?: readonly CanonicalAgentProviderShadowInput[];
   deviceId?: string;
   operationalSourceDatabasePath?: string;
   publishedCanonicalRootPath?: string;
@@ -160,7 +159,14 @@ function collectPackageFiles(rootPath: string): Array<{
 function collectSkills(
   database: DatabaseAdapter.Database,
 ): CanonicalSkillShadowInput[] {
-  const skillDb = new SkillDB(database);
+  // Bootstrap projection can precede payload migration; current profiles use only the file owner.
+  const migrated = database.get(
+    "SELECT name FROM schema_migrations WHERE name = ?",
+    "skill-payload-files-v1",
+  );
+  const skillDb = migrated
+    ? new SkillDB(database)
+    : new LegacySkillDB(database);
   const skills = skillDb.getAll();
   if (skills.length > MAX_DOMAIN_RESOURCES) {
     throw new Error("Canonical Skill inventory exceeds bounded scan limits");
@@ -200,11 +206,9 @@ function readRequiredRuleFile(filePath: string): string {
   return content;
 }
 
-function hasRuleContent(content: string | undefined): boolean {
-  return content !== undefined && content.trim().length > 0;
-}
-
-function collectRules(database: DatabaseAdapter.Database): RuleFileContent[] {
+export function collectPortableRules(
+  database: DatabaseAdapter.Database,
+): RuleFileContent[] {
   const ruleDb = new RuleDB(database);
   const records = ruleDb.getAll();
   if (records.length > MAX_DOMAIN_RESOURCES) {
@@ -214,15 +218,14 @@ function collectRules(database: DatabaseAdapter.Database): RuleFileContent[] {
   const rules: RuleFileContent[] = [];
   for (const record of records) {
     const managedContent = readOptionalRuleFile(record.managedPath);
-    const targetContent = readOptionalRuleFile(record.targetPath);
     const versions = ruleDb
       .getVersions(record.id)
       .sort((left, right) => left.version - right.version);
     const isUnmaterializedPlaceholder =
       record.syncStatus === "target-missing" &&
       record.currentVersion === 0 &&
-      !hasRuleContent(managedContent) &&
-      !hasRuleContent(targetContent) &&
+      record.scope === "global" &&
+      managedContent === undefined &&
       versions.length === 0;
     if (isUnmaterializedPlaceholder) continue;
     versionCount += versions.length;
@@ -252,12 +255,7 @@ function collectRules(database: DatabaseAdapter.Database): RuleFileContent[] {
           ? "workspace"
           : ruleGroupForKnownId(record.id),
       syncStatus: record.syncStatus,
-      content:
-        managedContent ??
-        (record.syncStatus !== "target-missing" ? targetContent : undefined) ??
-        "",
-      targetContent:
-        record.syncStatus === "out-of-sync" ? targetContent : undefined,
+      content: managedContent ?? readRequiredRuleFile(record.managedPath),
       versions: versions.map((version) => ({
         id: version.id,
         savedAt: version.createdAt,
@@ -294,72 +292,6 @@ function collectPlugins(
   });
 }
 
-function readGenerationManifest(manifestPath: string): GenerationBatchManifest {
-  const stats = fs.lstatSync(manifestPath);
-  if (
-    !stats.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.size > MAX_GENERATION_MANIFEST_BYTES
-  ) {
-    throw new Error(
-      `Canonical generation manifest is invalid: ${manifestPath}`,
-    );
-  }
-  return JSON.parse(
-    fs.readFileSync(manifestPath, "utf8"),
-  ) as GenerationBatchManifest;
-}
-
-function collectGenerations(): CanonicalGenerationShadowInput[] {
-  const rootPath = getGenerationsDir();
-  if (!fs.existsSync(rootPath)) return [];
-  const rootStats = fs.lstatSync(rootPath);
-  if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
-    throw new Error(`Canonical generation root is invalid: ${rootPath}`);
-  }
-  const batchDirectories = fs
-    .readdirSync(rootPath, { withFileTypes: true })
-    .filter((entry) => {
-      if (entry.name === "assets" && entry.isDirectory()) return false;
-      if (
-        !entry.isDirectory() ||
-        entry.isSymbolicLink() ||
-        !GENERATION_BATCH_ID_PATTERN.test(entry.name)
-      ) {
-        throw new Error(
-          `Canonical generation root contains an invalid entry: ${entry.name}`,
-        );
-      }
-      return true;
-    })
-    .sort((left, right) => compareText(left.name, right.name));
-  if (batchDirectories.length > MAX_GENERATION_BATCHES) {
-    throw new Error(
-      "Canonical generation inventory exceeds bounded scan limits",
-    );
-  }
-  return batchDirectories.map((entry) => {
-    const manifest = readGenerationManifest(
-      path.join(rootPath, entry.name, "batch.json"),
-    );
-    const outputSources = Object.fromEntries(
-      manifest.slots.flatMap((slot) => {
-        const fileName = slot.output?.fileName;
-        if (!fileName) return [];
-        if (path.basename(fileName) !== fileName || /[\\/\0]/u.test(fileName)) {
-          throw new Error(
-            `Canonical generation output path is unsafe: ${fileName}`,
-          );
-        }
-        return [
-          [fileName, path.join(getGeneratedImagesDir(), manifest.id, fileName)],
-        ];
-      }),
-    );
-    return { manifest, outputSources };
-  });
-}
-
 function resolveDefaultPromptMediaSource(
   _prompt: unknown,
   kind: "image" | "video",
@@ -374,27 +306,40 @@ function resolveDefaultPromptMediaSource(
 function assertProjectionCounts(
   materialized: MaterializeCanonicalStorageShadowResult,
   staged: StageCanonicalStorageDatabaseResult,
+  sourceDatabase: DatabaseAdapter.Database,
 ): void {
   for (const [domain, count] of Object.entries(materialized.domainCounts)) {
-    if (staged.domainCounts[domain] !== count) {
+    // Adopted MCP records live in SQLite; their history files are not a second
+    // inventory of current servers.
+    const expectedCount =
+      domain === "mcp-servers" && hasAdoptedMcp(sourceDatabase)
+        ? new McpDB(sourceDatabase).servers().length
+        : count;
+    if (staged.domainCounts[domain] !== expectedCount) {
       throw new Error(`Canonical storage projection count mismatch: ${domain}`);
     }
   }
 }
 
-async function collectCanonicalStorageInput(
+function collectCanonicalStorageInput(
   options: CanonicalStorageProjectorOptions,
 ) {
-  const pluginService = new CorePluginLibraryService();
-  const plugins = options.plugins ?? pluginService.read().plugins;
-  const pluginVersions =
-    options.pluginVersions ??
-    new Map(
-      plugins.map((plugin) => [
-        plugin.id,
-        pluginService.getPluginVersions(plugin.id),
-      ]),
-    );
+  const pluginStorage =
+    options.plugins === undefined
+      ? new PluginStorage(options.database, getUserDataPath())
+      : undefined;
+  const plugins = options.plugins ?? pluginStorage!.read();
+  const histories =
+    options.pluginVersions === undefined
+      ? (pluginStorage?.readVersions() ?? [])
+      : [];
+  const groupedVersions = new Map<string, PluginVersion[]>();
+  for (const version of histories) {
+    const group = groupedVersions.get(version.pluginId) ?? [];
+    group.push(version);
+    groupedVersions.set(version.pluginId, group);
+  }
+  const pluginVersions = options.pluginVersions ?? groupedVersions;
   const agentDb = new AgentProviderProfileDB(options.database);
   const profiles = agentDb.listProfiles({ includeArchived: true });
   if (profiles.length > MAX_DOMAIN_RESOURCES) {
@@ -408,8 +353,8 @@ async function collectCanonicalStorageInput(
     ),
     skills: options.skills ?? collectSkills(options.database),
     rules: options.readRules
-      ? await options.readRules()
-      : collectRules(options.database),
+      ? options.readRules()
+      : collectPortableRules(options.database),
     ...(hasAdoptedMcp(options.database)
       ? { mcpResourceBundles: [] }
       : options.mcpResourceBundles !== undefined
@@ -425,11 +370,15 @@ async function collectCanonicalStorageInput(
               }),
           }),
     plugins: collectPlugins(plugins, pluginVersions),
-    agentProviders: profiles.map((profile) => ({
-      profile,
-      modelMappings: agentDb.listModelMappings(profile.id),
-    })),
-    generations: options.generations ?? collectGenerations(),
+    agentProviders:
+      options.agentProviders ??
+      profiles.map((profile) => ({
+        profile,
+        modelMappings: agentDb.listModelMappings(profile.id),
+      })),
+    generations:
+      options.generations ??
+      collectGenerationResources(options.database, getUserDataPath()),
   };
 }
 
@@ -447,7 +396,8 @@ export async function projectCanonicalStorageShadow(
     "canonical-catalog",
   );
   try {
-    const storage = await collectCanonicalStorageInput(options);
+    // Capture and materialize without yielding between rows and their files.
+    const storage = collectCanonicalStorageInput(options);
     const materialized = materializeCanonicalStorageShadow({
       targetPath,
       ...storage,
@@ -477,7 +427,7 @@ export async function projectCanonicalStorageShadow(
         publishedCanonicalRootPath: options.publishedCanonicalRootPath,
       },
     );
-    assertProjectionCounts(materialized, stagedDatabase);
+    assertProjectionCounts(materialized, stagedDatabase, options.database);
     return {
       targetPath,
       verificationDatabasePath,

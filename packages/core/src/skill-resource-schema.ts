@@ -258,6 +258,23 @@ function validateVersions(
   return versions.sort((left, right) => left.version - right.version);
 }
 
+/** Current portable metadata and complete history share the bundle validator. */
+export function parseSkillResourceSnapshot(value: unknown): { skill: Skill; versions: SkillVersion[]; files: SkillFileSnapshot[] } {
+  if (!isRecord(value) || !Array.isArray(value.versions) || !Array.isArray(value.files))
+    throw new Error("Skill resource snapshot is incomplete");
+  const skill = validateSkill(value.skill);
+  const portable = createPortableSkillResource(skill);
+  if (JSON.stringify(portable) !== JSON.stringify(skill))
+    throw new Error("Skill resource contains device-local fields");
+  // Snapshot validator checks paths, encoding, duplicate entries and byte limits.
+  const files = value.files as SkillFileSnapshot[];
+  validateSkillFileSnapshots(files);
+  for (const file of files) validatePackagePath(file.relativePath);
+  if (files.length > 0 && !files.some((file) => file.relativePath === "SKILL.md"))
+    throw new Error("Skill package entrypoint is missing");
+  return { skill, versions: validateVersions(skill, value.versions), files };
+}
+
 function versionPath(version: number): string {
   return `versions/${String(version).padStart(6, "0")}.json`;
 }

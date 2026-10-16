@@ -95,8 +95,9 @@ describe("web import/export routes", () => {
           path.join(
             dataDir,
             "data",
-            "skills",
-            `export-skill__${skill.payload.data!.id}`,
+            "skill-files",
+            skill.payload.data!.id,
+            "files",
             "templates",
           ),
           {
@@ -107,8 +108,9 @@ describe("web import/export routes", () => {
           path.join(
             dataDir,
             "data",
-            "skills",
-            `export-skill__${skill.payload.data!.id}`,
+            "skill-files",
+            skill.payload.data!.id,
+            "files",
             "templates",
             "guide.md",
           ),

@@ -7,6 +7,8 @@ import path from "path";
 
 import {
   configureRuntimePaths,
+  closeDatabase,
+  initDatabase,
   CoreMcpLibraryService,
   getMcpTargetPresets,
   resetRuntimePaths,
@@ -30,6 +32,7 @@ const ampTarget = "amp" as McpTargetKind;
 const temporaryPaths: string[] = [];
 
 afterEach(() => {
+  closeDatabase();
   resetRuntimePaths();
   for (const temporaryPath of temporaryPaths.splice(0)) {
     fs.rmSync(temporaryPath, { recursive: true, force: true });
@@ -122,6 +125,7 @@ describe("Amp current platform boundary", () => {
     const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "amp-mcp-"));
     temporaryPaths.push(userDataPath);
     configureRuntimePaths({ userDataPath });
+    initDatabase();
     const settingsPath = path.join(
       userDataPath,
       ".config",

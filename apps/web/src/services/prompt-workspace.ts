@@ -1,35 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Database, FolderDB, PromptDB } from '@prompthub/db';
+import type { FolderDB, PromptDB } from '@prompthub/db';
 import type { Folder, Prompt, PromptVersion } from '@prompthub/shared';
-import { getPromptsDir } from '../runtime-paths.js';
+import { getPromptWorkspaceExportDir } from '../runtime-paths.js';
 
-/**
- * Web 端 Prompt 工作区服务。
- *
- * 磁盘布局（与桌面端一致，见 apps/desktop/src/main/services/prompt-workspace.ts）：
- *
- * ```text
- * <promptsDir>/                      = <DATA_ROOT>/data/prompts/
- *   _folder.json                     (每文件夹一份元数据)
- *   <folder-slug>/
- *     _folder.json
- *     <prompt-slug>.md               (带 YAML frontmatter + SYSTEM/USER 正文)
- *     <prompt-slug>-<id8>.md         (同 slug 冲突降级)
- *   .versions/
- *     <promptId>/
- *       0001.md
- *       0002.md
- * ```
- *
- * 与桌面端的关键差异（本文件独有）：
- * 1. `ownerUserId` / `visibility` 写入 prompt frontmatter 和 `_folder.json`
- *    以保留多租户归属。
- * 2. `usageCount` / `lastAiResponse` 写入 prompt frontmatter（桌面端不持久化）。
- * 3. 同步采用 sibling staging directory 重写后替换 live 目录；Web 服务进程
- *    独占数据目录，不需要桌面端 `.trash/`、同名冲突裁决、restore marker、
- *    四象限 bootstrap 等保护。
- */
+/** Explicit Markdown export. SQLite owns current records and startup migration. */
 
 const FOLDER_METADATA_FILE_NAME = '_folder.json';
 const VERSION_ROOT_DIR_NAME = '.versions';
@@ -40,27 +15,10 @@ const MAX_WORKSPACE_SEGMENT_BYTES = 240;
 const STAGING_DIR_PREFIX = '.prompts-staging-';
 const BACKUP_DIR_PREFIX = '.prompts-backup-';
 
-interface FrontmatterResult {
-  metadata: Record<string, unknown>;
-  body: string;
-}
-
 interface PromptWorkspaceSyncResult {
   promptCount: number;
   folderCount: number;
   versionCount: number;
-}
-
-interface FolderRowMeta {
-  id: string;
-  owner_user_id: string | null;
-  visibility: 'private' | 'shared';
-}
-
-interface PromptRowMeta {
-  id: string;
-  owner_user_id: string | null;
-  visibility: 'private' | 'shared';
 }
 
 function ensureDir(targetPath: string): void {
@@ -89,67 +47,8 @@ function formatFrontmatter(metadata: Record<string, unknown>): string {
   return `---\n${lines.join('\n')}\n---\n`;
 }
 
-function parseFrontmatter(raw: string): FrontmatterResult {
-  if (!raw.startsWith('---\n')) {
-    return { metadata: {}, body: raw };
-  }
-
-  const endIndex = raw.indexOf('\n---\n', 4);
-  if (endIndex === -1) {
-    return { metadata: {}, body: raw };
-  }
-
-  const metadataBlock = raw.slice(4, endIndex);
-  const body = raw.slice(endIndex + 5);
-  const metadata: Record<string, unknown> = {};
-
-  for (const line of metadataBlock.split('\n')) {
-    const separatorIndex = line.indexOf(':');
-    if (separatorIndex === -1) {
-      continue;
-    }
-
-    const key = line.slice(0, separatorIndex).trim();
-    const rawValue = line.slice(separatorIndex + 1).trim();
-    if (!key) {
-      continue;
-    }
-
-    try {
-      metadata[key] = JSON.parse(rawValue);
-    } catch {
-      metadata[key] = rawValue;
-    }
-  }
-
-  return { metadata, body };
-}
-
 function formatPromptBody(systemPrompt: string | null | undefined, userPrompt: string): string {
   return [SYSTEM_MARKER, systemPrompt ?? '', '', USER_MARKER, userPrompt, ''].join('\n');
-}
-
-function parsePromptBody(body: string): {
-  systemPrompt: string | null;
-  userPrompt: string;
-} {
-  const systemIndex = body.indexOf(SYSTEM_MARKER);
-  const userIndex = body.indexOf(USER_MARKER);
-
-  if (systemIndex === -1 || userIndex === -1 || userIndex < systemIndex) {
-    return {
-      systemPrompt: null,
-      userPrompt: body.trim(),
-    };
-  }
-
-  const systemPrompt = body.slice(systemIndex + SYSTEM_MARKER.length, userIndex).trim();
-  const userPrompt = body.slice(userIndex + USER_MARKER.length).trim();
-
-  return {
-    systemPrompt: systemPrompt || null,
-    userPrompt,
-  };
 }
 
 function promptFrontmatter(prompt: Prompt): Record<string, unknown> {
@@ -278,12 +177,12 @@ function assertWorkspacePathFits(targetPath: string, label: string): void {
   }
 }
 
-export function validatePromptWorkspaceSnapshotPaths(
+function validatePromptWorkspaceSnapshotPaths(
   folders: Folder[],
   prompts: Prompt[],
   promptVersions: PromptVersion[],
 ): void {
-  const promptsDir = getPromptsDir();
+  const promptsDir = getPromptWorkspaceExportDir();
   const folderMap = new Map(folders.map((folder) => [folder.id, folder]));
 
   for (const folder of folders) {
@@ -334,15 +233,6 @@ function tryRemoveDirectory(targetPath: string): void {
   }
 }
 
-function isWorkspaceScratchDirectory(name: string): boolean {
-  return (
-    name === VERSION_ROOT_DIR_NAME ||
-    name === 'versions' ||
-    name.startsWith(STAGING_DIR_PREFIX) ||
-    name.startsWith(BACKUP_DIR_PREFIX)
-  );
-}
-
 function replacePromptWorkspace(promptsDir: string, stagingDir: string): void {
   const backupDir = createSiblingWorkspaceDir(promptsDir, BACKUP_DIR_PREFIX);
   removeDirectoryIfExists(backupDir);
@@ -368,7 +258,7 @@ function writePromptWorkspaceSnapshot(
   promptsDir: string,
   folderMap: Map<string, Folder>,
   prompts: Prompt[],
-  promptDb: PromptDB,
+  versionsByPrompt: ReadonlyMap<string, PromptVersion[]>,
 ): { versionCount: number } {
   const takenPromptPaths = new Set<string>();
   let versionCount = 0;
@@ -383,7 +273,7 @@ function writePromptWorkspaceSnapshot(
       'utf8',
     );
 
-    const versions = promptDb.getVersions(prompt.id).sort((left, right) => left.version - right.version);
+    const versions = (versionsByPrompt.get(prompt.id) ?? []).sort((left, right) => left.version - right.version);
 
     if (versions.length > 0) {
       const versionsDir = getPromptVersionDir(promptsDir, prompt.id);
@@ -402,290 +292,21 @@ function writePromptWorkspaceSnapshot(
   return { versionCount };
 }
 
-function collectPromptFiles(rootDir: string): string[] {
-  if (!fs.existsSync(rootDir)) {
-    return [];
-  }
-
-  const files: string[] = [];
-
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const absolutePath = path.join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        // Skip versions and interrupted export scratch directories.
-        if (isWorkspaceScratchDirectory(entry.name)) {
-          continue;
-        }
-        walk(absolutePath);
-        continue;
-      }
-
-      if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== FOLDER_METADATA_FILE_NAME) {
-        files.push(absolutePath);
-      }
-    }
-  };
-
-  walk(rootDir);
-  return files;
-}
-
-function collectFolderMetadataFiles(rootDir: string): string[] {
-  if (!fs.existsSync(rootDir)) {
-    return [];
-  }
-
-  const files: string[] = [];
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const absolutePath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (isWorkspaceScratchDirectory(entry.name)) continue;
-        walk(absolutePath);
-        continue;
-      }
-      if (entry.isFile() && entry.name === FOLDER_METADATA_FILE_NAME) {
-        files.push(absolutePath);
-      }
-    }
-  };
-
-  walk(rootDir);
-  return files;
-}
-
-function readFolderMetadataFiles(promptsDir: string): Folder[] {
-  return collectFolderMetadataFiles(promptsDir)
-    .map((filePath) => {
-      try {
-        return JSON.parse(fs.readFileSync(filePath, 'utf8')) as Folder;
-      } catch (error) {
-        console.error(`[prompt-workspace] failed to parse ${FOLDER_METADATA_FILE_NAME} at ${filePath}:`, error);
-        return null;
-      }
-    })
-    .filter((folder): folder is Folder => folder !== null);
-}
-
-function toIsoString(value: unknown, fallback: string): string {
-  if (typeof value === 'string' && value.trim()) {
-    return value;
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return new Date(value).toISOString();
-  }
-  return fallback;
-}
-
-function parsePromptFile(filePath: string): Prompt {
-  const { metadata, body } = parseFrontmatter(fs.readFileSync(filePath, 'utf8'));
-  const parsedBody = parsePromptBody(body);
-  const now = new Date().toISOString();
-
-  return {
-    id: String(metadata.id),
-    ownerUserId: typeof metadata.ownerUserId === 'string' ? metadata.ownerUserId : null,
-    visibility: metadata.visibility === 'shared' ? 'shared' : 'private',
-    title: String(metadata.title ?? 'Untitled Prompt'),
-    description: typeof metadata.description === 'string' ? metadata.description : null,
-    promptType: metadata.promptType === 'image' || metadata.promptType === 'video' ? metadata.promptType : 'text',
-    systemPrompt: parsedBody.systemPrompt,
-    systemPromptEn: typeof metadata.systemPromptEn === 'string' ? metadata.systemPromptEn : null,
-    userPrompt: parsedBody.userPrompt,
-    userPromptEn: typeof metadata.userPromptEn === 'string' ? metadata.userPromptEn : null,
-    variables: Array.isArray(metadata.variables) ? (metadata.variables as Prompt['variables']) : [],
-    tags: Array.isArray(metadata.tags) ? (metadata.tags as string[]) : [],
-    folderId: typeof metadata.folderId === 'string' ? metadata.folderId : null,
-    parentId: typeof metadata.parentId === 'string' ? metadata.parentId : null,
-    order:
-      typeof metadata.order === 'number' && Number.isFinite(metadata.order)
-        ? Math.max(0, Math.trunc(metadata.order))
-        : 0,
-    images: Array.isArray(metadata.images) ? (metadata.images as string[]) : [],
-    videos: Array.isArray(metadata.videos) ? (metadata.videos as string[]) : [],
-    isFavorite: metadata.isFavorite === true,
-    isPinned: metadata.isPinned === true,
-    version: typeof metadata.currentVersion === 'number' ? metadata.currentVersion : 1,
-    currentVersion: typeof metadata.currentVersion === 'number' ? metadata.currentVersion : 1,
-    usageCount: typeof metadata.usageCount === 'number' ? metadata.usageCount : 0,
-    source: typeof metadata.source === 'string' ? metadata.source : null,
-    notes: typeof metadata.notes === 'string' ? metadata.notes : null,
-    lastAiResponse: typeof metadata.lastAiResponse === 'string' ? metadata.lastAiResponse : null,
-    createdAt: toIsoString(metadata.createdAt, now),
-    updatedAt: toIsoString(metadata.updatedAt, now),
-  };
-}
-
-function parseVersionFile(filePath: string, promptId: string): PromptVersion {
-  const { metadata, body } = parseFrontmatter(fs.readFileSync(filePath, 'utf8'));
-  const parsedBody = parsePromptBody(body);
-
-  return {
-    id: String(metadata.id),
-    promptId,
-    version:
-      typeof metadata.version === 'number'
-        ? metadata.version
-        : Number.parseInt(path.basename(filePath, '.md'), 10) || 1,
-    systemPrompt: parsedBody.systemPrompt,
-    systemPromptEn: typeof metadata.systemPromptEn === 'string' ? metadata.systemPromptEn : null,
-    userPrompt: parsedBody.userPrompt,
-    userPromptEn: typeof metadata.userPromptEn === 'string' ? metadata.userPromptEn : null,
-    variables: Array.isArray(metadata.variables) ? (metadata.variables as PromptVersion['variables']) : [],
-    note: typeof metadata.note === 'string' ? metadata.note : null,
-    aiResponse: typeof metadata.aiResponse === 'string' ? metadata.aiResponse : null,
-    createdAt: toIsoString(metadata.createdAt, new Date().toISOString()),
-  };
-}
-
-function readPromptVersions(promptsDir: string, promptId: string): PromptVersion[] {
-  const versionsDir = getPromptVersionDir(promptsDir, promptId);
-  if (!fs.existsSync(versionsDir)) {
-    return [];
-  }
-
-  return fs
-    .readdirSync(versionsDir)
-    .filter((file) => file.endsWith('.md'))
-    .sort()
-    .map((file) => parseVersionFile(path.join(versionsDir, file), promptId));
-}
-
-function workspaceHasPromptData(promptsDir: string): boolean {
-  if (collectPromptFiles(promptsDir).length > 0) {
-    return true;
-  }
-  return collectFolderMetadataFiles(promptsDir).length > 0;
-}
-
-function resolveOwnerUserId(db: Database.Database, ownerUserId: string | null | undefined): string | null {
-  if (!ownerUserId) {
-    return null;
-  }
-
-  const row = db.prepare('SELECT id FROM users WHERE id = ?').get(ownerUserId) as { id: string } | undefined;
-
-  return row?.id ?? null;
-}
-
-function listAllFolders(db: Database.Database, folderDb: FolderDB): Folder[] {
-  const rows = db
-    .prepare('SELECT id, owner_user_id, visibility FROM folders ORDER BY sort_order ASC')
-    .all() as FolderRowMeta[];
-
-  return rows
-    .map((row) => {
-      const folder = folderDb.getById(row.id);
-      if (!folder) {
-        return null;
-      }
-      return {
-        ...folder,
-        ownerUserId: row.owner_user_id,
-        visibility: row.visibility,
-      } as Folder;
-    })
-    .filter((folder): folder is Folder => folder !== null);
-}
-
-function listAllPrompts(db: Database.Database, promptDb: PromptDB): Prompt[] {
-  const rows = db
-    .prepare('SELECT id, owner_user_id, visibility FROM prompts ORDER BY updated_at DESC')
-    .all() as PromptRowMeta[];
-
-  return rows
-    .map((row) => {
-      const prompt = promptDb.getById(row.id);
-      if (!prompt) {
-        return null;
-      }
-      return {
-        ...prompt,
-        ownerUserId: row.owner_user_id,
-        visibility: row.visibility,
-      } as Prompt;
-    })
-    .filter((prompt): prompt is Prompt => prompt !== null);
-}
-
-function updateFolderOwnership(db: Database.Database, folder: Folder): void {
-  db.prepare('UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?').run(
-    resolveOwnerUserId(db, folder.ownerUserId),
-    folder.visibility ?? 'private',
-    folder.id,
-  );
-}
-
-function updatePromptOwnership(db: Database.Database, prompt: Prompt): void {
-  db.prepare('UPDATE prompts SET owner_user_id = ?, visibility = ? WHERE id = ?').run(
-    resolveOwnerUserId(db, prompt.ownerUserId),
-    prompt.visibility ?? 'private',
-    prompt.id,
-  );
-}
-
-function importPromptWorkspaceRecords(
-  db: Database.Database,
-  promptDb: PromptDB,
-  promptsDir: string,
-  promptFiles: string[],
-): number {
-  const pendingPrompts = promptFiles.map((promptFile) => ({
-    prompt: parsePromptFile(promptFile),
-  }));
-  const importedIds = new Set<string>();
-  let versionCount = 0;
-
-  const transaction = db.transaction(() => {
-    while (pendingPrompts.length > 0) {
-      let importedInPass = false;
-
-      for (let index = pendingPrompts.length - 1; index >= 0; index -= 1) {
-        const { prompt } = pendingPrompts[index];
-        if (prompt.parentId && !importedIds.has(prompt.parentId)) {
-          continue;
-        }
-
-        const importedPrompt = {
-          ...prompt,
-          ownerUserId: resolveOwnerUserId(db, prompt.ownerUserId),
-        };
-        promptDb.insertPromptDirect(importedPrompt);
-        updatePromptOwnership(db, importedPrompt);
-        for (const version of readPromptVersions(promptsDir, prompt.id)) {
-          promptDb.insertVersionDirect(version);
-          versionCount += 1;
-        }
-        importedIds.add(prompt.id);
-        pendingPrompts.splice(index, 1);
-        importedInPass = true;
-      }
-
-      if (!importedInPass) {
-        throw new Error('Prompt workspace hierarchy contains a missing parent or cycle');
-      }
-    }
-  });
-
-  transaction();
-  return versionCount;
-}
-
 /**
  * 从 DB 导出整棵 Prompt workspace。先写入 sibling staging directory，
  * 完成后替换 live 目录；如果 staging 写入失败，保留旧 workspace。
  */
 export function syncPromptWorkspaceFromDatabase(
-  db: Database.Database,
   promptDb: PromptDB,
   folderDb: FolderDB,
 ): PromptWorkspaceSyncResult {
-  const promptsDir = getPromptsDir();
-  const folders = listAllFolders(db, folderDb);
-  const prompts = listAllPrompts(db, promptDb);
-  const promptVersions = prompts.flatMap((prompt) => promptDb.getVersions(prompt.id));
+  const promptsDir = getPromptWorkspaceExportDir();
+  const folders = folderDb.getAll();
+  const prompts = promptDb.getAll();
+  const versionsByPrompt = new Map(
+    prompts.map((prompt) => [prompt.id, promptDb.getVersions(prompt.id)]),
+  );
+  const promptVersions = [...versionsByPrompt.values()].flat();
   validatePromptWorkspaceSnapshotPaths(folders, prompts, promptVersions);
 
   const folderMap = new Map(folders.map((folder) => [folder.id, folder]));
@@ -693,7 +314,9 @@ export function syncPromptWorkspaceFromDatabase(
 
   try {
     writeFolderMetadataFiles(stagingDir, folders, folderMap);
-    const { versionCount } = writePromptWorkspaceSnapshot(stagingDir, folderMap, prompts, promptDb);
+    const { versionCount } = writePromptWorkspaceSnapshot(stagingDir, folderMap, prompts,
+      versionsByPrompt,
+    );
     replacePromptWorkspace(promptsDir, stagingDir);
 
     return {
@@ -705,64 +328,4 @@ export function syncPromptWorkspaceFromDatabase(
     tryRemoveDirectory(stagingDir);
     throw error;
   }
-}
-
-/**
- * 从磁盘导入 Prompt 到数据库。用于 bootstrap 阶段：当磁盘有内容而 DB 为空
- * （典型场景：容器重建、从备份卷挂载启动）时把文件树灌入数据库。
- */
-export function importPromptWorkspaceIntoDatabase(
-  db: Database.Database,
-  promptDb: PromptDB,
-  folderDb: FolderDB,
-): PromptWorkspaceSyncResult {
-  const promptsDir = getPromptsDir();
-
-  if (!workspaceHasPromptData(promptsDir)) {
-    return { promptCount: 0, folderCount: 0, versionCount: 0 };
-  }
-
-  const folders = readFolderMetadataFiles(promptsDir);
-  const promptFiles = collectPromptFiles(promptsDir);
-
-  for (const folder of folders) {
-    const importedFolder = {
-      ...folder,
-      ownerUserId: resolveOwnerUserId(db, folder.ownerUserId),
-    };
-    folderDb.insertFolderDirect(importedFolder);
-    updateFolderOwnership(db, importedFolder);
-  }
-
-  const versionCount = importPromptWorkspaceRecords(db, promptDb, promptsDir, promptFiles);
-
-  return {
-    promptCount: promptFiles.length,
-    folderCount: folders.length,
-    versionCount,
-  };
-}
-
-/**
- * 启动时对齐 DB ↔ 磁盘：
- * - DB 空且磁盘有内容 → 先从磁盘灌入 DB，再同步回磁盘（规范化文件名）。
- * - 其它情况 → 直接以 DB 为准重写磁盘。
- */
-export function bootstrapPromptWorkspace(
-  db: Database.Database,
-  promptDb: PromptDB,
-  folderDb: FolderDB,
-): { imported: boolean; exported: boolean } {
-  const promptsDir = getPromptsDir();
-  const hasDatabasePrompts = promptDb.getAll().length > 0;
-  const hasWorkspaceData = workspaceHasPromptData(promptsDir);
-
-  if (!hasDatabasePrompts && hasWorkspaceData) {
-    importPromptWorkspaceIntoDatabase(db, promptDb, folderDb);
-    syncPromptWorkspaceFromDatabase(db, promptDb, folderDb);
-    return { imported: true, exported: true };
-  }
-
-  syncPromptWorkspaceFromDatabase(db, promptDb, folderDb);
-  return { imported: false, exported: true };
 }
