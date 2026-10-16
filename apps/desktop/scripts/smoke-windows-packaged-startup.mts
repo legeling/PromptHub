@@ -144,7 +144,7 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-type ExpectedCanonicalStatus = "waiting-renderer-migration" | "published";
+type ExpectedCanonicalStatus = "waiting-renderer-migration" | "already-canonical";
 type ExpectedMigrationStatus = "migrated" | "already-complete";
 
 interface LaunchResult {
@@ -196,7 +196,7 @@ function launchIsReady(
       entry.event === "startup:renderer_persistence_migration" &&
       entry.status === expectedMigrationStatus,
   );
-  if (expectedCanonicalStatus === "published") {
+  if (expectedCanonicalStatus === "already-canonical") {
     return canonicalReady && migrationReady && windowReady;
   }
   const upgradeCreated = events.some(
@@ -358,7 +358,7 @@ async function main(): Promise<void> {
       logPath,
       rootPath: root,
       eventOffset: firstLaunch.nextEventOffset,
-      expectedCanonicalStatus: "published",
+      expectedCanonicalStatus: "already-canonical",
       expectedMigrationStatus: "already-complete",
     });
     console.log("Packaged Windows 0.5.9 upgrade startup passed two launches.");

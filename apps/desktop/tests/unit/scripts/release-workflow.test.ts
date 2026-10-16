@@ -62,7 +62,7 @@ describe("release workflow secret guards", () => {
       'expectedCanonicalStatus: "waiting-renderer-migration"',
     );
     expect(packagedStartupSmokeSource).toContain(
-      'expectedCanonicalStatus: "published"',
+      'expectedCanonicalStatus: "already-canonical"',
     );
     expect(packagedStartupSmokeSource).toContain(
       'expectedMigrationStatus: "migrated"',

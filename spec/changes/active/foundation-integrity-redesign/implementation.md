@@ -1395,3 +1395,12 @@ macOS packaging can resume; signing/notarization checks are not bypassed.
 The Windows x64-only rerun is immediately cancelled by the matrix state;
 its packaged two-launch upgrade smoke remains unverified.
 The GitHub release remains Draft with no assets; public stable remains 0.5.9.
+
+After the Account Holder accepted Apple's agreement, attempt 3 logs successful
+macOS notarization. Linux and Windows ARM64 packaging pass, but Windows x64's
+second-start smoke still expects published rather than the current already-canonical
+state. Both native launches reach window readiness and the required migration
+states before the smoke-only clean exit. The assertion and workflow regression
+are aligned with the startup owner; no product source changes. A fresh complete
+gate and packaging run remain required. The matrix cancellation means the final
+macOS artifact verification has not yet completed.
