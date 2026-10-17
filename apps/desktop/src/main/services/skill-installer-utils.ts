@@ -9,6 +9,7 @@ import {
 } from "@prompthub/core/skills/package-operation";
 import { getDatabase } from "../database";
 import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
+import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
 import { getErrorCode } from "./skill-installer-internal";
 import {
   isPrivateAddress,
@@ -123,6 +124,19 @@ function createGitLaunchError(error: unknown, operation: string): Error {
   return new Error(`${operation}: ${sanitizeSkillPackageDiagnostic(error)}`);
 }
 
+function createGitProcessError(
+  operation: string,
+  code: number | null,
+  stderr: string,
+): Error {
+  const reason = getSkillPackageReadErrorCode(stderr);
+  const marker =
+    reason === "read-failed" ? "" : `SKILL_PACKAGE_READ:${reason}; `;
+  return new Error(
+    `${marker}${operation} failed with code ${code}: ${sanitizeSkillPackageDiagnostic(stderr)}`,
+  );
+}
+
 function normalizeRemoteGitUrl(url: string): string {
   const trimmed = url.trim();
   if (/^https?:\/\//i.test(trimmed)) {
@@ -222,11 +236,7 @@ export function gitClone(
           if (code === 0) {
             resolve();
           } else {
-            reject(
-              new Error(
-                `Git clone failed with code ${code}: ${sanitizeSkillPackageDiagnostic(stderr)}`,
-              ),
-            );
+            reject(createGitProcessError("Git clone", code, stderr));
           }
         });
 
@@ -289,9 +299,7 @@ export function gitListRemoteBranches(url: string): Promise<string[]> {
           clearTimeout(timeout);
           if (code !== 0) {
             reject(
-              new Error(
-                `Git remote branch listing failed with code ${code}: ${sanitizeSkillPackageDiagnostic(stderr)}`,
-              ),
+              createGitProcessError("Git remote branch listing", code, stderr),
             );
             return;
           }
@@ -538,7 +546,8 @@ export function getPlatformRootDir(
   );
   if (currentEnvironmentRoot) {
     return path.join(
-      currentEnvironmentRoot, platform.rootEnvironmentSubdirectory ?? "",
+      currentEnvironmentRoot,
+      platform.rootEnvironmentSubdirectory ?? "",
     );
   }
   if (pathExists(primaryRoot)) return primaryRoot;

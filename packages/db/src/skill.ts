@@ -463,6 +463,10 @@ export class SkillDB {
       updates.push("tags = ?");
       values.push(JSON.stringify(data.tags));
     }
+    if (data.original_tags !== undefined) {
+      updates.push("original_tags = ?");
+      values.push(JSON.stringify(data.original_tags));
+    }
     if (data.is_favorite !== undefined) {
       updates.push("is_favorite = ?");
       values.push(data.is_favorite ? 1 : 0);
@@ -633,6 +637,9 @@ export class SkillDB {
       ...(data.version !== undefined && { version: data.version }),
       ...(data.author !== undefined && { author: data.author }),
       ...(data.tags !== undefined && { tags: data.tags }),
+      ...(data.original_tags !== undefined && {
+        original_tags: data.original_tags,
+      }),
       ...(data.is_favorite !== undefined && { is_favorite: data.is_favorite }),
       ...(data.source_url !== undefined && { source_url: data.source_url }),
       ...(data.source_id !== undefined && { source_id: data.source_id }),

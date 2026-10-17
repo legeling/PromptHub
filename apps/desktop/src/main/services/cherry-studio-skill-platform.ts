@@ -1,36 +1,19 @@
-import * as crypto from "crypto";
-import * as fs from "fs/promises";
-import * as path from "path";
+import { randomUUID } from "node:crypto";
+import * as fs from "node:fs/promises";
+import path from "node:path";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import DatabaseAdapter from "../database/sqlite";
 import { parseSkillMd } from "./skill-validator";
-import { isPathWithin } from "./skill-installer-internal";
-import { isInternalSkillRepoEntry } from "./skill-installer-repo";
+import { SkillPlatformError } from "./skill-platform-error";
 import {
   getPlatformRootDir,
-  getPlatformSkillsDir,
   resolvePlatformPath,
 } from "./skill-installer-utils";
-
-interface CherryStudioSkillRow {
-  id: string;
-  folder_name: string;
-  source?: string | null;
-  builtin?: number | null;
-  is_builtin?: number | null;
-}
-
-interface CherryStudioAgentWorkspaceRow {
-  accessible_paths: string;
-}
-
-type CherryStudioDbSchema = "modern" | "legacy";
-
-interface CherryStudioDbHandle {
-  db: DatabaseAdapter.Database;
-  schema: CherryStudioDbSchema;
-  path: string;
-}
+import {
+  assertCherrySkillDirectory,
+  installCherrySkillFiles,
+  publishCherrySkillFiles,
+} from "./cherry-studio-skill-files";
 
 export interface CherryStudioPlatformOptions {
   overrides?: Record<string, string>;
@@ -41,272 +24,308 @@ export interface CherryStudioPlatformSkillMetadata {
   isBuiltin: boolean;
 }
 
-const CHERRY_STUDIO_PLATFORM_ID = "cherry-studio";
-const CHERRY_STUDIO_DB_CANDIDATES = [
-  path.join("Data", "cherrystudio.sqlite"),
-  path.join("Data", "agent.db"),
-  path.join("Data", "agents.db"),
-  "cherrystudio.sqlite",
-] as const;
-const CHERRY_STUDIO_SOURCE = "local";
-const MAX_FOLDER_NAME_LENGTH = 80;
+interface CherryStudioSkillRow {
+  id: string;
+  folder_name: string;
+  source: string;
+}
+
+interface CherryPaths {
+  root: string;
+  database: string;
+  library: string;
+  mirror: string;
+}
+
+// Current upstream contract: CherryHQ/cherry-studio dac9b72 (2.1.6).
+const REQUIRED_COLUMNS = {
+  agent_global_skill: [
+    "id",
+    "name",
+    "description",
+    "folder_name",
+    "source",
+    "source_url",
+    "namespace",
+    "author",
+    "version",
+    "tags",
+    "content_hash",
+    "is_enabled",
+    "created_at",
+    "updated_at",
+  ],
+  agent_skill: [
+    "agent_id",
+    "skill_id",
+    "is_enabled",
+    "created_at",
+    "updated_at",
+  ],
+};
+const mutations = new Map<string, Promise<void>>();
 
 export function isCherryStudioPlatform(platformId: string): boolean {
-  return platformId === CHERRY_STUDIO_PLATFORM_ID;
+  return platformId === "cherry-studio";
 }
 
-function getCherryStudioDbPaths(
+function resolvePaths(
   platform: SkillPlatform,
   options?: CherryStudioPlatformOptions,
-): string[] {
-  const rootDir = getCherryStudioRootDir(platform, options);
-  return CHERRY_STUDIO_DB_CANDIDATES.map((candidate) =>
-    path.join(rootDir, candidate),
+): CherryPaths {
+  const override = options?.overrides?.[platform.id]?.trim();
+  const root = path.resolve(
+    override ? resolvePlatformPath(override) : getPlatformRootDir(platform),
   );
+  return {
+    root,
+    database: path.join(root, "Data", "cherrystudio.sqlite"),
+    library: path.join(root, "Data", "Skills"),
+    mirror: path.join(root, "Data", "Agents", ".claude", "skills"),
+  };
 }
 
-function getCherryStudioRootDir(
-  platform: SkillPlatform,
-  options?: CherryStudioPlatformOptions,
-): string {
-  const overridePath = options?.overrides?.[platform.id];
-  if (overridePath?.trim()) {
-    return resolvePlatformPath(overridePath.trim());
+function validateFolderName(name: string): string {
+  if (
+    !name ||
+    name.length > 80 ||
+    !/^[a-zA-Z0-9_-]+$/.test(name) ||
+    path.isAbsolute(name)
+  ) {
+    throw new Error("Invalid Cherry Studio Skill folder name");
   }
-  return getPlatformRootDir(platform);
+  return name;
 }
 
-function getCherryStudioSkillsDir(
-  platform: SkillPlatform,
-  options?: CherryStudioPlatformOptions,
-): string {
-  const overridePath = options?.overrides?.[platform.id];
-  if (!overridePath?.trim()) {
-    return getPlatformSkillsDir(platform);
-  }
-
-  return path.join(
-    resolvePlatformPath(overridePath.trim()),
-    ...platform.skillsRelativePath.split(/[\\/]+/).filter(Boolean),
-  );
-}
-
-function sanitizeCherryStudioFolderName(folderName: string): string {
-  const sanitized = folderName
-    .replace(/[/\\]/g, "_")
-    .replace(/\0/g, "")
-    .replace(/[^a-zA-Z0-9_-]/g, "_");
-  return sanitized.slice(0, MAX_FOLDER_NAME_LENGTH);
-}
-
-async function pathExists(targetPath: string): Promise<boolean> {
+async function pathExists(target: string): Promise<boolean> {
   try {
-    await fs.access(targetPath);
+    await fs.lstat(target);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return false;
+    throw error;
   }
 }
 
-async function copySkillRepoToCherryStudio(
-  sourceDir: string,
-  targetDir: string,
-): Promise<void> {
-  const canonicalSourceDir = await fs.realpath(sourceDir);
-  await fs.rm(targetDir, { recursive: true, force: true });
-  await fs.cp(canonicalSourceDir, targetDir, {
-    recursive: true,
-    filter: async (_src, dest) => {
-      const relativePath = path.relative(targetDir, dest);
-      return !relativePath || !isInternalSkillRepoEntry(relativePath);
-    },
-  });
-}
-
-async function symlinkSkillRepoToCherryStudio(
-  sourceDir: string,
-  targetDir: string,
-): Promise<void> {
-  await fs.rm(targetDir, { recursive: true, force: true });
-  const symlinkType = process.platform === "win32" ? "junction" : "dir";
-  await fs.symlink(sourceDir, targetDir, symlinkType);
-}
-
-async function readSkillMd(sourceDir: string): Promise<string> {
-  const skillMdPath = path.join(sourceDir, "SKILL.md");
-  return fs.readFile(skillMdPath, "utf-8");
-}
-
-function parseJsonStringArray(rawValue: string | null | undefined): string[] {
-  if (!rawValue) {
-    return [];
+function validateSchema(db: DatabaseAdapter.Database): void {
+  for (const [table, required] of Object.entries(REQUIRED_COLUMNS)) {
+    const columns = db.all(`PRAGMA table_info(${table})`).map((row) => {
+      if (
+        typeof row !== "object" ||
+        row === null ||
+        !("name" in row) ||
+        typeof row.name !== "string"
+      )
+        throw new Error("Invalid Cherry Studio schema metadata");
+      return row.name;
+    });
+    if (required.some((column) => !columns.includes(column))) {
+      throw new SkillPlatformError(
+        "cherry-schema-unsupported",
+        `Cherry Studio current Skill schema is required: ${table}`,
+      );
+    }
   }
+}
+
+async function openDatabase(
+  paths: CherryPaths,
+  readOnly = false,
+): Promise<DatabaseAdapter.Database | null> {
+  if (!(await pathExists(paths.database))) return null;
+  assertCherrySkillDirectory(paths.root, path.dirname(paths.database));
+  const stat = await fs.lstat(paths.database);
+  if (!stat.isFile() || stat.isSymbolicLink())
+    throw new Error("Unsafe Cherry Studio database path");
+  const db = new DatabaseAdapter(paths.database, { readOnly });
   try {
-    const parsed = JSON.parse(rawValue) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((entry): entry is string => typeof entry === "string")
-      : [];
-  } catch {
-    return [];
+    db.pragma("foreign_keys = ON");
+    validateSchema(db);
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
   }
 }
 
-async function openCherryStudioDb(
-  platform: SkillPlatform,
-  options?: CherryStudioPlatformOptions,
-): Promise<CherryStudioDbHandle | null> {
-  for (const dbPath of getCherryStudioDbPaths(platform, options)) {
-    if (!(await pathExists(dbPath))) {
-      continue;
-    }
-
-    const db = new DatabaseAdapter(dbPath);
-    let handoff = false;
-    try {
-      const modernTable = db.get(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'skills'",
-      );
-      if (modernTable) {
-        handoff = true;
-        return { db, schema: "modern", path: dbPath };
-      }
-
-      const legacyTable = db.get(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agent_global_skill'",
-      );
-      if (legacyTable) {
-        handoff = true;
-        return { db, schema: "legacy", path: dbPath };
-      }
-
-      throw new Error(
-        `Cherry Studio database is missing supported skills table: ${dbPath}`,
-      );
-    } finally {
-      if (!handoff) db.close();
-    }
-  }
-
-  return null;
-}
-
-async function requireCherryStudioDb(
-  platform: SkillPlatform,
-  options?: CherryStudioPlatformOptions,
-): Promise<CherryStudioDbHandle> {
-  const handle = await openCherryStudioDb(platform, options);
-  if (!handle) {
-    throw new Error(
-      `Cherry Studio database not found: ${getCherryStudioDbPaths(platform, options).join(", ")}`,
+async function requireDatabase(
+  paths: CherryPaths,
+): Promise<DatabaseAdapter.Database> {
+  const db = await openDatabase(paths);
+  if (!db)
+    throw new SkillPlatformError(
+      "cherry-database-unavailable",
+      `Cherry Studio Skill database not found: ${paths.database}`,
     );
-  }
-  return handle;
+  return db;
 }
 
-function getSkillTable(schema: CherryStudioDbSchema): string {
-  return schema === "modern" ? "skills" : "agent_global_skill";
-}
-
-function getAgentSkillTable(schema: CherryStudioDbSchema): string {
-  return schema === "modern" ? "agent_skills" : "agent_skill";
-}
-
-function getAgentTable(schema: CherryStudioDbSchema): string {
-  return schema === "modern" ? "agents" : "agent";
-}
-
-function tableHasColumn(
+function getSkill(
   db: DatabaseAdapter.Database,
-  tableName: string,
-  columnName: string,
-): boolean {
-  const rows = db.all(`PRAGMA table_info(${tableName})`) as Array<{
-    name?: unknown;
-  }>;
-  return rows.some((row) => row.name === columnName);
-}
-
-function getExistingSkillRow(
-  db: DatabaseAdapter.Database,
-  schema: CherryStudioDbSchema,
-  folderName: string,
+  folder: string,
 ): CherryStudioSkillRow | undefined {
-  const skillTable = getSkillTable(schema);
-  const extraColumns = [
-    tableHasColumn(db, skillTable, "source") ? "source" : null,
-    tableHasColumn(db, skillTable, "builtin") ? "builtin" : null,
-    tableHasColumn(db, skillTable, "is_builtin") ? "is_builtin" : null,
-  ].filter(Boolean);
-
-  return db.get(
-    `SELECT id, folder_name${extraColumns.length ? `, ${extraColumns.join(", ")}` : ""}
-     FROM ${skillTable}
-     WHERE folder_name = ?
-     LIMIT 1`,
-    folderName,
-  ) as CherryStudioSkillRow | undefined;
-}
-
-function isCherryStudioBuiltinSkill(row: CherryStudioSkillRow): boolean {
-  return Boolean(
-    row.builtin ||
-    row.is_builtin ||
-    row.source?.trim().toLowerCase() === "builtin",
-  );
-}
-
-function upsertCherryStudioSkillRow(
-  db: DatabaseAdapter.Database,
-  schema: CherryStudioDbSchema,
-  skillName: string,
-  folderName: string,
-  skillMdContent: string,
-): void {
-  const parsed = parseSkillMd(skillMdContent);
-  const metadata = parsed?.frontmatter;
-  const now = Date.now();
-  const existing = getExistingSkillRow(db, schema, folderName);
-  const contentHash = crypto
-    .createHash("sha256")
-    .update(skillMdContent)
-    .digest("hex");
-  const name = metadata?.name?.trim() || skillName;
-  const description = metadata?.description?.trim() || null;
-  const author = metadata?.author?.trim() || null;
-  const tags = JSON.stringify(metadata?.tags ?? []);
-  const skillTable = getSkillTable(schema);
-
-  if (existing) {
-    db.run(
-      `UPDATE ${skillTable}
-       SET name = ?, description = ?, author = ?, tags = ?, content_hash = ?, updated_at = ?
-       WHERE id = ?`,
-      name,
-      description,
-      author,
-      tags,
-      contentHash,
-      now,
-      existing.id,
-    );
-    return;
+  const rows = db
+    .all(
+      "SELECT id, folder_name, source FROM agent_global_skill WHERE folder_name = ? COLLATE NOCASE",
+      folder,
+    )
+    .map((row): CherryStudioSkillRow => {
+      if (
+        typeof row !== "object" ||
+        row === null ||
+        !("id" in row) ||
+        typeof row.id !== "string" ||
+        !("folder_name" in row) ||
+        typeof row.folder_name !== "string" ||
+        !("source" in row) ||
+        typeof row.source !== "string"
+      )
+        throw new Error("Invalid Cherry Studio Skill catalog row");
+      return { id: row.id, folder_name: row.folder_name, source: row.source };
+    });
+  if (rows.length > 1 || (rows[0] && rows[0].folder_name !== folder)) {
+    throw new SkillPlatformError("target-conflict", `Cherry Studio Skill folder has a case conflict: ${folder}`);
   }
+  return rows[0];
+}
 
-  db.run(
-    `INSERT INTO ${skillTable}
-     (id, name, description, folder_name, source, source_url, namespace, author, tags, content_hash, is_enabled, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, ?, ?)`,
-    crypto.randomUUID(),
-    name,
-    description,
-    folderName,
-    CHERRY_STUDIO_SOURCE,
-    author,
-    tags,
-    contentHash,
-    now,
-    now,
+function assertLocalReplacement(row: CherryStudioSkillRow | undefined): void {
+  if (row && row.source !== "local") {
+    throw new SkillPlatformError("target-protected", `Cannot overwrite Cherry Studio ${row.source} Skill with a local distribution`);
+  }
+}
+
+async function withMutation(
+  paths: CherryPaths,
+  action: () => Promise<void>,
+): Promise<void> {
+  const previous = mutations.get(paths.root) ?? Promise.resolve();
+  const pending = previous.then(action);
+  // The originating caller receives rejection; the queue must still allow the next operation.
+  const settled = pending.then(
+    () => undefined,
+    () => undefined,
   );
+  mutations.set(paths.root, settled);
+  try {
+    await pending;
+  } finally {
+    if (mutations.get(paths.root) === settled) mutations.delete(paths.root);
+  }
+}
+
+function writeSkill(
+  db: DatabaseAdapter.Database,
+  folder: string,
+  content: string,
+  hash: string,
+): void {
+  const parsed = parseSkillMd(content);
+  if (!parsed) throw new Error("Invalid Cherry Studio Skill entrypoint");
+  const metadata = parsed.frontmatter;
+  const row = getSkill(db, folder);
+  assertLocalReplacement(row);
+  const fields = [
+    metadata.name || folder,
+    metadata.description || null,
+    metadata.author || null,
+    metadata.version || null,
+    JSON.stringify(metadata.tags ?? []),
+    hash,
+  ];
+  const now = Date.now();
+  if (row) {
+    db.run(
+      "UPDATE agent_global_skill SET name=?, description=?, author=?, version=?, tags=?, content_hash=?, updated_at=? WHERE id=?",
+      ...fields,
+      now,
+      row.id,
+    );
+  } else {
+    db.run(
+      "INSERT INTO agent_global_skill (name, description, author, version, tags, content_hash, id, folder_name, source, source_url, namespace, is_enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'local', NULL, NULL, 1, ?, ?)",
+      ...fields,
+      randomUUID(),
+      folder,
+      now,
+      now,
+    );
+  }
+}
+
+async function assertUnambiguousTarget(
+  directory: string,
+  folder: string,
+): Promise<void> {
+  if (!(await pathExists(directory))) return;
+  const entries = await fs.readdir(directory);
+  if (
+    entries.some(
+      (entry) =>
+        entry !== folder && entry.toLowerCase() === folder.toLowerCase(),
+    )
+  ) {
+    throw new SkillPlatformError("target-conflict", `Cherry Studio Skill directory has a case conflict: ${folder}`);
+  }
+}
+
+async function preparePaths(paths: CherryPaths, folder: string): Promise<void> {
+  assertCherrySkillDirectory(paths.root, paths.library);
+  assertCherrySkillDirectory(paths.root, paths.mirror);
+  await assertUnambiguousTarget(paths.library, folder);
+  await assertUnambiguousTarget(paths.mirror, folder);
+}
+
+async function resolveInstallSource(
+  source: string,
+  destinations: string[],
+): Promise<string> {
+  const canonicalSource = await fs.realpath(source);
+  for (const destination of destinations) {
+    const relative = path.relative(path.resolve(destination), canonicalSource);
+    if (
+      !relative ||
+      (!relative.startsWith("..") && !path.isAbsolute(relative))
+    ) {
+      throw new Error("Cherry Studio Skill source overlaps destination");
+    }
+  }
+  return canonicalSource;
+}
+
+async function installCurrentSkill(
+  paths: CherryPaths,
+  folder: string,
+  source: string,
+): Promise<void> {
+  const db = await requireDatabase(paths);
+  try {
+    await preparePaths(paths, folder);
+    const existing = getSkill(db, folder);
+    assertLocalReplacement(existing);
+    const target = path.join(paths.library, folder);
+    const mirror = path.join(paths.mirror, folder);
+    if (
+      !existing &&
+      ((await pathExists(target)) || (await pathExists(mirror)))
+    ) {
+      throw new SkillPlatformError("target-conflict", `Unregistered Cherry Studio Skill already occupies target: ${folder}`);
+    }
+    const canonicalSource = await resolveInstallSource(source, [
+      target,
+      mirror,
+    ]);
+    await installCherrySkillFiles(
+      target,
+      mirror,
+      canonicalSource,
+      (content, hash) =>
+        db.transaction(() => writeSkill(db, folder, content, hash))(),
+    );
+  } finally {
+    db.close();
+  }
 }
 
 export async function installCherryStudioSkill(
@@ -315,29 +334,48 @@ export async function installCherryStudioSkill(
   sourceDir: string,
   options?: CherryStudioPlatformOptions,
 ): Promise<void> {
-  const folderName = sanitizeCherryStudioFolderName(skillName);
-  const skillsDir = getCherryStudioSkillsDir(platform, options);
-  const targetDir = path.join(skillsDir, folderName);
-  const skillMdContent = await readSkillMd(sourceDir);
-  const { db, schema } = await requireCherryStudioDb(platform, options);
-
-  try {
-    await fs.mkdir(skillsDir, { recursive: true });
-    if (options?.mode === "symlink") {
-      await symlinkSkillRepoToCherryStudio(sourceDir, targetDir);
-    } else {
-      await copySkillRepoToCherryStudio(sourceDir, targetDir);
-    }
-    upsertCherryStudioSkillRow(
-      db,
-      schema,
-      skillName,
-      folderName,
-      skillMdContent,
+  if (options?.mode === "symlink")
+    throw new SkillPlatformError(
+      "cherry-copy-only",
+      "Cherry Studio rejects symlinks in its managed Skill library",
     );
-  } catch (error) {
-    await fs.rm(targetDir, { recursive: true, force: true });
-    throw error;
+  const folder = validateFolderName(skillName);
+  const paths = resolvePaths(platform, options);
+  await withMutation(paths, () =>
+    installCurrentSkill(paths, folder, sourceDir),
+  );
+}
+
+async function removeCurrentSkill(
+  paths: CherryPaths,
+  folder: string,
+): Promise<void> {
+  const db = await requireDatabase(paths);
+  try {
+    await preparePaths(paths, folder);
+    const row = getSkill(db, folder);
+    if (row?.source === "builtin")
+      throw new SkillPlatformError("target-protected", `Cannot uninstall Cherry Studio built-in skill: ${folder}`);
+    const targets = [
+      path.join(paths.library, folder),
+      path.join(paths.mirror, folder),
+    ];
+    if (!row) {
+      if ((await Promise.all(targets.map(pathExists))).some(Boolean))
+        throw new SkillPlatformError("target-conflict", `Cannot remove unregistered Cherry Studio Skill: ${folder}`);
+      return;
+    }
+    await publishCherrySkillFiles(
+      targets.map((target) => ({ target })),
+      () =>
+        db.transaction(() => {
+          const current = getSkill(db, folder);
+          if (!current || current.id !== row.id || current.source === "builtin")
+            throw new Error("Cherry Studio Skill changed during removal");
+          db.run("DELETE FROM agent_skill WHERE skill_id = ?", row.id);
+          db.run("DELETE FROM agent_global_skill WHERE id = ?", row.id);
+        })(),
+    );
   } finally {
     db.close();
   }
@@ -348,36 +386,16 @@ export async function uninstallCherryStudioSkill(
   skillName: string,
   options?: CherryStudioPlatformOptions,
 ): Promise<void> {
-  const folderName = sanitizeCherryStudioFolderName(skillName);
-  const skillsDir = getCherryStudioSkillsDir(platform, options);
-  const targetDir = path.join(skillsDir, folderName);
-  const handle = await openCherryStudioDb(platform, options);
+  const folder = validateFolderName(skillName);
+  const paths = resolvePaths(platform, options);
+  await withMutation(paths, () => removeCurrentSkill(paths, folder));
+}
 
-  if (!handle) {
-    await fs.rm(targetDir, { recursive: true, force: true });
-    return;
-  }
-
-  const { db, schema } = handle;
-  try {
-    const existing = getExistingSkillRow(db, schema, folderName);
-    if (existing) {
-      if (isCherryStudioBuiltinSkill(existing)) {
-        throw new Error(
-          `Cannot uninstall Cherry Studio built-in skill: ${skillName}`,
-        );
-      }
-      await removeEnabledAgentSymlinks(db, schema, existing.id, folderName);
-      db.run(
-        `DELETE FROM ${getAgentSkillTable(schema)} WHERE skill_id = ?`,
-        existing.id,
-      );
-      db.run(`DELETE FROM ${getSkillTable(schema)} WHERE id = ?`, existing.id);
-    }
-    await fs.rm(targetDir, { recursive: true, force: true });
-  } finally {
-    db.close();
-  }
+function folderFromPath(paths: CherryPaths, targetPath: string): string {
+  const target = path.resolve(targetPath);
+  if (path.dirname(target) !== path.resolve(paths.library))
+    throw new Error("Path traversal detected: skill path is outside platform");
+  return validateFolderName(path.basename(target));
 }
 
 export async function uninstallCherryStudioPlatformSkill(
@@ -385,20 +403,10 @@ export async function uninstallCherryStudioPlatformSkill(
   platformSkillPath: string,
   options?: CherryStudioPlatformOptions,
 ): Promise<void> {
-  const skillsDir = path.resolve(getCherryStudioSkillsDir(platform, options));
-  const targetPath = path.resolve(platformSkillPath);
-  const relativeTarget = path.relative(skillsDir, targetPath);
-  if (
-    !isPathWithin(skillsDir, targetPath) ||
-    relativeTarget === "" ||
-    relativeTarget === "."
-  ) {
-    throw new Error("Path traversal detected: skill path is outside platform");
-  }
-
+  const paths = resolvePaths(platform, options);
   await uninstallCherryStudioSkill(
     platform,
-    path.basename(targetPath),
+    folderFromPath(paths, platformSkillPath),
     options,
   );
 }
@@ -408,26 +416,12 @@ export async function getCherryStudioPlatformSkillMetadata(
   platformSkillPath: string,
   options?: CherryStudioPlatformOptions,
 ): Promise<CherryStudioPlatformSkillMetadata> {
-  const skillsDir = path.resolve(getCherryStudioSkillsDir(platform, options));
-  const targetPath = path.resolve(platformSkillPath);
-  const relativeTarget = path.relative(skillsDir, targetPath);
-  if (
-    !isPathWithin(skillsDir, targetPath) ||
-    relativeTarget === "" ||
-    relativeTarget === "."
-  ) {
-    throw new Error("Path traversal detected: skill path is outside platform");
-  }
-
-  const handle = await openCherryStudioDb(platform, options);
-  if (!handle) {
-    return { isBuiltin: false };
-  }
-
-  const { db, schema } = handle;
+  const paths = resolvePaths(platform, options);
+  const folder = folderFromPath(paths, platformSkillPath);
+  const db = await openDatabase(paths, true);
+  if (!db) return { isBuiltin: false };
   try {
-    const row = getExistingSkillRow(db, schema, path.basename(targetPath));
-    return { isBuiltin: row ? isCherryStudioBuiltinSkill(row) : false };
+    return { isBuiltin: getSkill(db, folder)?.source === "builtin" };
   } finally {
     db.close();
   }
@@ -438,65 +432,33 @@ export async function getCherryStudioSkillStatus(
   skillName: string,
   options?: CherryStudioPlatformOptions,
 ): Promise<boolean> {
-  const folderName = sanitizeCherryStudioFolderName(skillName);
-  const skillMdPath = path.join(
-    getCherryStudioSkillsDir(platform, options),
-    folderName,
-    "SKILL.md",
-  );
-  if (!(await pathExists(skillMdPath))) {
-    return false;
-  }
-
-  const handle = await openCherryStudioDb(platform, options);
-  if (!handle) {
-    return false;
-  }
-
-  const { db, schema } = handle;
+  const folder = validateFolderName(skillName);
+  const paths = resolvePaths(platform, options);
+  const db = await openDatabase(paths, true);
+  if (!db) return false;
   try {
-    return Boolean(getExistingSkillRow(db, schema, folderName));
+    if (!getSkill(db, folder)) return false;
+    const libraryPath = path.join(paths.library, folder);
+    if (!(await pathExists(libraryPath))) return false;
+    const libraryStat = await fs.lstat(libraryPath);
+    if (!libraryStat.isDirectory() || libraryStat.isSymbolicLink())
+      return false;
+    for (const directory of [paths.library, paths.mirror]) {
+      try {
+        if (!(await fs.stat(path.join(directory, folder, "SKILL.md"))).isFile())
+          return false;
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        )
+          return false;
+        throw error;
+      }
+    }
+    return true;
   } finally {
     db.close();
-  }
-}
-
-async function removeEnabledAgentSymlinks(
-  db: DatabaseAdapter.Database,
-  schema: CherryStudioDbSchema,
-  skillId: string,
-  folderName: string,
-): Promise<void> {
-  const rows = db.all(
-    `SELECT agent.accessible_paths
-     FROM ${getAgentSkillTable(schema)} AS agent_skill
-     JOIN ${getAgentTable(schema)} AS agent ON agent.id = agent_skill.agent_id
-     WHERE agent_skill.skill_id = ? AND agent_skill.is_enabled = 1`,
-    skillId,
-  ) as CherryStudioAgentWorkspaceRow[];
-
-  for (const row of rows) {
-    const workspace = parseJsonStringArray(row.accessible_paths)[0];
-    if (!workspace) {
-      continue;
-    }
-
-    const linkPath = path.join(workspace, ".claude", "skills", folderName);
-    try {
-      const stat = await fs.lstat(linkPath);
-      if (stat.isSymbolicLink()) {
-        await fs.unlink(linkPath);
-      }
-    } catch (error: unknown) {
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
-        continue;
-      }
-      throw error;
-    }
   }
 }

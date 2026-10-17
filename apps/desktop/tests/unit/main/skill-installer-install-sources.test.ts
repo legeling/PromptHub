@@ -334,57 +334,31 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     expect(scanLocalPreviewSpy).not.toHaveBeenCalled();
   });
 
-  it("scans SSH Gitea store URLs through the same SKILL.md-only metadata path", async () => {
+  it("scans SSH Gitea through Git and keeps SSH metadata for installation", async () => {
     await SkillInstaller.init();
-
-    const cloneSpy = vi.spyOn(skillInstallerUtils, "gitClone");
-    vi.spyOn(SkillInstaller, "fetchRemoteContent").mockImplementation(
-      async (url: string) => {
-        if (url === "https://gitea.example.com/api/v1/repos/icelemon/skills") {
-          return JSON.stringify({ default_branch: "stable" });
-        }
-        if (
-          url ===
-          "https://gitea.example.com/api/v1/repos/icelemon/skills/git/trees/stable?recursive=1"
-        ) {
-          return JSON.stringify({
-            tree: [
-              { path: "ssh-skill/SKILL.md", type: "blob", sha: "ssh-sha" },
-            ],
-          });
-        }
-        if (
-          url ===
-          "https://gitea.example.com/api/v1/repos/icelemon/skills/raw/ssh-skill/SKILL.md?ref=stable"
-        ) {
-          return [
-            "---",
-            "name: ssh-skill",
-            "description: SSH skill",
-            "author: owner",
-            "tags: [ssh]",
-            "---",
-            "# SSH skill",
-          ].join("\n");
-        }
-        throw new Error(`Unexpected URL: ${url}`);
-      },
-    );
-
+    const cloneSpy = vi
+      .spyOn(skillInstallerUtils, "gitClone")
+      .mockImplementation(async (_url, dest) => {
+        await fs.mkdir(path.join(dest, "ssh-skill"), { recursive: true });
+        await fs.writeFile(
+          path.join(dest, "ssh-skill/SKILL.md"),
+          "---\nname: ssh-skill\n---\n# SSH Skill",
+        );
+      });
+    const fetch = vi.spyOn(SkillInstaller, "fetchRemoteContent");
     const result = await SkillInstaller.scanRemoteGithub(
       "git@gitea.example.com:icelemon/skills.git",
       [],
+      "stable",
     );
-
     expect(result).toHaveLength(1);
-    expect(result[0].slug).toBe("ssh-skill");
     expect(result[0].source_url).toBe(
-      "https://gitea.example.com/icelemon/skills/tree/stable/ssh-skill",
+      "git@gitea.example.com:icelemon/skills.git",
     );
-    expect(result[0].content_url).toBe(
-      "https://gitea.example.com/api/v1/repos/icelemon/skills/raw/ssh-skill/SKILL.md?ref=stable",
-    );
-    expect(cloneSpy).not.toHaveBeenCalled();
+    expect(result[0].source_branch).toBe("stable");
+    expect(result[0].source_directory).toBe("ssh-skill");
+    expect(cloneSpy).toHaveBeenCalledTimes(1);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("keeps source identity stable across refreshes even when clone roots differ", async () => {

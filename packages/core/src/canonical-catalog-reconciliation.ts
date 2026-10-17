@@ -1,4 +1,4 @@
-import { migrateSkillPayloadFilesV1 } from "./migrations/skill-payload-files-v1";
+import { migrateSkillPayloadFiles } from "./migrations/skill-payload-upgrade";
 import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
 import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
 import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
@@ -200,7 +200,7 @@ function reconcileWithMaintenance(
       rootPath: options.activeRoot,
       databasePath: sourcePath,
     });
-    migrateSkillPayloadFilesV1(source, {
+    migrateSkillPayloadFiles(source, {
       rootPath: options.activeRoot,
       databasePath: sourcePath,
       skillsRoot: path.join(options.activeRoot, "data", "skills"),

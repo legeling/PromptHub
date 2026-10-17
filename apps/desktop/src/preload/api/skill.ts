@@ -1,3 +1,8 @@
+import type {
+  SkillExportFileFormat,
+  SkillExportSaveResult,
+} from "@prompthub/shared/types/skill-export";
+import { invokeSkillPlatformOperation } from "./skill-platform-operation";
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
@@ -22,6 +27,11 @@ import type {
 } from "@prompthub/shared/types";
 
 export const skillApi = {
+  saveExport: (
+    id: string,
+    format: SkillExportFileFormat,
+  ): Promise<SkillExportSaveResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SAVE_EXPORT, id, format),
   create: (
     data: CreateSkillParams,
     options?: { skipInitialVersion?: boolean },
@@ -89,15 +99,23 @@ export const skillApi = {
       platformId,
       platformSkillPath,
     ),
-  installMd: (skillId: string, skillMdContent: string, platformId: string) =>
-    ipcRenderer.invoke(
+  installMd: (
+    skillId: string,
+    skillMdContent: string,
+    platformId: string,
+  ): Promise<void> =>
+    invokeSkillPlatformOperation<void>(
       IPC_CHANNELS.SKILL_INSTALL_MD,
       skillId,
       skillMdContent,
       platformId,
     ),
-  uninstallMd: (skillId: string, platformId: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_UNINSTALL_MD, skillId, platformId),
+  uninstallMd: (skillId: string, platformId: string): Promise<void> =>
+    invokeSkillPlatformOperation<void>(
+      IPC_CHANNELS.SKILL_UNINSTALL_MD,
+      skillId,
+      platformId,
+    ),
   getMdInstallStatus: (skillId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_MD_INSTALL_STATUS, skillId),
   getMdInstallStatusBatch: (skillIds: string[]) =>
@@ -117,7 +135,7 @@ export const skillApi = {
     skillMdContent: string,
     platformId: string,
   ): Promise<SkillPlatformInstallResult> =>
-    ipcRenderer.invoke(
+    invokeSkillPlatformOperation<SkillPlatformInstallResult>(
       IPC_CHANNELS.SKILL_INSTALL_MD_SYMLINK,
       skillId,
       skillMdContent,
@@ -203,14 +221,14 @@ export const skillApi = {
     directory?: string;
     skillName?: string;
   }): Promise<SkillPackageSnapshot> =>
-    ipcRenderer.invoke(
+    invokeSkillPackageRead<SkillPackageSnapshot>(
       IPC_CHANNELS.SKILL_GET_REMOTE_GIT_PACKAGE_SNAPSHOT,
       options,
     ),
   getRemoteZipPackageSnapshot: (options: {
     zipUrl: string;
   }): Promise<SkillPackageSnapshot> =>
-    ipcRenderer.invoke(
+    invokeSkillPackageRead<SkillPackageSnapshot>(
       IPC_CHANNELS.SKILL_GET_REMOTE_ZIP_PACKAGE_SNAPSHOT,
       options,
     ),
@@ -239,8 +257,15 @@ export const skillApi = {
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_READ_LOCAL_FILES, skillId),
   readFilesSnapshot: (skillId: string): Promise<SkillFileSnapshot[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_READ_FILES_SNAPSHOT, skillId),
-  replaceFilesSnapshot: (skillId: string, files: SkillFileSnapshot[]): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_REPLACE_FILES_SNAPSHOT, skillId, files),
+  replaceFilesSnapshot: (
+    skillId: string,
+    files: SkillFileSnapshot[],
+  ): Promise<void> =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.SKILL_REPLACE_FILES_SNAPSHOT,
+      skillId,
+      files,
+    ),
   renameLocalPath: (
     skillId: string,
     oldRelativePath: string,
@@ -378,3 +403,4 @@ export const skillApi = {
   insertVersionDirect: (version: SkillVersion) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_INSERT_VERSION_DIRECT, version),
 };
+import { invokeSkillPackageRead } from "./skill-package-read";

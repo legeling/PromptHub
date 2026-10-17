@@ -173,6 +173,7 @@ export const IPC_CHANNELS = {
   SKILL_DELETE: "skill:delete",
   SKILL_SEARCH: "skill:search",
   SKILL_EXPORT: "skill:export",
+  SKILL_SAVE_EXPORT: "skill:saveExport",
   SKILL_EXPORT_ZIP: "skill:exportZip",
   SKILL_IMPORT: "skill:import",
   SKILL_SCAN_LOCAL: "skill:scanLocal",

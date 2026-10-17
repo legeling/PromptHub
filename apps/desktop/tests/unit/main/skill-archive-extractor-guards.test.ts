@@ -85,7 +85,7 @@ describe("Skill Zip extraction defensive guards", () => {
     await extractSkillZipArchive(new Uint8Array(), "/extract");
 
     expect(mocks.writeFile).toHaveBeenCalledWith(
-      path.join("/extract", "scripts", "run.ts"),
+      path.resolve("/extract", "scripts", "run.ts"),
       expect.objectContaining({ byteLength: 1 }),
     );
   });

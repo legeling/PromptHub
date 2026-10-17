@@ -1,6 +1,6 @@
 import { migrateGenerationSqliteV1 } from "@prompthub/core/migrations/generation-sqlite-v1";
 import { migrateSkillSqliteV1 } from "@prompthub/core/migrations/skill-sqlite-v1";
-import { migrateSkillPayloadFilesV1 } from "@prompthub/core/migrations/skill-payload-files-v1";
+import { migrateSkillPayloadFiles } from "@prompthub/core/migrations/skill-payload-upgrade";
 import { migrateRuleMetadataV1 } from "@prompthub/core/migrations/rule-metadata-v1";
 import { migratePromptWorkspaceV1 } from "@prompthub/core/migrations/prompt-workspace-v1";
 import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
@@ -204,7 +204,7 @@ export function initDatabase(): DatabaseAdapter.Database {
       rootPath: getUserDataPath(),
       databasePath: getDatabasePath(),
     });
-    migrateSkillPayloadFilesV1(database, {
+    migrateSkillPayloadFiles(database, {
       rootPath: getUserDataPath(),
       databasePath: dbPath,
       skillsRoot: getSkillsDir(),

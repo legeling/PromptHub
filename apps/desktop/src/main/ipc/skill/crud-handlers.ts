@@ -1,9 +1,6 @@
 import { ipcMain } from "electron";
-import { zipSync } from "fflate";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import { SkillInstaller } from "../../services/skill-installer";
-import { isInternalSkillRepoEntry } from "../../services/skill-installer-repo";
-import { ensureLocalRepoPath } from "./shared";
 import {
   createLibrarySkill,
   updateLibrarySkill,
@@ -125,59 +122,6 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
       return SkillInstaller.scanLocalPreview(customPaths, db, aiConfig);
     },
   );
-
-  ipcMain.handle(IPC_CHANNELS.SKILL_EXPORT, async (_, id: string, format) => {
-    if (typeof id !== "string" || id.trim().length === 0) {
-      throw new Error("skill:export requires a non-empty id");
-    }
-    if (format !== "skillmd" && format !== "json") {
-      throw new Error("skill:export format must be 'skillmd' or 'json'");
-    }
-    const skill = db.getById(id);
-    if (!skill) throw new Error("Skill not found");
-    return format === "skillmd"
-      ? SkillInstaller.exportAsSkillMd(skill)
-      : SkillInstaller.exportAsJson(skill);
-  });
-
-  ipcMain.handle(IPC_CHANNELS.SKILL_EXPORT_ZIP, async (_, id: string) => {
-    if (typeof id !== "string" || id.trim().length === 0) {
-      throw new Error("skill:exportZip requires a non-empty id");
-    }
-
-    const skill = db.getById(id);
-    if (!skill) {
-      throw new Error("Skill not found");
-    }
-
-    const repoPath = await ensureLocalRepoPath(db, id);
-    if (!repoPath) {
-      throw new Error(`Unable to resolve local repo for skill: ${id}`);
-    }
-
-    const fileEntries =
-      await SkillInstaller.readLocalRepoFileBuffersByPath(repoPath);
-
-    if (fileEntries.length === 0) {
-      throw new Error(`Skill repo is empty: ${skill.name}`);
-    }
-
-    const zipFiles: Record<string, Uint8Array> = {};
-
-    for (const file of fileEntries) {
-      if (isInternalSkillRepoEntry(file.path)) {
-        continue;
-      }
-      zipFiles[file.path.replace(/\\/g, "/")] = file.data;
-    }
-
-    const zipped = zipSync(zipFiles, { level: 1 });
-
-    return {
-      fileName: `${skill.name}.zip`,
-      base64: Buffer.from(zipped).toString("base64"),
-    };
-  });
 
   ipcMain.handle(IPC_CHANNELS.SKILL_IMPORT, async (_, jsonContent: string) => {
     if (typeof jsonContent !== "string" || jsonContent.trim().length === 0) {

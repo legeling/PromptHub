@@ -9,6 +9,8 @@ import type { TFunction } from "i18next";
 import type { RegistrySkill, Skill } from "@prompthub/shared/types/skill";
 import { BUILTIN_SKILL_REGISTRY } from "@prompthub/shared/constants/skill-registry";
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
+import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
+import { formatSkillPackageOperationError } from "../../services/skill-package-operation";
 import { loadGitHubSkillRepo } from "../../services/github-skill-store";
 import { findInstalledRegistrySkill } from "../../services/skill-store-update";
 import type { SkillState } from "../../stores/skill/skill-store-types";
@@ -221,6 +223,7 @@ async function loadRepositorySkills(
     return window.api.skill.scanRemoteGithub(url, BUILTIN_SKILL_REGISTRY);
   }
   return loadGitHubSkillRepo(url, {
+    formatError: (error) => formatSkillPackageOperationError(error, t),
     branch: undefined,
     directory: undefined,
     fetchRemoteContent: (remoteUrl) =>
@@ -257,6 +260,8 @@ function formatGitHubScanError(
   parsedRepo: ReturnType<typeof parseGitRepo> | null,
   t: TFunction,
 ): string {
+  if (getSkillPackageReadErrorCode(error) !== "read-failed")
+    return formatSkillPackageOperationError(error, t);
   const message =
     error instanceof Error
       ? error.message

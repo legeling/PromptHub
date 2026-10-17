@@ -218,8 +218,10 @@ describe("renderer Skill package operation adapter", () => {
     );
     expect(
       formatSkillPackageOperationError(new Error("network down"), t as never),
-    ).toBe("network down");
-    expect(formatSkillPackageOperationError(404, t as never)).toBe("404");
+    ).toBe("localized:skill.packageReadError.network-unavailable");
+    expect(formatSkillPackageOperationError(404, t as never)).toBe(
+      "localized:skill.packageReadError.read-failed",
+    );
     expect(
       new SkillPackageOperationError({
         code: "CONFLICT",

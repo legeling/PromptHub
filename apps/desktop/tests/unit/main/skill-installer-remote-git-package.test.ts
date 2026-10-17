@@ -4,6 +4,11 @@ import * as os from "os";
 import * as path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("fs/promises")>();
+  return { ...actual, cp: vi.fn(actual.cp) };
+});
+
 vi.mock("@/main/database", () => ({
   initDatabase: vi.fn(),
 }));
@@ -283,7 +288,7 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
       "scripts/setup.sh",
     ]);
     expect(SkillInstaller.fetchRemoteBytes).toHaveBeenCalledWith(
-      "https://github.com/acme/skills/archive/main.zip",
+      "https://codeload.github.com/acme/skills/zip/main",
     );
     expect(await listRemoteImportTempDirs()).toEqual([]);
   });
@@ -832,19 +837,28 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
           "---\nname: partial-copy\n---\n\n# Remote Skill\n",
           "utf-8",
         );
-        const unreadableFile = path.join(skillDir, "blocked.txt");
-        await fs.writeFile(unreadableFile, "blocked\n", "utf-8");
-        await fs.chmod(unreadableFile, 0o000);
+        await fs.writeFile(
+          path.join(skillDir, "blocked.txt"),
+          "blocked\n",
+          "utf-8",
+        );
       },
     );
 
+    // chmod(000) does not deny reads on Windows or under a privileged account.
+    // Inject failure at the filesystem copy boundary after a partial write.
+    vi.spyOn(fs, "cp").mockImplementationOnce(async (_source, target) => {
+      await fs.mkdir(target, { recursive: true });
+      await fs.writeFile(path.join(String(target), "SKILL.md"), "partial");
+      throw Object.assign(new Error("EACCES: copy denied"), { code: "EACCES" });
+    });
     await expect(
       SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(skill, {
         repoUrl: "https://gitea.example.com/team/skills",
         branch: "main",
         directory: "skills/partial-copy",
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("EACCES");
 
     await expect(
       fs.readFile(path.join(originalRepoPath, "SKILL.md"), "utf-8"),

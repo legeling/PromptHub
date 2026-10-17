@@ -54,6 +54,70 @@ describe("skill-installer-remote", () => {
     getHttpRequestAgentMock.mockReset().mockReturnValue(undefined);
   });
 
+  it("authenticates GitHub archive API and drops the token on its signed archive redirect", async () => {
+    lookupAllMock.mockResolvedValue([{ address: "140.82.112.6", family: 4 }]);
+    let requestIndex = 0;
+    httpRequestMock.mockImplementation((_options, callback) => {
+      const first = requestIndex++ === 0;
+      const response = Object.assign(new EventEmitter(), {
+        statusCode: first ? 302 : 200,
+        headers: first
+          ? {
+              location:
+                "https://codeload.github.com/acme/skills/legacy.zip/main?token=signed-fixture",
+            }
+          : {},
+        resume: vi.fn(),
+      });
+      return {
+        on: vi.fn(),
+        destroy: vi.fn(),
+        end: () => {
+          callback(response);
+          if (!first) {
+            response.emit("data", Buffer.from([0, 255]));
+            response.emit("end");
+          }
+        },
+      };
+    });
+    await expect(
+      fetchRemoteBytes(
+        "https://api.github.com/repos/acme/skills/zipball/main",
+        0,
+        { githubToken: "ghp_fixture" },
+      ),
+    ).resolves.toEqual(new Uint8Array([0, 255]));
+    expect(httpRequestMock.mock.calls[0][0].headers.Authorization).toBe(
+      "Bearer ghp_fixture",
+    );
+    expect(
+      httpRequestMock.mock.calls[1][0].headers.Authorization,
+    ).toBeUndefined();
+    expect(httpRequestMock.mock.calls[1][0].path).toContain(
+      "token=signed-fixture",
+    );
+  });
+
+  it.each([401, 403, 429])(
+    "preserves the GitHub origin for HTTP %s failure feedback",
+    async (statusCode) => {
+      lookupAllMock.mockResolvedValue([{ address: "140.82.112.6", family: 4 }]);
+      httpRequestMock.mockImplementation((_options, callback) => ({
+        on: vi.fn(),
+        destroy: vi.fn(),
+        end: () => callback({ statusCode, headers: {}, resume: vi.fn() }),
+      }));
+      await expect(
+        fetchRemoteBytes(
+          "https://api.github.com/repos/acme/skills/zipball/main",
+          0,
+          { githubToken: "ghp_fixture" },
+        ),
+      ).rejects.toThrow(`GitHub HTTP ${statusCode}`);
+    },
+  );
+
   it("allows the issue 165 GitHub tree payload under the global byte cap", () => {
     const issue165TreePayloadBytes = 6_329_653;
     const githubRecursiveTreeUrl = new URL(

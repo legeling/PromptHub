@@ -11,6 +11,7 @@ import type {
   Skill,
 } from "@prompthub/shared/types";
 import type { TFunction } from "i18next";
+import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
 import {
   isLocalRegistrySkill,
   normalizeLocalRegistryDirectory,
@@ -95,7 +96,15 @@ export function formatSkillPackageOperationError(
   t: TFunction,
 ): string {
   if (!(error instanceof SkillPackageOperationError)) {
-    return error instanceof Error ? error.message : String(error);
+    return t(`skill.packageReadError.${getSkillPackageReadErrorCode(error)}`);
+  }
+  if (
+    error.failure.code === "SOURCE_UNAVAILABLE" ||
+    error.failure.code === "INVALID_PACKAGE"
+  ) {
+    const readCode = getSkillPackageReadErrorCode(error.failure.summary);
+    if (readCode !== "read-failed")
+      return t(`skill.packageReadError.${readCode}`);
   }
   if (error.failure.reason) {
     const reasonCopy = PACKAGE_FAILURE_REASON_COPY[error.failure.reason];

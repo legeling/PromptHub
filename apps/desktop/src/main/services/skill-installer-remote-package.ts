@@ -37,6 +37,7 @@ import { type RemoteSkillPackageSafetyScanOptions } from "./skill-update-safety"
 import { validateMaterializedSkillPackage } from "./skill-package-validation";
 import { readSkillPackageSnapshotFromValidatedDirectory } from "./skill-package-snapshot";
 import { SkillPackageTransportError } from "./skill-package-transport-error";
+import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
 
 type FetchArchive = (url: string) => Promise<Uint8Array>;
 
@@ -147,6 +148,9 @@ function buildGitArchiveUrl(
     .replace(/\.git\/?$/iu, "")
     .replace(/\/$/u, "");
   const ref = encodeURIComponent(branch?.trim() || "HEAD");
+  if (repo.host === "github.com") {
+    return `https://codeload.github.com/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/zip/${ref}`;
+  }
   if (repo.host === "gitlab.com") {
     const archiveName = `${encodeURIComponent(repo.repo)}-${ref}.zip`;
     return `${repositoryUrl}/-/archive/${ref}/${archiveName}`;
@@ -165,9 +169,16 @@ async function resolveArchiveCheckoutRoot(extractDir: string): Promise<string> {
 function dualTransportError(gitError: unknown, httpError: unknown) {
   const gitDiagnostic = sanitizeSkillPackageDiagnostic(gitError);
   const httpDiagnostic = sanitizeSkillPackageDiagnostic(httpError);
+  const httpCode = getSkillPackageReadErrorCode(httpError);
+  const gitCode = getSkillPackageReadErrorCode(gitError);
+  const code =
+    (httpCode === "network-timeout" || httpCode === "network-unavailable") &&
+    gitCode === "proxy-unavailable"
+      ? gitCode
+      : httpCode;
   return new SkillPackageTransportError(
     "git-http-fallback-failed",
-    `Git transport failed: ${gitDiagnostic}; HTTP archive fallback failed: ${httpDiagnostic}`,
+    `SKILL_PACKAGE_READ:${code}; HTTP archive fallback failed: ${httpDiagnostic}; Git transport failed: ${gitDiagnostic}`,
   );
 }
 
@@ -176,6 +187,7 @@ async function materializeRemoteGitRepository(
   branch: string | undefined,
   tempRoot: string,
   fetchArchive: FetchArchive,
+  requestedDirectory?: string,
 ): Promise<string> {
   const cloneDir = path.join(tempRoot, `${repo.owner}-${repo.repo}`);
   try {
@@ -200,7 +212,16 @@ async function materializeRemoteGitRepository(
       throw dualTransportError(gitError, httpError);
     }
     const extractDir = path.join(tempRoot, "http-archive");
-    await extractSkillZipArchive(archiveBytes, extractDir);
+    await extractSkillZipArchive(
+      archiveBytes,
+      extractDir,
+      requestedDirectory === undefined
+        ? undefined
+        : {
+            repositoryDirectory:
+              requestedDirectory === "." ? "" : requestedDirectory,
+          },
+    );
     return resolveArchiveCheckoutRoot(extractDir);
   }
 }
@@ -218,15 +239,16 @@ export async function saveRemoteGitSkillPackage(
   );
 
   try {
+    const requestedDirectory =
+      normalizeDirectory(options.directory) ??
+      normalizeDirectory(skill.source_directory);
     const repoDir = await materializeRemoteGitRepository(
       parsedRepo,
       options.branch,
       tempRoot,
       fetchArchive,
+      requestedDirectory,
     );
-    const requestedDirectory =
-      normalizeDirectory(options.directory) ??
-      normalizeDirectory(skill.source_directory);
     const skillDir = await resolveGitSkillDirectory(
       repoDir,
       skill,
@@ -291,6 +313,7 @@ async function withRemoteGitSkillPackage<T>(
       options.branch,
       tempRoot,
       fetchArchive,
+      normalizeDirectory(options.directory),
     );
     const skillDir = await resolveSnapshotSkillDirectory(repoDir, options);
     await validateMaterializedSkillPackage(skillDir);

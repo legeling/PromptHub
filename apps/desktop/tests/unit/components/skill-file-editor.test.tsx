@@ -736,6 +736,89 @@ describe("SkillFileEditor", () => {
     );
   });
 
+  it("keeps the draft and shows a localized conflict instead of raw IPC errors", async () => {
+    installWindowMocks({
+      api: {
+        skill: {
+          listLocalFiles: vi
+            .fn()
+            .mockResolvedValue([{ path: "LICENSE.txt", isDirectory: false }]),
+          readLocalFile: vi
+            .fn()
+            .mockResolvedValue({
+              path: "LICENSE.txt",
+              content: "Original",
+              isDirectory: false,
+            }),
+          writeLocalFile: vi
+            .fn()
+            .mockRejectedValue(
+              new Error(
+                "Error invoking remote method 'skill:writeLocalFile': Error: Skill package changed during editing; reload and retry",
+              ),
+            ),
+        },
+      },
+    });
+    await renderWithI18n(
+      <SkillFileEditor skillId="skill-1" isOpen mode="inline" />,
+      { language: "zh" },
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Code editor" }), {
+      target: { value: "Draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() =>
+      expect(showToastMock).toHaveBeenCalledWith(
+        "文件已发生变化，请重新打开后重试。未保存的内容仍保留在编辑器中。",
+        "warning",
+      ),
+    );
+    expect(screen.getByRole("textbox", { name: "Code editor" })).toHaveValue(
+      "Draft",
+    );
+  });
+
+  it("keeps deletion available for retry and hides internal exception details", async () => {
+    installWindowMocks({
+      api: {
+        skill: {
+          listLocalFiles: vi
+            .fn()
+            .mockResolvedValue([{ path: "LICENSE.txt", isDirectory: false }]),
+          readLocalFile: vi
+            .fn()
+            .mockResolvedValue({
+              path: "LICENSE.txt",
+              content: "Original",
+              isDirectory: false,
+            }),
+          deleteLocalFile: vi
+            .fn()
+            .mockRejectedValue(
+              new Error(
+                "Error invoking remote method 'skill:deleteLocalFile': secret diagnostic",
+              ),
+            ),
+        },
+      },
+    });
+    await renderWithI18n(
+      <SkillFileEditor skillId="skill-1" isOpen mode="inline" />,
+      { language: "zh" },
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "删除文件" }));
+    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    await waitFor(() =>
+      expect(showToastMock).toHaveBeenCalledWith("删除失败，请重试。", "error"),
+    );
+    expect(
+      screen.getByTestId("skill-file-editor-dialog-backdrop"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/secret diagnostic/)).not.toBeInTheDocument();
+  });
+
   it("keeps file editor toolbar actions from submitting parent forms", async () => {
     const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();

@@ -1,3 +1,4 @@
+import { SkillPlatformError } from "./skill-platform-error";
 import { replaceSkillDestination } from "@prompthub/core/skills/destination";
 /**
  * Platform management for MCP skill installation (Claude, Cursor, etc.)
@@ -552,7 +553,7 @@ export async function installSkillMd(
   validateSkillName(skillName);
   const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
-    throw new Error(`Unknown platform: ${platformId}`);
+    throw new SkillPlatformError("platform-unsupported", `Unknown platform: ${platformId}`);
   }
 
   // Ensure the canonical copy exists in local repo
@@ -608,7 +609,7 @@ export async function uninstallSkillMd(
   validateSkillName(skillName);
   const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
-    throw new Error(`Unknown platform: ${platformId}`);
+    throw new SkillPlatformError("platform-unsupported", `Unknown platform: ${platformId}`);
   }
 
   try {
@@ -776,7 +777,7 @@ export async function installSkillMdSymlink(
   validateSkillName(skillName);
   const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
-    throw new Error(`Unknown platform: ${platformId}`);
+    throw new SkillPlatformError("platform-unsupported", `Unknown platform: ${platformId}`);
   }
 
   await initSkillsDir();
@@ -852,6 +853,8 @@ export async function installSkillMdSymlink(
   } catch (error) {
     const code = getErrorCode(error);
     const message = error instanceof Error ? error.message : String(error);
+    // Cherry's native library and mirror publication must retain the requested mode.
+    if (isCherryStudioPlatform(platform.id)) throw error;
     // Windows needs either admin or Developer Mode to call CreateSymbolicLink.
     // macOS/Linux commonly fail with EACCES on read-only file systems. In all
     // these cases the copy fallback is the right behavior — the user still
@@ -908,7 +911,7 @@ export async function installSkillMdForSkill(
     (entry) => entry.id === platformId,
   );
   if (!platform) {
-    throw new Error(`Unknown platform: ${platformId}`);
+    throw new SkillPlatformError("platform-unsupported", `Unknown platform: ${platformId}`);
   }
 
   await installSkillMd(
@@ -949,7 +952,7 @@ export async function installSkillMdSymlinkForSkill(
     (entry) => entry.id === platformId,
   );
   if (!platform) {
-    throw new Error(`Unknown platform: ${platformId}`);
+    throw new SkillPlatformError("platform-unsupported", `Unknown platform: ${platformId}`);
   }
 
   const result = await installSkillMdSymlink(
@@ -979,7 +982,7 @@ export async function uninstallSkillMdForSkill(
     (entry) => entry.id === platformId,
   );
   if (!platform) {
-    throw new Error(`Unknown platform: ${platformId}`);
+    throw new SkillPlatformError("platform-unsupported", `Unknown platform: ${platformId}`);
   }
 
   await uninstallSkillMd(skill.name, platformId, { legacySkillNames });

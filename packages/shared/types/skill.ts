@@ -128,6 +128,7 @@ export interface GitHubTreeEntry {
 
 export interface GitHubTreeResponse {
   tree?: GitHubTreeEntry[];
+  truncated?: boolean;
 }
 
 export interface MarketplaceReferenceEntry {

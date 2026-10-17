@@ -1113,6 +1113,30 @@ describe("skill-installer-utils", () => {
       expect((error as Error).message).not.toContain("secret");
     });
 
+    it("preserves an SSH authentication reason even after long Git diagnostics are bounded", async () => {
+      const stderrHandlers: Array<(chunk: Buffer) => void> = [];
+      const closeHandlers: Array<(code: number) => void> = [];
+      vi.mocked(childProcess.spawn).mockReturnValue({
+        stderr: {
+          on: vi.fn((event, cb) => event === "data" && stderrHandlers.push(cb)),
+        },
+        on: vi.fn((event, cb) => event === "close" && closeHandlers.push(cb)),
+        kill: vi.fn(),
+        // Only process members consumed by gitClone are exercised.
+      } as unknown as childProcess.ChildProcess);
+      const promise = gitClone("git@github.com:acme/skills.git", "/tmp/dest");
+      await vi.waitFor(() => expect(childProcess.spawn).toHaveBeenCalled());
+      stderrHandlers[0]?.(
+        Buffer.from(
+          "diagnostic ".repeat(60) + "Permission denied (publickey).",
+        ),
+      );
+      closeHandlers[0]?.(128);
+      await expect(promise).rejects.toThrow(
+        /^SKILL_PACKAGE_READ:ssh-authentication;/,
+      );
+    });
+
     it.each(["ENOENT", "EACCES"])(
       "classifies an unavailable Git executable from %s",
       async (code) => {

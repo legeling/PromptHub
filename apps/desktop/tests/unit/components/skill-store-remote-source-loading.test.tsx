@@ -73,6 +73,130 @@ describe("SkillStore remote loading", () => {
     vi.unstubAllEnvs();
   });
 
+  it.each(["claude-code", "openai-codex"])(
+    "refreshes an unverified three-item %s cache and preserves it on incomplete downloads",
+    async (sourceId) => {
+      const cached = ["old-one", "old-two", "old-three"].map((name) =>
+        makeRegistrySkill(name),
+      );
+      useSkillStore.setState({
+        selectedStoreSourceId: sourceId,
+        remoteStoreEntries: {
+          [sourceId]: { loadedAt: 100, skills: cached, error: null },
+        },
+      });
+      let fail = true;
+      const names = ["one", "two", "three", "four", "five"];
+      const prefix = sourceId === "openai-codex" ? "skills/.curated" : "skills";
+      const fetchRemoteContent = vi.fn(async (url: string) => {
+        if (url.includes("/git/trees/"))
+          return JSON.stringify({
+            tree: names.map((name) => ({
+              path: `${prefix}/${name}/SKILL.md`,
+              type: "blob",
+            })),
+          });
+        if (url.startsWith("https://api.github.com/"))
+          return JSON.stringify({ default_branch: "main" });
+        if (fail && url.includes("/four/"))
+          throw new Error("Request timed out");
+        return `---\nname: ${url.split("/").at(-2)}\ndescription: Catalog entry\n---\n# Content`;
+      });
+      installWindowMocks({
+        api: {
+          settings: {
+            get: vi
+              .fn()
+              .mockResolvedValue({ device: { storeAutoSync: false } }),
+          },
+          skill: {
+            fetchRemoteContent,
+            scanLocalPreview: vi.fn().mockResolvedValue([]),
+          },
+        },
+      });
+      await renderWithI18n(<SkillStore />, { language: "en" });
+      await waitFor(() =>
+        expect(
+          useSkillStore.getState().remoteStoreEntries[sourceId]?.error,
+        ).toContain("4 of 5"),
+      );
+      expect(
+        useSkillStore.getState().remoteStoreEntries[sourceId].skills,
+      ).toEqual(cached);
+      expect(
+        useSkillStore.getState().remoteStoreEntries[sourceId].loadedAt,
+      ).toBe(100);
+      fail = false;
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(
+          useSkillStore
+            .getState()
+            .remoteStoreEntries[sourceId].skills.map((skill) => skill.slug),
+        ).toEqual(names),
+      );
+      expect(
+        useSkillStore.getState().remoteStoreEntries[sourceId].error,
+      ).toBeNull();
+      expect(
+        useSkillStore.getState().remoteStoreEntries[sourceId].catalogComplete,
+      ).toBe(true);
+      expect(screen.getByText("four")).toBeInTheDocument();
+    },
+  );
+
+  it.each(["claude-code", "openai-codex"])(
+    "keeps a complete %s catalog through failed refresh and reopen",
+    async (sourceId) => {
+      useSkillStore.setState({ selectedStoreSourceId: sourceId });
+      useSkillStore.getState().setRemoteStoreEntry(sourceId, {
+        loadedAt: 123,
+        catalogComplete: true,
+        error: null,
+        skills: [makeRegistrySkill("offline-entry")],
+      });
+      const fetchRemoteContent = vi
+        .fn()
+        .mockRejectedValue(new Error("Request timed out"));
+      installWindowMocks({
+        api: {
+          settings: {
+            get: vi
+              .fn()
+              .mockResolvedValue({ device: { storeAutoSync: false } }),
+          },
+          skill: {
+            fetchRemoteContent,
+            scanLocalPreview: vi.fn().mockResolvedValue([]),
+          },
+        },
+      });
+      const view = await renderWithI18n(<SkillStore />, { language: "en" });
+      expect(screen.getByText("Offline Entry")).toBeInTheDocument();
+      expect(fetchRemoteContent).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
+      await waitFor(() =>
+        expect(
+          useSkillStore.getState().remoteStoreEntries[sourceId].error,
+        ).toBeTruthy(),
+      );
+      expect(screen.getByText("Offline Entry")).toBeInTheDocument();
+      expect(
+        useSkillStore.getState().remoteStoreEntries[sourceId],
+      ).toMatchObject({
+        loadedAt: 123,
+        catalogComplete: true,
+      });
+      view.unmount();
+      await useSkillStore.persist.rehydrate();
+      fetchRemoteContent.mockClear();
+      await renderWithI18n(<SkillStore />, { language: "en" });
+      expect(screen.getByText("Offline Entry")).toBeInTheDocument();
+      expect(fetchRemoteContent).not.toHaveBeenCalled();
+    },
+  );
+
   it("does not retry indefinitely after a remote fetch failure", async () => {
     const fetchRemoteContent = vi
       .fn()
@@ -114,7 +238,7 @@ describe("SkillStore remote loading", () => {
       expect(
         useSkillStore.getState().remoteStoreEntries["claude-code"]?.error,
       ).toContain(
-        "Failed to reach GitHub. Check your network connection or switch to another network and retry.",
+        "The Skill source could not be reached. Check your connection and source address, then retry.",
       );
     });
 
@@ -157,7 +281,7 @@ describe("SkillStore remote loading", () => {
       event.preventDefault();
     });
 
-    const { getByText, queryByText } = await renderWithI18n(
+    const { getByText } = await renderWithI18n(
       <form onSubmit={onSubmit}>
         <SkillStore />
       </form>,
@@ -170,7 +294,7 @@ describe("SkillStore remote loading", () => {
       expect(getByText("Failed to load remote store")).toBeInTheDocument();
       expect(
         getByText(
-          "GitHub API rate limit reached. Try again in a few minutes, or switch this repository URL to SSH to avoid the anonymous API limit.",
+          "GitHub API rate limit reached. Add a GitHub Access Token in Settings or wait for the limit to reset. Custom repositories can also use SSH with a configured key.",
         ),
       ).toBeInTheDocument();
     });
@@ -183,7 +307,9 @@ describe("SkillStore remote loading", () => {
     });
 
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(queryByText(/GitHub token in settings/i)).not.toBeInTheDocument();
+    expect(
+      getByText(/Add a GitHub Access Token in Settings/),
+    ).toBeInTheDocument();
   });
 
   it("uses user-facing copy for the official store empty state", async () => {
@@ -343,7 +469,7 @@ describe("SkillStore remote loading", () => {
     await waitFor(() => {
       expect(getByText("拉取远程商店失败")).toBeInTheDocument();
       expect(
-        getByText("无法连接到 GitHub，请检查当前网络，或切换网络后再试。"),
+        getByText("Skill 下载超时，请检查网络或代理后重试。"),
       ).toBeInTheDocument();
     });
   });
@@ -378,7 +504,9 @@ describe("SkillStore remote loading", () => {
     await waitFor(() => {
       expect(getByText("拉取远程商店失败")).toBeInTheDocument();
       expect(
-        getByText("仓库不存在，或仓库地址无效，请检查 GitHub 仓库地址后重试。"),
+        getByText(
+          "仓库、文件或分支不存在，或当前凭据无权访问。请核对地址、分支及 Token／SSH 权限。",
+        ),
       ).toBeInTheDocument();
     });
   });

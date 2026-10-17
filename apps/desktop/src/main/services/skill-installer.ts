@@ -34,6 +34,7 @@ import { installSkillFromSource } from "../../../../../packages/core/src/skills/
 import { initDatabase } from "@/main/database";
 import { SkillDB } from "@/main/database/skill";
 import { readGithubTokenSetting } from "@/main/settings/settings-readers";
+import { fetchSkillPackageBytes } from "./skill-package-download";
 import { sanitizeImportedSkillDraft } from "./skill-import-sanitize";
 import { parseSkillMd } from "./skill-validator";
 export { SkillSafetyReviewRequiredError } from "./skill-update-safety";
@@ -761,7 +762,7 @@ export class SkillInstaller {
     options: RemoteGitPackageOptions,
   ): Promise<string> {
     return saveRemoteGitSkillPackage(skill, options, (url) =>
-      this.fetchRemoteBytes(url),
+      fetchSkillPackageBytes(url, this.fetchRemoteBytes),
     );
   }
 
@@ -772,7 +773,7 @@ export class SkillInstaller {
     skillName?: string;
   }) {
     return getRemoteGitSkillPackageFingerprint(options, (url) =>
-      this.fetchRemoteBytes(url),
+      fetchSkillPackageBytes(url, this.fetchRemoteBytes),
     );
   }
 
@@ -783,19 +784,21 @@ export class SkillInstaller {
     skillName?: string;
   }) {
     return getRemoteGitSkillPackageSnapshot(options, (url) =>
-      this.fetchRemoteBytes(url),
+      fetchSkillPackageBytes(url, this.fetchRemoteBytes),
     );
   }
   static getLocalSkillPackageSnapshot = readValidatedSkillPackageSnapshot;
   static getRemoteZipSkillPackageSnapshot(options: { zipUrl: string }) {
-    return getRemoteZipSkillPackageSnapshot(options, this.fetchRemoteBytes);
+    return getRemoteZipSkillPackageSnapshot(options, (url) =>
+      fetchSkillPackageBytes(url, this.fetchRemoteBytes),
+    );
   }
   static saveRemoteZipSkillToLocalRepoBySkillId(
     skill: RemotePackageSkill,
     options: RemoteZipPackageOptions,
   ): Promise<string> {
     return saveRemoteZipSkillPackage(skill, options, (url) =>
-      this.fetchRemoteBytes(url),
+      fetchSkillPackageBytes(url, this.fetchRemoteBytes),
     );
   }
 
@@ -827,7 +830,7 @@ export class SkillInstaller {
       );
     }
 
-    if (parsedRepo.protocol === "ssh" && isGitHubHost(parsedRepo.host)) {
+    if (parsedRepo.protocol === "ssh") {
       return this.scanRemoteGitRepoViaClone(
         parsedRepo,
         registrySkills,
@@ -1031,7 +1034,10 @@ export class SkillInstaller {
             builtin?.description ||
             parsedSkill?.frontmatter.description ||
             `${name} skill`;
-          const sourceUrl = `${parsedRepo.repositoryUrl}/tree/${encodeURIComponent(normalizedBranch)}/${sourceDirectory}`;
+          const sourceUrl =
+            parsedRepo.protocol === "ssh"
+              ? parsedRepo.cloneUrl
+              : `${parsedRepo.repositoryUrl}/tree/${encodeURIComponent(normalizedBranch)}/${sourceDirectory}`;
           const sourceId = buildSkillSourceId({
             sourceType: "git-repo",
             sourceUrl: parsedRepo.repositoryUrl,

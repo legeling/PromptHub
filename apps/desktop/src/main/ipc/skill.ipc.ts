@@ -1,3 +1,4 @@
+import { registerSkillExportHandlers } from "./skill/export-handlers";
 import type { SkillDB } from "../database/skill";
 import { registerSkillCrudHandlers } from "./skill/crud-handlers";
 import { registerSkillLocalRepoHandlers } from "./skill/local-repo-handlers";
@@ -13,6 +14,7 @@ export function registerSkillIPC(db: SkillDB): Promise<void> {
   const context = { db };
 
   registerSkillCrudHandlers(context);
+  registerSkillExportHandlers(context);
   registerSkillPlatformHandlers(context);
   registerSkillLocalRepoHandlers(context);
   const ready = registerSkillPackageOperationHandlers(context);

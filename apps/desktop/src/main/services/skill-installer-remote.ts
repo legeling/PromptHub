@@ -440,7 +440,11 @@ export async function fetchRemoteText(
             return;
           }
           response.resume();
-          reject(new Error(`HTTP ${statusCode} fetching remote content`));
+          reject(
+            new Error(
+              `${shouldAttachGithubAuth(parsedUrl.hostname) ? "GitHub " : ""}HTTP ${statusCode} fetching remote content`,
+            ),
+          );
           return;
         }
 
@@ -595,7 +599,11 @@ export async function fetchRemoteBytes(
             return;
           }
           response.resume();
-          reject(new Error(`HTTP ${statusCode} fetching remote content`));
+          reject(
+            new Error(
+              `${shouldAttachGithubAuth(parsedUrl.hostname) ? "GitHub " : ""}HTTP ${statusCode} fetching remote content`,
+            ),
+          );
           return;
         }
 

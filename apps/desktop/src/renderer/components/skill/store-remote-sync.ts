@@ -14,6 +14,8 @@ import type {
 import { BUILTIN_SKILL_REGISTRY } from "@prompthub/shared/constants/skill-registry";
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
+import { formatSkillPackageOperationError } from "../../services/skill-package-operation";
+import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
 import {
   loadGitHubSkillRepo,
   parseFrontmatter,
@@ -364,10 +366,13 @@ export function useSkillStoreRemoteSync(
         }
 
         return await loadGitHubSkillRepo(repoUrl, {
+          formatError: (error) => formatSkillPackageOperationError(error, t),
           branch: source.branch,
           directory: source.directory,
           fetchRemoteContent: (url) => window.api.skill.fetchRemoteContent(url),
           registrySkills,
+          incompleteMessage: (loaded, total) =>
+            t("skill.remoteStoreIncompleteHint", { loaded, total }),
           rateLimitMessage: t(
             "skill.remoteStoreRateLimitHint",
             "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
@@ -394,6 +399,8 @@ export function useSkillStoreRemoteSync(
             ),
           );
         }
+        if (getSkillPackageReadErrorCode(error) !== "read-failed")
+          throw new Error(formatSkillPackageOperationError(error, t));
         throw error;
       }
     },
@@ -887,6 +894,7 @@ export function useSkillStoreRemoteSync(
         !forceRefresh &&
         !pageDirection &&
         hasCachedSkills &&
+        (source.type !== "git-repo" || cachedEntry?.catalogComplete === true) &&
         !hasStalePaginatedCache
       ) {
         return;
@@ -966,6 +974,7 @@ export function useSkillStoreRemoteSync(
           }
           setRemoteStoreEntry(sourceId, {
             loadedAt: Date.now(),
+            catalogComplete: source.type === "git-repo" ? true : undefined,
             currentCursor: result.currentCursor ?? null,
             cursorHistory: nextCursorHistory,
             error: null,
@@ -993,6 +1002,7 @@ export function useSkillStoreRemoteSync(
           console.error(`Failed to load remote store ${sourceId}:`, error);
           setRemoteStoreEntry(sourceId, {
             loadedAt: cachedEntry?.loadedAt || 0,
+            catalogComplete: cachedEntry?.catalogComplete,
             error:
               source.type === "cloud"
                 ? t(

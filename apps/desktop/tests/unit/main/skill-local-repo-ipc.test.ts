@@ -257,8 +257,11 @@ describe("skill local repo IPC", () => {
         options,
       ),
     ).resolves.toEqual({
-      content: "# Remote writer\n",
-      directoryFingerprint: "remote-package-fingerprint",
+      ok: true,
+      value: {
+        content: "# Remote writer\n",
+        directoryFingerprint: "remote-package-fingerprint",
+      },
     });
     expect(getRemoteGitSkillPackageSnapshotMock).toHaveBeenCalledWith(options);
     expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
@@ -271,12 +274,18 @@ describe("skill local repo IPC", () => {
     "rejects a non-string remote Git package selector for %s",
     async (channel) => {
       const { handlers } = await setupSkillLocalRepoIpc();
-      await expect(
-        handlers[channel](null, {
-          repoUrl: "https://github.com/team/skills",
-          skillName: 42,
-        }),
-      ).rejects.toThrow(/skillName to be a string/);
+      const response = handlers[channel](null, {
+        repoUrl: "https://github.com/team/skills",
+        skillName: 42,
+      });
+      if (channel === "skill:getRemoteGitPackageSnapshot") {
+        await expect(response).resolves.toEqual({
+          ok: false,
+          errorCode: "read-failed",
+        });
+      } else {
+        await expect(response).rejects.toThrow(/skillName to be a string/);
+      }
     },
   );
 
@@ -289,7 +298,7 @@ describe("skill local repo IPC", () => {
           null,
           options,
         ),
-      ).rejects.toThrow(/requires a non-empty repoUrl/);
+      ).resolves.toEqual({ ok: false, errorCode: "read-failed" });
       expect(getRemoteGitSkillPackageSnapshotMock).not.toHaveBeenCalled();
     },
   );
@@ -304,8 +313,11 @@ describe("skill local repo IPC", () => {
         options,
       ),
     ).resolves.toEqual({
-      content: "# Remote ZIP writer\n",
-      directoryFingerprint: "remote-zip-package-fingerprint",
+      ok: true,
+      value: {
+        content: "# Remote ZIP writer\n",
+        directoryFingerprint: "remote-zip-package-fingerprint",
+      },
     });
     expect(getRemoteZipSkillPackageSnapshotMock).toHaveBeenCalledWith(options);
   });
@@ -319,7 +331,7 @@ describe("skill local repo IPC", () => {
           null,
           options,
         ),
-      ).rejects.toThrow(/requires a non-empty zipUrl/);
+      ).resolves.toEqual({ ok: false, errorCode: "read-failed" });
       expect(getRemoteZipSkillPackageSnapshotMock).not.toHaveBeenCalled();
     },
   );

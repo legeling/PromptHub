@@ -41,6 +41,63 @@ describe("Skill Zip extraction", () => {
     });
   });
 
+  it("extracts a complete selected Skill without counting unrelated repository files", async () => {
+    const files: Record<string, Uint8Array> = {
+      "skills-main/skills/.curated/meeting/SKILL.md": strToU8("# Meeting\n"),
+      "skills-main/skills/.curated/meeting/reference/guide.md":
+        strToU8("# Guide\n"),
+      "skills-main/skills/.curated/meeting/assets/icon.bin": new Uint8Array([
+        0, 128, 255,
+      ]),
+    };
+    for (let i = 0; i <= MAX_SKILL_PACKAGE_FILES; i++)
+      files[`skills-main/other/${i}.md`] = strToU8("other");
+    await extractSkillZipArchive(zipSync(files), tempDir, {
+      repositoryDirectory: "skills/.curated/meeting",
+    });
+    const target = path.join(tempDir, "skills-main/skills/.curated/meeting");
+    expect(
+      await fs.readFile(path.join(target, "reference/guide.md"), "utf8"),
+    ).toBe("# Guide\n");
+    expect(await fs.readFile(path.join(target, "assets/icon.bin"))).toEqual(
+      Buffer.from([0, 128, 255]),
+    );
+    await expect(
+      fs.stat(path.join(tempDir, "skills-main/other")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("keeps the selected package limit and rejects ambiguous or unsafe repository roots", async () => {
+    const files: Record<string, Uint8Array> = {};
+    for (let i = 0; i <= MAX_SKILL_PACKAGE_FILES; i++)
+      files[`repo/skills/meeting/${i}.md`] = strToU8("x");
+    const options = { repositoryDirectory: "skills/meeting" };
+    await expect(
+      extractSkillZipArchive(zipSync(files), tempDir, options),
+    ).rejects.toThrow(/too many files/);
+    await expect(
+      extractSkillZipArchive(
+        zipSync({
+          "repo/skills/meeting/SKILL.md": strToU8("# Skill"),
+          "second/README.md": strToU8("other"),
+        }),
+        tempDir,
+        options,
+      ),
+    ).rejects.toThrow(/one repository root/);
+    await expect(
+      extractSkillZipArchive(
+        zipSync({
+          "repo/skills/meeting/SKILL.md": strToU8("# Skill"),
+          "repo/other/../../escape": strToU8("other"),
+        }),
+        tempDir,
+        options,
+      ),
+    ).rejects.toThrow(/Path traversal/);
+    expect(await fs.readdir(tempDir)).toEqual([]);
+  });
+
   it("rejects traversal and case-insensitive duplicate paths", async () => {
     const traversal = zipSync({
       "../outside.txt": strToU8("outside"),

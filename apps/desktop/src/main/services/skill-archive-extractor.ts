@@ -13,7 +13,10 @@ import { isPathWithin } from "./skill-installer-internal";
 
 type ArchiveBudget = { fileCount: number; totalBytes: number };
 
-function normalizeArchiveFilePath(rawPath: string): string | null {
+function normalizeArchiveFilePath(
+  rawPath: string,
+  checkDepth = true,
+): string | null {
   const normalized = rawPath.replace(/\\/g, "/");
   const directory = normalized.endsWith("/");
   const relativePath = normalized.replace(/\/+$/g, "");
@@ -30,7 +33,7 @@ function normalizeArchiveFilePath(rawPath: string): string | null {
       "Path traversal detected: zip entry is outside package directory",
     );
   }
-  if (parts.length > MAX_SKILL_PACKAGE_DEPTH + 1) {
+  if (checkDepth && parts.length > MAX_SKILL_PACKAGE_DEPTH + 1) {
     throw new Error("Skill package directory depth limit exceeded");
   }
   if (directory || shouldIgnoreSkillDirectoryEntry(relativePath)) return null;
@@ -51,12 +54,27 @@ function consumeArchiveBudget(budget: ArchiveBudget, fileSize: number): void {
   }
 }
 
-function createArchiveFilter(paths: Map<string, string>) {
+function createArchiveFilter(
+  paths: Map<string, string>,
+  repositoryDirectory?: string,
+  roots = new Set<string>(),
+) {
   const budget: ArchiveBudget = { fileCount: 0, totalBytes: 0 };
   const identities = new Set<string>();
   return (file: UnzipFileInfo): boolean => {
-    const relativePath = normalizeArchiveFilePath(file.name);
+    const relativePath = normalizeArchiveFilePath(
+      file.name,
+      repositoryDirectory === undefined,
+    );
     if (!relativePath) return false;
+    if (repositoryDirectory !== undefined) {
+      const root = relativePath.split("/")[0];
+      roots.add(root);
+      const prefix = `${root}/${repositoryDirectory ? `${repositoryDirectory}/` : ""}`;
+      if (!relativePath.startsWith(prefix)) return false;
+      if (!normalizeArchiveFilePath(relativePath.slice(prefix.length)))
+        return false;
+    }
     const identity = relativePath.toLowerCase();
     if (identities.has(identity)) {
       throw new Error(`Skill package contains duplicate path: ${relativePath}`);
@@ -87,9 +105,20 @@ async function writeExtractedFile(
 export async function extractSkillZipArchive(
   archiveBytes: Uint8Array,
   extractDir: string,
+  options: { repositoryDirectory?: string } = {},
 ): Promise<void> {
+  const directory = options.repositoryDirectory;
+  if (directory !== undefined && directory !== "") {
+    normalizeArchiveFilePath(`${directory}/SKILL.md`);
+  }
   const paths = new Map<string, string>();
-  const files = unzipSync(archiveBytes, { filter: createArchiveFilter(paths) });
+  const roots = new Set<string>();
+  const files = unzipSync(archiveBytes, {
+    filter: createArchiveFilter(paths, directory, roots),
+  });
+  if (directory !== undefined && roots.size !== 1) {
+    throw new Error("Git archive must contain one repository root directory");
+  }
   const actualBudget: ArchiveBudget = { fileCount: 0, totalBytes: 0 };
   await fs.mkdir(extractDir, { recursive: true });
   for (const [rawPath, content] of Object.entries(files)) {

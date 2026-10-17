@@ -1,4 +1,6 @@
 import { parseSkillMd } from "@prompthub/core/skills/skill-frontmatter";
+import { loadGitHubSkillContents } from "./github-skill-content";
+import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
 import type {
   GitHubRepoMetadata,
   GitHubTreeEntry,
@@ -10,9 +12,7 @@ import {
   parseGitHubTreeLocation,
   parseGitRepo,
 } from "@prompthub/shared/utils/git-repo";
-import {
-  buildSkillSourceId,
-} from "@prompthub/shared/utils/skill-identity";
+import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
 
 export function parseFrontmatter(content: string): {
   name: string;
@@ -132,8 +132,14 @@ export function mapGitHubStoreError(
     rateLimit: string;
     network: string;
     invalidRepo: string;
+    formatError?: (error: unknown) => string;
   },
 ): Error {
+  if (
+    messages.formatError &&
+    getSkillPackageReadErrorCode(error) !== "read-failed"
+  )
+    return new Error(messages.formatError(error));
   if (isGitHubRateLimitError(error)) {
     return new Error(messages.rateLimit);
   }
@@ -191,6 +197,8 @@ export async function loadGitHubSkillRepo(
     rateLimitMessage: string;
     networkMessage: string;
     invalidRepoMessage: string;
+    incompleteMessage?: (loaded: number, total: number) => string;
+    formatError?: (error: unknown) => string;
   },
 ): Promise<RegistrySkill[]> {
   const parsedRepo = parseGitRepo(repoUrl);
@@ -206,6 +214,7 @@ export async function loadGitHubSkillRepo(
   } catch (error) {
     throw mapGitHubStoreError(error, {
       rateLimit: options.rateLimitMessage,
+      formatError: options.formatError,
       network: options.networkMessage,
       invalidRepo: options.invalidRepoMessage,
     });
@@ -230,11 +239,15 @@ export async function loadGitHubSkillRepo(
   } catch (error) {
     throw mapGitHubStoreError(error, {
       rateLimit: options.rateLimitMessage,
+      formatError: options.formatError,
       network: options.networkMessage,
       invalidRepo: options.invalidRepoMessage,
     });
   }
   const treeData = parseJson<GitHubTreeResponse>(treeRaw || "{}", {});
+  if (!Array.isArray(treeData.tree) || treeData.truncated) {
+    throw new Error(options.networkMessage);
+  }
   const treeEntries = Array.isArray(treeData.tree)
     ? treeData.tree.filter(isGitHubTreeEntry)
     : [];
@@ -250,79 +263,94 @@ export async function loadGitHubSkillRepo(
     options.registrySkills.map((skill) => [skill.slug, skill]),
   );
 
-  const remoteSkills = await Promise.all(
-    skillFiles.map(async (item) => {
-      const path = item.path;
-      const pathParts = path.split("/");
-      const directoryPath = pathParts.slice(0, -1).join("/");
-      const directoryName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "";
-      const rawUrl = buildRawUrl(
+  const contents = await loadGitHubSkillContents(
+    skillFiles.map((item) => ({
+      rawUrl: buildRawUrl(
         parsedRepo.owner,
         parsedRepo.repo,
         resolvedBranch,
-        path,
-      );
-      const sourceRepoUrl = directoryPath
-        ? `${parsedRepo.repositoryUrl}/tree/${resolvedBranch}/${directoryPath}`
-        : `${parsedRepo.repositoryUrl}/tree/${resolvedBranch}`;
+        item.path,
+      ),
+      apiUrl: `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.repo}/contents/${item.path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(resolvedBranch)}`,
+    })),
+    options.fetchRemoteContent,
+    options.incompleteMessage ?? (() => options.networkMessage),
+  ).catch((error: unknown) => {
+    const cause = error instanceof Error ? error.cause : undefined;
+    if (
+      cause &&
+      options.formatError &&
+      getSkillPackageReadErrorCode(cause) !== "read-failed"
+    )
+      throw new Error(options.formatError(cause));
+    throw error;
+  });
+  const remoteSkills = skillFiles.map((item, index) => {
+    const path = item.path;
+    const pathParts = path.split("/");
+    const directoryPath = pathParts.slice(0, -1).join("/");
+    const directoryName =
+      pathParts.length > 1 ? pathParts[pathParts.length - 2] : "";
+    const rawUrl = buildRawUrl(
+      parsedRepo.owner,
+      parsedRepo.repo,
+      resolvedBranch,
+      path,
+    );
+    const sourceRepoUrl = directoryPath
+      ? `${parsedRepo.repositoryUrl}/tree/${resolvedBranch}/${directoryPath}`
+      : `${parsedRepo.repositoryUrl}/tree/${resolvedBranch}`;
 
-      let content: string;
-      try {
-        content = await options.fetchRemoteContent(rawUrl);
-      } catch {
-        return null;
-      }
-      if (!content) {
-        return null;
-      }
+    const content = contents[index];
 
-      const parsed = parseFrontmatter(content);
-      const slug = slugify(directoryName || parsed.name || parsedRepo.repo);
-      const builtin = builtinBySlug.get(slug);
-      const description =
-        parsed.description || builtin?.description || `${toTitleCase(slug)} skill`;
-      const canonicalSkillPath = path;
-      const sourceId = buildSkillSourceId({
-        sourceType: "git-repo",
-        sourceUrl: parsedRepo.repositoryUrl,
-        branch: resolvedBranch,
-        directory: directoryPath || resolvedDirectory || undefined,
-        skillPath: canonicalSkillPath,
-      });
+    const parsed = parseFrontmatter(content);
+    const slug = slugify(directoryName || parsed.name || parsedRepo.repo);
+    const builtin = builtinBySlug.get(slug);
+    const description =
+      parsed.description ||
+      builtin?.description ||
+      `${toTitleCase(slug)} skill`;
+    const canonicalSkillPath = path;
+    const sourceId = buildSkillSourceId({
+      sourceType: "git-repo",
+      sourceUrl: parsedRepo.repositoryUrl,
+      branch: resolvedBranch,
+      directory: directoryPath || resolvedDirectory || undefined,
+      skillPath: canonicalSkillPath,
+    });
 
-      return {
-        slug,
-        name: builtin?.name || parsed.name || toTitleCase(slug),
-        install_name: parsed.name || undefined,
-        source_id: sourceId,
-        source_label: `${parsedRepo.owner}/${parsedRepo.repo}`,
-        source_branch: resolvedBranch,
-        source_directory: directoryPath || resolvedDirectory || undefined,
-        canonical_skill_path: canonicalSkillPath,
-        directory_fingerprint: undefined,
-        description,
-        category: builtin?.category || inferCategory(slug, description),
-        icon_url: builtin?.icon_url,
-        icon_background: builtin?.icon_background,
-        icon_emoji: builtin?.icon_emoji,
-        author:
-          builtin?.author ||
-          repoMeta?.owner?.login ||
-          (parsedRepo.owner === "anthropics" ? "Anthropic" : parsedRepo.owner),
-        source_url: sourceRepoUrl,
-        tags: builtin?.tags?.length
-          ? builtin.tags
-          : parsed.tags.length
-            ? parsed.tags
-            : slug.split(/[-_]/).filter(Boolean),
-        version: builtin?.version || "1.0.0",
-        content,
-        content_url: rawUrl,
-        prerequisites: builtin?.prerequisites,
-        compatibility: builtin?.compatibility || ["claude", "cursor"],
-      } satisfies RegistrySkill;
-    }),
-  );
+    return {
+      slug,
+      name: builtin?.name || parsed.name || toTitleCase(slug),
+      install_name: parsed.name || undefined,
+      source_id: sourceId,
+      source_label: `${parsedRepo.owner}/${parsedRepo.repo}`,
+      source_branch: resolvedBranch,
+      source_directory: directoryPath || resolvedDirectory || undefined,
+      canonical_skill_path: canonicalSkillPath,
+      directory_fingerprint: undefined,
+      description,
+      category: builtin?.category || inferCategory(slug, description),
+      icon_url: builtin?.icon_url,
+      icon_background: builtin?.icon_background,
+      icon_emoji: builtin?.icon_emoji,
+      author:
+        builtin?.author ||
+        repoMeta?.owner?.login ||
+        (parsedRepo.owner === "anthropics" ? "Anthropic" : parsedRepo.owner),
+      source_url: sourceRepoUrl,
+      tags: builtin?.tags?.length
+        ? builtin.tags
+        : parsed.tags.length
+          ? parsed.tags
+          : slug.split(/[-_]/).filter(Boolean),
+      version: builtin?.version || "1.0.0",
+      content,
+      content_url: rawUrl,
+      prerequisites: builtin?.prerequisites,
+      compatibility: builtin?.compatibility || ["claude", "cursor"],
+    } satisfies RegistrySkill;
+  });
 
   if (remoteSkills.some(isDefined)) {
     return dedupeRegistrySkills(remoteSkills.filter(isDefined));
@@ -336,17 +364,18 @@ export async function loadGitHubSkillRepo(
   }
 
   const rawUrl = buildRawUrl(
-      parsedRepo.owner,
-      parsedRepo.repo,
-      resolvedBranch,
-      readmeEntry.path,
-    );
+    parsedRepo.owner,
+    parsedRepo.repo,
+    resolvedBranch,
+    readmeEntry.path,
+  );
   let content: string;
   try {
     content = await options.fetchRemoteContent(rawUrl);
   } catch (error) {
     throw mapGitHubStoreError(error, {
       rateLimit: options.rateLimitMessage,
+      formatError: options.formatError,
       network: options.networkMessage,
       invalidRepo: options.invalidRepoMessage,
     });

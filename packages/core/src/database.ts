@@ -1,4 +1,4 @@
-import { migrateSkillPayloadFilesV1 } from "./migrations/skill-payload-files-v1";
+import { migrateSkillPayloadFiles } from "./migrations/skill-payload-upgrade";
 import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
 import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
 import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
@@ -58,7 +58,7 @@ export function initDatabase(
       rootPath: getUserDataPath(),
       databasePath: getDatabasePath(),
     });
-    migrateSkillPayloadFilesV1(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath(), skillsRoot: getSkillsDir() });
+    migrateSkillPayloadFiles(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath(), skillsRoot: getSkillsDir() });
     migrateAgentProviderSqliteV1(database, {
       rootPath: getUserDataPath(),
       databasePath: getDatabasePath(),

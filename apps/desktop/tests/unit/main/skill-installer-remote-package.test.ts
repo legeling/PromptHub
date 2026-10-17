@@ -207,10 +207,10 @@ describe("remote Skill package adapter", () => {
 
     expect(result).toBe("/target/repo");
     expect(mocks.fileExists).toHaveBeenCalledWith(
-      expect.stringMatching(/skills\/writer\/SKILL\.md$/),
+      expect.stringMatching(/skills[\\/]writer[\\/]SKILL\.md$/),
     );
     expect(mocks.copyRepoByPathToDirectory).toHaveBeenCalledWith(
-      expect.stringMatching(/skills\/writer$/),
+      expect.stringMatching(/skills[\\/]writer$/),
       "repo",
       "/target",
       { ifExists: "error" },
@@ -231,14 +231,15 @@ describe("remote Skill package adapter", () => {
     expect(result).toBe("/target/repo");
     expect(mocks.fetchRemoteBytes).toHaveBeenCalledTimes(1);
     expect(mocks.fetchRemoteBytes).toHaveBeenCalledWith(
-      "https://github.com/acme/skills/archive/release%2Fv1.zip",
+      "https://codeload.github.com/acme/skills/zip/release%2Fv1",
     );
     expect(mocks.extractSkillZipArchive).toHaveBeenCalledWith(
       expect.any(Uint8Array),
       expect.stringContaining("http-archive"),
+      { repositoryDirectory: "skills/writer" },
     );
     expect(mocks.fileExists).toHaveBeenCalledWith(
-      expect.stringMatching(/skills-main\/skills\/writer\/SKILL\.md$/),
+      expect.stringMatching(/skills-main[\\/]skills[\\/]writer[\\/]SKILL\.md$/),
     );
   });
 

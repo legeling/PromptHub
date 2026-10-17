@@ -12,6 +12,9 @@ import os from "node:os";
 import path from "node:path";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useTranslation } from "react-i18next";
+import { SkillPlatformPanel } from "../../src/renderer/components/skill/SkillPlatformPanel";
+import { useSkillPlatform } from "../../src/renderer/components/skill/use-skill-platform";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import type { Skill } from "@prompthub/shared/types";
 import { SkillQuickInstall } from "../../src/renderer/components/skill/SkillQuickInstall";
@@ -25,6 +28,27 @@ import { renderWithI18n } from "../helpers/i18n";
 import { DESKTOP_TEST_TIMEOUT_MS } from "../helpers/test-config";
 
 const showToast = vi.hoisted(() => vi.fn());
+const copyFault = vi.hoisted((): { targetRoot: string | null } => ({
+  targetRoot: null,
+}));
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    cp: async (...args: Parameters<typeof actual.cp>) => {
+      if (
+        copyFault.targetRoot &&
+        String(args[1]).startsWith(copyFault.targetRoot)
+      ) {
+        copyFault.targetRoot = null;
+        throw Object.assign(new Error("Injected write denial"), {
+          code: "EACCES",
+        });
+      }
+      return actual.cp(...args);
+    },
+  };
+});
 const refreshBadges = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 vi.mock("../../src/renderer/components/ui/Toast", () => ({
   useToast: () => ({ showToast }),
@@ -64,10 +88,37 @@ async function createPackage(name: string): Promise<Skill> {
   return skill;
 }
 
+function Sidebar({ skill }: { skill: Skill }): JSX.Element {
+  const state = useSkillPlatform(skill, "copy");
+  const { t } = useTranslation();
+  return (
+    <SkillPlatformPanel
+      availablePlatforms={state.availablePlatforms}
+      selectedSkill={skill}
+      t={t}
+      handleExport={() => undefined}
+      installMode="copy"
+      setInstallMode={() => undefined}
+      selectedPlatforms={state.selectedPlatforms}
+      skillMdInstallStatus={state.installStatus}
+      isLoading={state.isLoading}
+      platformError={state.platformError}
+      installProgress={state.installProgress}
+      isBatchInstalling={state.isBatchInstalling}
+      selectAllPlatforms={state.selectAllPlatforms}
+      deselectAllPlatforms={state.deselectAllPlatforms}
+      togglePlatformSelection={state.togglePlatformSelection}
+      uninstalledPlatforms={state.uninstalledPlatforms}
+      onBatchInstall={() => void state.applyPlatformChanges()}
+    />
+  );
+}
+
 describe("Skill platform management through renderer and real storage", () => {
   let runtime: SkillTestRuntime;
   beforeEach(async () => {
     vi.clearAllMocks();
+    copyFault.targetRoot = null;
     runtime = await createSkillTestRuntime();
     Object.defineProperty(window, "api", {
       configurable: true,
@@ -83,67 +134,146 @@ describe("Skill platform management through renderer and real storage", () => {
     vi.restoreAllMocks();
   });
 
-  it("applies an install and a deselection uninstall without deleting the source Skill", async () => {
-    const skill = await createPackage("manage-package");
-    await skillApi.installMdSymlink(skill.id, skill.instructions, "codex");
-    const sourceBefore = fileInventory(skill.local_repo_path!);
-    const view = await renderWithI18n(
-      <SkillQuickInstall skill={skill} onClose={vi.fn()} />,
-    );
-    const codex = await screen.findByRole(
-      "button",
-      { name: /^Codex$/ },
-      storageWaitOptions,
-    );
-    await waitFor(() => expect(codex).toHaveAttribute("aria-pressed", "true"));
-    fireEvent.click(codex);
-    fireEvent.click(screen.getByRole("button", { name: /Claude Code/ }));
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Apply changes (install 1, uninstall 1)",
-      }),
-    );
-    const target = path.join(
-      runtime.platformRoot("claude"),
-      "skills",
-      skill.name,
-    );
-    await waitFor(() =>
-      expect(fs.existsSync(path.join(target, "docs/reference.txt"))).toBe(true),
-    );
-    await waitFor(() =>
-      expect(
-        fs.existsSync(
-          path.join(runtime.platformRoot("codex"), "skills", skill.name),
+  it.each(["dialog", "sidebar"])(
+    "applies installation and staged removal from %s, preserving the source and reopened state",
+    async (surface) => {
+      const skill = await createPackage("manage-package");
+      await skillApi.installMdSymlink(skill.id, skill.instructions, "codex");
+      const sourceBefore = fileInventory(skill.local_repo_path!);
+      const view = await renderWithI18n(
+        surface === "dialog" ? (
+          <SkillQuickInstall skill={skill} onClose={vi.fn()} />
+        ) : (
+          <Sidebar skill={skill} />
         ),
-      ).toBe(false),
-    );
-    expect(
-      fs.readFileSync(path.join(target, "docs/reference.txt"), "utf8"),
-    ).toBe("Preserve package resource\n");
-    expect(fileInventory(skill.local_repo_path!)).toEqual(sourceBefore);
-    view.unmount();
-    await runtime.reopen();
-    expect(await skillApi.get(skill.id)).toMatchObject({
-      id: skill.id,
-      name: skill.name,
-    });
-    await renderWithI18n(<SkillQuickInstall skill={skill} onClose={vi.fn()} />);
-    await waitFor(() =>
+      );
+      const codex = await screen.findByRole(
+        "button",
+        { name: /^Codex$/ },
+        storageWaitOptions,
+      );
+      await waitFor(() =>
+        expect(codex).toHaveAttribute("aria-pressed", "true"),
+      );
+      fireEvent.click(codex);
+      fireEvent.click(screen.getByRole("button", { name: /Claude Code/ }));
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Apply changes",
+        }),
+      );
+      const target = path.join(
+        runtime.platformRoot("claude"),
+        "skills",
+        skill.name,
+      );
+      await waitFor(() =>
+        expect(fs.existsSync(path.join(target, "docs/reference.txt"))).toBe(
+          true,
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          fs.existsSync(
+            path.join(runtime.platformRoot("codex"), "skills", skill.name),
+          ),
+        ).toBe(false),
+      );
       expect(
-        screen.getByRole("button", { name: /Claude Code/ }),
-      ).toHaveAttribute("aria-pressed", "true"),
-    );
-    expect(screen.getByRole("button", { name: /^Codex$/ })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-    expect(
-      screen.getByRole("button", {
-        name: "Apply changes (install 0, uninstall 0)",
-      }),
-    ).toBeDisabled();
-  });
+        fs.readFileSync(path.join(target, "docs/reference.txt"), "utf8"),
+      ).toBe("Preserve package resource\n");
+      expect(fileInventory(skill.local_repo_path!)).toEqual(sourceBefore);
+      view.unmount();
+      await runtime.reopen();
+      expect(await skillApi.get(skill.id)).toMatchObject({
+        id: skill.id,
+        name: skill.name,
+      });
+      await renderWithI18n(
+        surface === "dialog" ? (
+          <SkillQuickInstall skill={skill} onClose={vi.fn()} />
+        ) : (
+          <Sidebar skill={skill} />
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: /Claude Code/ }),
+        ).toHaveAttribute("aria-pressed", "true"),
+      );
+      expect(screen.getByRole("button", { name: /^Codex$/ })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      expect(
+        screen.getByRole("button", {
+          name: "Redistribute",
+        }),
+      ).toBeEnabled();
+    },
+  );
+
+  it.each(["dialog", "sidebar"])(
+    "redistributes current package bytes from %s to already installed targets",
+    async (surface) => {
+      const skill = await createPackage("redistribute-package");
+      await skillApi.installMd(skill.id, skill.instructions, "claude");
+      await skillApi.installMd(
+        skill.id,
+        skill.instructions,
+        "agent-skills-global",
+      );
+      await skillApi.writeLocalFile(
+        skill.id,
+        "docs/reference.txt",
+        "Updated package resource\n",
+      );
+      await renderWithI18n(
+        surface === "dialog" ? (
+          <SkillQuickInstall skill={skill} onClose={vi.fn()} />
+        ) : (
+          <Sidebar skill={skill} />
+        ),
+      );
+      const button = await screen.findByRole(
+        "button",
+        { name: "Redistribute" },
+        storageWaitOptions,
+      );
+      expect(button).toBeEnabled();
+      fireEvent.click(button);
+      const destinations = [
+        path.join(runtime.platformRoot("claude"), "skills", skill.name),
+        path.join(runtime.root, "home", ".agents/skills", skill.name),
+      ];
+      for (const destination of destinations) {
+        await waitFor(
+          () =>
+            expect(
+              fs.readFileSync(
+                path.join(destination, "docs/reference.txt"),
+                "utf8",
+              ),
+            ).toBe("Updated package resource\n"),
+          storageWaitOptions,
+        );
+      }
+      if (surface === "sidebar")
+        await waitFor(
+          () =>
+            expect(
+              screen.getByRole("button", { name: "Claude Code" }),
+            ).toBeEnabled(),
+          storageWaitOptions,
+        );
+      expect(
+        screen.getByRole("button", { name: "Claude Code" }),
+      ).toHaveAttribute("aria-pressed", "true");
+      expect(
+        screen.getByRole("button", { name: "Shared Skill directory" }),
+      ).toHaveAttribute("aria-pressed", "true");
+    },
+  );
 
   it("retains a failed installation for explicit retry and does not undo successful uninstall", async () => {
     const skill = await createPackage("partial-package");
@@ -153,7 +283,12 @@ describe("Skill platform management through renderer and real storage", () => {
       path.join(runtime.platformRoot("claude"), "keep.txt"),
       "External file",
     );
-    fs.chmodSync(runtime.platformRoot("claude"), 0o500);
+    // A file occupying the skills directory fails on every OS, unlike POSIX chmod on Windows.
+    const blockedDirectory = path.join(
+      runtime.platformRoot("claude"),
+      "skills",
+    );
+    fs.writeFileSync(blockedDirectory, "External blocking file");
     const onClose = vi.fn();
     await renderWithI18n(<SkillQuickInstall skill={skill} onClose={onClose} />);
     const codex = await screen.findByRole(
@@ -166,13 +301,13 @@ describe("Skill platform management through renderer and real storage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Claude Code/ }));
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Apply changes (install 1, uninstall 1)",
+        name: "Apply changes",
       }),
     );
     await waitFor(() =>
       expect(showToast).toHaveBeenCalledWith(
         expect.stringContaining("Claude Code"),
-        "error",
+        "warning",
       ),
     );
     expect(onClose).not.toHaveBeenCalled();
@@ -190,13 +325,16 @@ describe("Skill platform management through renderer and real storage", () => {
     expect(await skillApi.get(skill.id)).toMatchObject({ id: skill.id });
     expect(
       screen.getByRole("button", {
-        name: "Apply changes (install 1, uninstall 0)",
+        name: "Apply changes",
       }),
     ).toBeEnabled();
-    fs.chmodSync(runtime.platformRoot("claude"), 0o700);
+    expect(fs.readFileSync(blockedDirectory, "utf8")).toBe(
+      "External blocking file",
+    );
+    fs.unlinkSync(blockedDirectory);
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Apply changes (install 1, uninstall 0)",
+        name: "Apply changes",
       }),
     );
     await waitFor(() =>
@@ -210,6 +348,118 @@ describe("Skill platform management through renderer and real storage", () => {
           ),
         ),
       ).toBe(true),
+    );
+  });
+
+  it("excludes shared storage from select-all and deploys it only after an explicit choice", async () => {
+    const skill = await createPackage("shared-choice");
+    await renderWithI18n(<Sidebar skill={skill} />);
+    const selectAll = await screen.findByRole(
+      "button",
+      { name: "Select all platforms" },
+      storageWaitOptions,
+    );
+    fireEvent.click(selectAll);
+    const shared = screen.getByRole("button", {
+      name: "Shared Skill directory",
+    });
+    expect(shared).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getByText("Pending install 3 · Pending uninstall 0"),
+    ).toBeVisible();
+    const sharedPath = path.join(
+      runtime.root,
+      "home",
+      ".agents",
+      "skills",
+      skill.name,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole("button", { name: "Redistribute" }),
+        ).toBeEnabled(),
+      storageWaitOptions,
+    );
+    expect(fs.existsSync(sharedPath)).toBe(false);
+    fireEvent.click(shared);
+    fireEvent.click(selectAll);
+    expect(shared).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByText("Pending install 1 · Pending uninstall 0"),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
+    await waitFor(
+      () =>
+        expect(
+          fs.readFileSync(path.join(sharedPath, "docs/reference.txt"), "utf8"),
+        ).toBe("Preserve package resource\n"),
+      storageWaitOptions,
+    );
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole("button", { name: "Redistribute" }),
+        ).toBeEnabled(),
+      storageWaitOptions,
+    );
+    expect(await skillApi.getMdInstallStatusDetails(skill.id)).toMatchObject({
+      "agent-skills-global": { installed: true },
+    });
+  });
+
+  it("preserves an installed target after failed redistribution and retries without uninstalling", async () => {
+    const skill = await createPackage("redistribute-retry");
+    await skillApi.installMd(skill.id, skill.instructions, "claude");
+    await skillApi.writeLocalFile(
+      skill.id,
+      "docs/reference.txt",
+      "Revised package\n",
+    );
+    await renderWithI18n(<Sidebar skill={skill} />);
+    const button = await screen.findByRole(
+      "button",
+      { name: "Redistribute" },
+      storageWaitOptions,
+    );
+    // Fault injection only at the filesystem copy boundary, retaining real rollback and status reads.
+    copyFault.targetRoot = runtime.platformRoot("claude");
+    fireEvent.click(button);
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole("button", { name: "Redistribute" }),
+        ).toBeEnabled(),
+      storageWaitOptions,
+    );
+    const targetFile = path.join(
+      runtime.platformRoot("claude"),
+      "skills",
+      skill.name,
+      "docs/reference.txt",
+    );
+    expect(fs.readFileSync(targetFile, "utf8")).toBe(
+      "Preserve package resource\n",
+    );
+    expect(copyFault.targetRoot).toBeNull();
+    expect(screen.getByRole("button", { name: "Claude Code" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByText("Pending uninstall")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Redistribute" }));
+    await waitFor(
+      () =>
+        expect(fs.readFileSync(targetFile, "utf8")).toBe("Revised package\n"),
+      storageWaitOptions,
+    );
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole("button", { name: "Redistribute" }),
+        ).toBeEnabled(),
+      storageWaitOptions,
     );
   });
 

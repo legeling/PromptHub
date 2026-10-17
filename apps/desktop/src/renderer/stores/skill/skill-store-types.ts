@@ -134,6 +134,7 @@ export interface SkillState {
     string,
     {
       loadedAt: number;
+      catalogComplete?: boolean;
       currentCursor?: string | null;
       cursorHistory?: Array<string | null>;
       error?: string | null;
@@ -266,20 +267,7 @@ export interface SkillState {
   toggleCustomStoreSource: (id: string) => void;
   setRemoteStoreEntry: (
     sourceId: string,
-    entry: {
-      loadedAt: number;
-      currentCursor?: string | null;
-      cursorHistory?: Array<string | null>;
-      error?: string | null;
-      matchedCount?: number;
-      nextCursor?: string | null;
-      pageCount?: number;
-      pageIndex?: number;
-      pageSize?: number;
-      query?: string;
-      skills: RegistrySkill[];
-      totalCount?: number;
-    },
+    entry: SkillState["remoteStoreEntries"][string],
   ) => void;
   getInstalledSlugs: () => string[];
   getRecommendedSkills: () => RegistrySkill[];

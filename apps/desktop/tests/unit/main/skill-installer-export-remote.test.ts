@@ -24,7 +24,10 @@ import { parseSkillMd } from "../../../src/main/services/skill-validator";
 import { initDatabase } from "@/main/database";
 import { readGithubTokenSetting } from "@/main/settings/settings-readers";
 import { invalidateCustomPathsCache } from "../../../src/main/services/skill-installer-utils";
-import { SKILL_PLATFORMS, getPlatformMcpRelativePath } from "@prompthub/shared/constants/platforms";
+import {
+  SKILL_PLATFORMS,
+  getPlatformMcpRelativePath,
+} from "@prompthub/shared/constants/platforms";
 import { isPlatformRootConfigured } from "@prompthub/core/platform-paths";
 import * as remoteInstaller from "../../../src/main/services/skill-installer-remote";
 import * as skillInstallerUtils from "../../../src/main/services/skill-installer-utils";
@@ -960,11 +963,20 @@ describe("SkillInstaller.getSupportedPlatforms", () => {
     });
     invalidateCustomPathsCache();
     const platforms = SkillInstaller.getSupportedPlatforms();
-    expect(platforms).toStrictEqual(SKILL_PLATFORMS.map((platform) => {
-      if (platform.id !== "claude") return platform;
-      const root = skillInstallerUtils.getPlatformRootDir(platform);
-      return { ...platform, resolvedRootPath: root, mcpRelativePath: getPlatformMcpRelativePath(platform, isPlatformRootConfigured(platform, root)) };
-    }));
+    expect(platforms).toStrictEqual(
+      SKILL_PLATFORMS.map((platform) => {
+        if (platform.id !== "claude") return platform;
+        const root = skillInstallerUtils.getPlatformRootDir(platform);
+        return {
+          ...platform,
+          resolvedRootPath: root,
+          mcpRelativePath: getPlatformMcpRelativePath(
+            platform,
+            isPlatformRootConfigured(platform, root),
+          ),
+        };
+      }),
+    );
     expect(platforms.length).toBeGreaterThan(0);
   });
 
@@ -1034,54 +1046,29 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     expect(cloneSpy).not.toHaveBeenCalled();
   });
 
-  it("accepts SSH Gitea URLs without cloning the repository", async () => {
+  it("accepts SSH Gitea URLs using the selected SSH transport", async () => {
     await SkillInstaller.init();
-
-    const cloneSpy = vi.spyOn(skillInstallerUtils, "gitClone");
-    vi.spyOn(SkillInstaller, "fetchRemoteContent").mockImplementation(
-      async (url: string) => {
-        if (url === "https://gitea.example.com/api/v1/repos/icelemon/skills") {
-          return JSON.stringify({ default_branch: "main" });
-        }
-        if (
-          url ===
-          "https://gitea.example.com/api/v1/repos/icelemon/skills/git/trees/main?recursive=1"
-        ) {
-          return JSON.stringify({
-            tree: [
-              { path: "ssh-skill/SKILL.md", type: "blob", sha: "ssh-sha" },
-            ],
-          });
-        }
-        if (
-          url ===
-          "https://gitea.example.com/api/v1/repos/icelemon/skills/raw/ssh-skill/SKILL.md?ref=main"
-        ) {
-          return [
-            "---",
-            "name: ssh-skill",
-            "description: SSH skill",
-            "author: owner",
-            "tags: [ssh]",
-            "---",
-            "# SSH skill",
-          ].join("\n");
-        }
-        throw new Error(`Unexpected URL: ${url}`);
-      },
-    );
-
+    const clone = vi
+      .spyOn(skillInstallerUtils, "gitClone")
+      .mockImplementation(async (_url, dest) => {
+        await fs.mkdir(path.join(dest, "ssh-skill"), { recursive: true });
+        await fs.writeFile(
+          path.join(dest, "ssh-skill/SKILL.md"),
+          "---\nname: ssh-skill\n---\n# SSH Skill",
+        );
+      });
+    const fetch = vi.spyOn(SkillInstaller, "fetchRemoteContent");
     const result = await SkillInstaller.scanRemoteGithub(
       "git@gitea.example.com:icelemon/skills.git",
       [],
+      "main",
     );
-
     expect(result).toHaveLength(1);
-    expect(result[0].slug).toBe("ssh-skill");
-    expect(result[0].content_url).toBe(
-      "https://gitea.example.com/api/v1/repos/icelemon/skills/raw/ssh-skill/SKILL.md?ref=main",
+    expect(result[0].source_url).toBe(
+      "git@gitea.example.com:icelemon/skills.git",
     );
-    expect(cloneSpy).not.toHaveBeenCalled();
+    expect(clone).toHaveBeenCalledTimes(1);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("scans SSH GitHub store URLs by cloning through the local SSH transport", async () => {
@@ -1125,7 +1112,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     expect(branchSpy).toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(result[0].source_url).toBe(
-      "https://github.com/icelemon/skills/tree/main/github-skill",
+      "git@github.com:icelemon/skills.git",
     );
     expect(result[0].content_url).toBe(
       "https://raw.githubusercontent.com/icelemon/skills/main/github-skill/SKILL.md",

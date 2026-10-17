@@ -1,3 +1,4 @@
+import { runSkillPlatformOperation } from "../../services/skill-platform-error";
 import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import type {
@@ -148,50 +149,52 @@ export function registerSkillPlatformHandlers(context: SkillIPCContext): void {
 
   ipcMain.handle(
     IPC_CHANNELS.SKILL_INSTALL_MD,
-    async (_, skillId: string, skillMdContent: string, platformId: string) => {
-      if (typeof skillId !== "string" || skillId.trim().length === 0) {
-        throw new Error("skill:installMd requires a non-empty skillId");
-      }
-      if (typeof skillMdContent !== "string") {
-        throw new Error(
-          "skill:installMd requires skillMdContent to be a string",
+    async (_, skillId: string, skillMdContent: string, platformId: string) =>
+      runSkillPlatformOperation("SKILL_INSTALL_MD", async () => {
+        if (typeof skillId !== "string" || skillId.trim().length === 0) {
+          throw new Error("skill:installMd requires a non-empty skillId");
+        }
+        if (typeof skillMdContent !== "string") {
+          throw new Error(
+            "skill:installMd requires skillMdContent to be a string",
+          );
+        }
+        if (typeof platformId !== "string" || platformId.trim().length === 0) {
+          throw new Error("skill:installMd requires a non-empty platformId");
+        }
+        const skill = db.getById(skillId);
+        if (!skill) {
+          throw new Error(`Skill not found: ${skillId}`);
+        }
+        const repoPath = await ensureLocalRepoPathBySkillId(db, skillId);
+        return SkillInstaller.installSkillMdForSkill(
+          skill,
+          skillMdContent,
+          platformId,
+          repoPath ?? undefined,
+          [skill.name],
         );
-      }
-      if (typeof platformId !== "string" || platformId.trim().length === 0) {
-        throw new Error("skill:installMd requires a non-empty platformId");
-      }
-      const skill = db.getById(skillId);
-      if (!skill) {
-        throw new Error(`Skill not found: ${skillId}`);
-      }
-      const repoPath = await ensureLocalRepoPathBySkillId(db, skillId);
-      return SkillInstaller.installSkillMdForSkill(
-        skill,
-        skillMdContent,
-        platformId,
-        repoPath ?? undefined,
-        [skill.name],
-      );
-    },
+      }),
   );
 
   ipcMain.handle(
     IPC_CHANNELS.SKILL_UNINSTALL_MD,
-    async (_, skillId: string, platformId: string) => {
-      if (typeof skillId !== "string" || skillId.trim().length === 0) {
-        throw new Error("skill:uninstallMd requires a non-empty skillId");
-      }
-      if (typeof platformId !== "string" || platformId.trim().length === 0) {
-        throw new Error("skill:uninstallMd requires a non-empty platformId");
-      }
-      const skill = db.getById(skillId);
-      if (!skill) {
-        throw new Error(`Skill not found: ${skillId}`);
-      }
-      return SkillInstaller.uninstallSkillMdForSkill(skill, platformId, [
-        skill.name,
-      ]);
-    },
+    async (_, skillId: string, platformId: string) =>
+      runSkillPlatformOperation("SKILL_UNINSTALL_MD", async () => {
+        if (typeof skillId !== "string" || skillId.trim().length === 0) {
+          throw new Error("skill:uninstallMd requires a non-empty skillId");
+        }
+        if (typeof platformId !== "string" || platformId.trim().length === 0) {
+          throw new Error("skill:uninstallMd requires a non-empty platformId");
+        }
+        const skill = db.getById(skillId);
+        if (!skill) {
+          throw new Error(`Skill not found: ${skillId}`);
+        }
+        return SkillInstaller.uninstallSkillMdForSkill(skill, platformId, [
+          skill.name,
+        ]);
+      }),
   );
 
   ipcMain.handle(
@@ -261,33 +264,36 @@ export function registerSkillPlatformHandlers(context: SkillIPCContext): void {
 
   ipcMain.handle(
     IPC_CHANNELS.SKILL_INSTALL_MD_SYMLINK,
-    async (_, skillId: string, skillMdContent: string, platformId: string) => {
-      if (typeof skillId !== "string" || skillId.trim().length === 0) {
-        throw new Error("skill:installMdSymlink requires a non-empty skillId");
-      }
-      if (typeof skillMdContent !== "string") {
-        throw new Error(
-          "skill:installMdSymlink requires skillMdContent to be a string",
+    async (_, skillId: string, skillMdContent: string, platformId: string) =>
+      runSkillPlatformOperation("SKILL_INSTALL_MD_SYMLINK", async () => {
+        if (typeof skillId !== "string" || skillId.trim().length === 0) {
+          throw new Error(
+            "skill:installMdSymlink requires a non-empty skillId",
+          );
+        }
+        if (typeof skillMdContent !== "string") {
+          throw new Error(
+            "skill:installMdSymlink requires skillMdContent to be a string",
+          );
+        }
+        if (typeof platformId !== "string" || platformId.trim().length === 0) {
+          throw new Error(
+            "skill:installMdSymlink requires a non-empty platformId",
+          );
+        }
+        const skill = db.getById(skillId);
+        if (!skill) {
+          throw new Error(`Skill not found: ${skillId}`);
+        }
+        const repoPath = await ensureLocalRepoPathBySkillId(db, skillId);
+        return SkillInstaller.installSkillMdSymlinkForSkill(
+          skill,
+          skillMdContent,
+          platformId,
+          repoPath ?? undefined,
+          [skill.name],
         );
-      }
-      if (typeof platformId !== "string" || platformId.trim().length === 0) {
-        throw new Error(
-          "skill:installMdSymlink requires a non-empty platformId",
-        );
-      }
-      const skill = db.getById(skillId);
-      if (!skill) {
-        throw new Error(`Skill not found: ${skillId}`);
-      }
-      const repoPath = await ensureLocalRepoPathBySkillId(db, skillId);
-      return SkillInstaller.installSkillMdSymlinkForSkill(
-        skill,
-        skillMdContent,
-        platformId,
-        repoPath ?? undefined,
-        [skill.name],
-      );
-    },
+      }),
   );
 
   ipcMain.handle(

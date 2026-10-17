@@ -1,4 +1,6 @@
 import { ipcMain } from "electron";
+import type { SkillPackageReadResponse } from "@prompthub/shared/types/skill-package-read";
+import { captureSkillPackageRead } from "../../services/skill-package-read-error";
 import { mutateSkillPackage } from "@prompthub/core/skills/package-mutation";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import type {
@@ -289,41 +291,46 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
         directory?: string;
         skillName?: string;
       },
-    ): Promise<SkillPackageSnapshot> => {
-      if (!options?.repoUrl?.trim()) {
-        throw new Error(
-          "skill:getRemoteGitPackageSnapshot requires a non-empty repoUrl",
-        );
-      }
-      if (
-        options.skillName !== undefined &&
-        typeof options.skillName !== "string"
-      ) {
-        throw new Error(
-          "skill:getRemoteGitPackageSnapshot requires skillName to be a string",
-        );
-      }
-      return SkillInstaller.getRemoteGitSkillPackageSnapshot({
-        repoUrl: options.repoUrl,
-        branch: options.branch,
-        directory: options.directory,
-        skillName: options.skillName,
-      });
-    },
+    ): Promise<SkillPackageReadResponse<SkillPackageSnapshot>> =>
+      captureSkillPackageRead(async () => {
+        if (!options?.repoUrl?.trim()) {
+          throw new Error(
+            "skill:getRemoteGitPackageSnapshot requires a non-empty repoUrl",
+          );
+        }
+        if (
+          options.skillName !== undefined &&
+          typeof options.skillName !== "string"
+        ) {
+          throw new Error(
+            "skill:getRemoteGitPackageSnapshot requires skillName to be a string",
+          );
+        }
+        return SkillInstaller.getRemoteGitSkillPackageSnapshot({
+          repoUrl: options.repoUrl,
+          branch: options.branch,
+          directory: options.directory,
+          skillName: options.skillName,
+        });
+      }),
   );
 
   ipcMain.handle(
     IPC_CHANNELS.SKILL_GET_REMOTE_ZIP_PACKAGE_SNAPSHOT,
-    async (_, options?: { zipUrl?: string }): Promise<SkillPackageSnapshot> => {
-      if (!options?.zipUrl?.trim()) {
-        throw new Error(
-          "skill:getRemoteZipPackageSnapshot requires a non-empty zipUrl",
-        );
-      }
-      return SkillInstaller.getRemoteZipSkillPackageSnapshot({
-        zipUrl: options.zipUrl,
-      });
-    },
+    async (
+      _,
+      options?: { zipUrl?: string },
+    ): Promise<SkillPackageReadResponse<SkillPackageSnapshot>> =>
+      captureSkillPackageRead(async () => {
+        if (!options?.zipUrl?.trim()) {
+          throw new Error(
+            "skill:getRemoteZipPackageSnapshot requires a non-empty zipUrl",
+          );
+        }
+        return SkillInstaller.getRemoteZipSkillPackageSnapshot({
+          zipUrl: options.zipUrl,
+        });
+      }),
   );
 
   ipcMain.handle(
@@ -453,7 +460,14 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
           "skill:renameLocalPath requires a non-empty newRelativePath",
         );
       }
-      if (await mutateSkillPackage(db, skillId, { kind: "rename", relativePath: oldRelativePath, newRelativePath })) return true;
+      if (
+        await mutateSkillPackage(db, skillId, {
+          kind: "rename",
+          relativePath: oldRelativePath,
+          newRelativePath,
+        })
+      )
+        return true;
       const repoPath = await resolveManagedRepoPath({ db }, skillId);
       const result = await SkillInstaller.renameLocalRepoPathByPath(
         repoPath,
@@ -606,7 +620,10 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:deleteLocalFile requires a non-empty skillId");
       }
-      if (await mutateSkillPackage(db, skillId, { kind: "delete", relativePath })) return true;
+      if (
+        await mutateSkillPackage(db, skillId, { kind: "delete", relativePath })
+      )
+        return true;
       const repoPath = await resolveManagedRepoPath({ db }, skillId);
       const result = await SkillInstaller.deleteLocalRepoFileByPath(
         repoPath,

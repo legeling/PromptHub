@@ -23,6 +23,7 @@ import type {
   SkillLocalFileEntry,
   SkillLocalFileTreeEntry,
 } from "@prompthub/shared/types";
+import { getSkillFileErrorFeedback } from "../../services/skill-file-error";
 import { scheduleAllSaveSync } from "../../services/webdav-save-sync";
 import {
   SkillCodeEditor,
@@ -753,10 +754,8 @@ export function SkillFileEditor({
       }
     } catch (error) {
       console.error("Failed to save file:", error);
-      showToast(
-        `${t("skill.updateFailed", "Update failed")}: ${String(error)}`,
-        "error",
-      );
+      const feedback = getSkillFileErrorFeedback(error, "save", t);
+      showToast(feedback.message, feedback.type);
     } finally {
       setIsSaving(false);
     }
@@ -844,7 +843,8 @@ export function SkillFileEditor({
       }
     } catch (error) {
       console.error("Failed to create file:", error);
-      showToast(`Failed to create file: ${String(error)}`, "error");
+      const feedback = getSkillFileErrorFeedback(error, "create", t);
+      showToast(feedback.message, feedback.type);
     }
   }, [
     createDir,
@@ -852,6 +852,7 @@ export function SkillFileEditor({
     dialogInput,
     loadFiles,
     canMutateStructure,
+    t,
     showToast,
     writeFile,
   ]);
@@ -875,7 +876,8 @@ export function SkillFileEditor({
       }
     } catch (error) {
       console.error("Failed to create folder:", error);
-      showToast(`Failed to create folder: ${String(error)}`, "error");
+      const feedback = getSkillFileErrorFeedback(error, "createFolder", t);
+      showToast(feedback.message, feedback.type);
     }
   }, [
     createDir,
@@ -883,6 +885,7 @@ export function SkillFileEditor({
     dialogInput,
     loadFiles,
     canMutateStructure,
+    t,
     showToast,
   ]);
 
@@ -928,7 +931,8 @@ export function SkillFileEditor({
       showToast(t("skill.fileSaved", "File saved"), "success");
     } catch (error) {
       console.error("Failed to rename path:", error);
-      showToast(`Failed to rename: ${String(error)}`, "error");
+      const feedback = getSkillFileErrorFeedback(error, "rename", t);
+      showToast(feedback.message, feedback.type);
     }
   }, [
     dialogInput,
@@ -967,7 +971,8 @@ export function SkillFileEditor({
       }
     } catch (error) {
       console.error("Failed to delete file:", error);
-      showToast(`Failed to delete file: ${String(error)}`, "error");
+      const feedback = getSkillFileErrorFeedback(error, "delete", t);
+      showToast(feedback.message, feedback.type);
     }
   }, [
     deleteFile,
@@ -976,6 +981,7 @@ export function SkillFileEditor({
     canMutateStructure,
     selectedFile,
     showToast,
+    t,
   ]);
 
   const requestSelectFile = useCallback(
