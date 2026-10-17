@@ -663,6 +663,14 @@
         "stale": "La configuration native a changé",
         "unavailable": "Impossible de vérifier le fournisseur actif"
       },
+      "officialService": {
+        "title": "Service officiel",
+        "active": "En cours d’utilisation",
+        "inactive": "Non utilisé",
+        "unavailable": "Lecture impossible",
+        "inactiveHint": "Le service officiel n’est pas utilisé. Gérez la connexion dans l’Agent ; le modèle et les informations de quota disponibles s’afficheront ici une fois le service actif.",
+        "unavailableHint": "Impossible de lire la configuration actuelle et de confirmer si le service officiel est utilisé."
+      },
       "currentNative": {
         "title": "Configuration native actuelle",
         "details": "Configuration détectée",

@@ -663,6 +663,14 @@
         "stale": "Native configuration changed",
         "unavailable": "Unable to verify the active provider"
       },
+      "officialService": {
+        "title": "Official service",
+        "active": "In use",
+        "inactive": "Not in use",
+        "unavailable": "Unable to read",
+        "inactiveHint": "The official service is not in use. Manage sign-in in the Agent; model and available usage information appear here when it is active.",
+        "unavailableHint": "The current configuration could not be read. Whether the official service is in use cannot be confirmed."
+      },
       "currentNative": {
         "title": "Current native configuration",
         "details": "Detected configuration",

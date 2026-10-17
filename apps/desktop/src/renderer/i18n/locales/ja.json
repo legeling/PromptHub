@@ -662,6 +662,14 @@
         "stale": "ネイティブ設定が変更されました",
         "unavailable": "現在のプロバイダーを確認できません"
       },
+      "officialService": {
+        "title": "公式サービス",
+        "active": "使用中",
+        "inactive": "未使用",
+        "unavailable": "読み取り不可",
+        "inactiveHint": "公式サービスは使用されていません。Agent でログインを管理してください。有効にすると、現在のモデルと取得可能な利用枠情報を表示します。",
+        "unavailableHint": "現在の設定を読み取れないため、公式サービスが使用中か確認できません。"
+      },
       "currentNative": {
         "title": "現在のネイティブ設定",
         "details": "検出された設定",

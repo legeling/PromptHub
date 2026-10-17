@@ -663,6 +663,14 @@
         "stale": "Native Konfiguration wurde geändert",
         "unavailable": "Aktiver Anbieter konnte nicht verifiziert werden"
       },
+      "officialService": {
+        "title": "Offizieller Dienst",
+        "active": "Wird verwendet",
+        "inactive": "Nicht verwendet",
+        "unavailable": "Nicht lesbar",
+        "inactiveHint": "Der offizielle Dienst wird nicht verwendet. Verwalten Sie die Anmeldung im Agent. Bei aktivem Dienst werden hier das Modell und verfügbare Kontingentinformationen angezeigt.",
+        "unavailableHint": "Die aktuelle Konfiguration kann nicht gelesen werden. Die Nutzung des offiziellen Dienstes lässt sich nicht bestätigen."
+      },
       "currentNative": {
         "title": "Aktuelle native Konfiguration",
         "details": "Erkannte Konfiguration",

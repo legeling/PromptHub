@@ -663,6 +663,14 @@
         "stale": "La configuración nativa cambió",
         "unavailable": "No se pudo verificar el proveedor activo"
       },
+      "officialService": {
+        "title": "Servicio oficial",
+        "active": "En uso",
+        "inactive": "Sin usar",
+        "unavailable": "No se puede leer",
+        "inactiveHint": "El servicio oficial no está en uso. Gestiona el inicio de sesión en el Agent; el modelo y la información de cuota disponible aparecerán aquí cuando esté activo.",
+        "unavailableHint": "No se pudo leer la configuración actual ni confirmar si el servicio oficial está en uso."
+      },
       "currentNative": {
         "title": "Configuración nativa actual",
         "details": "Configuración detectada",

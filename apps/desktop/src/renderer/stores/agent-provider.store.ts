@@ -205,7 +205,16 @@ export const useAgentProviderStore = create<AgentProviderState>((set, get) => ({
       set({
         profiles,
         currentState,
-        selectedProfileId: profiles[0]?.id ?? null,
+        selectedProfileId:
+          currentState?.officialService?.status === "active"
+            ? "builtin:official"
+            : (currentState?.currentProfileId ??
+              (currentState?.nativeConfig
+                ? null
+                : (profiles[0]?.id ??
+                  (currentState?.officialService
+                    ? "builtin:official"
+                    : null)))),
         busyAction: null,
       });
     } catch (error) {
@@ -606,6 +615,10 @@ export const useAgentProviderStore = create<AgentProviderState>((set, get) => ({
         activationPlan: activationResult.plan,
         activationResult,
         currentState,
+        ...(activationResult.status === "verified" &&
+        currentState?.officialService?.status === "active"
+          ? { selectedProfileId: "builtin:official" }
+          : {}),
       });
       return activationResult;
     } catch (error) {

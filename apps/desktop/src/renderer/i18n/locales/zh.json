@@ -663,6 +663,14 @@
         "stale": "原生配置已发生变化",
         "unavailable": "无法验证当前使用的配置"
       },
+      "officialService": {
+        "title": "官方服务",
+        "active": "当前使用",
+        "inactive": "未使用",
+        "unavailable": "暂时无法读取",
+        "inactiveHint": "当前未使用官方服务。请在 Agent 中管理登录；启用后，这里会显示当前模型和可查询的额度信息。",
+        "unavailableHint": "无法读取当前配置，暂时不能确认是否正在使用官方服务。"
+      },
       "currentNative": {
         "title": "当前原生配置",
         "details": "识别到的配置",

@@ -5,11 +5,13 @@ import type {
   AgentProviderConnectionTestResult,
   AgentProviderModelTestResult,
   AgentProviderNativeConfigSummary,
+  ManagedAgentSummary,
 } from "@prompthub/shared/types";
 import { Button } from "../ui";
 import { AgentProviderActivationSwitch } from "./AgentProviderActivationSwitch";
 import { AgentProviderConnectionCheck } from "./AgentProviderConnectionCheck";
 import { AgentCodexAccountManager } from "./AgentCodexAccountManager";
+import { AgentUsageBanner } from "./AgentUsageBanner";
 import {
   AgentProviderDetailHeader,
   AgentProviderDetailRow,
@@ -32,16 +34,24 @@ export function AgentProviderNativeListItem({
   summary,
   selected,
   onSelect,
+  serviceStatus,
+  onActivate,
+  busy = false,
 }: {
   summary: AgentProviderNativeConfigSummary;
   selected: boolean;
   onSelect: () => void;
+  serviceStatus?: "active" | "inactive" | "unavailable";
+  onActivate?: () => void;
+  busy?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <div className="p-1">
       <div
-        data-testid="provider-native-card"
+        data-testid={
+          serviceStatus ? "provider-official-card" : "provider-native-card"
+        }
         className={providerWorkbenchListItemClass(
           selected,
           "flex items-center overflow-hidden",
@@ -59,13 +69,19 @@ export function AgentProviderNativeListItem({
           <span className="min-w-0 flex-1">
             <span className="flex flex-col items-start gap-1">
               <span className="min-w-0 break-words text-sm font-semibold text-foreground">
-                {t("agents.providerProfiles.currentNative.title")}
+                {t(
+                  serviceStatus
+                    ? "agents.providerProfiles.officialService.title"
+                    : "agents.providerProfiles.currentNative.title",
+                )}
               </span>
               <span
-                className={`shrink-0 text-xs font-medium ${classificationClass(summary.classification)}`}
+                className={`shrink-0 text-xs font-medium ${serviceStatus && serviceStatus !== "active" ? "text-muted-foreground" : classificationClass(summary.classification)}`}
               >
                 {t(
-                  `agents.providerProfiles.currentNative.classification.${summary.classification}`,
+                  serviceStatus
+                    ? `agents.providerProfiles.officialService.${serviceStatus}`
+                    : `agents.providerProfiles.currentNative.classification.${summary.classification}`,
                 )}
               </span>
             </span>
@@ -76,13 +92,20 @@ export function AgentProviderNativeListItem({
         </button>
         <div className="shrink-0 pr-3">
           <AgentProviderActivationSwitch
-            checked
-            disabled
-            loading={false}
-            label={t("agents.providerProfiles.activation.currentLabel", {
-              name: summary.name,
-            })}
-            onActivate={() => undefined}
+            checked={!serviceStatus || serviceStatus === "active"}
+            disabled={busy || !onActivate || !summary.officialRestoreAvailable}
+            loading={busy && Boolean(onActivate)}
+            label={t(
+              serviceStatus && serviceStatus !== "active"
+                ? summary.officialRestoreAvailable
+                  ? "agents.providerProfiles.currentNative.restoreOfficial"
+                  : `agents.providerProfiles.officialService.${serviceStatus}`
+                : "agents.providerProfiles.activation.currentLabel",
+              {
+                name: summary.name,
+              },
+            )}
+            onActivate={onActivate ?? (() => undefined)}
           />
         </div>
       </div>
@@ -101,6 +124,8 @@ export function AgentProviderNativeDetail({
   onTestConnection,
   onTestModel,
   onCancelModelTest,
+  serviceStatus,
+  agent,
 }: {
   platformId: string;
   summary: AgentProviderNativeConfigSummary;
@@ -112,6 +137,8 @@ export function AgentProviderNativeDetail({
   onTestConnection: () => void;
   onTestModel: () => void;
   onCancelModelTest: () => void;
+  serviceStatus?: "active" | "inactive" | "unavailable";
+  agent?: ManagedAgentSummary;
 }) {
   const { t } = useTranslation();
   const busy = busyAction !== null;
@@ -122,13 +149,19 @@ export function AgentProviderNativeDetail({
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <h2 className="truncate text-sm font-semibold text-foreground">
-                {t("agents.providerProfiles.currentNative.title")}
+                {t(
+                  serviceStatus
+                    ? "agents.providerProfiles.officialService.title"
+                    : "agents.providerProfiles.currentNative.title",
+                )}
               </h2>
               <span
-                className={`shrink-0 text-xs font-medium ${classificationClass(summary.classification)}`}
+                className={`shrink-0 text-xs font-medium ${serviceStatus && serviceStatus !== "active" ? "text-muted-foreground" : classificationClass(summary.classification)}`}
               >
                 {t(
-                  `agents.providerProfiles.currentNative.classification.${summary.classification}`,
+                  serviceStatus
+                    ? `agents.providerProfiles.officialService.${serviceStatus}`
+                    : `agents.providerProfiles.currentNative.classification.${summary.classification}`,
                 )}
               </span>
             </div>
@@ -189,6 +222,23 @@ export function AgentProviderNativeDetail({
           </dl>
         </div>
       </AgentProviderDetailSection>
+      {serviceStatus && serviceStatus !== "active" ? (
+        <p className="mt-4 rounded-lg border border-border bg-muted/20 p-4 text-xs leading-5 text-muted-foreground">
+          {t(
+            serviceStatus === "unavailable"
+              ? "agents.providerProfiles.officialService.unavailableHint"
+              : "agents.providerProfiles.officialService.inactiveHint",
+          )}
+        </p>
+      ) : null}
+      {serviceStatus === "active" &&
+      agent &&
+      (agent.capabilities.usage.status === "supported" ||
+        agent.capabilities.usage.status === "partial") ? (
+        <div className="mt-4 overflow-hidden rounded-xl border border-border">
+          <AgentUsageBanner agent={agent} />
+        </div>
+      ) : null}
       {supportsConnectionTest ? (
         <div className="mt-4">
           <AgentProviderConnectionCheck

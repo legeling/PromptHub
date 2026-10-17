@@ -386,6 +386,12 @@ export function AgentProviderProfileWorkbench({
     [store.profiles, store.selectedProfileId],
   );
   const busy = store.busyAction !== null;
+  const officialService = store.currentState?.officialService;
+  const officialSelected =
+    store.selectedProfileId === "builtin:official" && Boolean(officialService);
+  const detailSummary = officialSelected
+    ? officialService?.summary
+    : store.currentState?.nativeConfig;
   const isFormOpen = editing !== undefined;
   const verifiedCurrentProfileId =
     store.currentState?.status === "verified"
@@ -402,7 +408,7 @@ export function AgentProviderProfileWorkbench({
 
   useEffect(() => {
     setModelTestConfirmOpen(false);
-  }, [agent.id, selectedProfile?.id]);
+  }, [agent.id, store.selectedProfileId]);
 
   async function exportSelected(): Promise<void> {
     if (!selectedProfile) return;
@@ -475,10 +481,28 @@ export function AgentProviderProfileWorkbench({
               });
             }}
           >
-            {store.currentState?.nativeConfig ? (
+            {officialService ? (
+              <AgentProviderNativeListItem
+                summary={officialService.summary}
+                serviceStatus={officialService.status}
+                busy={busy}
+                onActivate={
+                  officialService.summary.officialRestoreAvailable
+                    ? () => void store.restoreOfficial(agent.id)
+                    : undefined
+                }
+                selected={officialSelected}
+                onSelect={() => {
+                  setEditing(undefined);
+                  store.select("builtin:official");
+                }}
+              />
+            ) : null}
+            {store.currentState?.nativeConfig &&
+            officialService?.status !== "active" ? (
               <AgentProviderNativeListItem
                 summary={store.currentState.nativeConfig}
-                selected={selectedProfile === null}
+                selected={selectedProfile === null && !officialSelected}
                 onSelect={() => {
                   setEditing(undefined);
                   store.select(null);
@@ -520,7 +544,7 @@ export function AgentProviderProfileWorkbench({
                 <Loader2Icon className="h-4 w-4 animate-spin" />
                 {t("agents.providerProfiles.loading")}
               </div>
-            ) : store.currentState?.nativeConfig ? null : (
+            ) : store.currentState?.nativeConfig || officialService ? null : (
               <p className="px-4 py-4 text-xs leading-5 text-muted-foreground">
                 {t(
                   webRuntime
@@ -605,10 +629,14 @@ export function AgentProviderProfileWorkbench({
             onExport={() => void exportSelected()}
             onDelete={() => setDeleteTarget(selectedProfile)}
           />
-        ) : store.currentState?.nativeConfig ? (
+        ) : detailSummary ? (
           <AgentProviderNativeDetail
             platformId={agent.id}
-            summary={store.currentState.nativeConfig}
+            summary={detailSummary}
+            serviceStatus={
+              officialSelected ? officialService?.status : undefined
+            }
+            agent={agent}
             busyAction={store.busyAction}
             connectionResult={
               store.connectionResult?.profileId === `native:${agent.id}`
@@ -621,7 +649,9 @@ export function AgentProviderProfileWorkbench({
                 : null
             }
             supportsConnectionTest={
-              !webRuntime && agent.capabilities.provider.status === "supported"
+              !webRuntime &&
+              agent.capabilities.provider.status === "supported" &&
+              (!officialSelected || officialService?.status === "active")
             }
             onRestoreOfficial={() => void store.restoreOfficial(agent.id)}
             onTestConnection={() => void store.testCurrentConnection(agent.id)}

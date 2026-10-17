@@ -662,6 +662,14 @@
         "stale": "原生設定已發生變更",
         "unavailable": "無法驗證目前使用的設定"
       },
+      "officialService": {
+        "title": "官方服務",
+        "active": "目前使用",
+        "inactive": "未使用",
+        "unavailable": "暫時無法讀取",
+        "inactiveHint": "目前未使用官方服務。請在 Agent 中管理登入；啟用後，這裡會顯示目前模型及可查詢的額度資訊。",
+        "unavailableHint": "無法讀取目前設定，暫時不能確認是否正在使用官方服務。"
+      },
       "currentNative": {
         "title": "目前原生設定",
         "details": "偵測到的設定",

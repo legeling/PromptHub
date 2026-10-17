@@ -8,6 +8,10 @@ import type {
   AgentProviderProfilePublic,
   AgentProviderSnapshot,
 } from "@prompthub/shared";
+import {
+  isOfficialAgentProvider,
+  summarizeOfficialService,
+} from "./agent-provider-official-summary";
 
 export interface AgentProviderTrayProfile {
   id: string;
@@ -81,19 +85,6 @@ function primaryModel(profile: AgentProviderProfilePublic): string | null {
   );
 }
 
-const OFFICIAL_PROVIDER_KINDS: Record<string, ReadonlySet<string>> = {
-  claude: new Set([
-    "anthropic",
-    "amazon-bedrock",
-    "google-vertex",
-    "microsoft-foundry",
-  ]),
-  codex: new Set(["openai"]),
-  gemini: new Set(["google-gemini", "oauth-personal"]),
-  kimi: new Set(["kimi"]),
-  qwen: new Set(["qwen-oauth"]),
-};
-
 function comparableText(
   preview: AgentProviderImportPreview,
   field: string,
@@ -126,10 +117,15 @@ function summarizeNativeConfig(
   const model =
     preview.modelMappings.find((mapping) => mapping.routeKey === "primary")
       ?.modelId ?? null;
-  const official =
-    preview.profile.providerKind === "platform-default" ||
-    OFFICIAL_PROVIDER_KINDS[platformId]?.has(preview.profile.providerKind) ===
-      true;
+  const providerKind =
+    platformId === "opencode"
+      ? (comparableText(preview, "providerId") ?? preview.profile.providerKind)
+      : preview.profile.providerKind;
+  const official = isOfficialAgentProvider(
+    platformId,
+    providerKind,
+    preview.profile.endpoint,
+  );
   const classification = official
     ? "official"
     : preview.profile.endpoint || preview.profile.providerKind
@@ -138,7 +134,7 @@ function summarizeNativeConfig(
   return {
     classification,
     name: preview.profile.name,
-    providerKind: preview.profile.providerKind,
+    providerKind,
     protocol: preview.profile.protocol,
     endpoint: preview.profile.endpoint ?? null,
     model,
@@ -246,7 +242,11 @@ export function createAgentProviderTrayService(
     const profiles = (await publicProfiles()).filter(
       (profile) => profile.platformId === platformId,
     );
-    return resolveCurrentState(platformId, profiles);
+    const state = await resolveCurrentState(platformId, profiles);
+    return {
+      ...state,
+      officialService: summarizeOfficialService(platformId, state.nativeConfig),
+    };
   };
 
   const listGroups = async (): Promise<AgentProviderTrayGroup[]> => {
