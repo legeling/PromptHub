@@ -9,6 +9,16 @@ import {
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 
 describe("sync-history", () => {
+  it("publishes only finished sync outcomes without transferring diagnostic text", async () => {
+    const publish = vi.fn().mockResolvedValue({ success: true });
+    installWindowMocks({ electron: { applicationNotifications: { publish, onFeedback: vi.fn(() => () => undefined) } } });
+    await recordAutoSyncHistory({ provider: "webdav", reason: "interval", status: "skipped", message: "no changes" });
+    expect(publish).not.toHaveBeenCalled();
+    await recordAutoSyncHistory({ provider: "webdav", reason: "interval", status: "failed", message: "private diagnostic" });
+    await vi.waitFor(() => expect(publish).toHaveBeenCalledWith({ category: "syncFailure", outcome: "error", id: "webdav" }));
+    await recordAutoSyncHistory({ provider: "webdav", reason: "manual", status: "success", message: "already shown by the initiating settings action" });
+    await vi.waitFor(() => expect(publish).toHaveBeenLastCalledWith(expect.objectContaining({ category: "syncSuccess", outcome: "success", inAppHandled: true })));
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();

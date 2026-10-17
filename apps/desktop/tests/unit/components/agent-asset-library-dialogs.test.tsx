@@ -10,6 +10,11 @@ import type {
 import { McpLibraryDeployDialog } from "../../../src/renderer/components/mcp/McpLibraryDeployDialog";
 import { PluginLibraryDeployDialog } from "../../../src/renderer/components/plugin/PluginLibraryDeployDialog";
 import { renderWithI18n } from "../../helpers/i18n";
+import { notifyTaskResult } from "../../../src/renderer/services/application-notifications";
+
+vi.mock("../../../src/renderer/services/application-notifications", () => ({
+  notifyTaskResult: vi.fn(),
+}));
 
 const showToast = vi.fn();
 
@@ -85,7 +90,10 @@ const target: PluginTargetCompatibility = {
 };
 
 describe("Agent asset library dialogs", () => {
-  beforeEach(() => showToast.mockClear());
+  beforeEach(() => {
+    showToast.mockClear();
+    vi.mocked(notifyTaskResult).mockClear();
+  });
 
   it("selects My MCP entries and applies them to the fixed Agent target", async () => {
     const onApply = vi.fn().mockResolvedValue(undefined);
@@ -163,6 +171,12 @@ describe("Agent asset library dialogs", () => {
     );
     expect(onRefresh).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(notifyTaskResult).toHaveBeenCalledTimes(1);
+    expect(notifyTaskResult).toHaveBeenCalledWith(
+      "resourceTask",
+      "success",
+      "plugin",
+    );
   });
 
   it("refreshes partial Plugin results and keeps the dialog open after a failure", async () => {
@@ -206,6 +220,13 @@ describe("Agent asset library dialogs", () => {
     );
     expect(onClose).not.toHaveBeenCalled();
     expect(dialog).toBeVisible();
+    expect(notifyTaskResult).toHaveBeenCalledTimes(1);
+    expect(notifyTaskResult).toHaveBeenCalledWith(
+      "resourceTask",
+      "attention",
+      "plugin",
+      true,
+    );
   });
 
   it("explains when Plugin installation finishes but inventory refresh fails", async () => {
@@ -240,6 +261,13 @@ describe("Agent asset library dialogs", () => {
       ),
     );
     expect(onClose).not.toHaveBeenCalled();
+    expect(notifyTaskResult).toHaveBeenCalledTimes(1);
+    expect(notifyTaskResult).toHaveBeenCalledWith(
+      "resourceTask",
+      "attention",
+      "plugin",
+      true,
+    );
   });
 
   it("disables Plugin selection when the Agent has no install destination", async () => {

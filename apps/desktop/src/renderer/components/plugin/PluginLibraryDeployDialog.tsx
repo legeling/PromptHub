@@ -15,6 +15,7 @@ import type {
   PluginTargetCompatibility,
 } from "@prompthub/shared/types/plugin";
 import { Modal } from "../ui/Modal";
+import { notifyTaskResult } from "../../services/application-notifications";
 import { useToast } from "../ui/Toast";
 import { getPluginInstallErrorMessage } from "./plugin-manager-utils";
 import { getPluginTargetMatrixForEntry } from "./plugin-detail-utils";
@@ -133,9 +134,11 @@ export function PluginLibraryDeployDialog({
     setIsApplying(true);
     try {
       let installFailure: unknown = null;
+      let completed = 0;
       for (const plugin of selectedPlugins) {
         try {
           await onDistribute(plugin, targetIds, mode);
+          completed += 1;
         } catch (error) {
           installFailure = error;
           break;
@@ -144,6 +147,7 @@ export function PluginLibraryDeployDialog({
       try {
         await onRefresh();
       } catch (error) {
+        console.error("Plugin deployment inventory refresh failed:", error);
         if (!installFailure) {
           showToast(
             t(
@@ -152,14 +156,21 @@ export function PluginLibraryDeployDialog({
             ),
             "error",
           );
+          notifyTaskResult("resourceTask", "attention", "plugin", true);
           return;
         }
       }
       if (installFailure) {
         showToast(getPluginInstallErrorMessage(installFailure, t), "error");
+        notifyTaskResult(
+          "resourceTask",
+          completed > 0 ? "attention" : "error",
+          "plugin",
+          true,
+        );
         return;
       }
-      showToast(t("plugin.distributeSuccess", "Plugin distributed"), "success");
+      notifyTaskResult("resourceTask", "success", "plugin");
       onClose();
     } finally {
       applyingRef.current = false;

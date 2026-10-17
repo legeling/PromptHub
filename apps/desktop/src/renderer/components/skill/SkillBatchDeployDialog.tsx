@@ -1,3 +1,4 @@
+import { notifyTaskResult } from "../../services/application-notifications";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -185,24 +186,8 @@ export function SkillBatchDeployDialog({
       await onComplete?.();
       setLastFailures(result.failures);
 
-      if (result.successCount > 0) {
-        showToast(
-          t(
-            actionMode === "deploy"
-              ? "skill.batchDeploySummary"
-              : "skill.batchUndeploySummary",
-            {
-              success: result.successCount,
-              total: result.totalCount,
-              defaultValue:
-                actionMode === "deploy"
-                  ? `Synced ${result.successCount}/${result.totalCount} targets`
-                  : `Uninstalled ${result.successCount}/${result.totalCount} targets`,
-            },
-          ),
-          result.failures.length === 0 ? "success" : "warning",
-        );
-      }
+      const needsAttention = result.failures.length > 0 || result.fallbacks.length > 0;
+      notifyTaskResult("resourceTask", needsAttention ? (result.successCount === 0 ? "error" : "attention") : "success", "skill", needsAttention);
 
       if (result.fallbacks.length > 0) {
         const preview = result.fallbacks
@@ -243,6 +228,7 @@ export function SkillBatchDeployDialog({
       }
     } catch (error) {
       console.error("Failed to batch deploy skills:", error);
+      notifyTaskResult("resourceTask", "error", "skill", true);
       showToast(
         `${t("skill.updateFailed", "Update failed")}: ${String(error)}`,
         "error",

@@ -92,6 +92,8 @@ export function McpBatchDeployDialog({
         enabledServers.map((server) => server.id),
       );
       onClose();
+    } catch (error) {
+      console.error("MCP batch deployment failed:", error);
     } finally {
       isApplyingRef.current = false;
       setIsApplying(false);

@@ -11,7 +11,7 @@ import type {
   PluginVersion,
 } from "@prompthub/shared/types/plugin";
 
-import { createWindowApiMock } from "../../helpers/window";
+import { createWindowApiMock, installWindowMocks } from "../../helpers/window";
 
 import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
 
@@ -154,6 +154,17 @@ function resetPluginStore() {
 }
 
 describe("plugin store", () => {
+  it("publishes a source update only when an actual update is available", async () => {
+    const publish = vi.fn().mockResolvedValue({ success: true });
+    installWindowMocks({ electron: { applicationNotifications: { publish, onFeedback: vi.fn(() => () => undefined) } } });
+    const check = vi.mocked(window.api.plugin.getPluginSourceUpdateStatus);
+    check.mockResolvedValue({ status: "up-to-date", localModified: false, remoteChanged: false });
+    await usePluginStore.getState().getPluginSourceUpdateStatus("plugin-1");
+    expect(publish).not.toHaveBeenCalled();
+    check.mockResolvedValue({ status: "update-available", localModified: false, remoteChanged: true, remotePackageHash: "revision-2" });
+    await usePluginStore.getState().getPluginSourceUpdateStatus("plugin-1");
+    await vi.waitFor(() => expect(publish).toHaveBeenCalledWith({ category: "resourceUpdate", outcome: "available", module: "plugin", id: "plugin-1:revision-2" }));
+  });
   beforeEach(() => {
     resetPluginStore();
     window.api.plugin = {

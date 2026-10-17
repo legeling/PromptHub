@@ -10,6 +10,7 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 import type { Prompt } from "@prompthub/shared/types";
 
+const publishNotificationMock = vi.fn().mockResolvedValue({ success: true, delivery: "inApp" });
 const chatCompletionMock = vi.fn();
 const multiModelCompareMock = vi.fn();
 const generateImageMock = vi.fn();
@@ -78,8 +79,10 @@ function expectRenderedButtonsNonSubmit() {
 describe("AiTestModal workbench", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    publishNotificationMock.mockResolvedValue({ success: true, delivery: "inApp" });
     installWindowMocks({
       electron: {
+        applicationNotifications: { publish: publishNotificationMock, onFeedback: vi.fn(() => () => undefined) },
         readImageBase64: vi.fn().mockResolvedValue("c2F2ZWQtcmVmZXJlbmNl"),
       },
     });
@@ -534,6 +537,7 @@ describe("AiTestModal workbench", () => {
       expect(chatCompletionMock).toHaveBeenCalledTimes(1);
     });
 
+    await waitFor(() => expect(publishNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ category: "promptTest", outcome: "success" })));
     const messages = chatCompletionMock.mock.calls[0][1] as Array<{ role: string; content: unknown }>;
     const userMessage = messages.find((message) => message.role === "user");
 
@@ -651,6 +655,7 @@ describe("AiTestModal workbench", () => {
 
     expect(screen.queryByText("stale single-model answer")).not.toBeInTheDocument();
     expect(handleSaveResponse).not.toHaveBeenCalled();
+    expect(publishNotificationMock).not.toHaveBeenCalled();
   });
 
   it("clears the copy response feedback timer when unmounted after copying", async () => {

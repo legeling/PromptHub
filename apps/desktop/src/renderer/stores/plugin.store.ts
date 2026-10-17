@@ -1,3 +1,4 @@
+import { publishNotification } from "../services/application-notifications";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
@@ -594,6 +595,7 @@ export const usePluginStore = create<PluginState>()(
           pluginId,
           get().marketSources,
         );
+        if (check.status === "update-available" || check.status === "conflict") publishNotification({ category: "resourceUpdate", outcome: check.status === "conflict" ? "attention" : "available", id: `${pluginId}:${check.remotePackageHash ?? check.remoteManifestHash ?? "update"}`, module: "plugin" });
         set((state) => ({
           sourceUpdateChecks: {
             ...state.sourceUpdateChecks,

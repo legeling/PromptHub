@@ -6,6 +6,7 @@ import type {
   Settings,
 } from "@prompthub/shared/types";
 import { useSettingsStore } from "../stores/settings.store";
+import { publishNotification } from "./application-notifications";
 
 export type {
   AutoSyncHistoryEntry,
@@ -146,6 +147,12 @@ export async function recordAutoSyncHistory(
     useSettingsStore.setState({ autoSyncHistory: next });
     await window.api?.settings?.set?.({ autoSyncHistory: next });
     await appendAutoSyncLogFile(entry);
+    if (entry.status !== "skipped") publishNotification({
+      category: entry.status === "success" ? "syncSuccess" : "syncFailure",
+      outcome: entry.status === "success" ? "success" : "error",
+      id: entry.status === "success" ? entry.id : entry.provider,
+      ...(entry.reason === "manual" ? { inAppHandled: true } : {}),
+    });
     window.dispatchEvent(new CustomEvent(AUTO_SYNC_HISTORY_UPDATED_EVENT));
     return entry;
   } catch (error) {

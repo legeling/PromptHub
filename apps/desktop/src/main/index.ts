@@ -1102,7 +1102,7 @@ registerDataPathChangeIPC({
 });
 
 registerNativeShellIPC();
-registerApplicationNotificationIPC({
+const applicationNotifications = registerApplicationNotificationIPC({
   getWindow: () => mainWindow,
   onOpen: (event) => dispatchFromTray({ type: "notification:open", category: event.category, module: event.module }),
 });
@@ -1391,6 +1391,9 @@ app.whenReady().then(async () => {
     if (!isDev && !isE2E && mainWindow) {
       initUpdater(mainWindow, (status) => {
         trayController.setUpdateStatus(status.status, status.info?.version);
+        if ((status.status === "available" || status.status === "downloaded") && status.info?.version) {
+          void applicationNotifications.publish({ category: "appUpdate", outcome: status.status, id: status.info.version });
+        }
       });
     }
 

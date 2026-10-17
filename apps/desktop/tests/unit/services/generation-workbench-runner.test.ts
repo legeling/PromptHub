@@ -31,9 +31,93 @@ function batch(statuses: GenerationBatchManifest["slots"][number]["status"][]) {
   } satisfies GenerationBatchManifest;
 }
 
+const publishNotificationMock = vi.fn().mockResolvedValue({ success: true });
 describe("generation workbench runner", () => {
+  it("reports one partial-failure summary for an entire batch", async () => {
+    vi.mocked(window.api.generation.create).mockResolvedValue(
+      batch(["pending", "pending"]),
+    );
+    vi.mocked(window.api.generation.commitOutput).mockResolvedValue(
+      batch(["succeeded", "pending"]),
+    );
+    vi.mocked(window.api.generation.failSlot).mockResolvedValue(
+      batch(["succeeded", "failed"]),
+    );
+    generateImage
+      .mockResolvedValueOnce({ data: [{ b64_json: "aW1hZ2U=" }] })
+      .mockRejectedValueOnce(new Error("provider unavailable"));
+    const { startGenerationBatch } =
+      await import("../../../src/renderer/services/generation-workbench-runner");
+    await startGenerationBatch(
+      {
+        prompt: "A poster",
+        model: { id: "model-1", provider: "openai", model: "gpt-image-1" },
+        targetCount: 2,
+      },
+      {
+        id: "model-1",
+        type: "image",
+        provider: "openai",
+        model: "gpt-image-1",
+        apiProtocol: "openai",
+        apiKey: "test-key",
+        apiUrl: "https://example.invalid/v1",
+      },
+    );
+    await vi.waitFor(() =>
+      expect(publishNotificationMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: "generation",
+          outcome: "attention",
+        }),
+      ),
+    );
+    expect(publishNotificationMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not announce completion after a batch was cancelled", async () => {
+    let finish: (value: { data: Array<{ b64_json: string }> }) => void = () =>
+      undefined;
+    generateImage.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    vi.mocked(window.api.generation.cancel).mockResolvedValue(
+      batch(["cancelled"]),
+    );
+    const { startGenerationBatch, cancelGenerationBatch } =
+      await import("../../../src/renderer/services/generation-workbench-runner");
+    const started = await startGenerationBatch(
+      {
+        prompt: "A poster",
+        model: { id: "model-1", provider: "openai", model: "gpt-image-1" },
+        targetCount: 1,
+      },
+      {
+        id: "model-1",
+        type: "image",
+        provider: "openai",
+        model: "gpt-image-1",
+        apiProtocol: "openai",
+        apiKey: "test-key",
+        apiUrl: "https://example.invalid/v1",
+      },
+    );
+    await vi.waitFor(() => expect(generateImage).toHaveBeenCalled());
+    await cancelGenerationBatch(started.id);
+    finish({ data: [{ b64_json: "aW1hZ2U=" }] });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(window.api.generation.commitOutput).not.toHaveBeenCalled();
+    expect(publishNotificationMock).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
+    publishNotificationMock.mockResolvedValue({
+      success: true,
+      delivery: "inApp",
+    });
     const initial = batch(["pending"]);
     Object.assign(window, {
       api: {
@@ -54,12 +138,14 @@ describe("generation workbench runner", () => {
             slots: [{ index: 0, status: "succeeded" }],
           }),
           failSlot: vi.fn(),
+          cancel: vi.fn(),
           retryFailed: vi.fn(),
           setFavorite: vi.fn(),
           readOutputReference: vi.fn(),
         },
       },
       electron: {
+        applicationNotifications: { publish: publishNotificationMock },
         downloadImage: vi.fn(),
         readImageBase64: vi.fn(),
       },
@@ -94,6 +180,12 @@ describe("generation workbench runner", () => {
       expect(window.api.generation.commitOutput).toHaveBeenCalled(),
     );
 
+    await vi.waitFor(() =>
+      expect(publishNotificationMock).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "generation", outcome: "success" }),
+      ),
+    );
+    expect(publishNotificationMock).toHaveBeenCalledTimes(1);
     expect(generateImage).toHaveBeenCalledWith(config, "A poster", {
       quality: "hd",
       size: "1024x1536",

@@ -1,3 +1,4 @@
+import { notifyTaskResult } from "../../services/application-notifications";
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -648,12 +649,14 @@ export function AiTestModal({
       if (onSaveResponse && result.content) {
         onSaveResponse(prompt.id, result.content);
       }
+      notifyTaskResult("promptTest", "success");
     } catch (error) {
       if (!canApplyAsyncResult(singleSession)) {
         return;
       }
       cancelSingleStreamRafs();
       setAiResponse(`${t('common.error')}: ${error instanceof Error ? error.message : t('common.error')}`);
+      notifyTaskResult("promptTest", "error");
     } finally {
       if (canApplyAsyncResult(singleSession)) {
         setIsSingleLoading(false);
@@ -752,11 +755,15 @@ export function AiTestModal({
 
       flushCompareBuffers();
       setCompareResults(result.results);
+      const successes = result.results.filter(item => item.success).length;
+      notifyTaskResult("promptTest", successes === result.results.length ? "success" : successes === 0 ? "error" : "attention");
     } catch (error) {
       if (!canApplyAsyncResult(compareSession)) {
         return;
       }
-      // Handle error
+      console.error("Prompt comparison failed:", error);
+      setCompareResults(selectedConfigs.map(config => ({ id: config.id, success: false, error: error instanceof Error ? error.message : t("common.error"), latency: 0, model: config.model, provider: config.provider })));
+      notifyTaskResult("promptTest", "error");
     } finally {
       if (canApplyAsyncResult(compareSession)) {
         resetCompareBuffers();
@@ -847,9 +854,10 @@ export function AiTestModal({
 
       setGeneratedImages(urls);
       if (urls.length > 0) {
-        showToast(t('settings.imageGenSuccess'), 'success');
+        notifyTaskResult("generation", "success");
       } else {
         setImageGenerationError(t('settings.imageGenEmptyResult'));
+        notifyTaskResult("generation", "error");
       }
     } catch (error) {
       if (!canApplyAsyncResult(imageSession)) {
@@ -857,7 +865,7 @@ export function AiTestModal({
       }
       const message = error instanceof Error ? error.message : t('common.error');
       setImageGenerationError(message);
-      showToast(`${t('common.error')}: ${message}`, 'error');
+      notifyTaskResult("generation", "error");
     } finally {
       if (canApplyAsyncResult(imageSession)) {
         setIsImageLoading(false);

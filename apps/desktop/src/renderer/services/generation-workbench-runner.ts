@@ -1,3 +1,4 @@
+import { notifyTaskResult } from "./application-notifications";
 import { classifyGenerationError } from "@prompthub/core/image-generation-workbench";
 import type {
   CreateGenerationBatchInput,
@@ -197,6 +198,13 @@ async function executeBatch(
       }
       publish(batch);
     }
+    if (!cancelledBatches.has(initial.id)) {
+      const failed = batch.slots.filter((slot) => slot.status === "failed").length;
+      notifyTaskResult("generation", failed === 0 ? "success" : failed === batch.slots.length ? "error" : "attention");
+    }
+  } catch (error) {
+    console.error("Generation batch could not finish:", error);
+    if (!cancelledBatches.has(initial.id)) notifyTaskResult("generation", "error");
   } finally {
     cancelledBatches.delete(initial.id);
   }

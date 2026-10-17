@@ -1,4 +1,5 @@
 import { requestConfirmation } from "../ui/confirmation";
+import { notifyTaskResult } from "../../services/application-notifications";
 import type { McpTargetPreset } from "@prompthub/core";
 import type {
   McpApplyTarget,
@@ -57,7 +58,7 @@ function createConflictAwareTargetApply(options: McpTargetActionOptions) {
 
 function createApplyPresetsToServers(options: McpTargetActionOptions) {
   const applyTargets = createConflictAwareTargetApply(options);
-  return async (presets: McpTargetPreset[], serverIds: string[]) => {
+  return async (presets: McpTargetPreset[], serverIds: string[], notify = false) => {
     const allowed = presets.filter((preset) =>
       options.targets.visibleTargetPresetIds.has(preset.id),
     );
@@ -78,10 +79,8 @@ function createApplyPresetsToServers(options: McpTargetActionOptions) {
       })),
     );
     await options.targets.refreshVisibleTargetStatus();
-    options.bindings.showToast(
-      options.bindings.t("mcp.applied", "MCP applied"),
-      "success",
-    );
+    if (notify) notifyTaskResult("resourceTask", "success", "mcp");
+    else options.bindings.showToast(options.bindings.t("mcp.applied", "MCP applied"), "success");
   };
 }
 
@@ -105,11 +104,13 @@ function createBatchPresetApply(
   applyPresets: (
     presets: McpTargetPreset[],
     serverIds: string[],
+    notify?: boolean,
   ) => Promise<void>,
   state: McpManagerState,
 ) {
   return async (presets: McpTargetPreset[], serverIds: string[]) => {
-    await applyPresets(presets, serverIds);
+    try { await applyPresets(presets, serverIds, true); }
+    catch (error) { notifyTaskResult("resourceTask", "error", "mcp"); throw error; }
     state.setSelectedServerIds(new Set());
     state.setIsSelectionMode(false);
   };
