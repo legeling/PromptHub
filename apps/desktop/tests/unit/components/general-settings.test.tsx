@@ -29,14 +29,15 @@ describe("GeneralSettings", () => {
     settings.setLocalSessionIndexEnabled(false);
   });
 
-  it("renders the four sections (startup / editor / language / notifications)", async () => {
+  it("keeps general preferences separate from notification settings", async () => {
     await renderWithI18n(<GeneralSettings />, { language: "en" });
     // Section headers are h3 elements rendered by SettingSection.
     const headings = screen.getAllByRole("heading");
     const headingTexts = headings.map((h) => h.textContent?.trim() || "");
     expect(headingTexts.some((t) => /startup/i.test(t))).toBe(true);
     expect(headingTexts.some((t) => /editor/i.test(t))).toBe(true);
-    expect(headingTexts.some((t) => /notifications/i.test(t))).toBe(true);
+    expect(headingTexts.some((t) => /notifications/i.test(t))).toBe(false);
+    expect(headingTexts.some((t) => /behavior/i.test(t))).toBe(true);
   });
 
   it("exposes toggle switches by their setting labels", async () => {
@@ -50,8 +51,8 @@ describe("GeneralSettings", () => {
       "false",
     );
     expect(
-      screen.getByRole("switch", { name: "Save Success Notification" }),
-    ).toHaveAttribute("aria-checked", "false");
+      screen.queryByRole("switch", { name: "Save Success Notification" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("switch", { name: "Accelerate Agent history search" }),
     ).toHaveAttribute("aria-checked", "false");

@@ -1,25 +1,31 @@
 import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ToastProvider, useToast } from "../../../src/renderer/components/ui/Toast";
+import {
+  ToastProvider,
+  useToast,
+} from "../../../src/renderer/components/ui/Toast";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { ConfirmDialog } from "../../../src/renderer/components/ui/ConfirmDialog";
 
 type TestToastType = "success" | "error" | "info" | "warning";
 
 function ToastTrigger({
   messages,
-  sendSystemNotification = false,
+  enabled = true,
 }: {
   messages: Array<[string, TestToastType]>;
-  sendSystemNotification?: boolean;
+  enabled?: boolean;
 }) {
   const { showToast } = useToast();
   return (
     <button
       type="button"
       onClick={() => {
-        messages.forEach(([msg, type]) => showToast(msg, type, sendSystemNotification));
+        messages.forEach(([msg, type]) =>
+          showToast(msg, type, enabled),
+        );
       }}
     >
       Trigger
@@ -28,6 +34,11 @@ function ToastTrigger({
 }
 
 describe("ToastProvider / useToast", () => {
+  it("suppresses optional copy feedback without suppressing other operation errors", async () => {
+    await renderWithI18n(<ToastProvider><ToastTrigger messages={[["Copied", "success"]]} enabled={false} /></ToastProvider>, { language: "en" });
+    act(() => screen.getByRole("button", { name: "Trigger" }).click());
+    expect(screen.queryByText("Copied")).not.toBeInTheDocument();
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -45,6 +56,36 @@ describe("ToastProvider / useToast", () => {
       screen.getByRole("button", { name: "Trigger" }).click();
     });
     expect(screen.getByText("Saved")).toBeInTheDocument();
+  });
+
+  it("places feedback above a confirmation dialog and its blur backdrop", async () => {
+    await renderWithI18n(
+      <ToastProvider>
+        <ToastTrigger messages={[["Delete failed", "error"]]} />
+        <ConfirmDialog
+          isOpen
+          onClose={() => undefined}
+          onConfirm={() => undefined}
+          title="Delete file"
+          message="Confirm deletion"
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+    act(() => screen.getByRole("button", { name: "Trigger" }).click());
+    const toastLayer = screen.getByText("Delete failed").closest(".fixed");
+    const dialogLayer = screen.getByRole("alertdialog").closest(".fixed");
+    expect(toastLayer?.parentElement).toBe(document.body);
+    const layer = (element: Element | null) =>
+      Number(element?.className.match(/z-\[(\d+)\]/)?.[1]);
+    expect(layer(toastLayer)).toBeGreaterThan(layer(dialogLayer));
+    expect(screen.getByRole("alert")).toHaveTextContent("Delete failed");
+    act(() => screen.getByRole("button", { name: "Close" }).click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    expect(screen.queryByText("Delete failed")).not.toBeInTheDocument();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 
   it("auto-dismisses a toast after the configured duration", async () => {
@@ -89,13 +130,16 @@ describe("ToastProvider / useToast", () => {
     expect(screen.getByText("Third")).toBeInTheDocument();
   });
 
-  it("uses the active locale for system notification titles", async () => {
+  it("keeps ordinary feedback in the app even when system notifications are enabled", async () => {
     const { electron } = installWindowMocks();
     useSettingsStore.setState({ enableNotifications: true });
 
     await renderWithI18n(
       <ToastProvider>
-        <ToastTrigger messages={[["需要注意", "warning"]]} sendSystemNotification />
+        <ToastTrigger
+          messages={[["需要注意", "warning"]]}
+          enabled
+        />
       </ToastProvider>,
       { language: "zh" },
     );
@@ -104,7 +148,7 @@ describe("ToastProvider / useToast", () => {
       screen.getByRole("button", { name: "Trigger" }).click();
     });
 
-    expect(electron.showNotification).toHaveBeenCalledWith("PromptHub - 警告", "需要注意");
+    expect(electron.showNotification).not.toHaveBeenCalled();
   });
 
   it("gives icon-only close buttons an explicit accessible label", async () => {
@@ -122,7 +166,10 @@ describe("ToastProvider / useToast", () => {
     const closeButton = screen.getByRole("button", { name: "Close" });
     expect(closeButton).toHaveAttribute("aria-label", "Close");
     expect(closeButton).toHaveAttribute("type", "button");
-    expect(closeButton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(closeButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
     document.body.querySelectorAll("svg").forEach((icon) => {
       expect(icon).toHaveAttribute("aria-hidden", "true");
     });
@@ -134,7 +181,9 @@ describe("ToastProvider / useToast", () => {
       return null;
     };
     // Suppress React's expected console.error for thrown render.
-    const restore = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const restore = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     expect(() => render(<Bad />)).toThrow(/ToastProvider/);
     restore.mockRestore();
   });

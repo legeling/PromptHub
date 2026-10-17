@@ -1,3 +1,4 @@
+import { useSettingsStore } from "../../stores/settings.store";
 import { useCallback, useEffect } from "react";
 import type { Dispatch, DragEvent, SetStateAction } from "react";
 import type {
@@ -205,7 +206,7 @@ async function persistPromptTags(tags: string[], params: TagActionParams) {
   if (!params.selectedPrompt) return;
   try {
     await params.updatePrompt(params.selectedPrompt.id, { tags });
-    params.showToast(params.t("toast.saved"), "success");
+    params.showToast(params.t("toast.saved"), "success", useSettingsStore.getState().showSaveNotification);
   } catch (error) {
     console.error("Failed to update prompt tags from detail view:", error);
     params.showToast(params.t("toast.updateFailed"), "error");

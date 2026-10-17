@@ -4610,5 +4610,30 @@
       "settings": "設定",
       "marketplace-sources": "商店來源"
     }
+  },
+  "notificationSettings": {
+    "title": "通知策略",
+    "system": "系統通知",
+    "enabled": "允許系統通知",
+    "onlyWhenAway": "僅在 PromptHub 處於背景時通知",
+    "sound": "通知音效",
+    "off": "關閉",
+    "inApp": "僅應用程式內",
+    "systemMode": "允許系統通知",
+    "application": "應用程式",
+    "data": "同步與備份",
+    "prompts": "Prompt 測試與生成",
+    "resources": "Skills、MCP 與外掛",
+    "appUpdate": "發現新版本、更新下載完成",
+    "syncSuccess": "同步、備份完成",
+    "syncFailure": "同步異常，需要處理",
+    "promptTest": "Prompt 測試完成或失敗",
+    "generation": "圖片生成完成或失敗",
+    "resourceTask": "批次部署完成或失敗",
+    "resourceUpdate": "外掛來源有可用更新",
+    "feedback": "應用程式內操作回饋",
+    "copy": "複製 Prompt 成功提示",
+    "save": "手動儲存 Prompt 成功提示",
+    "description": "依類別選擇提醒方式。系統通知關閉，或不符合「僅背景通知」條件時，提醒保留在應用程式內。"
   }
 }

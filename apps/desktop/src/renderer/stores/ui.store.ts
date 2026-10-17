@@ -9,6 +9,7 @@ export type SettingsSectionId =
   | "web"
   | "devices"
   | "general"
+  | "notifications"
   | "appearance"
   | "security"
   | "data"

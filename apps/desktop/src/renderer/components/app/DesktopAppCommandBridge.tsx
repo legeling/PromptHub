@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { openNotificationTarget } from "./application-notification-feedback";
 import type { AgentAssetCommand, AppCommand } from "@prompthub/shared/types";
 
 import { AgentDeepLinkImportDialog } from "../agent/AgentDeepLinkImportDialog";
@@ -54,6 +55,9 @@ export function DesktopAppCommandBridge({
   const handleCommand = useCallback(
     (command: AppCommand) => {
       switch (command.type) {
+        case "notification:open":
+          openNotificationTarget(command, onNavigate, onOpenUpdater);
+          return;
         case "settings:open":
           onNavigate("settings");
           return;

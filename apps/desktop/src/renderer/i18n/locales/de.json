@@ -4610,5 +4610,30 @@
       "settings": "Einstellungen",
       "marketplace-sources": "Katalogquellen"
     }
+  },
+  "notificationSettings": {
+    "title": "Benachrichtigungsregeln",
+    "system": "Systembenachrichtigungen",
+    "enabled": "Systembenachrichtigungen erlauben",
+    "onlyWhenAway": "Nur wenn PromptHub im Hintergrund ist",
+    "sound": "Benachrichtigungston",
+    "off": "Aus",
+    "inApp": "Nur in der App",
+    "systemMode": "Systembenachrichtigungen erlauben",
+    "application": "Anwendung",
+    "data": "Synchronisierung und Sicherung",
+    "prompts": "Prompt-Tests und Generierung",
+    "resources": "Skills, MCP und Plugins",
+    "appUpdate": "Neue Version und Update heruntergeladen",
+    "syncSuccess": "Synchronisierung und Sicherung abgeschlossen",
+    "syncFailure": "Synchronisierungsprobleme mit Handlungsbedarf",
+    "promptTest": "Prompt-Test abgeschlossen oder fehlgeschlagen",
+    "generation": "Bilderzeugung abgeschlossen oder fehlgeschlagen",
+    "resourceTask": "Stapelbereitstellung abgeschlossen oder fehlgeschlagen",
+    "resourceUpdate": "Updates für Plugin-Quellen verfügbar",
+    "feedback": "Rückmeldung in der App",
+    "copy": "Prompt erfolgreich kopiert",
+    "save": "Prompt manuell gespeichert",
+    "description": "Wählen Sie die gewünschten Ereignisse. Bei deaktivierten Systembenachrichtigungen oder nicht erfüllter Hintergrundbedingung bleibt die Meldung in der App."
   }
 }

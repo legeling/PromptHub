@@ -4610,5 +4610,30 @@
       "settings": "設定",
       "marketplace-sources": "ストアのソース"
     }
+  },
+  "notificationSettings": {
+    "title": "通知ポリシー",
+    "system": "システム通知",
+    "enabled": "システム通知を許可",
+    "onlyWhenAway": "PromptHub がバックグラウンドのときのみ通知",
+    "sound": "通知音",
+    "off": "オフ",
+    "inApp": "アプリ内のみ",
+    "systemMode": "システム通知を許可",
+    "application": "アプリ",
+    "data": "同期とバックアップ",
+    "prompts": "Prompt のテストと生成",
+    "resources": "Skills、MCP、プラグイン",
+    "appUpdate": "新バージョン・更新のダウンロード完了",
+    "syncSuccess": "同期・バックアップ完了",
+    "syncFailure": "対応が必要な同期の問題",
+    "promptTest": "Prompt テストの完了・失敗",
+    "generation": "画像生成の完了・失敗",
+    "resourceTask": "一括デプロイの完了・失敗",
+    "resourceUpdate": "プラグインソースの更新あり",
+    "feedback": "アプリ内の操作通知",
+    "copy": "Prompt のコピー成功",
+    "save": "Prompt の手動保存成功",
+    "description": "分類ごとに通知方法を選択します。システム通知が無効、またはバックグラウンド条件を満たさない場合はアプリ内に表示します。"
   }
 }

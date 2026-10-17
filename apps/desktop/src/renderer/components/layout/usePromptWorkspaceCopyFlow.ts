@@ -37,7 +37,7 @@ interface PromptCopyFlowParams {
   showToast: (
     message: string,
     variant: "success",
-    sendSystemNotification?: boolean,
+    enabled?: boolean,
   ) => void;
   t: TFunction;
   triggerCopied: () => void;

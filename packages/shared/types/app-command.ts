@@ -1,4 +1,5 @@
 import type { AgentProviderProfileExport } from "./agent";
+import type { NotificationCategory } from "./notifications";
 
 export type AgentAssetKind = "prompt" | "skill" | "mcp" | "plugin" | "rule";
 
@@ -29,6 +30,7 @@ export type AgentDeepLinkCommand =
     };
 
 export type AppCommand =
+  | { type: "notification:open"; category: NotificationCategory; module?: "skill" | "mcp" | "plugin" }
   | AgentAssetCommand
   | { type: "prompt:quick-add"; mode: PromptQuickAddMode }
   | { type: "settings:open" }

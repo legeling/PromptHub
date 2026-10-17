@@ -93,6 +93,14 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("EditPromptModal", () => {
+  it.each([true, false])("respects manual-save feedback preference %s", async (enabled) => {
+    await renderEditPromptModal();
+    act(() => useSettingsStore.setState({ showSaveNotification: enabled }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
+    expect(updatePromptMock).toHaveBeenCalledOnce();
+    expect(screen.queryAllByRole("status")).toHaveLength(enabled ? 1 : 0);
+    expect(window.electron?.showNotification).not.toHaveBeenCalled();
+  });
   it("saves a system-only prompt and blocks clearing its last content (#225)", async () => {
     await renderEditPromptModal();
     fireEvent.change(screen.getByRole("textbox", { name: "User Prompt" }), {

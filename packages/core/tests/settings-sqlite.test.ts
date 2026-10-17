@@ -62,6 +62,19 @@ describe("shared settings SQLite ownership", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it("persists notification choices through canonical replacement and keeps delivery receipts device-local", () => {
+    const settings = store();
+    settings.replaceRendererSettings({ enableNotifications: false, notificationPreferences: { delivery: { promptTest: "off" }, sound: true } });
+    new SettingsDB(database).set({ notificationUpdateReceipts: ["update-1"] });
+    reopen();
+    const reopened = store();
+    expect(reopened.read().notificationPreferences).toMatchObject({ delivery: { promptTest: "off", appUpdate: "system" }, sound: true, onlyWhenAway: true });
+    expect(reopened.read()).not.toHaveProperty("notificationUpdateReceipts");
+    reopened.replaceRendererSettings(reopened.read());
+    expect(new SettingsDB(database).get("notificationUpdateReceipts")).toEqual(["update-1"]);
+    expect(() => reopened.patchSettings({ notificationUpdateReceipts: [] })).toThrow();
+  });
+
   it("shares settings between instances, protects credentials and persists explicit clearing after reopen", () => {
     const desktop = store();
     desktop.patchSettings({

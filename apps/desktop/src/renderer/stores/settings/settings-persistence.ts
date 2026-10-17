@@ -1,4 +1,5 @@
 import type { Settings } from "@prompthub/shared/types";
+import { normalizeNotificationPreferences } from "@prompthub/shared/utils/notifications";
 import { normalizeNetworkProxySettings } from "@prompthub/shared/utils/network-proxy";
 import type { StoreApi } from "zustand";
 import {
@@ -131,6 +132,7 @@ function scrubPersistedGithubToken(): void {
 }
 
 function normalizeSharedSettingsState(next: SettingsState): void {
+  next.notificationPreferences = normalizeNotificationPreferences(next.notificationPreferences);
   next.githubToken = "";
   normalizeAppearanceSettings(next, normalizeLanguage);
   normalizePromptWorkflowSettings(next);

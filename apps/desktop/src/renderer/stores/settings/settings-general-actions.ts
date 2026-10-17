@@ -61,6 +61,7 @@ type GeneralActionKey =
   | "setDebugMode"
   | "setShortcutMode"
   | "setEnableNotifications"
+  | "setNotificationPreferences"
   | "setShowCopyNotification"
   | "setShowSaveNotification"
   | "setLocalSessionIndexEnabled"
@@ -289,6 +290,7 @@ function createEditorActions(context: SettingsActionContext) {
     setShowLineNumbers: (showLineNumbers) => setTouched({ showLineNumbers }),
     setEnableNotifications: (enableNotifications) =>
       setTouched({ enableNotifications }),
+    setNotificationPreferences: (notificationPreferences) => setTouched({ notificationPreferences }),
     setShowCopyNotification: (showCopyNotification) =>
       setTouched({ showCopyNotification }),
     setShowSaveNotification: (showSaveNotification) =>
@@ -300,6 +302,7 @@ function createEditorActions(context: SettingsActionContext) {
     | "setAutoSave"
     | "setShowLineNumbers"
     | "setEnableNotifications"
+    | "setNotificationPreferences"
     | "setShowCopyNotification"
     | "setShowSaveNotification"
     | "setLocalSessionIndexEnabled"

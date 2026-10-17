@@ -4648,5 +4648,30 @@
       "settings": "设置",
       "marketplace-sources": "商店来源"
     }
+  },
+  "notificationSettings": {
+    "title": "通知策略",
+    "system": "系统通知",
+    "enabled": "允许系统通知",
+    "onlyWhenAway": "仅在 PromptHub 处于后台时通知",
+    "sound": "通知声音",
+    "off": "关闭",
+    "inApp": "仅应用内",
+    "systemMode": "允许系统通知",
+    "application": "应用本身",
+    "data": "同步与备份",
+    "prompts": "Prompt 测试与生成",
+    "resources": "Skills、MCP 与插件",
+    "appUpdate": "发现新版本、更新下载完成",
+    "syncSuccess": "同步、备份完成",
+    "syncFailure": "同步异常，需要处理",
+    "promptTest": "Prompt 测试完成或失败",
+    "generation": "图片生成完成或失败",
+    "resourceTask": "批量部署完成或失败",
+    "resourceUpdate": "插件来源有可用更新",
+    "feedback": "应用内操作反馈",
+    "copy": "复制 Prompt 成功提示",
+    "save": "手动保存 Prompt 成功提示",
+    "description": "按类别选择提醒方式。系统通知关闭，或不满足“仅后台通知”条件时，提醒保留在应用内。"
   }
 }

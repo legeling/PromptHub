@@ -12,6 +12,16 @@ import { installWindowMocks } from "../../helpers/window";
 type PageType = "home" | "settings";
 
 describe("DesktopAppCommandBridge", () => {
+  it("opens a notification's module, sync settings or updater", () => {
+    const view = render(<Harness />);
+    act(() => deliverCommand({ type: "notification:open", category: "resourceTask", module: "plugin" }));
+    expect(useUIStore.getState().appModule).toBe("plugin");
+    act(() => deliverCommand({ type: "notification:open", category: "syncFailure" }));
+    expect(view.getByTestId("page")).toHaveTextContent("settings");
+    expect(useUIStore.getState().pendingSettingsSection).toBe("data");
+    act(() => deliverCommand({ type: "notification:open", category: "appUpdate" }));
+    expect(onOpenUpdater).toHaveBeenCalledOnce();
+  });
   let deliverCommand: (command: AppCommand) => void;
   let unsubscribe: ReturnType<typeof vi.fn>;
   let onOpenUpdater: ReturnType<typeof vi.fn>;

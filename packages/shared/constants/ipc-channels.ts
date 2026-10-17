@@ -3,6 +3,8 @@
  */
 
 export const IPC_CHANNELS = {
+  NOTIFICATION_PUBLISH: "notification:publish",
+  NOTIFICATION_FEEDBACK: "notification:feedback",
   // Prompt
   PROMPT_CREATE: "prompt:create",
   PROMPT_GET: "prompt:get",

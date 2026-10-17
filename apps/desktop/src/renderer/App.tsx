@@ -1,3 +1,4 @@
+import { useApplicationNotificationFeedback } from "./components/app/application-notification-feedback";
 import { SyncReviewHost } from "./components/ui/SyncReviewHost";
 import { ConfirmationHost } from "./components/ui/ConfirmationHost";
 import { getShortcutKey } from "./services/shortcut-key";
@@ -126,6 +127,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [startupError, setStartupError] = useState<Error | null>(null);
   const { showToast } = useToast();
+  useApplicationNotificationFeedback(showToast);
   const backupImportController = useBackupImportController();
   // v0.6.2 #74: enter configured/last folder once after startup when enabled.
   useStartupFolderRestore(showToast, !isLoading && startupError === null);

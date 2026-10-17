@@ -37,9 +37,9 @@ vi.mock("../../../src/renderer/components/settings/LanguageSettings", () => ({
   LanguageSettings: () => <div>language-content</div>,
 }));
 vi.mock(
-  "../../../src/renderer/components/settings/NotificationsSettings",
+  "../../../src/renderer/components/settings/NotificationSettings",
   () => ({
-    NotificationsSettings: () => <div>notifications-content</div>,
+    NotificationSettings: () => <div>notifications-content</div>,
   }),
 );
 vi.mock("../../../src/renderer/components/settings/SecuritySettings", () => ({
@@ -97,6 +97,22 @@ function isHiddenFromAccessibility(element: Element): boolean {
 }
 
 describe("SettingsPage", () => {
+  it("opens notification preferences from their own menu", async () => {
+    useSettingsStoreMock.mockReturnValue({
+      syncProvider: "manual",
+      webdavEnabled: false,
+      selfHostedSyncEnabled: false,
+      s3StorageEnabled: false,
+    });
+    await renderWithI18n(<SettingsPage onBack={vi.fn()} />, { language: "en" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Notification policy" }),
+    );
+    expect(
+      await screen.findByText("notifications-content"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("general-content")).not.toBeInTheDocument();
+  });
   beforeEach(() => {
     useUIStore.setState({ pendingSettingsSection: null });
   });

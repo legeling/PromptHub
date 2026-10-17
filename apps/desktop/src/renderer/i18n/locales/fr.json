@@ -4611,5 +4611,30 @@
       "settings": "Paramètres",
       "marketplace-sources": "Sources du catalogue"
     }
+  },
+  "notificationSettings": {
+    "title": "Politique de notification",
+    "system": "Notifications système",
+    "enabled": "Autoriser les notifications système",
+    "onlyWhenAway": "Uniquement lorsque PromptHub est en arrière-plan",
+    "sound": "Son des notifications",
+    "off": "Désactivé",
+    "inApp": "Dans l’application",
+    "systemMode": "Autoriser les notifications système",
+    "application": "Application",
+    "data": "Synchronisation et sauvegarde",
+    "prompts": "Tests et génération de Prompts",
+    "resources": "Skills, MCP et extensions",
+    "appUpdate": "Nouvelle version et téléchargement terminé",
+    "syncSuccess": "Synchronisation et sauvegarde terminées",
+    "syncFailure": "Problèmes de synchronisation à traiter",
+    "promptTest": "Test de Prompt terminé ou échoué",
+    "generation": "Génération d’images terminée ou échouée",
+    "resourceTask": "Déploiement groupé terminé ou échoué",
+    "resourceUpdate": "Mises à jour des sources d’extensions",
+    "feedback": "Retour dans l’application",
+    "copy": "Copie du Prompt réussie",
+    "save": "Enregistrement manuel du Prompt réussi",
+    "description": "Choisissez les événements à signaler. Les notifications restent dans l’application si le système est désactivé ou si la condition d’arrière-plan n’est pas remplie."
   }
 }

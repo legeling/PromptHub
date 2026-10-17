@@ -1,3 +1,4 @@
+import { useSettingsStore } from "../../stores/settings.store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Prompt, UpdatePromptDTO } from "@prompthub/shared/types";
 import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
@@ -208,7 +209,7 @@ export function usePromptDetailInlineEditor(
     setIsDetailInlineSaving(true);
     try {
       await updatePrompt(selectedPrompt.id, updateData);
-      showToast(t("toast.saved"), "success");
+      showToast(t("toast.saved"), "success", useSettingsStore.getState().showSaveNotification);
       setDetailInlineActiveField("title");
       setIsDetailInlineEditing(false);
     } catch (error) {

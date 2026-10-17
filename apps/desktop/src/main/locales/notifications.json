@@ -1,0 +1,128 @@
+{
+  "en": {
+    "categories": {
+      "appUpdate": "Application update",
+      "syncSuccess": "Sync and backup",
+      "syncFailure": "Sync issue",
+      "promptTest": "Prompt test",
+      "generation": "Image generation",
+      "resourceTask": "Batch deployment",
+      "resourceUpdate": "Plugin update"
+    },
+    "outcomes": {
+      "success": "Task completed.",
+      "error": "Task failed. Open PromptHub for details.",
+      "attention": "Some items need your attention.",
+      "available": "An update is available.",
+      "downloaded": "The update is downloaded and ready to install."
+    }
+  },
+  "zh": {
+    "categories": {
+      "appUpdate": "应用更新",
+      "syncSuccess": "同步与备份",
+      "syncFailure": "同步异常",
+      "promptTest": "Prompt 测试",
+      "generation": "图片生成",
+      "resourceTask": "批量部署",
+      "resourceUpdate": "插件更新"
+    },
+    "outcomes": {
+      "success": "任务已完成。",
+      "error": "任务失败，请打开 PromptHub 查看详情。",
+      "attention": "部分项目需要你处理。",
+      "available": "有可用更新。",
+      "downloaded": "更新已下载，可以安装。"
+    }
+  },
+  "zh-TW": {
+    "categories": {
+      "appUpdate": "應用程式更新",
+      "syncSuccess": "同步與備份",
+      "syncFailure": "同步異常",
+      "promptTest": "Prompt 測試",
+      "generation": "圖片生成",
+      "resourceTask": "批次部署",
+      "resourceUpdate": "外掛更新"
+    },
+    "outcomes": {
+      "success": "工作已完成。",
+      "error": "工作失敗，請開啟 PromptHub 查看詳情。",
+      "attention": "部分項目需要處理。",
+      "available": "有可用更新。",
+      "downloaded": "更新已下載，可以安裝。"
+    }
+  },
+  "ja": {
+    "categories": {
+      "appUpdate": "アプリ更新",
+      "syncSuccess": "同期とバックアップ",
+      "syncFailure": "同期の問題",
+      "promptTest": "Prompt テスト",
+      "generation": "画像生成",
+      "resourceTask": "一括デプロイ",
+      "resourceUpdate": "プラグイン更新"
+    },
+    "outcomes": {
+      "success": "タスクが完了しました。",
+      "error": "タスクが失敗しました。PromptHub で詳細を確認してください。",
+      "attention": "対応が必要な項目があります。",
+      "available": "更新が利用可能です。",
+      "downloaded": "更新をダウンロードしました。インストールできます。"
+    }
+  },
+  "fr": {
+    "categories": {
+      "appUpdate": "Mise à jour",
+      "syncSuccess": "Synchronisation et sauvegarde",
+      "syncFailure": "Problème de synchronisation",
+      "promptTest": "Test de Prompt",
+      "generation": "Génération d’images",
+      "resourceTask": "Déploiement groupé",
+      "resourceUpdate": "Mise à jour d’extension"
+    },
+    "outcomes": {
+      "success": "Tâche terminée.",
+      "error": "Échec de la tâche. Ouvrez PromptHub pour les détails.",
+      "attention": "Certains éléments nécessitent votre attention.",
+      "available": "Une mise à jour est disponible.",
+      "downloaded": "La mise à jour est prête à être installée."
+    }
+  },
+  "de": {
+    "categories": {
+      "appUpdate": "App-Update",
+      "syncSuccess": "Synchronisierung und Sicherung",
+      "syncFailure": "Synchronisierungsproblem",
+      "promptTest": "Prompt-Test",
+      "generation": "Bilderzeugung",
+      "resourceTask": "Stapelbereitstellung",
+      "resourceUpdate": "Plugin-Update"
+    },
+    "outcomes": {
+      "success": "Aufgabe abgeschlossen.",
+      "error": "Aufgabe fehlgeschlagen. Details in PromptHub.",
+      "attention": "Einige Elemente erfordern Ihre Aufmerksamkeit.",
+      "available": "Ein Update ist verfügbar.",
+      "downloaded": "Das Update ist bereit zur Installation."
+    }
+  },
+  "es": {
+    "categories": {
+      "appUpdate": "Actualización",
+      "syncSuccess": "Sincronización y copia",
+      "syncFailure": "Problema de sincronización",
+      "promptTest": "Prueba de Prompt",
+      "generation": "Generación de imágenes",
+      "resourceTask": "Despliegue por lotes",
+      "resourceUpdate": "Actualización de complemento"
+    },
+    "outcomes": {
+      "success": "Tarea completada.",
+      "error": "La tarea falló. Abre PromptHub para ver los detalles.",
+      "attention": "Algunos elementos requieren atención.",
+      "available": "Hay una actualización disponible.",
+      "downloaded": "La actualización está lista para instalar."
+    }
+  }
+}

@@ -4610,5 +4610,30 @@
       "settings": "Ajustes",
       "marketplace-sources": "Fuentes del catálogo"
     }
+  },
+  "notificationSettings": {
+    "title": "Política de notificaciones",
+    "system": "Notificaciones del sistema",
+    "enabled": "Permitir notificaciones del sistema",
+    "onlyWhenAway": "Solo cuando PromptHub esté en segundo plano",
+    "sound": "Sonido de notificación",
+    "off": "Desactivado",
+    "inApp": "Solo en la aplicación",
+    "systemMode": "Permitir notificaciones del sistema",
+    "application": "Aplicación",
+    "data": "Sincronización y copias de seguridad",
+    "prompts": "Pruebas y generación de Prompts",
+    "resources": "Skills, MCP y complementos",
+    "appUpdate": "Nueva versión y actualización descargada",
+    "syncSuccess": "Sincronización y copia completadas",
+    "syncFailure": "Problemas de sincronización que requieren atención",
+    "promptTest": "Prueba de Prompt completada o fallida",
+    "generation": "Generación de imágenes completada o fallida",
+    "resourceTask": "Despliegue por lotes completado o fallido",
+    "resourceUpdate": "Actualizaciones de fuentes de complementos",
+    "feedback": "Avisos dentro de la aplicación",
+    "copy": "Prompt copiado correctamente",
+    "save": "Prompt guardado manualmente",
+    "description": "Elige los eventos que quieres recibir. Los avisos permanecen en la aplicación si se desactivan las notificaciones del sistema o no se cumple la condición de segundo plano."
   }
 }

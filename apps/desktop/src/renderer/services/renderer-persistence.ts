@@ -1,3 +1,5 @@
+import { trackCanonicalWrite, setRendererSettingsFlush, resetRendererPersistenceWrites } from "./renderer-persistence-writes";
+export { flushRendererPersistence } from "./renderer-persistence-writes";
 import { AGENT_SETTING_KEYS } from "@prompthub/core/agent-management/agent-settings-contract";
 import { PROMPT_WORKSPACE_PREFERENCE_KEYS } from "@prompthub/shared/types/settings";
 import type {
@@ -25,33 +27,7 @@ const LEGACY_KEYS = {
 
 let initialized = false;
 let subscriptions: Array<() => void> = [];
-let flushSettings: (() => void) | null = null;
 let hydratingSources = false;
-const pendingWrites = new Set<Promise<unknown>>();
-const failedWrites = new Map<string, unknown>();
-
-function trackCanonicalWrite(key: string, write: Promise<unknown>): void {
-  pendingWrites.add(write);
-  void write
-    .then(
-      () => failedWrites.delete(key),
-      (error) => {
-        failedWrites.set(key, error);
-        console.warn(`Failed to persist canonical ${key}:`, error);
-      },
-    )
-    .finally(() => pendingWrites.delete(write));
-}
-
-export async function flushRendererPersistence(): Promise<void> {
-  flushSettings?.();
-  await Promise.all([...pendingWrites]);
-  if (failedWrites.size)
-    throw new Error(
-      "Canonical renderer persistence has an unresolved write failure",
-    );
-}
-
 function readStorageValue(storage: Storage, key: string): string | undefined {
   const value = storage.getItem(key);
   return value === null ? undefined : value;
@@ -165,7 +141,7 @@ function subscribeCanonicalSettings(): () => void {
     if (!next) return;
     trackCanonicalWrite("settings", api.replaceSettings(next));
   };
-  flushSettings = flush;
+  setRendererSettingsFlush(flush);
   return useSettingsStore.subscribe(() => {
     const next = extractSettingsState();
     const serialized = JSON.stringify(next);
@@ -284,7 +260,5 @@ export async function migrateRendererPersistence(): Promise<void> {
 export function resetRendererPersistenceForTests(): void {
   for (const unsubscribe of subscriptions.splice(0)) unsubscribe();
   initialized = false;
-  flushSettings = null;
-  pendingWrites.clear();
-  failedWrites.clear();
+  resetRendererPersistenceWrites();
 }

@@ -124,6 +124,7 @@ import { performSelectedCanonicalRecovery } from "./services/canonical-storage-r
 import { registerDataPathChangeIPC } from "./services/data-path-change-ipc";
 import { registerWindowControlIPC } from "./ipc/window-control.ipc";
 import { registerNativeShellIPC } from "./ipc/native-shell.ipc";
+import { registerApplicationNotificationIPC } from "./ipc/application-notification.ipc";
 import { reconcileManagedSkillSymlinksOnStartup } from "./services/skill-platform-symlink-startup";
 import { upgradeSkillPlatformDataOnStartup } from "./services/skill-platform-data-upgrade";
 let mainWindow: BrowserWindow | null = null;
@@ -1101,6 +1102,10 @@ registerDataPathChangeIPC({
 });
 
 registerNativeShellIPC();
+registerApplicationNotificationIPC({
+  getWindow: () => mainWindow,
+  onOpen: (event) => dispatchFromTray({ type: "notification:open", category: event.category, module: event.module }),
+});
 
 // App startup
 // 应用启动

@@ -4650,5 +4650,30 @@
       "settings": "Settings",
       "marketplace-sources": "Marketplace sources"
     }
+  },
+  "notificationSettings": {
+    "title": "Notification policy",
+    "system": "System notifications",
+    "enabled": "Allow system notifications",
+    "onlyWhenAway": "Only when PromptHub is in the background",
+    "sound": "Notification sound",
+    "off": "Off",
+    "inApp": "In-app only",
+    "systemMode": "Allow system notifications",
+    "application": "Application",
+    "data": "Sync and backup",
+    "prompts": "Prompt tests and generation",
+    "resources": "Skills, MCP and plugins",
+    "appUpdate": "New versions and downloaded updates",
+    "syncSuccess": "Sync and backup completed",
+    "syncFailure": "Sync issues requiring attention",
+    "promptTest": "Prompt tests completed or failed",
+    "generation": "Image generation completed or failed",
+    "resourceTask": "Batch deployment completed or failed",
+    "resourceUpdate": "Plugin source updates available",
+    "feedback": "In-app feedback",
+    "copy": "Copy Prompt success",
+    "save": "Manual Prompt save success",
+    "description": "Choose which events can notify you. System notifications stay in the app when disabled or suppressed by the background-only setting."
   }
 }

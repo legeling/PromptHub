@@ -2,7 +2,6 @@ import { useState, useEffect, createContext, useContext, useCallback, useRef } f
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, XCircleIcon, InfoIcon, AlertTriangleIcon, XIcon } from 'lucide-react';
-import { useSettingsStore } from '../../stores/settings.store';
 import { MOTION_DURATION } from '../../styles/motion-tokens';
 
 // Toast type
@@ -24,7 +23,8 @@ interface Toast {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, sendSystemNotification?: boolean) => void;
+  /** Local operation feedback only; task/system events use application-notifications. */
+  showToast: (message: string, type?: ToastType, enabled?: boolean) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -33,7 +33,6 @@ const ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const enableNotifications = useSettingsStore((state) => state.enableNotifications);
   // Track timers so React strict-mode double-mount and rapid replacements
   // do not orphan setTimeout callbacks. Indexed by toast id.
   // 用 ref 记录定时器，避免 React strict-mode 双挂载与快速替换造成游离
@@ -68,24 +67,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     exitTimers.current.set(id, timer);
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success', sendSystemNotification = false) => {
+  const showToast = useCallback((message: string, type: ToastType = 'success', enabled = true) => {
+    if (!enabled) return;
     idCounter.current += 1;
     const id = `${Date.now()}-${idCounter.current}`;
     setToasts((prev) => [...prev, { id, message, type }]);
-
-    // Send system notification (if enabled and requested)
-    // 发送系统通知（如果启用且请求）
-    if (sendSystemNotification && enableNotifications && window.electron?.showNotification) {
-      const title =
-        type === 'success'
-          ? t('common.success', 'Success')
-          : type === 'error'
-            ? t('common.error', 'Error')
-            : type === 'warning'
-              ? t('common.warning', 'Warning')
-              : t('common.info', 'Info');
-      window.electron.showNotification(`PromptHub - ${title}`, message);
-    }
 
     // Auto-dismiss after 3 seconds via the same exit-animation pipeline.
     // 3 秒后自动通过同一个退场动画管线消失。
@@ -94,7 +80,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       removeToast(id);
     }, 3000);
     autoDismissTimers.current.set(id, dismiss);
-  }, [enableNotifications, removeToast, t]);
+  }, [removeToast]);
 
   // Clean up timers on unmount.
   useEffect(() => {
@@ -143,10 +129,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Toast container - z-index needs to be the highest to stay above everything */}
       {/* Toast 容器 - z-index 需要最高，确保在所有元素之上 */}
       {createPortal(
-        <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-[100001] flex flex-col gap-3 pointer-events-none">
           {toasts.map((toast) => (
             <div
               key={toast.id}
+              role={toast.type === 'error' || toast.type === 'warning' ? 'alert' : 'status'}
               className={`
                 flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl pointer-events-auto
                 ${

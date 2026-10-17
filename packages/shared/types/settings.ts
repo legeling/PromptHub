@@ -3,6 +3,7 @@
  */
 
 import type { SkillProject } from "./skill";
+import type { NotificationPreferences } from "./notifications";
 
 export interface AgentAssetConfig {
   rootPath?: string;
@@ -69,6 +70,7 @@ export const PROMPT_WORKSPACE_PREFERENCE_KEYS = [
 ] as const;
 
 export interface Settings {
+  notificationPreferences?: NotificationPreferences;
   theme: Theme;
   language: Language;
   autoSave: boolean;

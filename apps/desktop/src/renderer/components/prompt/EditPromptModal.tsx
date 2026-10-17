@@ -405,6 +405,7 @@ export function EditPromptModal({
       if (source.trim()) {
         addSourceHistory(source.trim());
       }
+      showToast(t("toast.saved"), "success", useSettingsStore.getState().showSaveNotification);
       onClose();
     } catch (error) {
       console.error("Failed to save prompt:", error);

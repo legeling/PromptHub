@@ -3,6 +3,7 @@ import {
   DEFAULT_NETWORK_PROXY_SETTINGS,
 } from "@prompthub/shared/types";
 import i18n from "../../i18n";
+import { normalizeNotificationPreferences } from "@prompthub/shared/utils/notifications";
 import {
   DEFAULT_BACKGROUND_IMAGE_BLUR,
   DEFAULT_BACKGROUND_IMAGE_OPACITY,
@@ -46,6 +47,7 @@ function createDefaultAppearanceValues() {
     backupGuideCollapsed: false,
     shortcutModes: { ...DEFAULT_SHORTCUT_MODES },
     enableNotifications: true,
+    notificationPreferences: normalizeNotificationPreferences(undefined),
     showCopyNotification: true,
     showSaveNotification: true,
     localSessionIndexEnabled: true,

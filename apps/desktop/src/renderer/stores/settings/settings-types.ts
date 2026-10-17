@@ -160,6 +160,7 @@ export interface SettingsState {
   backupGuideCollapsed: boolean;
   shortcutModes: Record<string, "global" | "local">;
   enableNotifications: boolean;
+  notificationPreferences: import("@prompthub/shared/types/notifications").NotificationPreferences;
   showCopyNotification: boolean;
   showSaveNotification: boolean;
   localSessionIndexEnabled: boolean;
@@ -276,6 +277,7 @@ export interface SettingsState {
   setMinimizeOnLaunch: (enabled: boolean) => void;
   setDebugMode: (enabled: boolean) => void;
   setEnableNotifications: (enabled: boolean) => void;
+  setNotificationPreferences: (preferences: import("@prompthub/shared/types/notifications").NotificationPreferences) => void;
   setCloseAction: (action: CloseAction) => void;
   persistCloseAction: (action: Exclude<CloseAction, "ask">) => Promise<void>;
   setStartupFolderMode: (mode: StartupFolderMode) => void;

@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type { RemoteWriteCondition, RemoteUploadResult, RemoteDownloadResult, RemoteDeleteResult } from "@prompthub/shared/types/remote-sync";
 import type { DesktopCausalSyncRequest, DesktopCausalSyncResult } from "@prompthub/shared/types/causal-sync";
 import { aiApi } from "./api/ai";
+import { applicationNotifications } from "./api/notifications";
 import { agentApi } from "./api/agent";
 import { cliApi } from "./api/cli";
 import { cloudApi } from "./api/cloud";
@@ -245,6 +246,7 @@ contextBridge.exposeInMainWorld("electron", {
   openPath: (path: string) => ipcRenderer.invoke("shell:openPath", path),
   showNotification: (title: string, body: string) =>
     ipcRenderer.invoke("notification:show", { title, body }),
+  applicationNotifications,
   // Data directory
   // 数据目录
   getDataPath: () => ipcRenderer.invoke("data:getPath"),
@@ -566,6 +568,7 @@ declare global {
         path: string,
       ) => Promise<{ success: boolean; error?: string }>;
       showNotification?: (title: string, body: string) => Promise<boolean>;
+      applicationNotifications?: typeof applicationNotifications;
       // Data directory
       // 数据目录
       getDataPath?: () => Promise<string>;

@@ -24,6 +24,7 @@ export const APP_SETTING_KEYS = new Set([
   "closeAction",
   "shortcutModes",
   "enableNotifications",
+  "notificationPreferences",
   "showCopyNotification",
   "showSaveNotification",
   "localSessionIndexEnabled",

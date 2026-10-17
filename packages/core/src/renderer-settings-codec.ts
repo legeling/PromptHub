@@ -6,6 +6,7 @@ import {
   DEVICE_RENDERER_SETTING_KEYS,
 } from "./renderer-persistence-policy";
 import { requireSafeId } from "./renderer-persistence-validation";
+import { normalizeNotificationPreferences } from "@prompthub/shared/utils/notifications";
 
 const PUBLIC_SETTING_KEYS = new Set([
   ...APP_SETTING_KEYS,
@@ -140,6 +141,7 @@ export function encodeRendererSettings(
       }),
   );
   const secrets: Record<string, string> = {};
+  if ("notificationPreferences" in input) settings.notificationPreferences = normalizeNotificationPreferences(input.notificationPreferences);
   for (const field of FLAT_SECRET_FIELDS) {
     const ref = `renderer:${field}`;
     if (captureSecret(input[field], ref, secrets))

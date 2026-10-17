@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
   SettingsIcon,
+  BellIcon,
   PaletteIcon,
   DatabaseIcon,
   InfoIcon,
@@ -40,6 +41,7 @@ interface SettingsPageProps {
 // 设置菜单项 - 使用 key 而非硬编码文本
 const DESKTOP_SETTINGS_MENU = [
   { id: "general", labelKey: "settings.general", icon: SettingsIcon },
+  { id: "notifications", labelKey: "notificationSettings.title", icon: BellIcon },
   { id: "appearance", labelKey: "settings.appearance", icon: PaletteIcon },
   { id: "data", labelKey: "settings.data", icon: DatabaseIcon },
   { id: "network", labelKey: "settings.network", icon: WifiIcon },
@@ -62,6 +64,7 @@ const WEB_SETTINGS_MENU = [
   { id: "about", labelKey: "settings.about", icon: InfoIcon },
 ] as const;
 
+const NotificationSettings = lazy(() => import("./NotificationSettings").then((module) => ({ default: module.NotificationSettings })));
 const GeneralSettings = lazy(() =>
   import("./GeneralSettings").then((module) => ({
     default: module.GeneralSettings,
@@ -264,6 +267,8 @@ export function SettingsPage({
         return <WebWorkspaceSettings onNavigate={setActiveSection} />;
       case "devices":
         return <WebDeviceSettings />;
+      case "notifications":
+        return <NotificationSettings />;
       case "general":
         return <GeneralSettings />;
       case "appearance":
