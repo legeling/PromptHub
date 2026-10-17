@@ -50,6 +50,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
@@ -92,9 +94,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
 
+      - name: Install Linux credential service
+        run: |
+          if ! command -v gnome-keyring-daemon >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y gnome-keyring
+          fi
+
       - name: Verify desktop
-        run: node --experimental-strip-types scripts/verify-release.mts --profile release --surface desktop --exclude-layer governance --exclude-layer e2e
+        run: |
+          dbus-run-session -- bash -euo pipefail -c '
+            printf "\n" | gnome-keyring-daemon --unlock --components=secrets
+            node --experimental-strip-types scripts/verify-release.mts --profile release --surface desktop --exclude-layer governance --exclude-layer e2e
+          '

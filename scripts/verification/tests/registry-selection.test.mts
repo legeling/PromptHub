@@ -83,6 +83,13 @@ test("CLI package gate executes the extracted tarball proof after building", () 
   ]);
 });
 
+test("CLI build cannot clear process fixtures while CLI tests are running", () => {
+  const cliTest = VERIFICATION_CHECKS.find((item) => item.id === "cli-test");
+  const cliBuild = VERIFICATION_CHECKS.find((item) => item.id === "cli-build");
+  assert.ok(cliTest?.resourceGroup);
+  assert.equal(cliBuild?.resourceGroup, cliTest.resourceGroup);
+});
+
 test("desktop unit coverage uses bounded serial shards", () => {
   const shards = VERIFICATION_CHECKS.filter((item) =>
     item.id.startsWith("desktop-unit-"),

@@ -39,7 +39,9 @@ PROMPTHUB_E2E_HEADED=1 pnpm --dir apps/desktop exec playwright test --grep @nati
 
 发布 CI 的既有 Linux `xvfb-run` 步骤显式设置 `PROMPTHUB_E2E_HEADED=1`，在虚拟显示器中保留原生窗口门禁；本地默认隐藏不会缩减该 CI 步骤的选择范围。
 
-发布验证 checkout 保留完整 Git 历史，供历史版本源码 fixture 核对和升级执行使用。Linux runner 安装 GNOME Keyring，并在独立 D-Bus 会话中解锁临时 runner 的密钥环；该服务覆盖仍调用系统凭据接口的集成测试。根级发布检查使用 `--concurrency 1`，避免多个检查争用 runner 导致 CLI 75 秒预算误差；预算和用例选择不变。JSON 报告和桌面失败附件作为 Actions artifact 保留。
+发布验证 checkout 保留完整 Git 历史，供历史版本源码 fixture 核对和升级执行使用。Linux runner 安装 GNOME Keyring，并在独立 D-Bus 会话中解锁临时 runner 的密钥环；该服务覆盖仍调用系统凭据接口的集成测试。Quality 的 Shared/Desktop 检查同样保留完整历史，Desktop 检查使用相同的凭据服务。根级发布检查使用 `--concurrency 1`，避免多个检查争用 runner 导致 CLI 75 秒预算误差；预算和用例选择不变。JSON 报告和桌面失败附件作为 Actions artifact 保留。
+
+CLI 测试的进程入口位于 `apps/cli/out/cli-test-*`，因此 CLI 构建与测试共用串行资源组，避免 Vite 清理输出目录时删除运行中的测试入口。Windows 执行器通过 Node 启动 pnpm 的 JavaScript 入口；超时清理限定于当前检查的进程树，避免子进程持有输出管道而阻塞报告生成。
 
 Electron E2E 通过 `-r tests/e2e/helpers/isolated-keyring.cjs` 在产品入口执行前替换操作系统凭据运输，密钥写入隔离 profile。应用重开时必须先恢复同一测试凭据，再执行真实设置解密和启动；不能在 `electron.launch()` 返回后才注入，否则启动读取与后续写入会使用不同存储。该文件只由测试命令预加载，不进入生产启动流程。
 

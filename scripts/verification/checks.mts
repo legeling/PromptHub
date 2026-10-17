@@ -140,7 +140,12 @@ export const VERIFICATION_CHECKS: VerificationCheck[] = [
     ["cli"],
     ["build"],
     ["--filter", "@prompthub/cli", "build"],
-    { profiles: RELEASE_PROFILES, timeoutMs: 180_000 },
+    {
+      profiles: RELEASE_PROFILES,
+      timeoutMs: 180_000,
+      // Vite clears out/, which also contains the CLI tests' process entry.
+      resourceGroup: "test-heavy",
+    },
   ),
   pnpmCheck(
     "cli-package",

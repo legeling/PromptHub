@@ -98,6 +98,25 @@ test("Cloudflare Worker workflow has an independent bounded gate", () => {
   );
 });
 
+test("quality gates provision the same history and credentials as release checks", () => {
+  const workflow = fs.readFileSync(
+    path.join(rootDir, ".github/workflows/quality.yml"),
+    "utf8",
+  );
+  const shared = workflow
+    .split("  shared-verify:")[1]
+    .split("  cli-verify:")[0];
+  const desktop = workflow.split("  desktop-verify:")[1];
+  assert.match(shared, /fetch-depth: 0/);
+  assert.match(desktop, /fetch-depth: 0/);
+  assert.match(
+    desktop,
+    /apt-get install --no-install-recommends -y gnome-keyring/,
+  );
+  assert.match(desktop, /dbus-run-session --/);
+  assert.match(desktop, /gnome-keyring-daemon --unlock --components=secrets/);
+});
+
 test("draft version tags cannot publish the self-hosted image", () => {
   const workflow = fs.readFileSync(
     path.join(rootDir, ".github/workflows/web-self-hosted.yml"),

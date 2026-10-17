@@ -105,7 +105,7 @@ test("timeout terminates the task-owned process group", async () => {
   const marker = path.join(root, "orphan.txt");
   const childSource = `setTimeout(() => require("node:fs").writeFileSync(${JSON.stringify(
     marker,
-  )}, "orphan"), 250)`;
+  )}, "orphan"), 2000)`;
   const parentSource = [
     `require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(
       childSource,
@@ -123,11 +123,28 @@ test("timeout terminates the task-owned process group", async () => {
       { concurrency: 1, quiet: true, terminationGraceMs: 25 },
     );
     assert.equal(summary.results[0]?.status, "timed_out");
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    // Allow Windows taskkill to enumerate the tree before the orphan deadline.
+    await new Promise((resolve) => setTimeout(resolve, 2200));
     assert.equal(existsSync(marker), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("timeout closes inherited worker pipes without waiting for the worker", async () => {
+  const childSource = 'console.log("worker-ready"); setTimeout(() => {}, 4000)';
+  const parentSource = [
+    `require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(childSource)}], { stdio: "inherit" });`,
+    "setInterval(() => {}, 1000);",
+  ].join("");
+  const summary = await executeChecks(
+    [nodeCheck("worker-pipes", parentSource, { timeoutMs: 1000 })],
+    { concurrency: 1, quiet: true, terminationGraceMs: 25 },
+  );
+  const result = summary.results[0];
+  assert.equal(result?.status, "timed_out");
+  assert.match(result.outputTail ?? "", /worker-ready/);
+  assert.ok(result.durationMs < 3000, "Worker pipes must not retain the check");
 });
 
 test("failed parents cannot leave task-owned workers running", async () => {

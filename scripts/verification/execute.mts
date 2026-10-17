@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import process from "node:process";
 import { resolveWindowsPnpm } from "./windows-pnpm.mts";
 
@@ -57,7 +57,20 @@ function terminateOwnedProcess(
   try {
     if (process.platform === "win32") {
       if (child.exitCode !== null || child.signalCode !== null) return;
-      child.kill(signal);
+      // Killing pnpm alone leaves its workers holding the output pipes open.
+      const result = spawnSync(
+        "taskkill",
+        ["/PID", String(child.pid), "/T", "/F"],
+        {
+          windowsHide: true,
+          stdio: "pipe",
+          timeout: 5000,
+        },
+      );
+      if (result.error) throw result.error;
+      if (result.status !== 0 && child.exitCode === null) {
+        child.kill(signal);
+      }
     } else {
       if (
         !includeExitedProcessGroup &&
