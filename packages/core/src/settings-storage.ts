@@ -9,6 +9,7 @@ export const SETTINGS_SQLITE_MIGRATION = "settings-sqlite-v1";
 export const SETTINGS_PRIVATE_KEYS = new Set<string>([
   "master_password",
   "notificationUpdateReceipts",
+  "desktopWindowState",
   ...RENDERER_AUXILIARY_SETTING_KEYS,
 ]);
 

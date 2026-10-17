@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
 import { SettingSection, ShortcutItem } from "./shared";
+import { ShortcutReference } from "./ShortcutReference";
 
 export function ShortcutsSettings() {
   const { t } = useTranslation();
@@ -112,11 +113,10 @@ export function ShortcutsSettings() {
 
   return (
     <div className="space-y-5">
-      <SettingSection title={t("settings.shortcutOptions")}>
+      <SettingSection title={t("settings.shortcutReference.custom")}>
         <div>
           <ShortcutItem
             label={t("settings.shortcutShowApp")}
-            description={t("settings.shortcutShowAppDesc")}
             shortcut={shortcuts.showApp || ""}
             onShortcutChange={(shortcut) =>
               handleShortcutChange("showApp", shortcut)
@@ -128,7 +128,6 @@ export function ShortcutsSettings() {
           />
           <ShortcutItem
             label={t("settings.shortcutNewPrompt")}
-            description={t("settings.shortcutNewPromptDesc")}
             shortcut={shortcuts.newPrompt || ""}
             onShortcutChange={(shortcut) =>
               handleShortcutChange("newPrompt", shortcut)
@@ -142,7 +141,6 @@ export function ShortcutsSettings() {
           />
           <ShortcutItem
             label={t("settings.shortcutSearch")}
-            description={t("settings.shortcutSearchDesc")}
             shortcut={shortcuts.search || ""}
             onShortcutChange={(shortcut) =>
               handleShortcutChange("search", shortcut)
@@ -154,7 +152,6 @@ export function ShortcutsSettings() {
           />
           <ShortcutItem
             label={t("settings.shortcutSettings")}
-            description={t("settings.shortcutSettingsDesc")}
             shortcut={shortcuts.settings || ""}
             onShortcutChange={(shortcut) =>
               handleShortcutChange("settings", shortcut)
@@ -168,15 +165,7 @@ export function ShortcutsSettings() {
           />
         </div>
       </SettingSection>
-
-      <SettingSection title={t("settings.shortcutTips")}>
-        <div className="p-4 text-xs leading-relaxed text-muted-foreground space-y-1.5">
-          <p>• {t("settings.shortcutTip1")}</p>
-          <p>• {t("settings.shortcutTip2")}</p>
-          <p>• {t("settings.shortcutTip3")}</p>
-          <p>• {t("settings.shortcutModeDesc")}</p>
-        </div>
-      </SettingSection>
+      <ShortcutReference />
     </div>
   );
 }

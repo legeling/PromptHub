@@ -123,7 +123,7 @@ export function CLISettings() {
         <div className="space-y-0">
           <SettingItem
             label={t("settings.cliInstallStatus")}
-            description={
+            status={
               isLoading
                 ? t("settings.cliCheckingStatus")
                 : status.installed
@@ -160,7 +160,6 @@ export function CLISettings() {
 
           <SettingItem
             label={t("settings.cliPackageManagerLabel")}
-            description={t("settings.cliPackageManagerDesc")}
           >
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TerminalSquareIcon className="h-4 w-4" />

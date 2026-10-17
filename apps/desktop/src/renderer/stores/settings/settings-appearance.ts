@@ -8,6 +8,11 @@ export const MORANDI_THEMES = [
   { id: "green", hue: 150, saturation: 30, name: "Bean Green" },
   { id: "orange", hue: 25, saturation: 40, name: "Apricot Orange" },
   { id: "teal", hue: 175, saturation: 30, name: "Teal Blue" },
+  { id: "rose", hue: 340, saturation: 42, name: "Rose" },
+  { id: "coral", hue: 12, saturation: 55, name: "Coral" },
+  { id: "amber", hue: 42, saturation: 52, name: "Amber" },
+  { id: "olive", hue: 80, saturation: 28, name: "Olive" },
+  { id: "slate", hue: 215, saturation: 14, name: "Slate" },
 ];
 
 export const FONT_SIZES = [

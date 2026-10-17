@@ -54,6 +54,52 @@ describe("settings desktop workspace actions", () => {
     expect(useSettingsStore.getState().desktopHomeModules).toEqual(["rules"]);
   });
 
+  it("retains custom positions while hidden and restores them when enabled", async () => {
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+    const order = [
+      "rules",
+      "prompt",
+      "agents",
+      "skill",
+      "mcp",
+      "plugin",
+    ] as const;
+    useSettingsStore.getState().reorderDesktopHomeModules([...order]);
+    useSettingsStore.getState().toggleDesktopHomeModule("prompt");
+    useSettingsStore.getState().toggleDesktopHomeModule("skill");
+    expect(useSettingsStore.getState().desktopHomeModuleOrder).toEqual(order);
+    useSettingsStore.getState().toggleDesktopHomeModule("prompt");
+    useSettingsStore.getState().toggleDesktopHomeModule("skill");
+    expect(useSettingsStore.getState().desktopHomeModules).toEqual(order);
+  });
+
+  it("reorders visible modules without moving hidden slots", async () => {
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+    useSettingsStore.getState().toggleDesktopHomeModule("agents");
+    useSettingsStore
+      .getState()
+      .reorderDesktopHomeModules(["rules", "prompt", "skill", "mcp", "plugin"]);
+    expect(useSettingsStore.getState().desktopHomeModuleOrder).toEqual([
+      "rules",
+      "agents",
+      "prompt",
+      "skill",
+      "mcp",
+      "plugin",
+    ]);
+    useSettingsStore.getState().toggleDesktopHomeModule("agents");
+    expect(useSettingsStore.getState().desktopHomeModules).toEqual([
+      "rules",
+      "agents",
+      "prompt",
+      "skill",
+      "mcp",
+      "plugin",
+    ]);
+  });
+
   it("reorders enabled desktop modules without introducing hidden entries", async () => {
     const { useSettingsStore } =
       await import("../../../src/renderer/stores/settings.store");
@@ -291,6 +337,25 @@ describe("settings desktop workspace actions", () => {
       "skill",
       "prompt",
     ]);
+    expect(useSettingsStore.getState().desktopHomeModuleOrder).toEqual([
+      "skill",
+      "prompt",
+      "agents",
+      "mcp",
+      "plugin",
+      "rules",
+    ]);
+  });
+
+  it("normalizes malformed full order while preserving hidden positions and current visible order", async () => {
+    const { normalizeDesktopHomeModuleOrder } =
+      await import("../../../src/renderer/stores/settings/settings-normalizers");
+    expect(
+      normalizeDesktopHomeModuleOrder(
+        ["agents", "ghost", "agents", "prompt", "rules"],
+        ["rules", "prompt"],
+      ),
+    ).toEqual(["agents", "rules", "prompt", "skill", "mcp", "plugin"]);
   });
 
   it("normalizes same-version persisted sidebar tag section heights during hydration", async () => {

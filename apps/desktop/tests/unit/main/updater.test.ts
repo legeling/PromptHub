@@ -334,6 +334,22 @@ describe("Updater Service (Main Process)", () => {
     expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["updater:check", "updater:download"])("uses the selected mirror for %s without trying other mirrors", async (channel) => {
+    registerUpdaterIPC();
+    const handler = vi.mocked(ipcMain.handle).mock.calls.find(([name]) => name === channel)?.[1];
+    if (!handler) throw new Error("Updater IPC was not registered");
+    await Reflect.apply(handler, undefined, [{}, { source: "mirror", mirror: "gh-proxy" }]);
+    expect(autoUpdater.setFeedURL).toHaveBeenCalledWith(expect.objectContaining({
+      provider: "generic",
+      url: "https://gh-proxy.com/https://github.com/legeling/PromptHub/releases/latest/download",
+    }));
+    vi.mocked(autoUpdater.setFeedURL).mockClear();
+    vi.mocked(autoUpdater.checkForUpdates).mockRejectedValue(new Error("selected mirror unavailable"));
+    const result = await Reflect.apply(handler, undefined, [{}, { source: "mirror", mirror: "gh-proxy" }]);
+    expect(result.success).toBe(false);
+    expect(autoUpdater.setFeedURL).toHaveBeenCalledTimes(1);
+  });
+
   it("cancels the active download and starts only the latest replacement", async () => {
     initUpdater(mockWindow);
     registerUpdaterIPC();

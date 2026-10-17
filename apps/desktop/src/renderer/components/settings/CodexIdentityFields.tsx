@@ -30,12 +30,6 @@ export function CodexIdentityFields({
         <div className="text-xs font-medium text-foreground">
           {t("settings.codexIdentity", "Codex identity")}
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {t(
-            "settings.codexIdentityDesc",
-            "Choose how the shared Codex and ChatGPT product identity appears in PromptHub.",
-          )}
-        </p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">

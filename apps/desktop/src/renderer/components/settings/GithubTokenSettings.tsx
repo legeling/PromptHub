@@ -16,11 +16,8 @@ export function GithubTokenSettings() {
       title={t("settings.githubTokenTitle", "GitHub Access Token")}
     >
       <div className="space-y-3 p-4">
-        <p className="text-xs text-muted-foreground">
-          {t(
-            "settings.githubTokenDesc",
-            "Optional. Attach a GitHub personal access token (classic or fine-grained) so Skill Store requests use your authenticated rate limit (5 000 req/h) instead of the anonymous 60 req/h limit. The token is only sent to api.github.com and raw.githubusercontent.com.",
-          )}
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {t("settings.githubTokenDesc")}
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -76,12 +73,6 @@ export function GithubTokenSettings() {
           <ExternalLinkIcon className="h-3 w-3" />
           {t("settings.githubTokenLearnMore", "Create a personal access token")}
         </a>
-        <p className="text-[11px] text-muted-foreground/80">
-          {t(
-            "settings.githubTokenScopeHint",
-            "A read-only token without any scope (public repositories) is enough for the skill store.",
-          )}
-        </p>
       </div>
     </SettingSection>
   );

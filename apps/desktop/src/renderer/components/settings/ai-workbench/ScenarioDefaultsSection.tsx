@@ -5,18 +5,23 @@ import type {
   AIModelRoute,
   ModelRouteDefaults,
 } from "../../../stores/settings.store";
-import { SettingSection } from "../shared";
+import { SettingItem, SettingSection } from "../shared";
 import { MODEL_ROUTE_DEFINITIONS } from "./constants";
 import { buildModelOptions } from "./helpers";
 import { hasModelCapability } from "../../../services/ai-defaults";
 import { ScenarioRow } from "./shared";
+import { Select } from "../../ui/Select";
 
 export function ScenarioDefaultsSection({
   chatModels,
   imageModels,
   modelRouteDefaults,
   onRouteChange,
+  translationMode,
+  onTranslationModeChange,
 }: {
+  translationMode: "immersive" | "full";
+  onTranslationModeChange: (value: "immersive" | "full") => void;
   chatModels: AIModelConfig[];
   imageModels: AIModelConfig[];
   modelRouteDefaults: ModelRouteDefaults;
@@ -38,7 +43,6 @@ export function ScenarioDefaultsSection({
             <ScenarioRow
               key={item.key}
               label={t(item.labelKey)}
-              desc={t(item.descKey)}
               fallbackLabel={t("settings.aiWorkbenchFollowGlobalDefault")}
               disabled={models.length === 0}
               value={modelRouteDefaults[item.key] ?? ""}
@@ -47,6 +51,21 @@ export function ScenarioDefaultsSection({
             />
           );
         })}
+        <SettingItem label={t("settings.translationMode")}>
+          <Select
+            value={translationMode}
+            ariaLabel={t("settings.translationMode")}
+            onChange={(value) => {
+              if (value === "immersive" || value === "full")
+                onTranslationModeChange(value);
+            }}
+            options={[
+              { value: "immersive", label: t("settings.translationImmersive") },
+              { value: "full", label: t("settings.translationFull") },
+            ]}
+            className="w-full max-w-[280px]"
+          />
+        </SettingItem>
       </div>
     </SettingSection>
   );

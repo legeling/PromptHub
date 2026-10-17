@@ -23,20 +23,14 @@ export function GeneralSettings() {
   return (
     <div className="space-y-6">
       <SettingSection title={t("settings.startup")}>
-        <SettingItem
-          label={t("settings.launchAtStartup")}
-          description={t("settings.launchAtStartupDesc")}
-        >
+        <SettingItem label={t("settings.launchAtStartup")}>
           <ToggleSwitch
             ariaLabel={t("settings.launchAtStartup")}
             checked={settings.launchAtStartup}
             onChange={settings.setLaunchAtStartup}
           />
         </SettingItem>
-        <SettingItem
-          label={t("settings.minimizeOnLaunch")}
-          description={t("settings.minimizeOnLaunchDesc")}
-        >
+        <SettingItem label={t("settings.minimizeOnLaunch")}>
           <ToggleSwitch
             ariaLabel={t("settings.minimizeOnLaunch")}
             checked={settings.minimizeOnLaunch}
@@ -45,10 +39,7 @@ export function GeneralSettings() {
         </SettingItem>
         {/* v0.6.2 #74: which folder the app enters after a cold start. */}
         {/* 启动后进入哪个文件夹（GitHub #74 需求） */}
-        <SettingItem
-          label={t("settings.startupFolder")}
-          description={t("settings.startupFolderDesc")}
-        >
+        <SettingItem label={t("settings.startupFolder")}>
           <Select
             ariaLabel={t("settings.startupFolder")}
             value={settings.startupFolderMode}
@@ -66,16 +57,11 @@ export function GeneralSettings() {
           />
         </SettingItem>
         {settings.startupFolderMode === "pinned" && (
-          <SettingItem
-            label={t("settings.startupFolderTarget")}
-            description={t("settings.startupFolderTargetDesc")}
-          >
+          <SettingItem label={t("settings.startupFolderTarget")}>
             <Select
               ariaLabel={t("settings.startupFolderTarget")}
               value={settings.pinnedStartFolderId ?? ""}
-              onChange={(value) =>
-                settings.setPinnedStartFolder(value || null)
-              }
+              onChange={(value) => settings.setPinnedStartFolder(value || null)}
               options={[
                 { value: "", label: t("settings.startupFolderTargetNone") },
                 // v0.6.3 FR-STARTUP-005: an invalid target stays visible and
@@ -98,13 +84,7 @@ export function GeneralSettings() {
             />
           </SettingItem>
         )}
-        <SettingItem
-          label={t("settings.clipboardImport", "剪切板快速导入")}
-          description={t(
-            "settings.clipboardImportDesc",
-            "获得焦点时检测剪切板代码块并提示导入",
-          )}
-        >
+        <SettingItem label={t("settings.clipboardImport", "剪切板快速导入")}>
           <ToggleSwitch
             ariaLabel={t("settings.clipboardImport", "剪切板快速导入")}
             checked={settings.clipboardImportEnabled}
@@ -114,10 +94,7 @@ export function GeneralSettings() {
         {/* Windows close behavior settings */}
         {/* Windows 关闭行为设置 */}
         {navigator.platform.toLowerCase().includes("win") && (
-          <SettingItem
-            label={t("settings.closeAction")}
-            description={t("settings.closeActionDesc")}
-          >
+          <SettingItem label={t("settings.closeAction")}>
             <Select
               ariaLabel={t("settings.closeAction")}
               value={settings.closeAction}
@@ -136,20 +113,14 @@ export function GeneralSettings() {
       </SettingSection>
 
       <SettingSection title={t("settings.editor")}>
-        <SettingItem
-          label={t("settings.autoSave")}
-          description={t("settings.autoSaveDesc")}
-        >
+        <SettingItem label={t("settings.autoSave")}>
           <ToggleSwitch
             ariaLabel={t("settings.autoSave")}
             checked={settings.autoSave}
             onChange={settings.setAutoSave}
           />
         </SettingItem>
-        <SettingItem
-          label={t("settings.showLineNumbers")}
-          description={t("settings.showLineNumbersDesc")}
-        >
+        <SettingItem label={t("settings.showLineNumbers")}>
           <ToggleSwitch
             ariaLabel={t("settings.showLineNumbers")}
             checked={settings.showLineNumbers}
@@ -159,10 +130,7 @@ export function GeneralSettings() {
       </SettingSection>
 
       <SettingSection title={t("settings.languageAndRegion", "语言与地区")}>
-        <SettingItem
-          label={t("settings.language")}
-          description={t("settings.selectLanguage")}
-        >
+        <SettingItem label={t("settings.language")}>
           <Select
             ariaLabel={t("settings.language")}
             value={settings.language}
@@ -174,23 +142,14 @@ export function GeneralSettings() {
       </SettingSection>
 
       <SettingSection title={t("settings.behaviorPreferences", "行为与偏好")}>
-        <SettingItem
-          label={t("settings.agentHistoryAcceleration")}
-          description={t("settings.agentHistoryAccelerationDesc")}
-        >
+        <SettingItem label={t("settings.agentHistoryAcceleration")}>
           <ToggleSwitch
             ariaLabel={t("settings.agentHistoryAcceleration")}
             checked={settings.localSessionIndexEnabled}
             onChange={settings.setLocalSessionIndexEnabled}
           />
         </SettingItem>
-        <SettingItem
-          label={t("settings.tagFilterMode", "标签点击模式")}
-          description={t(
-            "settings.tagFilterModeDesc",
-            "设置点击标签时是替换当前筛选，还是追加到多选筛选中",
-          )}
-        >
+        <SettingItem label={t("settings.tagFilterMode", "标签点击模式")}>
           <Select
             ariaLabel={t("settings.tagFilterMode", "标签点击模式")}
             value={settings.tagFilterMode}
@@ -211,8 +170,6 @@ export function GeneralSettings() {
           />
         </SettingItem>
       </SettingSection>
-
-
     </div>
   );
 }

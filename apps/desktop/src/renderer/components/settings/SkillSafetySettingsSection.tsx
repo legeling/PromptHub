@@ -3,37 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useSkillStore } from "../../stores/skill.store";
 import { useToast } from "../ui/Toast";
-import { SettingSection } from "./shared";
-
-interface SafetyToggleProps {
-  pressed: boolean;
-  title: string;
-  description: string;
-  onToggle: () => void;
-}
-
-function SafetyToggle({
-  pressed,
-  title,
-  description,
-  onToggle,
-}: SafetyToggleProps) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={pressed}
-      className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
-        pressed
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-primary/30"
-      }`}
-    >
-      <div className="text-sm font-semibold">{title}</div>
-      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-    </button>
-  );
-}
+import { Select } from "../ui/Select";
+import { SettingSection, SettingItem, ToggleSwitch } from "./shared";
 
 function BatchSafetyScan() {
   const { t } = useTranslation();
@@ -64,34 +35,18 @@ function BatchSafetyScan() {
     }
   };
   return (
-    <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold">
-            {t(
-              "settings.batchScanInstalledSkills",
-              "Scan All Installed Skills Now",
-            )}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t(
-              "settings.batchScanInstalledSkillsDesc",
-              "Manually run a safety scan on all Skills in your library to quickly find high-risk content.",
-            )}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void runScan()}
-          disabled={isScanning}
-          className="h-9 shrink-0 rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          {isScanning
-            ? t("skill.safetyScanning", "Scanning...")
-            : t("skill.runSafetyAssessment", "Run Scan")}
-        </button>
-      </div>
-    </div>
+    <SettingItem label={t("settings.batchScanInstalledSkills")}>
+      <button
+        type="button"
+        onClick={() => void runScan()}
+        disabled={isScanning}
+        className="h-9 shrink-0 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isScanning
+          ? t("skill.safetyScanning", "Scanning...")
+          : t("skill.runSafetyAssessment", "Run Scan")}
+      </button>
+    </SettingItem>
   );
 }
 
@@ -105,34 +60,32 @@ export function SkillSafetySettingsSection() {
   const setMethod = useSettingsStore((state) => state.setSkillSafetyScanMethod);
   return (
     <SettingSection title={t("settings.contentScanTitle")}>
-      <div className="space-y-3 p-4">
-        <SafetyToggle
-          pressed={enabled}
-          title={t("settings.contentScanEnable")}
-          description={t("settings.contentScanDescription")}
-          onToggle={() => setEnabled(!enabled)}
+      <SettingItem label={t("settings.contentScanEnable")}>
+        <ToggleSwitch
+          ariaLabel={t("settings.contentScanEnable")}
+          checked={enabled}
+          onChange={setEnabled}
         />
-        {enabled && (
-          <>
-            <label className="block text-sm">
-              {t("settings.contentScanMethod")}
-              <select
-                className="ml-3 rounded border border-border bg-card p-2"
-                value={method}
-                onChange={(event) =>
-                  setMethod(event.target.value === "ai" ? "ai" : "static")
-                }
-              >
-                <option value="static">
-                  {t("settings.contentScanStatic")}
-                </option>
-                <option value="ai">{t("settings.contentScanAI")}</option>
-              </select>
-            </label>
-            <BatchSafetyScan />
-          </>
-        )}
-      </div>
+      </SettingItem>
+      {enabled && (
+        <>
+          <SettingItem label={t("settings.contentScanMethod")}>
+            <Select
+              className="w-48 shrink-0"
+              ariaLabel={t("settings.contentScanMethod")}
+              value={method}
+              onChange={(value) => {
+                if (value === "ai" || value === "static") setMethod(value);
+              }}
+              options={[
+                { value: "static", label: t("settings.contentScanStatic") },
+                { value: "ai", label: t("settings.contentScanAI") },
+              ]}
+            />
+          </SettingItem>
+          <BatchSafetyScan />
+        </>
+      )}
     </SettingSection>
   );
 }

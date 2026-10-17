@@ -80,9 +80,8 @@ function formatSeenAt(value: string): string {
 export function WebDeviceSettings() {
   const { t } = useTranslation();
   const webContext = getWebContext();
-  const [deviceSettings, setDeviceSettings] = useState<DeviceManagementSettings>(
-    DEFAULT_DEVICE_SETTINGS,
-  );
+  const [deviceSettings, setDeviceSettings] =
+    useState<DeviceManagementSettings>(DEFAULT_DEVICE_SETTINGS);
   const [devices, setDevices] = useState<ConnectedDeviceRecord[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
@@ -97,8 +96,7 @@ export function WebDeviceSettings() {
   }, []);
 
   const currentBrowserDeviceId = useMemo(
-    () =>
-      typeof window === "undefined" ? "" : getOrCreateBrowserDeviceId(),
+    () => (typeof window === "undefined" ? "" : getOrCreateBrowserDeviceId()),
     [],
   );
 
@@ -182,10 +180,7 @@ export function WebDeviceSettings() {
   return (
     <div className="space-y-6">
       <SettingSection title={t("settings.deviceManagement")}>
-        <SettingItem
-          label={t("settings.currentUser")}
-          description={t("settings.browserSessionDesc")}
-        >
+        <SettingItem label={t("settings.currentUser")}>
           <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm">
             <UserIcon
               aria-hidden="true"
@@ -194,10 +189,7 @@ export function WebDeviceSettings() {
             <span>{webContext?.username || "PromptHub User"}</span>
           </div>
         </SettingItem>
-        <SettingItem
-          label={t("settings.connectedClient")}
-          description={t("settings.connectedClientDesc")}
-        >
+        <SettingItem label={t("settings.connectedClient")}>
           <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm text-foreground">
             <LaptopIcon
               aria-hidden="true"
@@ -211,9 +203,6 @@ export function WebDeviceSettings() {
       <SettingSection title={t("settings.connectedDevices")}>
         <div className="space-y-3 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {t("settings.connectedDevicesDesc")}
-            </p>
             <button
               type="button"
               onClick={() => void loadDevices()}
@@ -297,10 +286,7 @@ export function WebDeviceSettings() {
       </SettingSection>
 
       <SettingSection title={t("settings.clientSync")}>
-        <SettingItem
-          label={t("settings.deviceSyncCadence")}
-          description={t("settings.deviceSyncCadenceDesc")}
-        >
+        <SettingItem label={t("settings.deviceSyncCadence")}>
           <div className="w-44">
             <Select
               ariaLabel={t("settings.deviceSyncCadence")}
@@ -322,10 +308,7 @@ export function WebDeviceSettings() {
       </SettingSection>
 
       <SettingSection title={t("settings.storeSync")}>
-        <SettingItem
-          label={t("settings.storeAutoSync")}
-          description={t("settings.storeAutoSyncDesc")}
-        >
+        <SettingItem label={t("settings.storeAutoSync")}>
           <ToggleSwitch
             ariaLabel={t("settings.storeAutoSync")}
             checked={deviceSettings.storeAutoSync}
@@ -336,10 +319,7 @@ export function WebDeviceSettings() {
             }
           />
         </SettingItem>
-        <SettingItem
-          label={t("settings.storeSyncCadence")}
-          description={t("settings.storeSyncCadenceDesc")}
-        >
+        <SettingItem label={t("settings.storeSyncCadence")}>
           <div className="w-44">
             <Select
               ariaLabel={t("settings.storeSyncCadence")}
@@ -360,21 +340,14 @@ export function WebDeviceSettings() {
         </SettingItem>
         <div className="px-4 py-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2 font-medium text-foreground">
-            <StoreIcon
-              aria-hidden="true"
-              className="h-4 w-4 text-primary"
-            />
+            <StoreIcon aria-hidden="true" className="h-4 w-4 text-primary" />
             <span>{t("settings.storeSync")}</span>
           </div>
-          <p className="mt-2">{t("settings.storeSyncHint")}</p>
         </div>
       </SettingSection>
 
       <SettingSection title={t("settings.browserSession")}>
-        <SettingItem
-          label={t("settings.signOut")}
-          description={t("settings.browserSessionDesc")}
-        >
+        <SettingItem label={t("settings.signOut")}>
           <button
             type="button"
             onClick={() => void logoutWebSession()}

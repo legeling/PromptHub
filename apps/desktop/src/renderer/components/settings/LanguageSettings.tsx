@@ -20,10 +20,7 @@ export function LanguageSettings() {
   return (
     <div className="space-y-6">
       <SettingSection title={t("settings.languageAndRegion", "语言与地区")}>
-        <SettingItem
-          label={t("settings.language")}
-          description={t("settings.selectLanguage")}
-        >
+        <SettingItem label={t("settings.language")}>
           <Select
             ariaLabel={t("settings.language")}
             value={settings.language}

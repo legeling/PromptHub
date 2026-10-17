@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { FormEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { AdvancedSection } from "../../../src/renderer/components/settings/ai-workbench/AdvancedSection";
+import { ScenarioDefaultsSection } from "../../../src/renderer/components/settings/ai-workbench/ScenarioDefaultsSection";
 import { ScenarioRow } from "../../../src/renderer/components/settings/ai-workbench/shared";
 import { renderWithI18n } from "../../helpers/i18n";
 
@@ -19,15 +19,18 @@ function hasHiddenSvgAncestor(element: Element): boolean {
   return false;
 }
 
-describe("AdvancedSection", () => {
+describe("ScenarioDefaultsSection", () => {
   it("exposes the translation mode select by its setting label", async () => {
     const onTranslationModeChange = vi.fn();
 
     await renderWithI18n(
-      <AdvancedSection
+      <ScenarioDefaultsSection
+        chatModels={[]}
+        imageModels={[]}
+        modelRouteDefaults={{}}
+        onRouteChange={() => undefined}
         translationMode="immersive"
         onTranslationModeChange={onTranslationModeChange}
-        onConfigure={() => undefined}
       />,
       { language: "en" },
     );
@@ -44,24 +47,28 @@ describe("AdvancedSection", () => {
     expect(onTranslationModeChange).toHaveBeenCalledWith("full");
   });
 
-  it("keeps configure action non-submit with decorative icons hidden", async () => {
+  it("keeps translation selection non-submit with decorative icons hidden", async () => {
     const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
     });
-    const onConfigure = vi.fn();
 
     await renderWithI18n(
       <form onSubmit={onSubmit}>
-        <AdvancedSection
+        <ScenarioDefaultsSection
+          chatModels={[]}
+          imageModels={[]}
+          modelRouteDefaults={{}}
+          onRouteChange={() => undefined}
           translationMode="immersive"
           onTranslationModeChange={() => undefined}
-          onConfigure={onConfigure}
         />
       </form>,
       { language: "en" },
     );
 
-    const configureButton = screen.getByRole("button", { name: "Configure" });
+    const configureButton = screen.getByRole("button", {
+      name: "Translation Mode",
+    });
     expect(configureButton).toHaveAttribute("type", "button");
 
     const exposedIconMarkup = Array.from(document.body.querySelectorAll("svg"))
@@ -71,7 +78,9 @@ describe("AdvancedSection", () => {
 
     fireEvent.click(configureButton);
 
-    expect(onConfigure).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Full Translation" }),
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
@@ -83,7 +92,6 @@ describe("ScenarioRow", () => {
     render(
       <ScenarioRow
         label="Image generation model"
-        desc="Used for image requests"
         fallbackLabel="Follow global default"
         value=""
         options={[{ value: "image-model", label: "Image Model" }]}

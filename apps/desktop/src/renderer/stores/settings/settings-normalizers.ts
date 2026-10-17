@@ -145,6 +145,28 @@ export function normalizeDesktopHomeModules(
   return modules;
 }
 
+export function normalizeDesktopHomeModuleOrder(
+  value: unknown,
+  enabled: readonly DesktopHomeModule[],
+): DesktopHomeModule[] {
+  const stored = Array.isArray(value)
+    ? value.filter((id): id is DesktopHomeModule =>
+        DESKTOP_HOME_MODULES.some((moduleId) => moduleId === id),
+      )
+    : [];
+  const complete = Array.from(
+    new Set([
+      ...(stored.length > 0 ? stored : enabled),
+      ...DESKTOP_HOME_MODULES,
+    ]),
+  );
+  // The existing visible list owns visible order; retained slots remember hidden positions.
+  let visibleIndex = 0;
+  return complete.map((id) =>
+    enabled.includes(id) ? enabled[visibleIndex++] : id,
+  );
+}
+
 export function normalizeTagFilterMode(
   value: unknown,
 ): SettingsState["tagFilterMode"] {

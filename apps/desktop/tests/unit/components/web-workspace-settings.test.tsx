@@ -25,18 +25,18 @@ function isHiddenFromAccessibility(element: Element): boolean {
 }
 
 describe("WebWorkspaceSettings", () => {
-  it("explains that self-hosted Web is a backup and browsing workspace, not local distribution", async () => {
+  it("keeps workspace titles and current account without overview copy", async () => {
     await renderWithI18n(<WebWorkspaceSettings onNavigate={vi.fn()} />, {
       language: "zh",
     });
 
     expect(screen.getByText("自部署网页版")).toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         /当前网页工作区主要用于临时浏览 Prompt，并作为自部署备份 \/ 恢复源/,
       ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/本机平台分发替换仍需在桌面端完成/)).toBeInTheDocument();
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/本机平台分发替换仍需在桌面端完成/)).not.toBeInTheDocument();
     expect(screen.getByText("web-admin")).toBeInTheDocument();
   });
 

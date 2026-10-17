@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { UPDATE_MIRRORS } from "@prompthub/shared/constants/update-mirrors";
 import type {
   NetworkProxyMode,
   NetworkProxyProtocol,
@@ -37,13 +38,7 @@ export function NetworkSettings() {
   return (
     <div className="space-y-6">
       <SettingSection title={t("settings.networkProxy", "网络代理")}>
-        <SettingItem
-          label={t("settings.networkProxyMode", "代理模式")}
-          description={t(
-            "settings.networkProxyModeDesc",
-            "用于 Skill、MCP、Plugin、AI 请求和同步等需要访问网络的功能",
-          )}
-        >
+        <SettingItem label={t("settings.networkProxyMode", "代理模式")}>
           <Select
             ariaLabel={t("settings.networkProxyMode", "代理模式")}
             value={settings.networkProxy.mode}
@@ -61,13 +56,7 @@ export function NetworkSettings() {
         </SettingItem>
         {settings.networkProxy.mode === "manual" ? (
           <>
-            <SettingItem
-              label={t("settings.networkProxyProtocol", "代理协议")}
-              description={t(
-                "settings.networkProxyProtocolDesc",
-                "按你的本地代理服务选择 HTTP、HTTPS 或 SOCKS5",
-              )}
-            >
+            <SettingItem label={t("settings.networkProxyProtocol", "代理协议")}>
               <Select
                 ariaLabel={t("settings.networkProxyProtocol", "代理协议")}
                 value={settings.networkProxy.protocol}
@@ -80,13 +69,7 @@ export function NetworkSettings() {
                 className="w-32"
               />
             </SettingItem>
-            <SettingItem
-              label={t("settings.networkProxyHost", "代理地址")}
-              description={t(
-                "settings.networkProxyHostDesc",
-                "填写主机和端口，例如 127.0.0.1:7890",
-              )}
-            >
+            <SettingItem label={t("settings.networkProxyHost", "代理地址")}>
               <div className="flex w-full max-w-md items-center gap-2">
                 <input
                   aria-label={t("settings.networkProxyHost", "代理地址")}
@@ -110,13 +93,7 @@ export function NetworkSettings() {
                 />
               </div>
             </SettingItem>
-            <SettingItem
-              label={t("settings.networkProxyAuth", "代理认证")}
-              description={t(
-                "settings.networkProxyAuthDesc",
-                "如果代理不需要用户名和密码，可以留空",
-              )}
-            >
+            <SettingItem label={t("settings.networkProxyAuth", "代理认证")}>
               <div className="grid w-full max-w-md grid-cols-2 gap-2">
                 <input
                   aria-label={t("settings.networkProxyUsername", "用户名")}
@@ -137,13 +114,7 @@ export function NetworkSettings() {
                 />
               </div>
             </SettingItem>
-            <SettingItem
-              label={t("settings.networkProxyBypass", "不代理地址")}
-              description={t(
-                "settings.networkProxyBypassDesc",
-                "用逗号分隔，例如 <local>,localhost,127.0.0.1",
-              )}
-            >
+            <SettingItem label={t("settings.networkProxyBypass", "不代理地址")}>
               <input
                 aria-label={t("settings.networkProxyBypass", "不代理地址")}
                 className="h-10 w-full max-w-md rounded-lg app-settings-input px-3 text-sm"
@@ -157,16 +128,33 @@ export function NetworkSettings() {
         ) : null}
       </SettingSection>
       <SettingSection title={t("settings.networkMirrorSource", "镜像源")}>
-        <SettingItem
-          label={t("settings.tryMirrorSource")}
-          description={t("settings.mirrorSourceRisk")}
-        >
+        <SettingItem label={t("settings.tryMirrorSource")}>
           <ToggleSwitch
             ariaLabel={t("settings.tryMirrorSource")}
             checked={settings.useUpdateMirror}
             onChange={settings.setUseUpdateMirror}
           />
         </SettingItem>
+        {settings.useUpdateMirror && (
+          <SettingItem label={t("settings.updateMirrorSource")}>
+            <Select
+              ariaLabel={t("settings.updateMirrorSource")}
+              value={settings.updateMirrorSource}
+              onChange={settings.setUpdateMirrorSource}
+              options={[
+                {
+                  value: "automatic",
+                  label: t("settings.updateMirrorAutomatic"),
+                },
+                ...UPDATE_MIRRORS.map((mirror) => ({
+                  value: mirror.id,
+                  label: mirror.label,
+                })),
+              ]}
+              className="w-56 max-w-full"
+            />
+          </SettingItem>
+        )}
       </SettingSection>
     </div>
   );

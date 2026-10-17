@@ -1,7 +1,15 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
-import type { RemoteWriteCondition, RemoteUploadResult, RemoteDownloadResult, RemoteDeleteResult } from "@prompthub/shared/types/remote-sync";
-import type { DesktopCausalSyncRequest, DesktopCausalSyncResult } from "@prompthub/shared/types/causal-sync";
+import type {
+  RemoteWriteCondition,
+  RemoteUploadResult,
+  RemoteDownloadResult,
+  RemoteDeleteResult,
+} from "@prompthub/shared/types/remote-sync";
+import type {
+  DesktopCausalSyncRequest,
+  DesktopCausalSyncResult,
+} from "@prompthub/shared/types/causal-sync";
 import { aiApi } from "./api/ai";
 import { applicationNotifications } from "./api/notifications";
 import { agentApi } from "./api/agent";
@@ -287,10 +295,7 @@ contextBridge.exposeInMainWorld("electron", {
   restorePortableBackup: (archivePath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.DATA_PORTABLE_RESTORE, archivePath),
   restorePortableLogicalBackup: (logicalText: string) =>
-    ipcRenderer.invoke(
-      IPC_CHANNELS.DATA_PORTABLE_LOGICAL_RESTORE,
-      logicalText,
-    ),
+    ipcRenderer.invoke(IPC_CHANNELS.DATA_PORTABLE_LOGICAL_RESTORE, logicalText),
   // Updater
   // 更新器
   updater: {
@@ -299,6 +304,7 @@ contextBridge.exposeInMainWorld("electron", {
         | boolean
         | {
             useMirror?: boolean;
+            mirror?: import("@prompthub/shared/constants/update-mirrors").UpdateMirrorSource;
             source?: "automatic" | "official" | "mirror";
             channel?: "stable" | "preview";
           },
@@ -308,6 +314,7 @@ contextBridge.exposeInMainWorld("electron", {
         | boolean
         | {
             useMirror?: boolean;
+            mirror?: import("@prompthub/shared/constants/update-mirrors").UpdateMirrorSource;
             source?: "automatic" | "official" | "mirror";
             channel?: "stable" | "preview";
           },
@@ -336,8 +343,8 @@ contextBridge.exposeInMainWorld("electron", {
     },
   },
   cli: {
-    getStatus: () =>
-      ipcRenderer.invoke(IPC_CHANNELS.CLI_STATUS) as Promise<CliStatus>,
+    getStatus: (force = false) =>
+      ipcRenderer.invoke(IPC_CHANNELS.CLI_STATUS, force) as Promise<CliStatus>,
     install: (method?: CliInstallMethod) =>
       ipcRenderer.invoke(
         IPC_CHANNELS.CLI_INSTALL,
@@ -378,7 +385,10 @@ contextBridge.exposeInMainWorld("electron", {
   // WebDAV (bypass CORS via main process)
   // WebDAV（通过主进程绕过 CORS）
   webdav: {
-    delete: (fileUrl: string, config: { url: string; username: string; password: string }) => ipcRenderer.invoke(IPC_CHANNELS.WEBDAV_DELETE, fileUrl, config),
+    delete: (
+      fileUrl: string,
+      config: { url: string; username: string; password: string },
+    ) => ipcRenderer.invoke(IPC_CHANNELS.WEBDAV_DELETE, fileUrl, config),
     testConnection: (config: {
       url: string;
       username: string;
@@ -403,9 +413,21 @@ contextBridge.exposeInMainWorld("electron", {
       config: { url: string; username: string; password: string },
     ) => ipcRenderer.invoke("webdav:stat", fileUrl, config),
   },
-  causalSync: (request: DesktopCausalSyncRequest): Promise<DesktopCausalSyncResult> => ipcRenderer.invoke(IPC_CHANNELS.CAUSAL_SYNC_RUN, request),
+  causalSync: (
+    request: DesktopCausalSyncRequest,
+  ): Promise<DesktopCausalSyncResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAUSAL_SYNC_RUN, request),
   s3: {
-    delete: (key: string, config: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string }) => ipcRenderer.invoke(IPC_CHANNELS.S3_DELETE, key, config),
+    delete: (
+      key: string,
+      config: {
+        endpoint: string;
+        region: string;
+        bucket: string;
+        accessKeyId: string;
+        secretAccessKey: string;
+      },
+    ) => ipcRenderer.invoke(IPC_CHANNELS.S3_DELETE, key, config),
     testConnection: (config: {
       endpoint: string;
       region: string;
@@ -424,7 +446,8 @@ contextBridge.exposeInMainWorld("electron", {
       },
       data: string,
       condition?: RemoteWriteCondition,
-    ) => ipcRenderer.invoke(IPC_CHANNELS.S3_UPLOAD, key, config, data, condition),
+    ) =>
+      ipcRenderer.invoke(IPC_CHANNELS.S3_UPLOAD, key, config, data, condition),
     download: (
       key: string,
       config: {
@@ -517,7 +540,9 @@ declare global {
   interface Window {
     api: API;
     electron?: {
-      causalSync?: (request: DesktopCausalSyncRequest) => Promise<DesktopCausalSyncResult>;
+      causalSync?: (
+        request: DesktopCausalSyncRequest,
+      ) => Promise<DesktopCausalSyncResult>;
       minimize?: () => void;
       maximize?: () => void;
       close?: () => void;
@@ -640,6 +665,7 @@ declare global {
             | boolean
             | {
                 useMirror?: boolean;
+                mirror?: import("@prompthub/shared/constants/update-mirrors").UpdateMirrorSource;
                 source?: "automatic" | "official" | "mirror";
                 channel?: "stable" | "preview";
               },
@@ -649,6 +675,7 @@ declare global {
             | boolean
             | {
                 useMirror?: boolean;
+                mirror?: import("@prompthub/shared/constants/update-mirrors").UpdateMirrorSource;
                 source?: "automatic" | "official" | "mirror";
                 channel?: "stable" | "preview";
               },
@@ -671,7 +698,7 @@ declare global {
         offStatus: () => void;
       };
       cli?: {
-        getStatus: () => Promise<CliStatus>;
+        getStatus: (force?: boolean) => Promise<CliStatus>;
         install: (method?: CliInstallMethod) => Promise<CliInstallResult>;
       };
       selectImage?: () => Promise<string[]>;
@@ -691,7 +718,10 @@ declare global {
       // WebDAV (bypass CORS via main process)
       // WebDAV（通过主进程绕过 CORS）
       webdav?: {
-        delete: (fileUrl: string, config: { url: string; username: string; password: string }) => Promise<RemoteDeleteResult>;
+        delete: (
+          fileUrl: string,
+          config: { url: string; username: string; password: string },
+        ) => Promise<RemoteDeleteResult>;
         testConnection: (config: {
           url: string;
           username: string;
@@ -722,7 +752,16 @@ declare global {
         }>;
       };
       s3?: {
-        delete: (key: string, config: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string }) => Promise<RemoteDeleteResult>;
+        delete: (
+          key: string,
+          config: {
+            endpoint: string;
+            region: string;
+            bucket: string;
+            accessKeyId: string;
+            secretAccessKey: string;
+          },
+        ) => Promise<RemoteDeleteResult>;
         testConnection: (config: {
           endpoint: string;
           region: string;

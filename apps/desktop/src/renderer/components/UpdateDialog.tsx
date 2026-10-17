@@ -136,6 +136,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   // Only subscribe to the field we need, not the entire store
   // 只订阅需要的字段，而不是整个 store
   const useUpdateMirror = useSettingsStore((state) => state.useUpdateMirror);
+  const updateMirrorSource = useSettingsStore((state) => state.updateMirrorSource);
   const updateChannel = useSettingsStore((state) => state.updateChannel);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(initialStatus || null);
   const updateStatusRef = useRef<UpdateStatus | null>(initialStatus || null);
@@ -275,6 +276,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     const result = await window.electron?.updater?.check({
       source,
       channel: updateChannel,
+      mirror: updateMirrorSource,
     });
     // If update check returns an error (e.g. in dev), set error status
     // 如果检查更新返回错误（例如开发环境），设置错误状态
@@ -301,6 +303,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     const result = await window.electron?.updater?.download({
       source,
       channel: updateChannel,
+      mirror: updateMirrorSource,
     });
     if (
       requestId === downloadRequestRef.current &&

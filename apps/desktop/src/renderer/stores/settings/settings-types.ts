@@ -207,6 +207,7 @@ export interface SettingsState {
   syncProvider: SyncProviderKind;
   autoCheckUpdate: boolean;
   useUpdateMirror: boolean;
+  updateMirrorSource: import("@prompthub/shared/constants/update-mirrors").UpdateMirrorSource;
   updateChannel: UpdateChannel;
   updateChannelExplicitlySet: boolean;
   tagsSectionHeight: number;
@@ -216,6 +217,7 @@ export interface SettingsState {
   skillTagsSectionHeight: number;
   isSkillTagsSectionCollapsed: boolean;
   desktopHomeModules: DesktopHomeModule[];
+  desktopHomeModuleOrder: DesktopHomeModule[];
   skillListPageSize: number;
   /** Include SKILL.md frontmatter (original_tags) labels in the My Skills tag filter candidates. */
   skillTagFilterIncludeFrontmatter: boolean;
@@ -277,7 +279,9 @@ export interface SettingsState {
   setMinimizeOnLaunch: (enabled: boolean) => void;
   setDebugMode: (enabled: boolean) => void;
   setEnableNotifications: (enabled: boolean) => void;
-  setNotificationPreferences: (preferences: import("@prompthub/shared/types/notifications").NotificationPreferences) => void;
+  setNotificationPreferences: (
+    preferences: import("@prompthub/shared/types/notifications").NotificationPreferences,
+  ) => void;
   setCloseAction: (action: CloseAction) => void;
   persistCloseAction: (action: Exclude<CloseAction, "ask">) => Promise<void>;
   setStartupFolderMode: (mode: StartupFolderMode) => void;
@@ -332,6 +336,7 @@ export interface SettingsState {
   setSyncProvider: (provider: SyncProviderKind) => void;
   setAutoCheckUpdate: (enabled: boolean) => void;
   setUseUpdateMirror: (enabled: boolean) => void;
+  setUpdateMirrorSource: (source: string) => void;
   setUpdateChannel: (channel: UpdateChannel) => void;
   inferUpdateChannel: (version: string) => void;
   setTagsSectionHeight: (height: number) => void;

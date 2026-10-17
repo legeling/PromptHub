@@ -54,7 +54,9 @@ export function WebWorkspaceSettings({
         const payload = (await response.json().catch(() => null)) as {
           error?: { message?: string };
         } | null;
-        throw new Error(payload?.error?.message || t("settings.webPasswordChangeFailed"));
+        throw new Error(
+          payload?.error?.message || t("settings.webPasswordChangeFailed"),
+        );
       }
       setCurrentPassword("");
       setNewPassword("");
@@ -63,7 +65,9 @@ export function WebWorkspaceSettings({
       showToast(t("settings.webPasswordChangeSuccess"), "success");
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : t("settings.webPasswordChangeFailed"),
+        error instanceof Error
+          ? error.message
+          : t("settings.webPasswordChangeFailed"),
         "error",
       );
     } finally {
@@ -74,27 +78,31 @@ export function WebWorkspaceSettings({
   const clientLabel =
     typeof navigator === "undefined"
       ? "Browser"
-      : `${/edg\//i.test(navigator.userAgent)
-          ? "Microsoft Edge"
-          : /chrome\//i.test(navigator.userAgent) &&
-              !/edg\//i.test(navigator.userAgent)
-            ? "Google Chrome"
-            : /safari\//i.test(navigator.userAgent) &&
-                !/chrome\//i.test(navigator.userAgent)
-              ? "Safari"
-              : /firefox\//i.test(navigator.userAgent)
-                ? "Firefox"
-                : "Browser"} · ${/mac os x/i.test(navigator.userAgent)
-          ? "macOS"
-          : /windows/i.test(navigator.userAgent)
-            ? "Windows"
-            : /android/i.test(navigator.userAgent)
-              ? "Android"
-              : /(iphone|ipad|ios)/i.test(navigator.userAgent)
-                ? "iOS"
-                : /linux/i.test(navigator.userAgent)
-                  ? "Linux"
-                  : "Unknown OS"}`;
+      : `${
+          /edg\//i.test(navigator.userAgent)
+            ? "Microsoft Edge"
+            : /chrome\//i.test(navigator.userAgent) &&
+                !/edg\//i.test(navigator.userAgent)
+              ? "Google Chrome"
+              : /safari\//i.test(navigator.userAgent) &&
+                  !/chrome\//i.test(navigator.userAgent)
+                ? "Safari"
+                : /firefox\//i.test(navigator.userAgent)
+                  ? "Firefox"
+                  : "Browser"
+        } · ${
+          /mac os x/i.test(navigator.userAgent)
+            ? "macOS"
+            : /windows/i.test(navigator.userAgent)
+              ? "Windows"
+              : /android/i.test(navigator.userAgent)
+                ? "Android"
+                : /(iphone|ipad|ios)/i.test(navigator.userAgent)
+                  ? "iOS"
+                  : /linux/i.test(navigator.userAgent)
+                    ? "Linux"
+                    : "Unknown OS"
+        }`;
 
   return (
     <div className="space-y-6">
@@ -107,9 +115,6 @@ export function WebWorkspaceSettings({
             </div>
             <p className="mt-1 break-all text-sm text-muted-foreground">
               {window.location.origin}
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {t("settings.selfHostedWebDesc")}
             </p>
           </div>
 
@@ -125,7 +130,10 @@ export function WebWorkspaceSettings({
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-4">
               <div className="flex items-center gap-2 text-sm font-medium">
-                <LaptopIcon className="h-4 w-4 text-primary" aria-hidden="true" />
+                <LaptopIcon
+                  className="h-4 w-4 text-primary"
+                  aria-hidden="true"
+                />
                 <span>{t("settings.connectedClient")}</span>
               </div>
               <p className="mt-2 text-sm text-foreground">{clientLabel}</p>
@@ -142,9 +150,6 @@ export function WebWorkspaceSettings({
                 <div className="text-sm font-medium">
                   {t("settings.deviceManagement")}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("settings.deviceManagementDesc")}
-                </p>
               </div>
               <GlobeIcon
                 className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -158,9 +163,6 @@ export function WebWorkspaceSettings({
             >
               <div>
                 <div className="text-sm font-medium">{t("settings.data")}</div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("settings.skillBackupHint")}
-                </p>
               </div>
               <DatabaseIcon
                 className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -186,19 +188,21 @@ export function WebWorkspaceSettings({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <KeyIcon className="h-4 w-4 text-primary" aria-hidden="true" />
+                  <KeyIcon
+                    className="h-4 w-4 text-primary"
+                    aria-hidden="true"
+                  />
                   <span>{t("settings.webLoginPassword")}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("settings.webLoginPasswordDesc")}
-                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPasswordForm((value) => !value)}
                 className="h-9 rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted/60"
               >
-                {showPasswordForm ? t("common.cancel") : t("settings.changePwdBtn")}
+                {showPasswordForm
+                  ? t("common.cancel")
+                  : t("settings.changePwdBtn")}
               </button>
             </div>
 
@@ -228,7 +232,9 @@ export function WebWorkspaceSettings({
                   disabled={isChangingPassword}
                   className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {isChangingPassword ? t("common.loading") : t("settings.confirmChange")}
+                  {isChangingPassword
+                    ? t("common.loading")
+                    : t("settings.confirmChange")}
                 </button>
               </div>
             )}

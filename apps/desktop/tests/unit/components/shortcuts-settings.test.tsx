@@ -30,14 +30,78 @@ function hasHiddenSvgAncestor(element: Element): boolean {
 }
 
 describe("ShortcutsSettings", () => {
+  it("lists contextual shortcuts separately from the four editable bindings", async () => {
+    window.electron.setShortcuts = vi.fn();
+    await act(async () => {
+      await renderShortcutsSettings();
+    });
+
+    for (const title of [
+      "Custom shortcuts",
+      "General (fixed)",
+      "Prompt / Rules search results (fixed)",
+      "Prompt editing (fixed)",
+      "Skill editing (fixed)",
+      "Image preview (fixed)",
+    ]) {
+      expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    }
+    const saveRow = screen.getByText("Save Prompt in editor").parentElement
+      ?.parentElement;
+    expect(saveRow).toHaveTextContent("Ctrl + S");
+    expect(saveRow).toHaveTextContent("Ctrl + Enter");
+    expect(
+      screen.getByText("Next search result").parentElement?.parentElement,
+    ).toHaveTextContent("Tab");
+    expect(
+      screen.getByText("Previous image").parentElement?.parentElement,
+    ).toHaveTextContent("←");
+    expect(
+      screen.getByText("Redo in code editor").parentElement?.parentElement,
+    ).toHaveTextContent("Ctrl + Y");
+    expect(screen.getAllByRole("textbox")).toHaveLength(4);
+    expect(window.electron.setShortcuts).not.toHaveBeenCalled();
+  });
+
+  it("uses Command notation for fixed shortcuts on macOS", async () => {
+    const platform = vi
+      .spyOn(navigator, "platform", "get")
+      .mockReturnValue("MacIntel");
+    try {
+      await act(async () => {
+        await renderShortcutsSettings();
+      });
+      const saveRow = screen.getByText("Save Skill / current file")
+        .parentElement?.parentElement;
+      expect(saveRow).toHaveTextContent("⌘ + S");
+      expect(saveRow).not.toHaveTextContent("Ctrl");
+      expect(
+        screen.getByText("Redo in code editor").parentElement?.parentElement,
+      ).toHaveTextContent("⌘ + Shift + Z");
+    } finally {
+      platform.mockRestore();
+    }
+  });
+
   it("records an Option-modified letter instead of the macOS text symbol", async () => {
-    window.electron.getShortcuts = vi.fn().mockResolvedValue({ newPrompt: "Alt+Shift+N" });
+    window.electron.getShortcuts = vi
+      .fn()
+      .mockResolvedValue({ newPrompt: "Alt+Shift+N" });
     window.electron.setShortcuts = vi.fn().mockResolvedValue(undefined);
     await renderShortcutsSettings();
     const input = await screen.findByLabelText("Shortcut for New Prompt");
     await userEvent.click(input);
-    fireEvent.keyDown(input, { key: "Ô", code: "KeyJ", altKey: true, shiftKey: true });
-    await waitFor(() => expect(window.electron.setShortcuts).toHaveBeenCalledWith({ newPrompt: "Alt+Shift+J" }));
+    fireEvent.keyDown(input, {
+      key: "Ô",
+      code: "KeyJ",
+      altKey: true,
+      shiftKey: true,
+    });
+    await waitFor(() =>
+      expect(window.electron.setShortcuts).toHaveBeenCalledWith({
+        newPrompt: "Alt+Shift+J",
+      }),
+    );
     expect(input).toHaveValue("Alt + Shift + J");
   });
 
@@ -122,7 +186,9 @@ describe("ShortcutsSettings", () => {
       });
     });
 
-    expect(screen.queryByDisplayValue("Ctrl + Alt + P")).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue("Ctrl + Alt + P"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not persist a shortcut that conflicts with another action", async () => {

@@ -3,19 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mock = vi.hoisted(() => ({
   scan: vi.fn(),
   toast: vi.fn(),
-  state: {
-    skillSafetyScanEnabled: false,
-    skillSafetyScanMethod: "static",
-    setSkillSafetyScanEnabled: vi.fn(),
-    setSkillSafetyScanMethod: vi.fn(),
-  },
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: unknown) => unknown) =>
-    selector(mock.state),
+vi.mock("../../../src/renderer/services/renderer-persistence", () => ({
+  flushRendererPersistence: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("../../../src/renderer/stores/skill.store", () => ({
   useSkillStore: (selector: (state: unknown) => unknown) =>
@@ -24,36 +18,78 @@ vi.mock("../../../src/renderer/stores/skill.store", () => ({
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => ({ showToast: mock.toast }),
 }));
+import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { SkillSafetySettingsSection } from "../../../src/renderer/components/settings/SkillSafetySettingsSection";
 
 describe("manual content scan settings UI", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mock.state.skillSafetyScanEnabled = false;
-    mock.state.skillSafetyScanMethod = "static";
+    useSettingsStore.setState({
+      skillSafetyScanEnabled: false,
+      skillSafetyScanMethod: "static",
+    });
   });
   it("does not expose batch scans until enabled and never scans on enablement", () => {
     const view = render(<SkillSafetySettingsSection />);
-    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "settings.contentScanMethod" }),
+    ).toBeNull();
     fireEvent.click(
-      screen.getByRole("button", { name: /settings.contentScanEnable/ }),
+      screen.getByRole("switch", {
+        name: "settings.contentScanEnable",
+        checked: false,
+      }),
     );
-    expect(mock.state.setSkillSafetyScanEnabled).toHaveBeenCalledWith(true);
+    expect(useSettingsStore.getState().skillSafetyScanEnabled).toBe(true);
+    expect(screen.queryByText("settings.contentScanDescription")).toBeNull();
     expect(mock.scan).not.toHaveBeenCalled();
-    mock.state.skillSafetyScanEnabled = true;
     view.rerender(<SkillSafetySettingsSection />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "ai" } });
-    expect(mock.state.setSkillSafetyScanMethod).toHaveBeenCalledWith("ai");
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings.contentScanMethod" }),
+    );
+    expect(
+      screen.getByRole("listbox", { name: "settings.contentScanMethod" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("option", { name: "settings.contentScanAI" }),
+    );
+    expect(useSettingsStore.getState().skillSafetyScanMethod).toBe("ai");
+    expect(
+      screen.getByRole("button", { name: "settings.contentScanMethod" }),
+    ).toHaveTextContent("settings.contentScanAI");
+    expect(screen.queryByRole("listbox")).toBeNull();
     expect(mock.scan).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "static" },
-    });
-    expect(mock.state.setSkillSafetyScanMethod).toHaveBeenCalledWith("static");
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings.contentScanMethod" }),
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: "settings.contentScanStatic" }),
+    );
+    expect(useSettingsStore.getState().skillSafetyScanMethod).toBe("static");
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings.contentScanEnable",
+        checked: true,
+      }),
+    );
+    expect(useSettingsStore.getState().skillSafetyScanEnabled).toBe(false);
+    expect(
+      screen.queryByRole("button", { name: "settings.contentScanMethod" }),
+    ).toBeNull();
+    expect(mock.scan).not.toHaveBeenCalled();
+    view.unmount();
+    render(<SkillSafetySettingsSection />);
+    expect(
+      screen.getByRole("switch", {
+        name: "settings.contentScanEnable",
+        checked: false,
+      }),
+    ).toBeInTheDocument();
   });
   it.each(["safe", "warn", "high", "error"])(
     "reports an explicit batch result: %s",
     async (result) => {
-      mock.state.skillSafetyScanEnabled = true;
+      useSettingsStore.setState({ skillSafetyScanEnabled: true });
       if (result === "error")
         mock.scan.mockRejectedValueOnce(new Error("offline"));
       else

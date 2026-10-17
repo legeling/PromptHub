@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import type { DataSettingsSubsectionId } from "./DataSettings";
+import { SHORTCUT_REFERENCE } from "./shortcut-reference";
 
 export interface SettingsSearchResult {
   section: string;
@@ -10,6 +11,16 @@ export interface SettingsSearchResult {
 
 // Index static product labels only, never user settings values or credentials.
 const SECTION_KEYS: Record<string, string[]> = {
+  shortcuts: [
+    "shortcutShowApp",
+    "shortcutNewPrompt",
+    "shortcutSearch",
+    "shortcutSettings",
+    ...SHORTCUT_REFERENCE.flatMap((group) => [
+      `shortcutReference.${group.title}`,
+      ...group.entries.map((entry) => `shortcutReference.${entry.label}`),
+    ]),
+  ],
   general: [
     "launchAtStartup",
     "minimizeOnLaunch",

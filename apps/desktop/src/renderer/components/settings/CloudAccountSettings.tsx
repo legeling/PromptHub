@@ -445,7 +445,7 @@ export function CloudAccountSettings() {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-border bg-muted/20 p-4">
                   <div className="flex items-center gap-2 text-sm font-medium text-foreground"><DownloadIcon className="h-4 w-4 text-primary" aria-hidden="true" />{t("settings.cloudAccountData", "Your data")}</div>
-                  <p className="mt-2 text-xs text-muted-foreground">{t("settings.cloudAccountDataDesc", "Request a JSON export. The download link is opened by the main process only after the export is ready.")}</p>
+
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => void handleExport()} disabled={accountSubmitting} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"><DownloadIcon className="h-3.5 w-3.5" />{t("settings.cloudAccountRequestExport", "Request export")}</button>
                     {overview?.exportJobs.filter((job) => job.status === "completed").slice(0, 1).map((job) => <button type="button" key={job.id} onClick={() => void handleOpenExport(job.id)} disabled={accountSubmitting} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"><DownloadIcon className="h-3.5 w-3.5" />{t("settings.cloudAccountOpenExport", "Open latest export")}</button>)}
@@ -510,9 +510,7 @@ export function CloudAccountSettings() {
           </div>
         ) : (
           <div className="space-y-4 p-4">
-            <p className="text-sm text-muted-foreground">
-              {t("settings.cloudAccountDesc", "Sign in to browse PromptHub Cloud Store releases and confirm Skill installs from the desktop app.")}
-            </p>
+
             <div className="grid gap-3 md:grid-cols-2">
               <label className="space-y-1 text-sm">
                 <span className="text-muted-foreground">{t("settings.cloudAccountUrl", "Cloud API URL")}</span>

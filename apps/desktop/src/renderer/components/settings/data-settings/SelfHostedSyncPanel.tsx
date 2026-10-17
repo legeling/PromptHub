@@ -40,12 +40,6 @@ export function SelfHostedSyncPanel() {
                 <p className="text-sm font-medium">
                   {t("settings.selfHostedSyncMenu", "Self-Hosted PromptHub")}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t(
-                    "settings.selfHostedSyncDesc",
-                    "Store independent desktop snapshots in your deployed PromptHub Web. Automatic backup never pulls, merges, or changes the live Web workspace.",
-                  )}
-                </p>
               </div>
               <ToggleSwitch
                 ariaLabel={t(
@@ -155,12 +149,6 @@ export function SelfHostedSyncPanel() {
                     <p className="text-sm font-medium">
                       {t("settings.selfHostedAutoRun", "Automatic Backup")}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t(
-                        "settings.selfHostedAutoRunDesc",
-                        "Create a new remote snapshot on a background schedule. A backup is skipped unless Desktop and Web versions match exactly.",
-                      )}
-                    </p>
                   </div>
                   <div className="min-w-[140px]">
                     <Select
@@ -198,12 +186,6 @@ export function SelfHostedSyncPanel() {
                       {t(
                         "settings.selfHostedSyncOnStartup",
                         "Run Once on Startup",
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t(
-                        "settings.selfHostedSyncOnStartupDesc",
-                        "Create an upload-only backup after desktop startup. This never restores or changes local data.",
                       )}
                     </p>
                   </div>

@@ -1,5 +1,3 @@
-import { notifyTaskResult } from "../../../src/renderer/services/application-notifications";
-import { installWindowMocks } from "../../helpers/window";
 import {
   rendererTestDatabase,
   closeRendererTestDatabases,
@@ -22,6 +20,9 @@ import {
 } from "../../../src/renderer/services/renderer-persistence";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
+import i18n, { changeLanguage } from "../../../src/renderer/i18n";
+import { notifyTaskResult } from "../../../src/renderer/services/application-notifications";
+import { installWindowMocks } from "../../helpers/window";
 
 const canonical: RendererHydratedState = {
   migrationComplete: true,
@@ -96,6 +97,167 @@ afterEach(() => {
 });
 
 describe("renderer persistence bridge", () => {
+  it("retains the Skill catalog across migration and repeated restarts without further writes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ph-catalog-reopen-"));
+    roots.push(root);
+    const openStore = () =>
+      createRendererPersistenceStore({
+        database: rendererTestDatabase(root),
+        rootPath: root,
+        encryption: {
+          isEncryptionAvailable: () => false,
+          encryptString: (): Buffer => {
+            throw new Error("No fixture secrets");
+          },
+          decryptString: (): string => {
+            throw new Error("No fixture secrets");
+          },
+        },
+      });
+    let store = openStore();
+    const api = installApi("migrated");
+    api.migrate.mockImplementation((input) => store.migrate(input));
+    api.get.mockImplementation(() => store.readHydratedState());
+    useSkillStore.setState({ remoteStoreEntries: {}, customStoreSources: [] });
+    for (const sourceId of [
+      "claude-code",
+      "openai-codex",
+      "community",
+      "clawhub",
+    ]) {
+      useSkillStore.getState().setRemoteStoreEntry(sourceId, {
+        loadedAt: 123,
+        catalogComplete: true,
+        error: null,
+        skills: [
+          {
+            slug: "cached",
+            name: "Cached Skill",
+            description: "Available offline",
+            category: "general",
+            author: "Example",
+            source_url: "https://github.com/example/skills",
+            version: "1",
+            content: "# Cached content",
+            tags: [],
+          },
+        ],
+      });
+    }
+    for (let restart = 0; restart < 3; restart += 1) {
+      resetRendererPersistenceForTests();
+      closeRendererTestDatabases();
+      store = openStore();
+      // Simulate a fresh renderer without writing its defaults over disk.
+      const storage = useSkillStore.persist.getOptions().storage;
+      useSkillStore.persist.setOptions({
+        storage: {
+          getItem: () => null,
+          setItem: () => undefined,
+          removeItem: () => undefined,
+        },
+      });
+      useSkillStore.setState({
+        remoteStoreEntries: {},
+        customStoreSources: [],
+      });
+      useSkillStore.persist.setOptions({ storage });
+      await useSkillStore.persist.rehydrate();
+      await migrateRendererPersistence();
+      expectNoDurableSkillSourcesInRendererStorage();
+      expect(
+        Object.keys(useSkillStore.getState().remoteStoreEntries),
+      ).toHaveLength(4);
+      const raw = localStorage.getItem("skill-store");
+      expect(raw).not.toBeNull();
+      expect(
+        JSON.parse(raw ?? "{}").state.remoteStoreEntries["claude-code"],
+      ).toMatchObject({
+        loadedAt: 123,
+        catalogComplete: true,
+        skills: [{ name: "Cached Skill", content: "# Cached content" }],
+      });
+    }
+  });
+
+  it("restores migrated Chinese before persisting other changes and survives SQL reopen", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ph-language-reopen-"));
+    roots.push(root);
+    const openStore = () =>
+      createRendererPersistenceStore({
+        database: rendererTestDatabase(root),
+        rootPath: root,
+        encryption: {
+          isEncryptionAvailable: () => false,
+          encryptString: (): Buffer => {
+            throw new Error("No fixture secrets");
+          },
+          decryptString: (): string => {
+            throw new Error("No fixture secrets");
+          },
+        },
+      });
+    let store = openStore();
+    const api = installApi("migrated");
+    api.migrate.mockImplementation((input) => store.migrate(input));
+    api.get.mockImplementation(() => store.readHydratedState());
+    api.replaceSettings.mockImplementation(async (input) => {
+      await store.replaceSettings(input);
+      return true;
+    });
+    useSettingsStore.setState({ language: "en" });
+    await changeLanguage("en");
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          language: "zh",
+          settingsUpdatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        version: 19,
+      }),
+    );
+    await migrateRendererPersistence();
+    expect(useSettingsStore.getState().language).toBe("zh");
+    expect(i18n.language).toBe("zh");
+    expect(api.replaceSettings).not.toHaveBeenCalled();
+    useSettingsStore.getState().inferUpdateChannel("0.6.0");
+    useSettingsStore.getState().setShowLineNumbers(true);
+    await flushRendererPersistence();
+    expect((await store.readHydratedState()).settings).toMatchObject({
+      language: "zh",
+      showLineNumbers: true,
+    });
+
+    resetRendererPersistenceForTests();
+    closeRendererTestDatabases();
+    store = openStore();
+    useSettingsStore.setState({ language: "en", showLineNumbers: false });
+    localStorage.clear();
+    await changeLanguage("en");
+    api.replaceSettings.mockClear();
+    await migrateRendererPersistence();
+    expect(useSettingsStore.getState()).toMatchObject({
+      language: "zh",
+      showLineNumbers: true,
+    });
+    expect(i18n.t("common.cancel")).toBe("取消");
+    expect(api.replaceSettings).not.toHaveBeenCalled();
+    expect((await store.readHydratedState()).settings.language).toBe("zh");
+  });
+
+  it("shares concurrent startup restoration and registers persistence only once", async () => {
+    const api = installApi("already-complete");
+    await Promise.all([
+      migrateRendererPersistence(),
+      migrateRendererPersistence(),
+    ]);
+    expect(api.get).toHaveBeenCalledOnce();
+    useSettingsStore.setState({ language: "zh" });
+    await flushRendererPersistence();
+    expect(api.replaceSettings).toHaveBeenCalledOnce();
+  });
+
   it("persists optional default settings through the real SQL owner before sync", async () => {
     const root = fs.mkdtempSync(
       path.join(os.tmpdir(), "ph-renderer-settings-"),
@@ -171,12 +333,10 @@ describe("renderer persistence bridge", () => {
     });
     await migrateRendererPersistence();
     const prefs = useSettingsStore.getState().notificationPreferences;
-    useSettingsStore
-      .getState()
-      .setNotificationPreferences({
-        ...prefs,
-        delivery: { ...prefs.delivery, promptTest: "off" },
-      });
+    useSettingsStore.getState().setNotificationPreferences({
+      ...prefs,
+      delivery: { ...prefs.delivery, promptTest: "off" },
+    });
     notifyTaskResult("promptTest", "success");
     await vi.waitFor(() =>
       expect(publish).toHaveResolvedWith({ success: true }),

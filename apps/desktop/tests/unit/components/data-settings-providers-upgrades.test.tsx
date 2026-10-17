@@ -333,10 +333,10 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     });
 
     expect(
-      screen.getByText(
+      screen.queryByText(
         "Attempt sync when data is saved. Note: frequent syncing may affect performance and battery.",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
 
     const syncOnSaveLabel = screen.getByText("Sync on Save (Experimental)");
     const syncOnSaveButton = syncOnSaveLabel

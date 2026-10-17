@@ -8,6 +8,11 @@ import { createUpgradeDataSnapshot } from "./services/upgrade-backup";
 import { getHttpRequestAgent } from "./services/network-proxy";
 import { compareVersions, isPrereleaseVersion } from "../utils/version";
 import desktopPackage from "../../package.json";
+import {
+  UPDATE_MIRRORS,
+  normalizeUpdateMirrorSource,
+  type UpdateMirrorSource,
+} from "@prompthub/shared/constants/update-mirrors";
 
 // Simplified update info type (for IPC transmission)
 // 简化的更新信息类型（用于 IPC 传输）
@@ -41,12 +46,14 @@ export function resolveDesktopVersion(
 }
 
 interface UpdateRequestOptions {
+  mirror?: UpdateMirrorSource;
   useMirror?: boolean;
   source?: UpdateSource;
   channel?: UpdateChannel;
 }
 
 interface NormalizedUpdateOptions {
+  mirror?: UpdateMirrorSource;
   source: UpdateSource;
   channel: UpdateChannel;
 }
@@ -78,6 +85,7 @@ function normalizeUpdateOptions(
 
   return {
     source,
+    mirror: normalizeUpdateMirrorSource(input?.mirror),
     channel: input?.channel === "preview" ? "preview" : "stable",
   };
 }
@@ -92,14 +100,12 @@ function getFeedSuffix(channel: UpdateChannel, releaseTag?: string): string {
 function getMirrorSources(
   channel: UpdateChannel,
   releaseTag?: string,
+  selection: UpdateMirrorSource = "automatic",
 ): string[] {
   const suffix = getFeedSuffix(channel, releaseTag);
-  return [
-    `https://ghfast.top/https://github.com/legeling/PromptHub/releases/${suffix}`,
-    `https://gh-proxy.com/https://github.com/legeling/PromptHub/releases/${suffix}`,
-    `https://hub.gitmirror.com/https://github.com/legeling/PromptHub/releases/${suffix}`,
-    `https://cors.isteed.cc/github.com/legeling/PromptHub/releases/${suffix}`,
-  ];
+  return UPDATE_MIRRORS.filter(
+    (mirror) => selection === "automatic" || mirror.id === selection,
+  ).map((mirror) => `${mirror.prefix}/legeling/PromptHub/releases/${suffix}`);
 }
 
 function getOfficialFeedUrl(
@@ -128,6 +134,7 @@ function applyMirrorDownloadSettings(useMirror: boolean) {
 }
 
 interface FeedContext {
+  mirror?: UpdateMirrorSource;
   channel: UpdateChannel;
   releaseTag?: string;
   releaseNotes?: string;
@@ -300,9 +307,11 @@ function getFeedCandidates(
   context: FeedContext,
 ): FeedCandidate[] {
   const official = { useMirror: false };
-  const mirrors = getMirrorSources(context.channel, context.releaseTag).map(
-    (url) => ({ useMirror: true, url }),
-  );
+  const mirrors = getMirrorSources(
+    context.channel,
+    context.releaseTag,
+    context.mirror,
+  ).map((url) => ({ useMirror: true, url }));
 
   if (source === "official") return [official];
   if (source === "mirror") return mirrors;
@@ -932,12 +941,12 @@ export function registerUpdaterIPC() {
         };
       }
 
-      const { source, channel } = normalizeUpdateOptions(request);
+      const { source, channel, mirror } = normalizeUpdateOptions(request);
       applyUpdaterPreferences(channel);
       let context: FeedContext;
 
       try {
-        context = await resolveFeedContext(channel);
+        context = { ...(await resolveFeedContext(channel)), mirror };
         lastFeedContext = context;
       } catch (error) {
         return {
@@ -981,7 +990,7 @@ export function registerUpdaterIPC() {
         };
       }
 
-      const { source, channel } = normalizeUpdateOptions(request);
+      const { source, channel, mirror } = normalizeUpdateOptions(request);
       applyUpdaterPreferences(channel);
       let context: FeedContext;
 
@@ -997,6 +1006,7 @@ export function registerUpdaterIPC() {
         };
       }
 
+      context = { ...context, mirror };
       lastFeedContext = context;
 
       if (isMacPlatform() && getMacInstallSource() === "homebrew") {

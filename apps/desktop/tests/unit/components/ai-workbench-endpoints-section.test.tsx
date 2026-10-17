@@ -73,7 +73,6 @@ describe("EndpointsSection", () => {
       >
         <EndpointsSection
           routingContent={<div>routing-content</div>}
-          advancedContent={<div>advanced-content</div>}
           endpointGroups={[createEndpointGroup()]}
           endpointStatuses={{
             "provider:provider-1": {
@@ -117,9 +116,7 @@ describe("EndpointsSection", () => {
     expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Add Provider" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Test Default Model" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Test Default Model" }));
     fireEvent.click(screen.getByRole("button", { name: "Set as Default" }));
 
     expect(onAddProvider).toHaveBeenCalledTimes(1);

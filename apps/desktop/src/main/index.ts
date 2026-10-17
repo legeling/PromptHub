@@ -9,6 +9,7 @@ import {
   session,
   protocol,
   safeStorage,
+  screen,
 } from "electron";
 import {
   applyStorageRootChange,
@@ -34,6 +35,7 @@ import {
 import { registerAllIPC } from "./ipc";
 import { resumeCanonicalStorageAfterRendererMigration } from "./services/renderer-storage-startup";
 import { getMinimizeOnLaunchSetting } from "./settings/settings-readers";
+import { bindWindowState, readWindowState } from "./window-state";
 import { readLanguageSetting } from "./settings/language-setting";
 import { createMenu } from "./menu";
 import {
@@ -379,6 +381,8 @@ if (!gotTheLock) {
   });
 }
 
+let disposeWindowState: (() => void) | undefined;
+
 async function createWindow() {
   // Ensure single window
   // 确保应用只有一个主窗口
@@ -398,11 +402,18 @@ async function createWindow() {
       : path.join(process.resourcesPath, "icon.ico")
     : undefined;
 
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const windowState = readWindowState(appDb, [
+    primaryDisplay.workArea,
+    ...screen
+      .getAllDisplays()
+      .filter((display) => display.id !== primaryDisplay.id)
+      .map((display) => display.workArea),
+  ]);
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    ...windowState.bounds,
+    minWidth: Math.min(800, windowState.bounds.width),
+    minHeight: Math.min(600, windowState.bounds.height),
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       nodeIntegration: false,
@@ -422,6 +433,8 @@ async function createWindow() {
     // 不立即显示 - 等待 ready-to-show 事件检查 minimizeOnLaunch 设置
     show: false,
   });
+
+  disposeWindowState = bindWindowState(mainWindow, () => appDb, windowState);
 
   // Handle window ready-to-show: check if we should minimize on launch
   mainWindow.once("ready-to-show", () => {
@@ -1424,6 +1437,7 @@ app.on("window-all-closed", () => {
 // 应用退出前清理
 app.on("before-quit", () => {
   isQuitting = true;
+  disposeWindowState?.();
   closeDatabase();
 });
 

@@ -7,7 +7,6 @@ import {
 
 import {
   BrainIcon,
-  CheckIcon,
   EyeIcon,
   ImageIcon,
   Loader2Icon,
@@ -23,73 +22,34 @@ import {
 } from "../../../../services/ai";
 import { Select } from "../../../ui/Select";
 import { getCategoryIcon } from "../../../ui/ModelIcons";
-import { PasswordInput } from "../../shared";
+import { PasswordInput, ToggleSwitch } from "../../shared";
 import { PROVIDER_OPTIONS } from "../constants";
 import { getProviderInfo } from "../helpers";
 import type { ModelFormState } from "../types";
-
-function CapabilityCheckbox({
-  checked,
-  ariaLabel,
-  onChange,
-}: {
-  checked: boolean;
-  ariaLabel: string;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <>
-      <input
-        type="checkbox"
-        aria-label={ariaLabel}
-        checked={checked}
-        onChange={(event) => onChange(event.currentTarget.checked)}
-        className="sr-only"
-      />
-      <span
-        aria-hidden="true"
-        className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-          checked
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-muted-foreground/70 bg-background"
-        }`}
-      >
-        {checked ? <CheckIcon className="h-3 w-3" strokeWidth={3} /> : null}
-      </span>
-    </>
-  );
-}
 
 function CapabilityCard({
   checked,
   ariaLabel,
   icon,
   title,
-  description,
   onChange,
 }: {
   checked: boolean;
   ariaLabel: string;
   icon: ReactNode;
   title: string;
-  description: string;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border/60 bg-background px-3 py-2 text-sm transition-colors hover:border-primary/30 hover:bg-muted/20 focus-within:ring-2 focus-within:ring-primary/20">
-      <CapabilityCheckbox
+    <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background px-3 py-2 text-sm">
+      {icon}
+      <span className="min-w-0 flex-1 font-medium">{title}</span>
+      <ToggleSwitch
         checked={checked}
         ariaLabel={ariaLabel}
         onChange={onChange}
       />
-      {icon}
-      <span className="min-w-0">
-        <span className="block font-medium">{title}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">
-          {description}
-        </span>
-      </span>
-    </label>
+    </div>
   );
 }
 
@@ -384,16 +344,15 @@ export function BaseFields({
               <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             }
             title={t("settings.imageModel")}
-            description={t("settings.aiWorkbenchRouteImageGenerationDesc")}
             onChange={(checked) => {
-                setModelForm((prev) => ({
-                  ...prev,
-                  type: checked ? "image" : "chat",
-                  capabilities: {
-                    ...prev.capabilities,
-                    imageGeneration: checked,
-                  },
-                }));
+              setModelForm((prev) => ({
+                ...prev,
+                type: checked ? "image" : "chat",
+                capabilities: {
+                  ...prev.capabilities,
+                  imageGeneration: checked,
+                },
+              }));
             }}
           />
 
@@ -404,16 +363,15 @@ export function BaseFields({
               <EyeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             }
             title={t("settings.aiWorkbenchVisionCapability")}
-            description={t("settings.aiWorkbenchVisionCapabilityDesc")}
             onChange={(checked) => {
-                setModelForm((prev) => ({
-                  ...prev,
-                  capabilities: {
-                    ...prev.capabilities,
-                    chat: true,
-                    vision: checked,
-                  },
-                }));
+              setModelForm((prev) => ({
+                ...prev,
+                capabilities: {
+                  ...prev.capabilities,
+                  chat: true,
+                  vision: checked,
+                },
+              }));
             }}
           />
 
@@ -424,16 +382,15 @@ export function BaseFields({
               <BrainIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             }
             title={t("settings.aiWorkbenchReasoningCapability")}
-            description={t("settings.aiWorkbenchReasoningCapabilityDesc")}
             onChange={(checked) => {
-                setModelForm((prev) => ({
-                  ...prev,
-                  capabilities: {
-                    ...prev.capabilities,
-                    chat: true,
-                    reasoning: checked,
-                  },
-                }));
+              setModelForm((prev) => ({
+                ...prev,
+                capabilities: {
+                  ...prev.capabilities,
+                  chat: true,
+                  reasoning: checked,
+                },
+              }));
             }}
           />
         </div>

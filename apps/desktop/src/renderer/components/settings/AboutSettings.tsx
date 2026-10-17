@@ -48,7 +48,8 @@ export function AboutSettings() {
   const { showToast } = useToast();
   const webRuntime = isWebRuntime();
   const qqGroupNumber = "704298939";
-  const qqGroupLink = "mqqapi://card/show_pslcard?src_type=internal&version=1&uin=704298939&card_type=group&source=qrcode";
+  const qqGroupLink =
+    "mqqapi://card/show_pslcard?src_type=internal&version=1&uin=704298939&card_type=group&source=qrcode";
 
   // Get application version
   // 获取应用版本号
@@ -119,7 +120,10 @@ export function AboutSettings() {
   const handleCopyQQGroup = async () => {
     try {
       await copyTextToClipboard(qqGroupNumber);
-      showToast(t("settings.communityQQCopied", { group: qqGroupNumber }), "success");
+      showToast(
+        t("settings.communityQQCopied", { group: qqGroupNumber }),
+        "success",
+      );
     } catch (error) {
       console.error("Failed to copy QQ group number:", error);
       showToast(t("common.error", "Error"), "error");
@@ -140,7 +144,8 @@ export function AboutSettings() {
           </div>
           <h2 className="text-lg font-semibold">PromptHub</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {t("settings.version")} {webRuntime ? (webVersion || "...") : (appVersion || "...")}
+            {t("settings.version")}{" "}
+            {webRuntime ? webVersion || "..." : appVersion || "..."}
           </p>
         </div>
 
@@ -162,11 +167,13 @@ export function AboutSettings() {
           <SettingSection title={t("settings.checkUpdate")}>
             <SettingItem
               label={t("settings.checkUpdate")}
-              description={
+              status={
                 updateState === "latest"
                   ? t("settings.noUpdateDesc", { version: webVersion })
                   : updateState === "available"
-                    ? t("settings.updateAvailableDesc", { version: latestVersion })
+                    ? t("settings.updateAvailableDesc", {
+                        version: latestVersion,
+                      })
                     : t("settings.webUpdatesManagedDesc")
               }
             >
@@ -205,20 +212,14 @@ export function AboutSettings() {
           </SettingSection>
         ) : (
           <SettingSection title={t("settings.checkUpdate")}>
-            <SettingItem
-              label={t("settings.autoCheckUpdate")}
-              description={t("settings.autoCheckUpdateDesc")}
-            >
+            <SettingItem label={t("settings.autoCheckUpdate")}>
               <ToggleSwitch
                 ariaLabel={t("settings.autoCheckUpdate")}
                 checked={settings.autoCheckUpdate}
                 onChange={settings.setAutoCheckUpdate}
               />
             </SettingItem>
-            <SettingItem
-              label={t("settings.joinPreviewChannel")}
-              description={t("settings.joinPreviewChannelDesc")}
-            >
+            <SettingItem label={t("settings.joinPreviewChannel")}>
               <ToggleSwitch
                 ariaLabel={t("settings.joinPreviewChannel")}
                 checked={settings.updateChannel === "preview"}
@@ -227,7 +228,7 @@ export function AboutSettings() {
             </SettingItem>
             <SettingItem
               label={t("settings.checkUpdate")}
-              description={
+              status={
                 settings.updateChannel === "preview"
                   ? t("settings.previewChannelActiveDesc", {
                       version: appVersion || "...",
@@ -255,10 +256,7 @@ export function AboutSettings() {
           className="grid grid-cols-1 gap-6"
         >
           <SettingSection title={t("settings.openSource")}>
-            <SettingItem
-              label={t("settings.projectRepository")}
-              description={t("settings.projectRepositoryDesc")}
-            >
+            <SettingItem label={t("settings.projectRepository")}>
               <a
                 href="https://github.com/legeling/PromptHub"
                 target="_blank"
@@ -269,10 +267,7 @@ export function AboutSettings() {
                 github.com/legeling/PromptHub
               </a>
             </SettingItem>
-            <SettingItem
-              label={t("settings.reportIssue")}
-              description={t("settings.reportIssueDesc")}
-            >
+            <SettingItem label={t("settings.reportIssue")}>
               <a
                 href="https://github.com/legeling/PromptHub/issues/new"
                 target="_blank"
@@ -286,10 +281,7 @@ export function AboutSettings() {
           </SettingSection>
 
           <SettingSection title={t("settings.communityTitle")}>
-            <SettingItem
-              label={t("settings.communityDiscord")}
-              description={t("settings.communityDiscordDesc")}
-            >
+            <SettingItem label={t("settings.communityDiscord")}>
               <a
                 href="https://discord.gg/zmfWguWFB"
                 target="_blank"
@@ -302,7 +294,7 @@ export function AboutSettings() {
             </SettingItem>
             <SettingItem
               label={t("settings.communityQQ")}
-              description={t("settings.communityQQDesc", { group: qqGroupNumber })}
+              status={t("settings.communityQQDesc", { group: qqGroupNumber })}
             >
               <div className="flex items-center gap-2">
                 <a
@@ -360,7 +352,9 @@ export function AboutSettings() {
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">legeling567@gmail.com</div>
+                  <div className="text-sm font-medium">
+                    legeling567@gmail.com
+                  </div>
                   <div className="text-xs text-muted-foreground">Email</div>
                 </div>
               </a>
@@ -369,10 +363,7 @@ export function AboutSettings() {
 
           {!webRuntime ? (
             <SettingSection title={t("settings.developer")}>
-              <SettingItem
-                label={t("settings.debugMode")}
-                description={t("settings.debugModeDesc")}
-              >
+              <SettingItem label={t("settings.debugMode")}>
                 <ToggleSwitch
                   ariaLabel={t("settings.debugMode")}
                   checked={settings.debugMode}

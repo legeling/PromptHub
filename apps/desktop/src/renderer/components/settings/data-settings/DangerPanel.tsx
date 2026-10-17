@@ -10,10 +10,7 @@ export function DangerPanel() {
     <>
       {!webRuntime && activeSubsection === "backup" ? (
         <DataSettingsSection title={t("settings.dangerOperation", "Danger")}>
-          <SettingItem
-            label={t("settings.clear")}
-            description={t("settings.clearDesc")}
-          >
+          <SettingItem label={t("settings.clear")}>
             <button
               type="button"
               onClick={handleClearData}

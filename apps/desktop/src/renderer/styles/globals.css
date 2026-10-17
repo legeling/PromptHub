@@ -10,11 +10,21 @@
     --theme-saturation: 35;
     --base-font-size: 16px;
 
+    /* Shared surfaces for the app theme and appearance previews. */
+    --palette-light-background: 220 14% 96%;
+    --palette-light-card: 0 0% 100%;
+    --palette-light-muted: 220 14% 94%;
+    --palette-light-muted-foreground: 220 12% 50%;
+    --palette-dark-background: 220 25% 7%;
+    --palette-dark-card: 220 22% 10%;
+    --palette-dark-muted: 220 20% 12%;
+    --palette-dark-muted-foreground: 220 12% 60%;
+
     /* Light mode colors */
     /* 浅色模式配色 */
-    --background: 220 14% 96%;
+    --background: var(--palette-light-background);
     --foreground: 220 20% 25%;
-    --card: 0 0% 100%;
+    --card: var(--palette-light-card);
     --card-foreground: 220 20% 25%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 25%;
@@ -25,8 +35,8 @@
     --primary-foreground: 0 0% 100%;
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 20% 25%;
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 12% 50%;
+    --muted: var(--palette-light-muted);
+    --muted-foreground: var(--palette-light-muted-foreground);
     --accent: var(--theme-hue) calc(var(--theme-saturation) * 0.5) 94%;
     --accent-foreground: var(--theme-hue) var(--theme-saturation) 40%;
     --destructive: 0 45% 55%;
@@ -160,9 +170,9 @@
   .dark {
     /* Dark mode colors - deeper and more premium */
     /* 深色模式配色 - 更深邃、更高级 */
-    --background: 220 25% 7%;
+    --background: var(--palette-dark-background);
     --foreground: 220 15% 92%;
-    --card: 220 22% 10%;
+    --card: var(--palette-dark-card);
     --card-foreground: 220 15% 92%;
     --popover: 220 22% 12%;
     --popover-foreground: 220 15% 92%;
@@ -172,8 +182,8 @@
     --primary-foreground: 0 0% 100%;
     --secondary: 220 20% 12%;
     --secondary-foreground: 220 15% 92%;
-    --muted: 220 20% 12%;
-    --muted-foreground: 220 12% 60%;
+    --muted: var(--palette-dark-muted);
+    --muted-foreground: var(--palette-dark-muted-foreground);
     --accent: var(--theme-hue) 20% 15%;
     --accent-foreground: var(--theme-hue) var(--theme-saturation) 85%;
     --destructive: 0 70% 55%;

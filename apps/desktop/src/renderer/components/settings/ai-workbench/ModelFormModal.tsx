@@ -42,7 +42,6 @@ export function ModelFormModal({
           ? t("settings.aiWorkbenchEditModel")
           : t("settings.addModel")
       }
-      subtitle={t("settings.aiWorkbenchModelModalSubtitle")}
       onClose={onClose}
       size="xl"
     >
@@ -65,11 +64,6 @@ export function ModelFormModal({
             <div>
               <div className="text-sm font-medium">
                 {t("settings.advancedParams")}
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {modelForm.type === "chat"
-                  ? t("settings.aiWorkbenchChatParamsDesc")
-                  : t("settings.aiWorkbenchImageParamsDesc")}
               </div>
             </div>
             <ChevronDownIcon

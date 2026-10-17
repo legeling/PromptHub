@@ -1,4 +1,5 @@
 import type { Settings } from "@prompthub/shared/types";
+import { normalizeUpdateMirrorSource } from "@prompthub/shared/constants/update-mirrors";
 import { normalizeNotificationPreferences } from "@prompthub/shared/utils/notifications";
 import { normalizeNetworkProxySettings } from "@prompthub/shared/utils/network-proxy";
 import type { StoreApi } from "zustand";
@@ -25,6 +26,7 @@ import {
   migrateResourceTagSectionSettings,
   normalizeCustomAgentSettings,
   normalizeDesktopHomeModules,
+  normalizeDesktopHomeModuleOrder,
   normalizeLanguage,
   normalizePlatformVisibilitySettings,
   normalizePromptTagCatalog,
@@ -80,6 +82,7 @@ const DESKTOP_RENDERER_PREFERENCE_FIELDS = new Set<keyof SettingsState>([
   "skillTagsSectionHeight",
   "isSkillTagsSectionCollapsed",
   "desktopHomeModules",
+  "desktopHomeModuleOrder",
   "skillListPageSize",
   "skillTagFilterIncludeFrontmatter",
   "translationMode",
@@ -132,7 +135,9 @@ function scrubPersistedGithubToken(): void {
 }
 
 function normalizeSharedSettingsState(next: SettingsState): void {
-  next.notificationPreferences = normalizeNotificationPreferences(next.notificationPreferences);
+  next.notificationPreferences = normalizeNotificationPreferences(
+    next.notificationPreferences,
+  );
   next.githubToken = "";
   normalizeAppearanceSettings(next, normalizeLanguage);
   normalizePromptWorkflowSettings(next);
@@ -155,6 +160,9 @@ function normalizeSharedSettingsState(next: SettingsState): void {
     );
   normalizeSkillTrustSettings(next);
   next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
+  next.updateMirrorSource = normalizeUpdateMirrorSource(
+    next.updateMirrorSource,
+  );
   next.agentIdentityPreferences = normalizeAgentIdentityPreferences(
     next.agentIdentityPreferences,
   );
@@ -173,6 +181,14 @@ function normalizeMergedPresentationSettings(
   migrateResourceTagSectionSettings(next, persistedState);
   normalizeSidebarTagSectionHeights(next);
   next.desktopHomeModules = normalizeDesktopHomeModules(
+    next.desktopHomeModules,
+  );
+  next.desktopHomeModuleOrder = normalizeDesktopHomeModuleOrder(
+    persistedState &&
+      typeof persistedState === "object" &&
+      "desktopHomeModuleOrder" in persistedState
+      ? persistedState.desktopHomeModuleOrder
+      : undefined,
     next.desktopHomeModules,
   );
   delete (next as unknown as Record<string, unknown>).desktopHomeLayout;
@@ -273,6 +289,9 @@ function normalizeMigratedCoreState(
   next.skillProjects = normalizeSkillProjects(next.skillProjects);
   normalizeSkillTrustSettings(next);
   next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
+  next.updateMirrorSource = normalizeUpdateMirrorSource(
+    next.updateMirrorSource,
+  );
   next.agentIdentityPreferences = normalizeAgentIdentityPreferences(
     next.agentIdentityPreferences,
   );
@@ -292,6 +311,10 @@ function normalizeMigratedPresentationState(
       includeNewDefaults: version < 17,
       migratePreviousDefaultOrder: version < 17,
     },
+  );
+  next.desktopHomeModuleOrder = normalizeDesktopHomeModuleOrder(
+    next.desktopHomeModuleOrder,
+    next.desktopHomeModules,
   );
   delete (next as unknown as Record<string, unknown>).desktopHomeLayout;
   if (typeof next.updateChannelExplicitlySet !== "boolean") {

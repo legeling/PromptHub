@@ -58,9 +58,6 @@ export function BackupPanel() {
                 <div className="text-sm font-semibold">
                   {t("settings.selectiveExport")}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {t("settings.selectiveExportDesc")}
-                </div>
               </div>
               <button
                 type="button"
@@ -123,9 +120,6 @@ export function BackupPanel() {
               <div>
                 <div className="text-sm font-semibold">
                   {t("settings.fullBackup")}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {t("settings.fullBackupDesc")}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -219,9 +213,6 @@ export function BackupPanel() {
                 <div>
                   <div className="text-sm font-semibold">
                     {t("settings.upgradeBackups")}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {t("settings.upgradeBackupsDesc")}
                   </div>
                 </div>
                 <button

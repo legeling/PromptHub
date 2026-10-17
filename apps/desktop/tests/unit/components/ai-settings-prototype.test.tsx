@@ -164,8 +164,8 @@ describe("AISettingsPrototype", () => {
       screen.getByRole("button", { name: "Model Routing" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Advanced Parameters" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Advanced Parameters" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Search provider or model..."),
     ).toBeInTheDocument();
@@ -179,6 +179,31 @@ describe("AISettingsPrototype", () => {
 
     expect(screen.getByText("Status Overview")).toBeInTheDocument();
   });
+
+  it.each([true, false])(
+    "keeps translation on routing without creating a model (provider: %s)",
+    async (hasProvider) => {
+      const state = createSettingsState();
+      if (!hasProvider) state.aiProviders = [];
+      useSettingsStoreMock.mockReturnValue(state);
+      await renderWithI18n(<AISettingsPrototype />, { language: "en" });
+      expect(
+        screen.queryByRole("button", { name: "Advanced Parameters" }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Model Routing" }));
+      expect(
+        screen.queryByRole("button", { name: "Configure" }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Translation Mode" }));
+      fireEvent.click(
+        await screen.findByRole("option", { name: "Full Translation" }),
+      );
+      expect(state.setTranslationMode).toHaveBeenCalledWith("full");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(state.addAiModel).not.toHaveBeenCalled();
+      expect(state.addAiProvider).not.toHaveBeenCalled();
+    },
+  );
 
   it("lets the endpoint detail panel fill the available model-service width", async () => {
     const settingsState = createSettingsState();
@@ -405,7 +430,7 @@ describe("AISettingsPrototype", () => {
     fireEvent.change(screen.getByLabelText("Model Name"), {
       target: { value: "gpt-4o" },
     });
-    fireEvent.click(screen.getByLabelText("Vision input"));
+    fireEvent.click(screen.getByRole("switch", { name: "Vision input" }));
 
     fireEvent.click(
       screen.getAllByRole("button", { name: "Add Model" }).at(-1)!,
@@ -435,7 +460,7 @@ describe("AISettingsPrototype", () => {
     fireEvent.change(screen.getByLabelText("Model Name"), {
       target: { value: "gpt-image-2" },
     });
-    fireEvent.click(screen.getByLabelText("Image generation"));
+    fireEvent.click(screen.getByRole("switch", { name: "Image generation" }));
 
     fireEvent.click(
       screen.getAllByRole("button", { name: "Add Model" }).at(-1)!,
@@ -466,7 +491,7 @@ describe("AISettingsPrototype", () => {
     fireEvent.change(screen.getByLabelText("Model Name"), {
       target: { value: "gpt-4o-image" },
     });
-    fireEvent.click(screen.getByLabelText("Image generation"));
+    fireEvent.click(screen.getByRole("switch", { name: "Image generation" }));
 
     fireEvent.click(
       screen.getAllByRole("button", { name: "Add Model" }).at(-1)!,
@@ -531,7 +556,7 @@ describe("AISettingsPrototype", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Model Routing" }));
     fireEvent.click(screen.getByRole("button", { name: "Add Model" }));
-    fireEvent.click(screen.getByLabelText("Image generation"));
+    fireEvent.click(screen.getByRole("switch", { name: "Image generation" }));
     fireEvent.change(screen.getByLabelText("Model Name"), {
       target: { value: "gpt-image-1" },
     });
@@ -904,6 +929,19 @@ describe("AISettingsPrototype", () => {
     expect(
       modal.queryByPlaceholderText("Enter API Key"),
     ).not.toBeInTheDocument();
+    fireEvent.click(modal.getByRole("button", { name: "Advanced Parameters" }));
+    fireEvent.change(modal.getByLabelText("Temperature"), {
+      target: { value: "0.7" },
+    });
+    fireEvent.click(modal.getByRole("button", { name: "Save Changes" }));
+    expect(settingsState.updateAiModel).toHaveBeenCalledWith(
+      "model-1",
+      expect.objectContaining({
+        model: "gpt-4.1",
+        chatParams: expect.objectContaining({ temperature: 0.7 }),
+      }),
+    );
+    expect(settingsState.addAiModel).not.toHaveBeenCalled();
   });
 
   it("defaults known image models to image type when selected from fetched models", async () => {
@@ -950,12 +988,24 @@ describe("AISettingsPrototype", () => {
     useSettingsStoreMock.mockReturnValue(settingsState);
     const nativeConfirm = vi.spyOn(window, "confirm");
     {
-      await renderWithI18n(<><ConfirmationHost /><AISettingsPrototype /></>, { language: "en" });
+      await renderWithI18n(
+        <>
+          <ConfirmationHost />
+          <AISettingsPrototype />
+        </>,
+        { language: "en" },
+      );
 
       fireEvent.click(screen.getByRole("button", { name: "Delete" }));
       expect(settingsState.deleteAiModel).not.toHaveBeenCalled();
-      fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }));
-      await waitFor(() => expect(settingsState.deleteAiModel).toHaveBeenCalled());
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
+      await waitFor(() =>
+        expect(settingsState.deleteAiModel).toHaveBeenCalled(),
+      );
       expect(nativeConfirm).not.toHaveBeenCalled();
 
       expect(settingsState.addAiProvider).toHaveBeenCalledWith(

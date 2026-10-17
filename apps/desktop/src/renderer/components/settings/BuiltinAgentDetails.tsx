@@ -70,12 +70,6 @@ export function BuiltinAgentDetails({
           </span>
         </div>
       ) : null}
-      <div className="text-[10px] text-muted-foreground/80">
-        {t(
-          "settings.agentConfigurationsHint",
-          "PromptHub treats each built-in platform as an agent config. Override any relative path only when the tool uses a non-standard layout.",
-        )}
-      </div>
     </div>
   );
 }

@@ -57,6 +57,7 @@ describe("UpdateDialog", () => {
     vi.clearAllMocks();
     useSettingsStoreMock.mockReturnValue({
       useUpdateMirror: false,
+      updateMirrorSource: "gh-proxy",
       updateChannel: "stable",
     });
     getManualBackupStatusMock.mockResolvedValue({
@@ -405,6 +406,7 @@ describe("UpdateDialog", () => {
       expect(download).toHaveBeenCalledWith({
         source: "mirror",
         channel: "stable",
+        mirror: "gh-proxy",
       });
     });
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");

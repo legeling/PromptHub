@@ -321,7 +321,7 @@ describe("SkillSettings", () => {
     await act(async () => { await renderWithI18n(<SkillSafetySettingsSection />, {language: "en"}); });
     expect(screen.queryByText("Trusted Update Sources")).toBeNull();
     expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.getByRole("button", {name: /Enable manual content scans/})).toBeInTheDocument();
+    expect(screen.getByRole("switch", {name: /Enable manual content scans/, checked: false})).toBeInTheDocument();
     expect(scanInstalledSkillSafetyMock).not.toHaveBeenCalled();
   });
 

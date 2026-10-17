@@ -33,9 +33,6 @@ export function CustomParamsField({
         placeholder='{"max_completion_tokens": 4096, "reasoning_effort": "medium"}'
         className="min-h-[120px] w-full rounded-lg bg-background px-3 py-2 text-sm"
       />
-      <div className="mt-1 text-[11px] text-muted-foreground">
-        {t("settings.customParamsDesc")}
-      </div>
     </div>
   );
 }

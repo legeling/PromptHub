@@ -4,8 +4,10 @@ import {
   ArrowUpIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CopyIcon,
   FolderOpenIcon,
   GripVerticalIcon,
+  LinkIcon,
   PencilIcon,
   PlusIcon,
   RotateCcwIcon,
@@ -450,9 +452,7 @@ export function SkillSettings() {
     <div className="space-y-6">
       <GithubTokenSettings />
 
-      <SettingSection
-        title={t("settings.skillTagFilter", "Skill tag filter")}
-      >
+      <SettingSection title={t("settings.skillTagFilter", "Skill tag filter")}>
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -460,12 +460,6 @@ export function SkillSettings() {
                 {t(
                   "settings.skillTagFilterIncludeFrontmatterTitle",
                   "Include SKILL.md frontmatter labels",
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t(
-                  "settings.skillTagFilterIncludeFrontmatterDesc",
-                  "Also offer SKILL.md frontmatter (original) labels as filter candidates in My Skills. Local skills whose tags were migrated into original_tags stay filterable when this is on.",
                 )}
               </div>
             </div>
@@ -485,12 +479,6 @@ export function SkillSettings() {
         title={t("settings.skillInstallMethod", "Skill Install Method")}
       >
         <div className="p-4 space-y-3">
-          <p className="text-xs text-muted-foreground">
-            {t(
-              "settings.skillInstallMethodDesc",
-              "Choose how to install Skills from PromptHub to AI tool platforms.",
-            )}
-          </p>
           <div className="flex gap-3">
             <button
               type="button"
@@ -502,15 +490,13 @@ export function SkillSettings() {
                   : "border-border hover:border-primary/30"
               }`}
             >
-              <div className="text-sm font-semibold">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <LinkIcon
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                />
                 {t("settings.skillInstallSymlink", "Symlink")}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t(
-                  "settings.skillInstallSymlinkDesc",
-                  "Create symlinks in platform directories pointing to PromptHub's Skills folder for efficient syncing",
-                )}
-              </p>
             </button>
             <button
               type="button"
@@ -522,15 +508,13 @@ export function SkillSettings() {
                   : "border-border hover:border-primary/30"
               }`}
             >
-              <div className="text-sm font-semibold">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <CopyIcon
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                />
                 {t("settings.skillInstallCopy", "Copy Files")}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t(
-                  "settings.skillInstallCopyDesc",
-                  "Copy SKILL.md files directly to platform directories, independent of PromptHub",
-                )}
-              </p>
             </button>
           </div>
         </div>
@@ -541,12 +525,6 @@ export function SkillSettings() {
       >
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "settings.platformDisplayOrderDesc",
-                "Control which agent platforms are enabled and how they are ordered across Skills and Rules.",
-              )}
-            </p>
             <button
               type="button"
               onClick={() => settings.resetSkillPlatformOrder()}
@@ -737,12 +715,6 @@ export function SkillSettings() {
         title={t("settings.agentConfigurations", "Agent Configurations")}
       >
         <div className="p-4 space-y-3">
-          <p className="text-xs text-muted-foreground">
-            {t(
-              "settings.agentConfigurationsDesc",
-              "Manage built-in and custom agent roots plus derived asset paths in one place. Skills, Rules, Agents, MCP, Plugins, and config files all derive from these settings.",
-            )}
-          </p>
           <div className="rounded-lg border border-border overflow-hidden">
             {orderedPlatforms.map((platform) => {
               const defaultRootPath = getPlatformRootTemplate(
@@ -920,12 +892,6 @@ export function SkillSettings() {
         <div className="p-4 space-y-3">
           <div className="rounded-xl border border-border/70 app-wallpaper-surface p-4 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="max-w-3xl text-xs text-muted-foreground">
-                {t(
-                  "settings.customAgentsDesc",
-                  "Add your own agent/tool entries with a name and root directory. PromptHub will derive scan paths and known local assets from each custom agent.",
-                )}
-              </p>
               <button
                 type="button"
                 onClick={handleAddCustomAgent}
@@ -1197,12 +1163,6 @@ export function SkillSettings() {
                               <div className="text-sm font-medium text-foreground">
                                 {t("settings.platformEnabled", "Enabled")}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {t(
-                                  "settings.customAgentEnabledHint",
-                                  "Disabled custom agents stay in settings but are hidden from Skills and Rules selections.",
-                                )}
-                              </div>
                             </div>
                             <ToggleSwitch
                               ariaLabel={t(
@@ -1421,12 +1381,6 @@ export function SkillSettings() {
                             </span>
                           </div>
                         ) : null}
-                        <div className="text-[10px] text-muted-foreground/80">
-                          {t(
-                            "settings.agentRootPathHint",
-                            "PromptHub treats this as an agent root and derives known local assets from it instead of scanning only one Skill folder.",
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>

@@ -114,6 +114,7 @@ function createDefaultWorkspaceValues() {
     syncProvider: "manual",
     autoCheckUpdate: true,
     useUpdateMirror: false,
+    updateMirrorSource: "automatic",
     updateChannel: "stable",
     updateChannelExplicitlySet: false,
     tagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
@@ -123,6 +124,7 @@ function createDefaultWorkspaceValues() {
     skillTagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
     isSkillTagsSectionCollapsed: false,
     desktopHomeModules: [...DESKTOP_HOME_MODULES],
+    desktopHomeModuleOrder: [...DESKTOP_HOME_MODULES],
     skillListPageSize: DEFAULT_SKILL_LIST_PAGE_SIZE,
     skillTagFilterIncludeFrontmatter: false,
   } satisfies Partial<SettingsValues>;

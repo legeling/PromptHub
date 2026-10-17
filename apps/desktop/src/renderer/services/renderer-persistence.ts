@@ -1,4 +1,8 @@
-import { trackCanonicalWrite, setRendererSettingsFlush, resetRendererPersistenceWrites } from "./renderer-persistence-writes";
+import {
+  trackCanonicalWrite,
+  setRendererSettingsFlush,
+  resetRendererPersistenceWrites,
+} from "./renderer-persistence-writes";
 export { flushRendererPersistence } from "./renderer-persistence-writes";
 import { AGENT_SETTING_KEYS } from "@prompthub/core/agent-management/agent-settings-contract";
 import { PROMPT_WORKSPACE_PREFERENCE_KEYS } from "@prompthub/shared/types/settings";
@@ -13,6 +17,8 @@ import { useMcpStore } from "../stores/mcp.store";
 import { usePluginStore } from "../stores/plugin.store";
 import { useSettingsStore } from "../stores/settings.store";
 import { useSkillStore } from "../stores/skill.store";
+import { mergeSettingsState } from "../stores/settings/settings-persistence";
+import { changeLanguage } from "../i18n";
 
 const LEGACY_KEYS = {
   settings: "prompthub-settings",
@@ -26,6 +32,7 @@ const LEGACY_KEYS = {
 } as const;
 
 let initialized = false;
+let initialization: Promise<void> | null = null;
 let subscriptions: Array<() => void> = [];
 let hydratingSources = false;
 function readStorageValue(storage: Storage, key: string): string | undefined {
@@ -244,6 +251,15 @@ export async function migrateRendererPersistence(): Promise<void> {
   ) {
     return;
   }
+  if (!initialization) {
+    initialization = initializeRendererPersistence().finally(() => {
+      initialization = null;
+    });
+  }
+  await initialization;
+}
+
+async function initializeRendererPersistence(): Promise<void> {
   const api = window.api?.settings?.rendererPersistence;
   if (!api) throw new Error("Required renderer persistence API is missing");
   const input = collectLegacyRendererPersistence(window.localStorage);
@@ -251,8 +267,19 @@ export async function migrateRendererPersistence(): Promise<void> {
     input,
   )) as RendererPersistenceMigrationResult;
   const canonical = (await api.get()) as RendererHydratedState;
-  applyCanonicalSources(canonical);
+  // SQL settings must be restored before whole-store persistence can observe
+  // unrelated initialization changes and publish temporary defaults.
+  const restoredSettings = mergeSettingsState(
+    canonical.settings,
+    useSettingsStore.getState(),
+  );
+  useSettingsStore.setState(restoredSettings);
+  await changeLanguage(restoredSettings.language);
   redactLegacyRendererPersistence(window.localStorage, result);
+  // Applying canonical sources also writes each store's sanitized UI/cache
+  // snapshot. Do this after legacy redaction so the catalog survives restart,
+  // while durable source configuration remains solely in the Core owner.
+  applyCanonicalSources(canonical);
   startCanonicalPersistenceSubscriptions();
   initialized = true;
 }

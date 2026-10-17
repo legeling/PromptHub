@@ -62,6 +62,28 @@ describe("shared settings SQLite ownership", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it("retains the selected update mirror after disabling and reopening settings", () => {
+    const settings = store();
+    settings.replaceRendererSettings({ useUpdateMirror: true, updateMirrorSource: "gh-proxy" });
+    reopen();
+    const reopened = store();
+    expect(reopened.read()).toMatchObject({ useUpdateMirror: true, updateMirrorSource: "gh-proxy" });
+    reopened.patchSettings({ useUpdateMirror: false });
+    reopen();
+    expect(store().read()).toMatchObject({ useUpdateMirror: false, updateMirrorSource: "gh-proxy" });
+  });
+
+  it("keeps native window geometry private and preserves it across renderer replacement", () => {
+    const settings = store();
+    const windowState = { version: 1, bounds: { x: 10, y: 20, width: 1000, height: 700 }, maximized: true };
+    new SettingsDB(database).set({ desktopWindowState: windowState });
+    expect(settings.read()).not.toHaveProperty("desktopWindowState");
+    expect(() => settings.patchSettings({ desktopWindowState: windowState })).toThrow();
+    settings.replaceRendererSettings({ language: "en" });
+    reopen();
+    expect(new SettingsDB(database).get("desktopWindowState")).toEqual(windowState);
+  });
+
   it("persists notification choices through canonical replacement and keeps delivery receipts device-local", () => {
     const settings = store();
     settings.replaceRendererSettings({ enableNotifications: false, notificationPreferences: { delivery: { promptTest: "off" }, sound: true } });

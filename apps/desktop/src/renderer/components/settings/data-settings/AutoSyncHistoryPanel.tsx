@@ -24,12 +24,6 @@ export function AutoSyncHistoryPanel() {
           title={t("settings.autoSyncHistoryTitle", "Sync history")}
         >
           <div className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "settings.autoSyncHistoryDesc",
-                "Recent manual backups and automatic sync attempts. Credentials and remote addresses are never stored here.",
-              )}
-            </p>
             {autoSyncHistory.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center">
                 <InboxIcon

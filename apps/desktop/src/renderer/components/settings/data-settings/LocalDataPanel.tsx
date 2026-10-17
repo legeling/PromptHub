@@ -162,9 +162,6 @@ export function LocalDataPanel() {
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {t("settings.cacheDataDesc")}
-                    </p>
                   </div>
                   <button
                     type="button"

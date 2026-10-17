@@ -111,9 +111,6 @@ export function NotificationSettings(): ReactElement {
   const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        {t("notificationSettings.description")}
-      </p>
       <SystemSettings />
       {groups.map((group) => (
         <SettingSection

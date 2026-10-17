@@ -31,7 +31,6 @@ import {
 } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
 import { Spinner } from "../ui/Spinner";
-import { AdvancedSection } from "./ai-workbench/AdvancedSection";
 import { EMPTY_FORM, MODEL_ROUTE_DEFINITIONS } from "./ai-workbench/constants";
 import { EndpointFormModal } from "./ai-workbench/EndpointFormModal";
 import { EndpointsSection } from "./ai-workbench/EndpointsSection";
@@ -150,7 +149,9 @@ function findProviderForModel(
   model: AIModelConfig,
 ): EndpointGroup | undefined {
   if (model.providerId?.trim()) {
-    return providers.find((provider) => provider.providerConfigId === model.providerId);
+    return providers.find(
+      (provider) => provider.providerConfigId === model.providerId,
+    );
   }
 
   return providers.find(
@@ -605,7 +606,9 @@ export function AISettingsPrototype() {
     const supportsChat = modelForm.capabilities.chat === true;
     const supportsImageGeneration =
       modelForm.capabilities.imageGeneration === true;
-    const nextChatParams = supportsChat ? buildChatParams(modelForm) : undefined;
+    const nextChatParams = supportsChat
+      ? buildChatParams(modelForm)
+      : undefined;
     const nextImageParams = supportsImageGeneration
       ? buildImageParams(modelForm)
       : undefined;
@@ -702,11 +705,13 @@ export function AISettingsPrototype() {
   };
 
   const handleDeleteModel = async (model: AIModelConfig) => {
-    if (!(await requestConfirmation({
-      message: t("settings.confirmDelete"),
-      variant: "destructive",
-      confirmText: t("common.delete"),
-    }))) {
+    if (
+      !(await requestConfirmation({
+        message: t("settings.confirmDelete"),
+        variant: "destructive",
+        confirmText: t("common.delete"),
+      }))
+    ) {
       return;
     }
 
@@ -1085,35 +1090,13 @@ export function AISettingsPrototype() {
         chatModels={chatModels}
         imageModels={imageModels}
         modelRouteDefaults={settings.modelRouteDefaults}
+        translationMode={settings.translationMode}
+        onTranslationModeChange={settings.setTranslationMode}
         onRouteChange={(route, value) =>
           settings.setModelRouteDefault(route, value)
         }
       />
     </div>
-  );
-
-  const advancedContent = (
-    <AdvancedSection
-      translationMode={settings.translationMode}
-      onTranslationModeChange={(value) => settings.setTranslationMode(value)}
-      onConfigure={() => {
-        const group = endpointGroups[0];
-        if (!group) {
-          openAddEndpoint();
-          return;
-        }
-        openAddModel(
-          {
-            provider: group.provider,
-            apiProtocol: group.apiProtocol,
-            apiKey: group.apiKey,
-            apiUrl: group.apiUrl,
-            type: group.models[0]?.type ?? "chat",
-          },
-          { lockEndpoint: true },
-        );
-      }}
-    />
   );
 
   return (
@@ -1142,7 +1125,6 @@ export function AISettingsPrototype() {
 
       <EndpointsSection
         routingContent={routingContent}
-        advancedContent={advancedContent}
         testingDefault={testingDefault}
         onTestDefault={() => void handleTestDefaultModel()}
         endpointGroups={endpointGroups}

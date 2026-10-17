@@ -94,6 +94,24 @@ describe("settings language actions", () => {
     expect(changeLanguageMock).toHaveBeenCalledWith("zh");
   });
 
+  it("restores language without treating startup as a new preference edit", async () => {
+    window.api.settings.get = vi.fn().mockResolvedValue({
+      language: "zh",
+      settingsUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const { loadSettingsFromMainProcess, useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+    await loadSettingsFromMainProcess();
+    expect(useSettingsStore.getState()).toMatchObject({
+      language: "zh",
+      settingsUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(window.api.settings.set).not.toHaveBeenCalledWith(
+      expect.objectContaining({ language: expect.anything() }),
+    );
+    expect(changeLanguageMock).toHaveBeenCalledWith("zh");
+  });
+
   it("keeps an explicit renderer language over a different main value", async () => {
     const setSettings = vi.fn().mockResolvedValue(true);
     window.api.settings.set = setSettings;

@@ -28,9 +28,6 @@ export function RecoveryPanel() {
                 <div className="text-sm font-semibold">
                   {t("settings.recoveryScannerTitle")}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {t("settings.recoveryScannerDesc")}
-                </div>
               </div>
               <button
                 type="button"
@@ -51,9 +48,6 @@ export function RecoveryPanel() {
                 <div>
                   <div className="text-sm font-medium">
                     {t("settings.recoveryExtraPaths")}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {t("settings.recoveryExtraPathsDesc")}
                   </div>
                 </div>
                 <button

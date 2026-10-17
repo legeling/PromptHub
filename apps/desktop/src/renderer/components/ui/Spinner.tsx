@@ -30,6 +30,7 @@ const TONE_CLASS: Record<SpinnerTone, string> = {
  *
  * Use `label` when the spinner is the only loading affordance in the region.
  * Leave it unset when adjacent text already describes the loading state.
+ * Motion is governed by globals.css, including the explicit standard override.
  */
 export function Spinner({
   size = "md",
@@ -37,7 +38,7 @@ export function Spinner({
   label,
   className,
   "aria-hidden": ariaHidden,
-}: SpinnerProps) {
+}: SpinnerProps): JSX.Element {
   const forcedHidden =
     ariaHidden === true || ariaHidden === "true"
       ? true
@@ -52,7 +53,7 @@ export function Spinner({
       aria-label={isDecorative ? undefined : label}
       role={isDecorative ? undefined : "status"}
       className={clsx(
-        "shrink-0 animate-spin motion-reduce:animate-none",
+        "shrink-0 animate-spin",
         SIZE_CLASS[size],
         TONE_CLASS[tone],
         className,

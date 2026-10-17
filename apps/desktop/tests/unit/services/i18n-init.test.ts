@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createInstance } from "i18next";
 
 function setNavigatorLanguage(language: string) {
   Object.defineProperty(window.navigator, "language", {
@@ -11,12 +12,17 @@ describe("i18n initialization", () => {
   beforeEach(() => {
     vi.resetModules();
     localStorage.clear();
+    // Each cold-start case owns a fresh i18next instance; resetModules alone
+    // retains the external dependency, which represents hot reload instead.
+    const instance = createInstance();
+    vi.doMock("i18next", () => ({ default: instance }));
   });
 
   afterEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
-    vi.unmock("../../../src/renderer/i18n/locales/de.json");
+    vi.doUnmock("../../../src/renderer/i18n/locales/de.json");
+    vi.doUnmock("i18next");
   });
 
   it("prefers persisted language over system language", async () => {
@@ -54,6 +60,21 @@ describe("i18n initialization", () => {
 
     expect(module.default.language).toBe("fr");
     expect(module.default.hasResourceBundle("fr", "translation")).toBe(true);
+  });
+
+  it("keeps the active language when translation modules reload", async () => {
+    setNavigatorLanguage("en-US");
+    const first = await import("../../../src/renderer/i18n");
+    await first.changeLanguage("zh");
+    localStorage.clear();
+    // Vite reloads the application module while retaining its i18next dependency.
+    const singleton = first.default;
+    vi.resetModules();
+    vi.doMock("i18next", () => ({ default: singleton }));
+    const reloaded = await import("../../../src/renderer/i18n");
+    await reloaded.i18nReady;
+    expect(reloaded.default.language).toBe("zh");
+    expect(reloaded.default.t("common.cancel")).toBe("取消");
   });
 
   it("falls back to English when the initial non-English locale fails to load", async () => {

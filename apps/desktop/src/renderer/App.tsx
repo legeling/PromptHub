@@ -1,5 +1,5 @@
-import { useApplicationNotificationFeedback } from "./components/app/application-notification-feedback";
 import { SyncReviewHost } from "./components/ui/SyncReviewHost";
+import { useApplicationNotificationFeedback } from "./components/app/application-notification-feedback";
 import { ConfirmationHost } from "./components/ui/ConfirmationHost";
 import { getShortcutKey } from "./services/shortcut-key";
 import { migrateLegacyIndexedDbToMainProcess } from "./services/migrations/indexeddb";
@@ -469,6 +469,7 @@ function App() {
       const p = window.electron?.updater?.check({
         source: settings.useUpdateMirror ? "mirror" : "automatic",
         channel: settings.updateChannel,
+        mirror: settings.updateMirrorSource,
       });
       if (p && typeof (p as Promise<unknown>).finally === "function") {
         (p as Promise<unknown>).finally(() => {
@@ -626,18 +627,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Sync language setting: use settings store as the source of truth (zh/zh-TW/en/ja/es/de/fr)
-    // i18n reads from the persisted store on init, but we also apply it here as a fallback
-    // 同步语言设置：以 settings store 为准（支持 zh/zh-TW/en/ja/es/de/fr）
-    // i18n 初始化时会尝试从同一个 persist store 读取语言，但这里再兜底一次，避免初始化顺序导致的覆盖问题
-    const languageSettings = useSettingsStore.getState();
-    if (
-      languageSettings.language &&
-      i18n.language !== languageSettings.language
-    ) {
-      languageSettings.setLanguage(languageSettings.language);
-    }
-
     // Initialize database, then load data
     // 初始化数据库，然后加载数据
     let startupSyncTimer: NodeJS.Timeout | null = null;
@@ -1088,10 +1077,6 @@ function App() {
       if (disposed) {
         return;
       }
-      if (installedVersion) {
-        inferUpdateChannel(installedVersion);
-      }
-
       await migrateRendererPersistence();
       if (disposed) {
         return;
@@ -1100,6 +1085,9 @@ function App() {
       await loadSettingsFromMainProcess();
       if (disposed) {
         return;
+      }
+      if (installedVersion) {
+        inferUpdateChannel(installedVersion);
       }
       applyTheme();
 

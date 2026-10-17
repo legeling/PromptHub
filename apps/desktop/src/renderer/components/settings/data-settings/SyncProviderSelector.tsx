@@ -12,12 +12,6 @@ export function SyncProviderSelector() {
         <p className="text-sm font-medium">
           {t("settings.syncProviderTitle", "Current sync source")}
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {t(
-            "settings.syncProviderDesc",
-            "Automatic sync uses one live source at a time. Self-hosted snapshots run independently as backups.",
-          )}
-        </p>
       </div>
       <div className="w-48 flex-none">
         <Select

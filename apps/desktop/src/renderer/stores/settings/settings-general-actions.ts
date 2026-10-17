@@ -1,4 +1,5 @@
 import { changeLanguage } from "../../i18n";
+import { normalizeUpdateMirrorSource } from "@prompthub/shared/constants/update-mirrors";
 import { isPrereleaseVersion } from "../../../utils/version";
 import type {
   SettingsActionContext,
@@ -20,6 +21,7 @@ import {
   normalizeCloseAction,
   normalizeCreationMode,
   normalizeDesktopHomeModules,
+  normalizeDesktopHomeModuleOrder,
   normalizeLanguage,
   normalizeSkillListPageSize,
   normalizeSkillTagFilterIncludeFrontmatter,
@@ -73,6 +75,7 @@ type GeneralActionKey =
   | "setDataPath"
   | "setAutoCheckUpdate"
   | "setUseUpdateMirror"
+  | "setUpdateMirrorSource"
   | "setUpdateChannel"
   | "inferUpdateChannel"
   | "setTagsSectionHeight"
@@ -290,7 +293,8 @@ function createEditorActions(context: SettingsActionContext) {
     setShowLineNumbers: (showLineNumbers) => setTouched({ showLineNumbers }),
     setEnableNotifications: (enableNotifications) =>
       setTouched({ enableNotifications }),
-    setNotificationPreferences: (notificationPreferences) => setTouched({ notificationPreferences }),
+    setNotificationPreferences: (notificationPreferences) =>
+      setTouched({ notificationPreferences }),
     setShowCopyNotification: (showCopyNotification) =>
       setTouched({ showCopyNotification }),
     setShowSaveNotification: (showSaveNotification) =>
@@ -491,6 +495,8 @@ function createReleaseActions(context: SettingsActionContext) {
     setDataPath: (dataPath) => setTouched({ dataPath }),
     setAutoCheckUpdate: (autoCheckUpdate) => setTouched({ autoCheckUpdate }),
     setUseUpdateMirror: (useUpdateMirror) => setTouched({ useUpdateMirror }),
+    setUpdateMirrorSource: (source) =>
+      setTouched({ updateMirrorSource: normalizeUpdateMirrorSource(source) }),
     setUpdateChannel: (updateChannel) =>
       setTouched({ updateChannel, updateChannelExplicitlySet: true }),
     inferUpdateChannel: (version) => {
@@ -504,6 +510,7 @@ function createReleaseActions(context: SettingsActionContext) {
     | "setDataPath"
     | "setAutoCheckUpdate"
     | "setUseUpdateMirror"
+    | "setUpdateMirrorSource"
     | "setUpdateChannel"
     | "inferUpdateChannel"
   >;
@@ -562,7 +569,14 @@ function updateDesktopHomeModules(
   const changed =
     desktopHomeModules.length !== current.length ||
     desktopHomeModules.some((item, index) => item !== current[index]);
-  if (changed) context.setTouched({ desktopHomeModules });
+  if (changed)
+    context.setTouched({
+      desktopHomeModules,
+      desktopHomeModuleOrder: normalizeDesktopHomeModuleOrder(
+        context.get().desktopHomeModuleOrder,
+        desktopHomeModules,
+      ),
+    });
 }
 
 function createDesktopHomeActions(context: SettingsActionContext) {
@@ -571,10 +585,17 @@ function createDesktopHomeActions(context: SettingsActionContext) {
     toggleDesktopHomeModule: (moduleId) => {
       const current = get().desktopHomeModules;
       if (current.includes(moduleId) && current.length === 1) return;
+      const order = normalizeDesktopHomeModuleOrder(
+        get().desktopHomeModuleOrder,
+        current,
+      );
       const modules = current.includes(moduleId)
         ? current.filter((item) => item !== moduleId)
-        : [...current, moduleId];
-      updateDesktopHomeModules(context, modules);
+        : order.filter((item) => item === moduleId || current.includes(item));
+      context.setTouched({
+        desktopHomeModules: modules,
+        desktopHomeModuleOrder: order,
+      });
     },
     reorderDesktopHomeModules: (modules) =>
       updateDesktopHomeModules(context, modules),

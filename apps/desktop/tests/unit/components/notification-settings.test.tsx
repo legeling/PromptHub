@@ -24,6 +24,9 @@ it("offers seven module categories and changes delivery independently of copy fe
     </ToastProvider>,
     { language: "en" },
   );
+  expect(
+    screen.queryByText(/Choose which events can notify you/i),
+  ).not.toBeInTheDocument();
   expect(document.querySelectorAll('[aria-haspopup="listbox"]')).toHaveLength(
     7,
   );

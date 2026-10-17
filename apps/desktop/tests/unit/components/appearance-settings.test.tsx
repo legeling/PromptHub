@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppearanceSettings } from "../../../src/renderer/components/settings/AppearanceSettings";
@@ -14,7 +14,9 @@ vi.mock("../../../src/renderer/runtime", () => ({
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
   useSettingsStore: () => useSettingsStoreMock(),
-  MORANDI_THEMES: [{ id: "blue", hue: 210, saturation: 35, name: "Misty Blue" }],
+  MORANDI_THEMES: [
+    { id: "blue", hue: 210, saturation: 35, name: "Misty Blue" },
+  ],
   FONT_SIZES: [{ id: "medium", value: 16, name: "Medium" }],
   DESKTOP_HOME_MODULES: ["prompt", "skill", "rules"],
   getRenderedBackgroundImageOpacity: (value: number) => value,
@@ -86,13 +88,15 @@ describe("AppearanceSettings", () => {
       await renderWithI18n(<AppearanceSettings />, { language: "en" });
     });
 
-    expect(screen.getByText("No background image selected")).toBeInTheDocument();
+    expect(
+      screen.getByText("No background image selected"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("img", { name: "Background image preview" }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders the preview with the same wallpaper shell structure used by the live app", async () => {
+  it("renders the selected background with the shared image effects above its controls", async () => {
     useSettingsStoreMock.mockReturnValue(
       createSettingsState({
         backgroundImageEnabled: true,
@@ -107,21 +111,20 @@ describe("AppearanceSettings", () => {
     const previewStage = document.querySelector(".background-preview-stage");
 
     expect(previewStage).not.toBeNull();
-    expect(previewStage).toHaveClass("app-background-mode-image");
     expect(previewStage?.querySelector("img")).not.toBeNull();
-    expect(previewStage?.querySelector(".background-preview-shell")).toHaveClass(
-      "app-wallpaper-shell",
+    expect(
+      previewStage?.querySelector(".app-wallpaper-blanket"),
+    ).not.toBeNull();
+    expect(previewStage?.querySelector("img")?.parentElement).toHaveStyle({
+      opacity: "0.88",
+      filter: "blur(16px)",
+    });
+    const toggle = screen.getByRole("switch", {
+      name: "Show desktop background",
+    });
+    expect(previewStage?.compareDocumentPosition(toggle)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(previewStage?.querySelector(".app-left-rail-glass")).not.toBeNull();
-    expect(previewStage?.querySelector(".sidebar-tag-section")).toHaveClass(
-      "app-wallpaper-panel",
-    );
-    expect(previewStage?.querySelector(".sidebar-tag-section")).not.toHaveClass(
-      "app-wallpaper-panel-strong",
-    );
-    expect(previewStage?.querySelector(".app-wallpaper-blanket")).not.toBeNull();
-    expect(previewStage?.querySelector(".app-wallpaper-toolbar")).not.toBeNull();
-    expect(previewStage?.querySelector(".prompt-list-pane")).not.toBeNull();
   });
 
   it("toggles the saved background image without clearing the file", async () => {
@@ -136,10 +139,12 @@ describe("AppearanceSettings", () => {
     });
 
     expect(
-      screen.getByText("Background image is saved but currently disabled."),
-    ).toBeInTheDocument();
+      screen.queryByText("Background image is saved but currently disabled."),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Enable" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Show desktop background" }),
+    );
     expect(settingsState.setBackgroundImageEnabled).toHaveBeenCalledWith(true);
   });
 
@@ -153,9 +158,12 @@ describe("AppearanceSettings", () => {
       await renderWithI18n(<AppearanceSettings />, { language: "en" });
     });
 
-    fireEvent.change(screen.getByRole("slider", { name: "Background visibility" }), {
-      target: { value: "64" },
-    });
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Background visibility" }),
+      {
+        target: { value: "64" },
+      },
+    );
     fireEvent.change(screen.getByRole("slider", { name: "Blur strength" }), {
       target: { value: "24.5" },
     });
@@ -184,7 +192,9 @@ describe("AppearanceSettings", () => {
       "Could not save the selected background image. Please try another file.",
       "error",
     );
-    expect(screen.getByRole("button", { name: "Choose image" })).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Choose image" }),
+    ).not.toBeDisabled();
   });
 
   it("keeps rendered appearance actions non-submit with clear selection semantics", async () => {
@@ -239,7 +249,9 @@ describe("AppearanceSettings", () => {
       "true",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Show desktop background" }),
+    );
 
     expect(handleSubmit).not.toHaveBeenCalled();
   });
@@ -255,15 +267,15 @@ describe("AppearanceSettings", () => {
     });
 
     expect(screen.getByText("Desktop workspace")).toBeInTheDocument();
-    expect(screen.getByText("Home modules")).toBeInTheDocument();
     expect(
-      screen.getByText("Drag enabled modules to reorder the desktop home rail."),
-    ).toBeInTheDocument();
+      screen.queryByText(
+        "Drag enabled modules to reorder the desktop home rail.",
+      ),
+    ).not.toBeInTheDocument();
 
-    const promptsCard = screen.getByText("Prompts").parentElement?.parentElement;
-    expect(promptsCard).not.toBeNull();
-
-    fireEvent.click(within(promptsCard as HTMLElement).getByRole("button", { name: "Disabled" }));
-    expect(settingsState.toggleDesktopHomeModule).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("switch", { name: "Prompts" }));
+    expect(settingsState.toggleDesktopHomeModule).toHaveBeenCalledWith(
+      "prompt",
+    );
   });
 });

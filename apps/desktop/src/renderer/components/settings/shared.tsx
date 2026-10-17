@@ -6,6 +6,35 @@ import { Select } from "../ui/Select";
 import { getShortcutKey } from "../../services/shortcut-key";
 import { useSettingsSearchTarget } from "./settings-search-target";
 
+export const SHORTCUT_KEY_CLASS_NAME =
+  "w-36 h-9 shrink-0 px-2.5 text-center font-sans text-xs font-medium rounded-md border text-foreground";
+
+export function ShortcutSettingRow({
+  label,
+  feedback,
+  children,
+}: {
+  label: string;
+  feedback?: ReactNode;
+  children: ReactNode;
+}): JSX.Element {
+  const { ref, highlighted } = useSettingsSearchTarget(label);
+  return (
+    <div
+      ref={ref}
+      tabIndex={highlighted ? -1 : undefined}
+      data-setting-target={highlighted || undefined}
+      className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-3 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/10 ${highlighted ? "rounded-lg ring-2 ring-inset ring-primary/50 outline-none" : ""}`}
+    >
+      <div className="flex-1 min-w-[12rem]">
+        <div className="text-sm font-medium text-foreground">{label}</div>
+        {feedback}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // Settings section component - flattened design
 // 设置区块组件 - 扁平化设计
 export function SettingSection({
@@ -33,11 +62,11 @@ export function SettingSection({
 // 设置项组件
 export function SettingItem({
   label,
-  description,
+  status,
   children,
 }: {
   label: string;
-  description?: string;
+  status?: string;
   children: ReactNode;
 }) {
   const { ref, highlighted } = useSettingsSearchTarget(label);
@@ -50,10 +79,8 @@ export function SettingItem({
     >
       <div>
         <div className="text-sm font-medium">{label}</div>
-        {description && (
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {description}
-          </div>
+        {status && (
+          <div className="text-xs text-muted-foreground mt-0.5">{status}</div>
         )}
       </div>
       {children}
@@ -109,9 +136,10 @@ export function ToggleSwitch({
     >
       <span
         className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-base ${
-          isChecked ? "bg-white" : "bg-muted-foreground/50 dark:bg-primary/60"
+          isChecked
+            ? "left-[22px] bg-white"
+            : "left-0.5 bg-muted-foreground/50 dark:bg-primary/60"
         }`}
-        style={{ left: isChecked ? "22px" : "2px" }}
       />
     </button>
   );
@@ -174,7 +202,6 @@ export const PasswordInput = memo(function PasswordInput({
 // 快捷键输入组件 - 使用 React.memo 包装以提升性能
 export const ShortcutItem = memo(function ShortcutItem({
   label,
-  description,
   shortcut,
   onShortcutChange,
   onClear,
@@ -183,7 +210,6 @@ export const ShortcutItem = memo(function ShortcutItem({
   onModeChange,
 }: {
   label: string;
-  description: string;
   shortcut: string;
   onShortcutChange: (shortcut: string) => void;
   onClear: () => void;
@@ -246,19 +272,17 @@ export const ShortcutItem = memo(function ShortcutItem({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-3 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/10">
-      <div className="flex-1 min-w-[12rem]">
-        <div className="text-sm font-medium text-foreground">{label}</div>
-        <div className="text-xs text-muted-foreground mt-0.5 leading-normal">
-          {description}
-        </div>
-        {conflict && (
+    <ShortcutSettingRow
+      label={label}
+      feedback={
+        conflict && (
           <div className="text-xs text-red-500 mt-2 flex items-center gap-1.5 font-medium">
             <AlertTriangleIcon aria-hidden="true" className="w-3.5 h-3.5" />
             {t("settings.conflictWith", { key: conflict })}
           </div>
-        )}
-      </div>
+        )
+      }
+    >
       <div className="ml-auto flex items-center gap-2 flex-shrink-0">
         {mode && onModeChange && (
           <div className="w-24">
@@ -289,7 +313,7 @@ export const ShortcutItem = memo(function ShortcutItem({
           onFocus={() => setRecording(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className={`w-36 h-9 px-2.5 text-center text-xs font-medium rounded-md border cursor-pointer transition-colors ${
+          className={`${SHORTCUT_KEY_CLASS_NAME} cursor-pointer transition-colors ${
             recording
               ? "border-primary ring-2 ring-primary/20 bg-primary/5 text-primary"
               : "app-settings-input hover:bg-accent/70 hover:text-accent-foreground"
@@ -309,6 +333,6 @@ export const ShortcutItem = memo(function ShortcutItem({
           )}
         </div>
       </div>
-    </div>
+    </ShortcutSettingRow>
   );
 });

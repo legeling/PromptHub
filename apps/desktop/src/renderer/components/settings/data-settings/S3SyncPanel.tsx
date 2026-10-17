@@ -37,12 +37,6 @@ export function S3SyncPanel() {
                 <p className="text-sm font-medium">
                   {t("settings.s3SyncMenu", "S3 Compatible Storage")}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t(
-                    "settings.s3StorageDesc",
-                    "Configure an S3-compatible object storage backup target such as AWS S3, Cloudflare R2, OSS, or COS.",
-                  )}
-                </p>
               </div>
               <ToggleSwitch
                 ariaLabel={t("settings.s3SyncMenu", "S3 Compatible Storage")}
@@ -203,12 +197,11 @@ export function S3SyncPanel() {
                       {t("settings.webdavAutoRun", "Automatic sync")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {s3IsSyncSource
-                        ? t("settings.webdavAutoRunDesc")
-                        : t(
-                            "settings.syncSourceInactiveDesc",
-                            "This target stays available for manual backup and restore, but automatic sync only runs for the current sync source.",
-                          )}
+                      {!s3IsSyncSource &&
+                        t(
+                          "settings.syncSourceInactiveDesc",
+                          "This target stays available for manual backup and restore, but automatic sync only runs for the current sync source.",
+                        )}
                     </p>
                   </div>
                   <div className="min-w-[140px]">
@@ -246,9 +239,6 @@ export function S3SyncPanel() {
                   <div className="flex-1 mr-4">
                     <p className="text-sm font-medium">
                       {t("settings.webdavSyncOnStartup", "Run Once on Startup")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavSyncOnStartupDesc")}
                     </p>
                   </div>
                   <div className="min-w-[180px]">
@@ -312,9 +302,6 @@ export function S3SyncPanel() {
                         "Sync on Save (Experimental)",
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavSyncOnSaveDesc")}
-                    </p>
                   </div>
                   <ToggleSwitch
                     ariaLabel={t(
@@ -332,9 +319,6 @@ export function S3SyncPanel() {
                     <p className="text-sm font-medium">
                       {t("settings.webdavIncludeImages", "Include Images")}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavIncludeImagesDesc")}
-                    </p>
                   </div>
                   <ToggleSwitch
                     ariaLabel={t(
@@ -351,9 +335,6 @@ export function S3SyncPanel() {
                   <div className="flex-1 mr-4">
                     <p className="text-sm font-medium">
                       {t("settings.webdavIncrementalSync", "Incremental Sync")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavIncrementalSyncDesc")}
                     </p>
                   </div>
                   <ToggleSwitch
@@ -374,9 +355,6 @@ export function S3SyncPanel() {
                         "settings.webdavEncryption",
                         "Encrypt Backup (Experimental)",
                       )}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 text-amber-500">
-                      {t("settings.webdavEncryptionDesc")}
                     </p>
                   </div>
                   <ToggleSwitch

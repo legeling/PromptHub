@@ -47,6 +47,7 @@ import {
   type SupportedLanguage,
 } from "./settings/settings-types";
 import { normalizeAgentIdentityPreferences } from "../services/agent-identity";
+import { changeLanguage } from "../i18n";
 
 export {
   FONT_SIZES,
@@ -219,6 +220,10 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
     SUPPORTED_LANGUAGES.includes(settings.language as SupportedLanguage)
       ? (settings.language as SupportedLanguage)
       : null;
+  const restoredLanguage =
+    (window.api.settings.rendererPersistence
+      ? mainProcessLanguage
+      : (persistedRendererLanguage ?? mainProcessLanguage)) ?? state.language;
   const launchAtStartup =
     typeof settings.launchAtStartup === "boolean"
       ? settings.launchAtStartup
@@ -268,6 +273,7 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
 
   useSettingsStore.setState({
     ...hydratedValues,
+    language: restoredLanguage,
     customAgents,
     builtinAgentOverrides,
     agentIdentityPreferences,
@@ -308,7 +314,6 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
       sync: buildMainProcessSyncSettings(syncProvider),
     });
   if (!settings.networkProxy) void syncSettingsToMain({ networkProxy });
-  if (!persistedRendererLanguage && mainProcessLanguage) {
-    useSettingsStore.getState().setLanguage(mainProcessLanguage);
-  }
+  // Applying saved preferences is not a new user edit or a settings write.
+  await changeLanguage(restoredLanguage);
 }

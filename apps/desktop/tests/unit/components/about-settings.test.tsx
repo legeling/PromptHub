@@ -163,10 +163,10 @@ describe("AboutSettings", () => {
       screen.getByRole("button", { name: "Copy ID" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         "Join the PromptHub Discord community for announcements and discussion",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(
         "Try opening the QQ group directly. If QQ cannot jump, search for the group number 704298939 manually in the client",

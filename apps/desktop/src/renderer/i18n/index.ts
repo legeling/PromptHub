@@ -99,7 +99,9 @@ async function loadInitialResources(lang: string): Promise<InitialResources> {
 }
 
 const initialLanguage = normalizeLanguage(
-  getSavedLanguage() || getSystemLanguage(),
+  (i18n.isInitialized && i18n.language) ||
+    getSavedLanguage() ||
+    getSystemLanguage(),
 );
 
 export const i18nReady = (async () => {

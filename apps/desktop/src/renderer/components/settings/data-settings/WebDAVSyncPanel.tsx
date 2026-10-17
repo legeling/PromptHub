@@ -41,9 +41,6 @@ export function WebDAVSyncPanel() {
                 <p className="text-sm font-medium">
                   {t("settings.webdavSyncMenu", "WebDAV")}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t("settings.webdavEnabledDesc")}
-                </p>
               </div>
               <ToggleSwitch
                 ariaLabel={t("settings.webdavSyncMenu", "WebDAV")}
@@ -138,12 +135,11 @@ export function WebDAVSyncPanel() {
                       {t("settings.webdavAutoRun", "自动运行")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {webdavIsSyncSource
-                        ? t("settings.webdavAutoRunDesc")
-                        : t(
-                            "settings.syncSourceInactiveDesc",
-                            "This target stays available for manual backup and restore, but automatic sync only runs for the current sync source.",
-                          )}
+                      {!webdavIsSyncSource &&
+                        t(
+                          "settings.syncSourceInactiveDesc",
+                          "This target stays available for manual backup and restore, but automatic sync only runs for the current sync source.",
+                        )}
                     </p>
                   </div>
                   <div className="min-w-[140px]">
@@ -182,9 +178,6 @@ export function WebDAVSyncPanel() {
                   <div className="flex-1 mr-4">
                     <p className="text-sm font-medium">
                       {t("settings.webdavSyncOnStartup", "启动后自动运行一次")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavSyncOnStartupDesc")}
                     </p>
                   </div>
                   <div className="min-w-[180px]">
@@ -247,9 +240,8 @@ export function WebDAVSyncPanel() {
                       {t("settings.webdavSyncOnSave", "保存时同步（实验性质）")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {WEBDAV_SYNC_ON_SAVE_AVAILABLE
-                        ? t("settings.webdavSyncOnSaveDesc")
-                        : t("settings.webdavSyncOnSaveUnavailableDesc")}
+                      {!WEBDAV_SYNC_ON_SAVE_AVAILABLE &&
+                        t("settings.webdavSyncOnSaveUnavailableDesc")}
                     </p>
                   </div>
                   <ToggleSwitch
@@ -273,9 +265,6 @@ export function WebDAVSyncPanel() {
                     <p className="text-sm font-medium">
                       {t("settings.webdavIncludeImages", "包含图片")}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavIncludeImagesDesc")}
-                    </p>
                   </div>
                   <ToggleSwitch
                     ariaLabel={t("settings.webdavIncludeImages", "包含图片")}
@@ -291,9 +280,6 @@ export function WebDAVSyncPanel() {
                     <p className="text-sm font-medium">
                       {t("settings.webdavIncrementalSync", "增量同步")}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.webdavIncrementalSyncDesc")}
-                    </p>
                   </div>
                   <ToggleSwitch
                     ariaLabel={t("settings.webdavIncrementalSync", "增量同步")}
@@ -308,9 +294,6 @@ export function WebDAVSyncPanel() {
                   <div className="flex-1 mr-4">
                     <p className="text-sm font-medium">
                       {t("settings.webdavEncryption", "加密备份（实验性）")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 text-amber-500">
-                      {t("settings.webdavEncryptionDesc")}
                     </p>
                   </div>
                   <ToggleSwitch

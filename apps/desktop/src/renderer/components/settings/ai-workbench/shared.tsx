@@ -50,7 +50,6 @@ export function StatusCard({
 
 export function ScenarioRow({
   label,
-  desc,
   fallbackLabel,
   value,
   options,
@@ -58,7 +57,6 @@ export function ScenarioRow({
   disabled,
 }: {
   label: string;
-  desc: string;
   fallbackLabel: string;
   value: string;
   options: Array<{ value: string; label: string }>;
@@ -69,7 +67,6 @@ export function ScenarioRow({
     <div className="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/30 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0 space-y-1">
         <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{desc}</div>
       </div>
       <div className="w-full md:w-[280px]">
         <Select

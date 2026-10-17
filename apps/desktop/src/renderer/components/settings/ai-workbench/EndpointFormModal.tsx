@@ -150,11 +150,6 @@ export function EndpointFormModal({
             }}
             options={providerOptions}
           />
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            {t("settings.aiWorkbenchProviderTypeHint", {
-              type: providerTypeLabel,
-            })}
-          </div>
         </div>
         {showProtocolField ? (
           <div>
