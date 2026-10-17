@@ -1,3 +1,4 @@
+import { AiTestResponseContent } from "./AiTestResponseContent";
 import { notifyTaskResult } from "../../services/application-notifications";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createPortal, flushSync } from "react-dom";
@@ -42,11 +43,6 @@ import {
   parsePromptVariables,
   replacePromptVariables,
 } from "./prompt-modal-utils";
-import { resolvePromptMarkdownHref } from "./prompt-markdown-url";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSanitize from "rehype-sanitize";
-import rehypeHighlight from "rehype-highlight";
 import { resolveGeneratedImageUrl } from "../../utils/generated-image-url";
 import { downloadGeneratedImage } from "../../utils/download-generated-image";
 import {
@@ -118,35 +114,6 @@ export function AiTestModal({
   const isOpenRef = useRef(isOpen);
   const modalSessionRef = useRef(0);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const rehypePlugins = useMemo(() => [rehypeSanitize, rehypeHighlight], []);
-  const markdownComponents = useMemo(
-    () => ({
-      a: ({
-        children,
-        href,
-        node: _node,
-        ...props
-      }: React.ComponentProps<"a"> & { node?: unknown }) => {
-        const safeHref = resolvePromptMarkdownHref(href);
-
-        if (!safeHref) {
-          return <span {...props}>{children}</span>;
-        }
-
-        return (
-          <a
-            {...props}
-            href={safeHref}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {children}
-          </a>
-        );
-      },
-    }),
-    [],
-  );
   const [testImageAttachments, setTestImageAttachments] = useState<
     AiTestImageAttachment[]
   >([]);
@@ -1116,23 +1083,9 @@ export function AiTestModal({
     }
   };
 
-  const renderAiResponseContent = (content?: string) => {
-    if (!content) {
-      return null;
-    }
-
-    return (
-      <div className="text-[15px] leading-relaxed markdown-content space-y-3 break-words">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={rehypePlugins}
-          components={markdownComponents}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
-    );
-  };
+  const renderAiResponseContent = (content?: string) => (
+    <AiTestResponseContent content={content} />
+  );
 
   // 将生成的图片添加到 Prompt
   const handleAddImageToPrompt = async (imageUrl: string) => {
