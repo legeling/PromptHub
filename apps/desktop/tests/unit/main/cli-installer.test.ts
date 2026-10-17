@@ -2,14 +2,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 
-const { execFileMock, userDataPath } = vi.hoisted(() => ({
-  execFileMock: vi.fn(),
-  userDataPath: `/tmp/prompthub-cli-installer-${process.pid}`,
+const { execFileMock, userDataPath, appRuntime, releaseLookup } =
+  await vi.hoisted(async () => {
+    const os = await import("node:os");
+    const paths = await import("node:path");
+    return {
+      execFileMock: vi.fn(),
+      appRuntime: { isPackaged: true },
+      releaseLookup: vi.fn(),
+      userDataPath: paths.join(
+        os.tmpdir(),
+        `prompthub-cli-installer-${process.pid}`,
+      ),
+    };
+  });
+
+vi.mock("../../../src/main/services/cli-install-source", () => ({
+  resolveCliInstallSource: releaseLookup,
 }));
 
 vi.mock("electron", () => ({
   app: {
-    getVersion: () => "0.5.9",
+    get isPackaged() {
+      return appRuntime.isPackaged;
+    },
+    getAppPath: () => path.join(userDataPath, "workspace", "apps", "desktop"),
+    getVersion: () => "0.6.0",
     getPath: (name: string) => {
       if (name !== "userData") throw new Error(`Unexpected path: ${name}`);
       return userDataPath;
@@ -39,9 +57,37 @@ function mockPlatform(platform: NodeJS.Platform): void {
 }
 
 describe("cli-installer", () => {
+  it("checks an installed CLI without waiting for remote releases", async () => {
+    releaseLookup.mockImplementation(() => new Promise(() => undefined));
+    execFileMock.mockImplementation((command, args, _options, callback) => {
+      if (args[0] === "-lc")
+        return callback(null, "/usr/local/bin/prompthub", "");
+      return callback(
+        null,
+        command.endsWith("prompthub") ? "0.5.9" : "9.15.0",
+        "",
+      );
+    });
+    await expect(getCliStatus()).resolves.toMatchObject({
+      installed: true,
+      version: "0.5.9",
+      error: undefined,
+    });
+    expect(releaseLookup).not.toHaveBeenCalled();
+    expect(
+      execFileMock.mock.calls.every(([, , options]) => options.timeout <= 3000),
+    ).toBe(true);
+  });
+
   beforeEach(() => {
+    appRuntime.isPackaged = true;
+    releaseLookup.mockReset().mockResolvedValue({
+      releaseTag: "v0.5.9",
+      location:
+        "https://github.com/legeling/PromptHub/releases/download/v0.5.9/prompthub-cli-0.5.9.tgz",
+    });
     fs.rmSync(userDataPath, { recursive: true, force: true });
-    mockPlatform(originalPlatform);
+    mockPlatform("darwin");
     execFileMock.mockReset();
     execFileMock.mockImplementation(
       (
@@ -56,8 +102,139 @@ describe("cli-installer", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     fs.rmSync(userDataPath, { recursive: true, force: true });
     mockPlatform(originalPlatform);
+  });
+
+  it.each(["pnpm", "npm"] as const)(
+    "installs the published CLI with %s independently of the desktop version",
+    async (method) => {
+      appRuntime.isPackaged = false;
+      execFileMock.mockImplementation(
+        (
+          command: string,
+          args: string[],
+          _options: unknown,
+          callback: (
+            error: Error | null,
+            stdout: string,
+            stderr: string,
+          ) => void,
+        ) => {
+          if (args[0] === "--version") return callback(null, "9.15.0", "");
+          if (args[0] === "add" || args[0] === "install") {
+            expect(command).toBe(method);
+            expect(args[2]).toBe(
+              "https://github.com/legeling/PromptHub/releases/download/v0.5.9/prompthub-cli-0.5.9.tgz",
+            );
+            return callback(null, "installed", "");
+          }
+          callback(new Error("not found"), "", "");
+        },
+      );
+      const status = await getCliStatus();
+      expect(status.releaseTag).toBe("v0.5.9");
+      expect(status.manualInstallCommands[method]).not.toContain("0.6.0");
+      expect(await installCli(method)).toMatchObject({ success: true });
+      expect(
+        execFileMock.mock.calls.some(([, args]) => args.includes("pack")),
+      ).toBe(false);
+    },
+  );
+
+  it("reports release lookup failure without building or installing a guessed source", async () => {
+    releaseLookup.mockRejectedValue(
+      new Error("CLI release lookup failed: HTTP 403"),
+    );
+    const status = await getCliStatus();
+    expect(status.installSource).toBe("");
+    expect(status.manualInstallCommands).toEqual({ pnpm: "", npm: "" });
+    expect(await installCli("pnpm")).toMatchObject({
+      success: false,
+      errorCode: "network",
+    });
+    expect(
+      execFileMock.mock.calls.some(([, args]) =>
+        ["add", "install", "pack"].includes(args[0]),
+      ),
+    ).toBe(false);
+  });
+
+  it("installs with the pnpm home on the child PATH and detects the installed command there", async () => {
+    mockPlatform("win32");
+    vi.stubEnv("PNPM_HOME", "E:\\Dev Tools\\pnpm");
+    const originalPath = process.env.PATH;
+    let installed = false;
+    execFileMock.mockImplementation(
+      (
+        command: string,
+        args: string[],
+        options: { env: NodeJS.ProcessEnv },
+        callback: (error: Error | null, stdout: string, stderr: string) => void,
+      ) => {
+        if (command === "pnpm" && args[0] === "--version")
+          return callback(null, "9.15.0", "");
+        if (command === "pnpm" && args[0] === "config")
+          return callback(null, "undefined", "");
+        const childPath = options.env.PATH ?? "";
+        if (command === "pnpm" && args[0] === "bin") {
+          return childPath.split(";").includes("E:\\Dev Tools\\pnpm")
+            ? callback(null, "E:\\Dev Tools\\pnpm", "")
+            : callback(
+                new Error("global bin directory is not in PATH"),
+                "",
+                "",
+              );
+        }
+        if (command === "pnpm" && args[0] === "add") {
+          if (!childPath.split(";").includes("E:\\Dev Tools\\pnpm"))
+            return callback(
+              new Error("global bin directory is not in PATH"),
+              "",
+              "",
+            );
+          installed = true;
+          return callback(null, "installed", "");
+        }
+        if (installed && command === '"E:\\Dev Tools\\pnpm\\prompthub.cmd"')
+          return callback(null, "0.5.9", "");
+        callback(new Error("command not found"), "", "");
+      },
+    );
+    expect(await installCli("pnpm")).toMatchObject({ success: true });
+    expect(await getCliStatus()).toMatchObject({
+      installed: true,
+      version: "0.5.9",
+      globalBinDirectory: "E:\\Dev Tools\\pnpm",
+    });
+    expect(process.env.PATH).toBe(originalPath);
+  });
+
+  it("captures stderr and classifies an unresolved pnpm environment failure", async () => {
+    execFileMock.mockImplementation(
+      (
+        command: string,
+        args: string[],
+        _options: unknown,
+        callback: (error: Error | null, stdout: string, stderr: string) => void,
+      ) => {
+        if (command === "pnpm" && args[0] === "--version")
+          return callback(null, "9.15.0", "");
+        if (command === "pnpm" && args[0] === "add")
+          return callback(
+            new Error("Command failed"),
+            "",
+            "ERR_PNPM_NO_GLOBAL_BIN_DIR: Unable to find global bin directory",
+          );
+        callback(new Error("command not found"), "", "");
+      },
+    );
+    expect(await installCli("pnpm")).toMatchObject({
+      success: false,
+      errorCode: "environment",
+      stderr: "ERR_PNPM_NO_GLOBAL_BIN_DIR: Unable to find global bin directory",
+    });
   });
 
   function writeLegacyWrapper(): string {
@@ -121,6 +298,84 @@ describe("cli-installer", () => {
 
     expect(status.legacyCommandPath).toBeNull();
     expect(fs.existsSync(wrapperPath)).toBe(true);
+  });
+
+  it.each(["win32", "darwin"] as const)(
+    "resolves CLI paths before probing and skips an old wrapper outside userData on %s",
+    async (platform) => {
+      mockPlatform(platform);
+      const wrapper = path.join(
+        userDataPath,
+        "old-profile",
+        platform === "win32" ? "prompthub.cmd" : "prompthub",
+      );
+      const standalone = path.join(
+        userDataPath,
+        "standalone",
+        platform === "win32" ? "prompthub.cmd" : "prompthub",
+      );
+      fs.mkdirSync(path.dirname(wrapper), { recursive: true });
+      fs.writeFileSync(
+        wrapper,
+        platform === "win32"
+          ? '@echo off\n"D:\\Apps\\PromptHub.exe" --cli %*\n'
+          : '#!/bin/sh\nexec "/Applications/PromptHub.app/Contents/MacOS/PromptHub" --cli "$@"\n',
+      );
+      execFileMock.mockImplementation(
+        (
+          command: string,
+          args: string[],
+          _options: unknown,
+          callback: (
+            error: Error | null,
+            stdout: string,
+            stderr: string,
+          ) => void,
+        ) => {
+          if (command === "where.exe" && args[0] === "prompthub")
+            return callback(null, `${wrapper}\n${standalone}\n`, "");
+          if (args.join(" ") === "-lc command -v prompthub")
+            return callback(null, wrapper, "");
+          if (command === standalone) return callback(null, "0.5.9", "");
+          if (command === "prompthub")
+            return callback(null, "desktop-started", "");
+          callback(new Error("not found"), "", "");
+        },
+      );
+      const status = await getCliStatus();
+      expect(status.installed).toBe(platform === "win32");
+      expect(status.version).toBe(platform === "win32" ? "0.5.9" : null);
+      expect(
+        execFileMock.mock.calls.some(
+          ([command, args]) =>
+            (command === "prompthub" || command === wrapper) &&
+            args.includes("--version"),
+        ),
+      ).toBe(false);
+      expect(fs.existsSync(wrapper)).toBe(true);
+    },
+  );
+
+  it("does not launch the desktop executable returned by Windows command lookup", async () => {
+    mockPlatform("win32");
+    execFileMock.mockImplementation(
+      (
+        command: string,
+        args: string[],
+        _options: unknown,
+        callback: (error: Error | null, stdout: string, stderr: string) => void,
+      ) => {
+        if (command === "where.exe" && args[0] === "prompthub")
+          return callback(null, "D:\\Apps\\PromptHub.exe\n", "");
+        callback(new Error("not found"), "", "");
+      },
+    );
+    expect((await getCliStatus()).installed).toBe(false);
+    expect(
+      execFileMock.mock.calls.some(
+        ([command]) => command === "D:\\Apps\\PromptHub.exe",
+      ),
+    ).toBe(false);
   });
 
   it("removes the exact legacy wrapper only after standalone installation succeeds", async () => {

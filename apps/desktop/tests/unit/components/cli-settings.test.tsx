@@ -1,10 +1,12 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import type { FormEvent } from "react";
+import { StrictMode, type FormEvent } from "react";
+import type { CliStatus } from "@prompthub/shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLISettings } from "../../../src/renderer/components/settings/CLISettings";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { useCLIStatusStore } from "../../../src/renderer/stores/cli-status.store";
 
 const showToast = vi.fn();
 const FALLBACK_CLI_STATUS = {
@@ -37,8 +39,233 @@ vi.mock("../../../src/renderer/components/ui/Toast", () => ({
 }));
 
 describe("CLISettings", () => {
+  it("labels a persisted observation and bypasses it on refresh", async () => {
+    const getStatus = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...FALLBACK_CLI_STATUS,
+        installed: true,
+        version: "0.5.9",
+        fromCache: true,
+        checkedAt: 1700000000000,
+      })
+      .mockResolvedValue({
+        ...FALLBACK_CLI_STATUS,
+        installed: true,
+        version: "0.6.0",
+        fromCache: false,
+      });
+    installWindowMocks({ electron: { cli: { getStatus, install: vi.fn() } } });
+    await renderWithI18n(<CLISettings />, { language: "en" });
+    expect(await screen.findByText(/Last checked:/)).toBeInTheDocument();
+    expect(getStatus).toHaveBeenCalledWith(false);
+    fireEvent.click(screen.getByRole("button", { name: /Refresh Status/i }));
+    await waitFor(() => expect(getStatus).toHaveBeenLastCalledWith(true));
+    await waitFor(() =>
+      expect(screen.queryByText(/Last checked:/)).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows release discovery errors while retaining local detection and allowing refresh", async () => {
+    installWindowMocks({
+      electron: {
+        cli: {
+          getStatus: vi.fn().mockResolvedValue({
+            ...FALLBACK_CLI_STATUS,
+            packageManager: "pnpm",
+            error: "CLI release lookup failed: HTTP 403",
+          }),
+          install: vi.fn(),
+        },
+      },
+    });
+    await act(async () => {
+      await renderWithI18n(<CLISettings />, { language: "en" });
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("HTTP 403");
+    expect(
+      screen.getByRole("button", { name: /Install with pnpm/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Refresh Status/i }),
+    ).toBeEnabled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
+    useCLIStatusStore.setState(useCLIStatusStore.getInitialState(), true);
+  });
+
+  it("reuses the installed status when returning to settings and only refreshes on demand", async () => {
+    const getStatus = vi.fn().mockResolvedValue({
+      ...FALLBACK_CLI_STATUS,
+      installed: true,
+      version: "0.5.9",
+      packageManager: "pnpm",
+    });
+    installWindowMocks({ electron: { cli: { getStatus, install: vi.fn() } } });
+    const view = await renderWithI18n(<CLISettings />, { language: "en" });
+    expect(await screen.findByText("Installed")).toBeInTheDocument();
+    view.unmount();
+    await renderWithI18n(<CLISettings />, { language: "en" });
+    expect(screen.getByText("Installed")).toBeInTheDocument();
+    expect(screen.queryByText("Not Installed")).not.toBeInTheDocument();
+    expect(getStatus).toHaveBeenCalledTimes(1);
+    getStatus.mockResolvedValueOnce({
+      ...FALLBACK_CLI_STATUS,
+      packageManager: "pnpm",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh Status" }));
+    expect(await screen.findByText("Not Installed")).toBeInTheDocument();
+    expect(getStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares an unfinished check across StrictMode and page remounts", async () => {
+    let finish: (status: CliStatus) => void = () => {
+      throw new Error("Check has not started");
+    };
+    const getStatus = vi.fn().mockReturnValue(
+      new Promise<CliStatus>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    installWindowMocks({ electron: { cli: { getStatus, install: vi.fn() } } });
+    const view = await renderWithI18n(
+      <StrictMode>
+        <CLISettings />
+      </StrictMode>,
+      { language: "en" },
+    );
+    await waitFor(() => expect(getStatus).toHaveBeenCalledTimes(1));
+    view.unmount();
+    await renderWithI18n(<CLISettings />, { language: "en" });
+    await act(async () => {
+      finish({ ...FALLBACK_CLI_STATUS, installed: true, version: "0.5.9" });
+    });
+    expect(await screen.findByText("Installed")).toBeInTheDocument();
+    expect(getStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains a failed check without automatic retries and recovers with manual refresh", async () => {
+    const getStatus = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("IPC disconnected"));
+    installWindowMocks({ electron: { cli: { getStatus, install: vi.fn() } } });
+    const view = await renderWithI18n(<CLISettings />, { language: "en" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "IPC disconnected",
+    );
+    expect(screen.queryByText("Not Installed")).not.toBeInTheDocument();
+    view.unmount();
+    await renderWithI18n(<CLISettings />, { language: "en" });
+    expect(screen.getByRole("alert")).toHaveTextContent("IPC disconnected");
+    expect(getStatus).toHaveBeenCalledTimes(1);
+    getStatus.mockResolvedValueOnce({
+      ...FALLBACK_CLI_STATUS,
+      installed: true,
+      version: "0.5.9",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh Status" }));
+    expect(await screen.findByText("Installed")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(getStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps install diagnostics on the page and shows a localized summary instead of raw stderr", async () => {
+    const install = vi
+      .fn()
+      .mockResolvedValueOnce({
+        success: false,
+        method: "pnpm",
+        command: "pnpm add -g cli.tgz",
+        error: "Command failed: pnpm add -g cli.tgz",
+        errorCode: "environment",
+        stderr: "ERR_PNPM_NO_GLOBAL_BIN_DIR",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        method: "npm",
+        command: "npm install -g cli.tgz",
+      });
+    installWindowMocks({
+      electron: {
+        cli: {
+          getStatus: vi.fn().mockResolvedValue({
+            ...FALLBACK_CLI_STATUS,
+            packageManager: "pnpm",
+          }),
+          install,
+        },
+      },
+    });
+    await act(async () => {
+      await renderWithI18n(<CLISettings />, { language: "en" });
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Install with pnpm" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Install with pnpm" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "pnpm global command directory is unavailable",
+    );
+    expect(alert).toHaveTextContent("ERR_PNPM_NO_GLOBAL_BIN_DIR");
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringContaining("pnpm global command directory is unavailable"),
+      "error",
+    );
+    expect(showToast).not.toHaveBeenCalledWith(
+      expect.stringContaining("Command failed:"),
+      "error",
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Install with npm" }));
+    });
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        "PromptHub CLI installed successfully",
+        "success",
+      ),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("catches rejected IPC installation requests and restores the install action", async () => {
+    const install = vi.fn().mockRejectedValue(new Error("IPC unavailable"));
+    installWindowMocks({
+      electron: {
+        cli: {
+          getStatus: vi.fn().mockResolvedValue({
+            ...FALLBACK_CLI_STATUS,
+            packageManager: "pnpm",
+          }),
+          install,
+        },
+      },
+    });
+    const errorLog = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    try {
+      await act(async () => {
+        await renderWithI18n(<CLISettings />, { language: "en" });
+      });
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Install with pnpm" }),
+        );
+      });
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Failed to install PromptHub CLI",
+      );
+      expect(screen.getByRole("alert")).toHaveTextContent("IPC unavailable");
+      expect(
+        screen.getByRole("button", { name: "Install with pnpm" }),
+      ).toBeEnabled();
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
   it("shows detected CLI status and install source", async () => {
@@ -175,6 +402,12 @@ describe("CLISettings", () => {
       "success",
     );
     expect(onSubmit).not.toHaveBeenCalled();
+    expect(await screen.findByText("Installed")).toBeInTheDocument();
+    expect(getStatus).toHaveBeenCalledTimes(2);
+    expect(useCLIStatusStore.getState().status).toMatchObject({
+      installed: true,
+      version: "0.5.8-beta.2",
+    });
   });
 
   it("explains and completes migration from the retired desktop wrapper", async () => {

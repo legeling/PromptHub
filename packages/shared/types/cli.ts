@@ -1,6 +1,8 @@
 export type CliInstallMethod = "pnpm" | "npm";
 
 export interface CliStatus {
+  checkedAt?: number;
+  fromCache?: boolean;
   installed: boolean;
   command: string;
   version: string | null;
@@ -18,6 +20,7 @@ export interface CliStatus {
   manualInstallCommands: Record<CliInstallMethod, string>;
   installSource: string;
   legacyCommandPath?: string | null;
+  globalBinDirectory?: string | null;
   error?: string;
 }
 
@@ -29,4 +32,5 @@ export interface CliInstallResult {
   stderr?: string;
   removedLegacyCommand?: boolean;
   error?: string;
+  errorCode?: "environment" | "permission" | "timeout" | "network" | "failed";
 }

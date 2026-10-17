@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, net } from "electron";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path, { win32 as pathWin32 } from "node:path";
@@ -7,6 +7,12 @@ import type {
   CliInstallResult,
   CliStatus,
 } from "@prompthub/shared/types";
+import { preparePnpmEnvironment } from "./cli-install-environment";
+import { resolveCliInstallSource } from "./cli-install-source";
+import {
+  CliCommandError,
+  describeCliInstallFailure,
+} from "./cli-install-error";
 
 const CLI_COMMAND = "prompthub";
 const PACKAGE_MANAGER_NOT_FOUND_ERROR = "CLI_PACKAGE_MANAGER_NOT_FOUND";
@@ -27,7 +33,9 @@ function execFileAsync(
   return new Promise((resolve, reject) => {
     execFile(command, args, options, (error, stdout, stderr) => {
       if (error) {
-        reject(error);
+        reject(
+          new CliCommandError(error, stdout.toString(), stderr.toString()),
+        );
         return;
       }
       resolve({
@@ -38,29 +46,17 @@ function execFileAsync(
   });
 }
 
-function getReleaseTag(): string {
-  return `v${app.getVersion()}`;
+function buildInstallCommand(method: CliInstallMethod, source: string): string {
+  if (!source) return "";
+  return `${method} ${method === "pnpm" ? "add" : "install"} -g ${source}`;
 }
 
-function getCliTarballName(): string {
-  return `prompthub-cli-${app.getVersion()}.tgz`;
-}
-
-function getCliInstallSource(): string {
-  return `https://github.com/legeling/PromptHub/releases/download/${getReleaseTag()}/${getCliTarballName()}`;
-}
-
-function buildInstallCommand(method: CliInstallMethod): string {
-  const installSource = getCliInstallSource();
-  return method === "pnpm"
-    ? `pnpm add -g ${installSource}`
-    : `npm install -g ${installSource}`;
-}
-
-function getManualInstallCommands(): Record<CliInstallMethod, string> {
+function getManualInstallCommands(
+  source: string,
+): Record<CliInstallMethod, string> {
   return {
-    pnpm: buildInstallCommand("pnpm"),
-    npm: buildInstallCommand("npm"),
+    pnpm: buildInstallCommand("pnpm", source),
+    npm: buildInstallCommand("npm", source),
   };
 }
 
@@ -68,9 +64,16 @@ async function runCommand(
   command: string,
   args: string[],
   timeout = COMMAND_TIMEOUT_MS,
+  env = process.env,
 ): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync(command, args, {
-    env: process.env,
+  const executable =
+    process.platform === "win32" &&
+    pathWin32.isAbsolute(command) &&
+    /[\s&()]/.test(command)
+      ? `"${command}"`
+      : command;
+  return execFileAsync(executable, args, {
+    env,
     timeout,
     windowsHide: true,
     maxBuffer: 1024 * 1024,
@@ -130,7 +133,7 @@ async function resolveFromLoginShell(command: string): Promise<string | null> {
       ["-lc", `command -v ${command}`],
       {
         env: process.env,
-        timeout: 10000,
+        timeout: VERSION_PROBE_TIMEOUT_MS,
         windowsHide: true,
         maxBuffer: 64 * 1024,
       },
@@ -161,7 +164,11 @@ async function resolveFromWindowsWhere(command: string): Promise<string[]> {
   }
 
   try {
-    const { stdout } = await runCommand("where.exe", [command]);
+    const { stdout } = await runCommand(
+      "where.exe",
+      [command],
+      VERSION_PROBE_TIMEOUT_MS,
+    );
     return uniqueNonEmpty(stdout.split(/\r?\n/).map(cleanCommandPath));
   } catch {
     return [];
@@ -177,7 +184,11 @@ async function detectVersionAtPath(
   pathSource: CommandPathSource | null;
 }> {
   try {
-    if (isRecognizedLegacyWrapper(commandPath)) {
+    if (
+      isRecognizedLegacyWrapper(commandPath) ||
+      (process.platform === "win32" &&
+        pathWin32.basename(commandPath).toLowerCase() === "prompthub.exe")
+    ) {
       return { version: null, path: null, pathSource: null };
     }
     const { stdout } = await runCommand(
@@ -225,7 +236,11 @@ async function queryNpmValue(args: string[]): Promise<string | null> {
 
   for (const npmExecutable of npmExecutables) {
     try {
-      const { stdout } = await runCommand(npmExecutable, args);
+      const { stdout } = await runCommand(
+        npmExecutable,
+        args,
+        VERSION_PROBE_TIMEOUT_MS,
+      );
       const value = stdout.trim();
       if (value) {
         return value;
@@ -268,15 +283,14 @@ async function detectPrompthubFromWindowsNpmPrefix(): Promise<{
   return detectVersionFromCandidates(candidates, "npm-prefix");
 }
 
-async function detectCommandVersion(
-  command: string,
-  options?: { skipDirect?: boolean },
-): Promise<{
+async function detectCommandVersion(command: string): Promise<{
   version: string | null;
   path: string | null;
   pathSource: CommandPathSource | null;
 }> {
-  if (!options?.skipDirect) {
+  // Resolve PromptHub before running it: PATH may still point to a desktop
+  // wrapper from a previous data directory, or to PromptHub.exe itself.
+  if (command !== CLI_COMMAND) {
     const directResult = await detectVersionAtPath(command, "app-env");
     if (directResult.version) {
       return directResult;
@@ -313,20 +327,58 @@ async function detectPackageManager(command: CliInstallMethod): Promise<{
   return detectCommandVersion(command);
 }
 
-async function detectPrompthubVersion(): Promise<string | null> {
-  const result = await detectCommandVersion(CLI_COMMAND, {
-    skipDirect: Boolean(findLegacyCliWrapper()),
-  });
-  return result.version;
+async function detectPrompthubVersion(): Promise<{
+  version: string | null;
+  globalBinDirectory?: string | null;
+}> {
+  const result = await detectCommandVersion(CLI_COMMAND);
+  if (result.version) return { version: result.version };
+  const pnpm = await detectPackageManager("pnpm");
+  if (!pnpm.version) return { version: null };
+  const prepared = await preparePnpmEnvironment((args, env) =>
+    runCommand(pnpm.path || "pnpm", args, VERSION_PROBE_TIMEOUT_MS, env),
+  );
+  if (!prepared.globalBinDirectory) return { version: null };
+  const paths = process.platform === "win32" ? pathWin32 : path;
+  const command = paths.join(
+    prepared.globalBinDirectory,
+    process.platform === "win32" ? "prompthub.cmd" : CLI_COMMAND,
+  );
+  if (isRecognizedLegacyWrapper(command)) return { version: null };
+  try {
+    const { stdout } = await runCommand(
+      command,
+      ["--version"],
+      VERSION_PROBE_TIMEOUT_MS,
+      prepared.env,
+    );
+    return {
+      version: stdout.trim() || null,
+      globalBinDirectory: prepared.globalBinDirectory,
+    };
+  } catch {
+    return { version: null };
+  }
 }
 
-export async function getCliStatus(): Promise<CliStatus> {
+export async function getCliStatus(
+  requireInstallSource = false,
+): Promise<CliStatus> {
   const legacyCommandPath = findLegacyCliWrapper();
   const [pnpmInfo, npmInfo, installedVersion] = await Promise.all([
     detectPackageManager("pnpm"),
     detectPackageManager("npm"),
     detectPrompthubVersion(),
   ]);
+  const release =
+    installedVersion.version && !requireInstallSource
+      ? { source: null, error: undefined }
+      : await resolveCliInstallSource((input, init) => net.fetch(input, init))
+          .then((source) => ({ source, error: undefined }))
+          .catch((error: unknown) => ({
+            source: null,
+            error: error instanceof Error ? error.message : String(error),
+          }));
 
   const packageManager: CliInstallMethod | null = pnpmInfo.version
     ? "pnpm"
@@ -351,32 +403,44 @@ export async function getCliStatus(): Promise<CliStatus> {
       : packageManager === "npm"
         ? npmInfo.pathSource
         : null;
-  const installSource = getCliInstallSource();
-  const installCommand = packageManager
-    ? buildInstallCommand(packageManager)
-    : null;
+  const installSource = release.source?.location ?? "";
+  const installCommand =
+    packageManager && installSource
+      ? buildInstallCommand(packageManager, installSource)
+      : null;
 
   return {
-    installed: Boolean(installedVersion),
+    installed: Boolean(installedVersion.version),
     command: CLI_COMMAND,
-    version: installedVersion,
+    version: installedVersion.version,
+    globalBinDirectory: installedVersion.globalBinDirectory,
     packageManager,
     packageManagerVersion,
     packageManagerPath,
     packageManagerPathSource,
-    releaseTag: getReleaseTag(),
+    releaseTag: release.source?.releaseTag ?? "",
     installCommand,
-    manualInstallCommands: getManualInstallCommands(),
+    manualInstallCommands: getManualInstallCommands(installSource),
     installSource,
+    error: release.error,
     legacyCommandPath,
   };
 }
 
-export async function installCli(
+async function performCliInstall(
   method?: CliInstallMethod,
 ): Promise<CliInstallResult> {
-  const status = await getCliStatus();
+  const status = await getCliStatus(true);
   const installMethod = method ?? status.packageManager;
+
+  if (status.error)
+    return {
+      success: false,
+      method: installMethod ?? "npm",
+      command: "",
+      error: status.error,
+      errorCode: "network",
+    };
 
   if (!installMethod) {
     return {
@@ -387,7 +451,7 @@ export async function installCli(
     };
   }
 
-  const installSource = getCliInstallSource();
+  const installSource = status.installSource;
   const args =
     installMethod === "pnpm"
       ? ["add", "-g", installSource]
@@ -406,7 +470,18 @@ export async function installCli(
 
   try {
     const executable = packageManagerInfo.path || installMethod;
-    const { stdout, stderr } = await runCommand(executable, args);
+    const prepared =
+      installMethod === "pnpm"
+        ? await preparePnpmEnvironment((probeArgs, env) =>
+            runCommand(executable, probeArgs, VERSION_PROBE_TIMEOUT_MS, env),
+          )
+        : { env: process.env };
+    const { stdout, stderr } = await runCommand(
+      executable,
+      args,
+      COMMAND_TIMEOUT_MS,
+      prepared.env,
+    );
     const removedLegacyCommand = removeLegacyCliWrapper(
       status.legacyCommandPath ?? null,
     );
@@ -419,12 +494,28 @@ export async function installCli(
       removedLegacyCommand,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
       method: installMethod,
       command,
-      error: message,
+      ...describeCliInstallFailure(error),
+    };
+  }
+}
+
+export async function installCli(
+  method?: CliInstallMethod,
+): Promise<CliInstallResult> {
+  try {
+    if (method !== undefined && method !== "pnpm" && method !== "npm")
+      throw new Error("Invalid CLI installation method");
+    return await performCliInstall(method);
+  } catch (error) {
+    return {
+      success: false,
+      method: method === "pnpm" ? "pnpm" : "npm",
+      command: "",
+      ...describeCliInstallFailure(error),
     };
   }
 }
