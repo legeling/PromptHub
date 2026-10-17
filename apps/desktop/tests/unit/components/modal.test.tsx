@@ -12,6 +12,26 @@ import { renderWithI18n } from "../../helpers/i18n";
  *  - Component never unmounting children when isOpen flips to false
  */
 describe("Modal", () => {
+  it("keeps the footer outside the scrolling body", async () => {
+    await renderWithI18n(
+      <Modal
+        isOpen
+        onClose={vi.fn()}
+        title="Distribution"
+        footer={<button type="button">Apply</button>}
+      >
+        <p>Long content</p>
+      </Modal>,
+    );
+    const body = screen.getByText("Long content").parentElement;
+    expect(body).toHaveClass("overflow-y-auto");
+    expect(body).not.toContainElement(
+      screen.getByRole("button", { name: "Apply" }),
+    );
+    expect(body?.parentElement).toContainElement(
+      screen.getByRole("button", { name: "Apply" }),
+    );
+  });
   beforeEach(() => {
     document.body.style.overflow = "";
   });
@@ -33,14 +53,21 @@ describe("Modal", () => {
 
   it("renders title, subtitle, and children when open", async () => {
     await renderWithI18n(
-      <Modal isOpen onClose={vi.fn()} title="Edit prompt" subtitle="Update fields">
+      <Modal
+        isOpen
+        onClose={vi.fn()}
+        title="Edit prompt"
+        subtitle="Update fields"
+      >
         <p>Modal body</p>
       </Modal>,
     );
     const dialog = screen.getByRole("dialog", { name: "Edit prompt" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(dialog).toHaveAccessibleDescription("Update fields");
-    expect(screen.getByRole("heading", { name: "Edit prompt" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Edit prompt" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Update fields")).toBeInTheDocument();
     expect(screen.getByText("Modal body")).toBeInTheDocument();
   });
@@ -91,7 +118,9 @@ describe("Modal", () => {
       </Modal>,
     );
 
-    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Name" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: "Name" }),
+    );
   });
 
   it("cancels pending nested entrance animation frames on unmount", async () => {
@@ -264,7 +293,10 @@ describe("Modal", () => {
 
     const closeButton = screen.getByRole("button", { name: "Close" });
     expect(closeButton).toHaveAttribute("type", "button");
-    expect(closeButton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(closeButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
 
     fireEvent.click(closeButton);
 

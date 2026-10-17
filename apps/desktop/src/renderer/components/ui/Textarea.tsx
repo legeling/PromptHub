@@ -14,6 +14,8 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** Enable Markdown list auto-continuation (-, *, +, 1., - [ ]) */
   /** 启用 Markdown 列表自动续行功能 */
   enableMarkdownList?: boolean;
+  /** Use square inner edges when the textarea sits inside a shared editor frame. */
+  embedded?: boolean;
 }
 
 /**
@@ -144,6 +146,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     value,
     onChange,
     enableMarkdownList,
+    embedded = false,
     onKeyDown,
     id,
     'aria-describedby': ariaDescribedBy,
@@ -223,14 +226,15 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     };
 
     return (
-      <div className="space-y-1.5">
+      <div className={clsx('space-y-1.5', embedded && 'flex min-h-0 flex-1 flex-col')}>
         {label && (
           <label htmlFor={textareaId} className="block text-sm font-medium text-foreground">
             {label}
           </label>
         )}
         <div className={clsx(
-          'flex rounded-xl overflow-hidden',
+          'flex overflow-hidden',
+          embedded ? 'min-h-0 flex-1 rounded-none ring-inset' : 'rounded-xl',
           'bg-muted/50 border-0',
           'focus-within:ring-2 focus-within:ring-primary/30 focus-within:bg-background',
           'transition-all duration-base',
@@ -261,7 +265,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             aria-describedby={describedBy}
             aria-invalid={error ? true : ariaInvalid}
             className={clsx(
-              'flex-1 min-h-[120px] py-3 bg-transparent border-0',
+              'flex-1 min-w-0 py-3 bg-transparent border-0',
+              embedded ? 'min-h-0' : 'min-h-[120px]',
               showLineNumbers ? 'pl-2 pr-4' : 'px-4',
               'text-sm placeholder:text-muted-foreground',
               'focus:outline-none',

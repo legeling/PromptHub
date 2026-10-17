@@ -19,7 +19,8 @@ export interface SelectProps {
   ariaLabel?: string;
   triggerClassName?: string;
   disabled?: boolean;
-  presentation?: "default" | "form";
+  presentation?: "default" | "form" | "compact";
+  dropdownWidth?: "default" | "trigger";
 }
 
 export function Select({
@@ -32,12 +33,14 @@ export function Select({
   triggerClassName,
   disabled = false,
   presentation = "default",
+  dropdownWidth = "default",
 }: SelectProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const listboxId = useId();
   const [dropdownStyle, setDropdownStyle] = useState<{
-    top: number;
+    top?: number;
+    bottom?: number;
     left: number;
     width: number;
     maxHeight: number;
@@ -58,21 +61,20 @@ export function Select({
       }
 
       const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - rect.bottom - 12;
-      const spaceAbove = rect.top - 12;
-      const dropdownHeight = Math.min(
-        280,
-        Math.max(spaceBelow, spaceAbove, 160),
-      );
+      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - 16);
+      const spaceAbove = Math.max(0, rect.top - 16);
       const shouldOpenUpwards = spaceBelow < 160 && spaceAbove > spaceBelow;
+      const width = Math.min(
+        dropdownWidth === "trigger" ? rect.width : Math.max(180, rect.width),
+        Math.max(0, window.innerWidth - 24),
+      );
 
       setDropdownStyle({
-        top: shouldOpenUpwards
-          ? Math.max(12, rect.top - dropdownHeight - 4)
-          : Math.min(viewportHeight - dropdownHeight - 12, rect.bottom + 4),
-        left: rect.left,
-        width: rect.width,
-        maxHeight: dropdownHeight,
+        top: shouldOpenUpwards ? undefined : rect.bottom + 4,
+        bottom: shouldOpenUpwards ? viewportHeight - rect.top + 4 : undefined,
+        left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
+        width,
+        maxHeight: Math.min(280, shouldOpenUpwards ? spaceAbove : spaceBelow),
       });
     };
 
@@ -85,7 +87,7 @@ export function Select({
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [isOpen]);
+  }, [isOpen, dropdownWidth]);
 
   // Close when clicking outside
   // 点击外部关闭
@@ -170,7 +172,22 @@ export function Select({
             selectedOption ? "text-foreground" : "text-muted-foreground"
           }`}
         >
-          {displayLabel}
+          {presentation === "compact" ? (
+            <span className="grid">
+              <span className="col-start-1 row-start-1">{displayLabel}</span>
+              {options.map((option) => (
+                <span
+                  key={option.value}
+                  aria-hidden="true"
+                  className="invisible col-start-1 row-start-1 h-0 overflow-hidden"
+                >
+                  {option.label}
+                </span>
+              ))}
+            </span>
+          ) : (
+            displayLabel
+          )}
         </span>
         <ChevronDownIcon
           aria-hidden="true"
@@ -191,11 +208,12 @@ export function Select({
               aria-label={ariaLabel}
               className={
                 presentation === "form"
-                  ? "fixed min-w-[180px] overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95 duration-quick ease-enter"
-                  : "fixed min-w-[180px] overflow-hidden rounded-xl border border-border/80 bg-popover p-1 shadow-[0_18px_48px_rgba(0,0,0,0.22)] animate-in fade-in-0 zoom-in-95 duration-quick ease-enter"
+                  ? "fixed overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95 duration-quick ease-enter"
+                  : "fixed overflow-hidden rounded-xl border border-border/80 bg-popover p-1 shadow-[0_18px_48px_rgba(0,0,0,0.22)] animate-in fade-in-0 zoom-in-95 duration-quick ease-enter"
               }
               style={{
                 top: dropdownStyle.top,
+                bottom: dropdownStyle.bottom,
                 left: dropdownStyle.left,
                 width: dropdownStyle.width,
                 maxHeight: dropdownStyle.maxHeight,
@@ -264,7 +282,7 @@ function OptionItem({
 }: {
   option: SelectOption;
   isSelected: boolean;
-  presentation: "default" | "form";
+  presentation: "default" | "form" | "compact";
   onSelect: () => void;
 }) {
   const formPresentation = presentation === "form";
@@ -277,7 +295,7 @@ function OptionItem({
       aria-label={option.labelText}
       onClick={onSelect}
       className={`
-        w-full ${formPresentation ? "rounded-sm px-3 py-2.5" : "rounded-lg px-2.5 py-2"} text-sm text-left
+        w-full ${formPresentation ? "rounded-sm px-3 py-2.5" : presentation === "compact" ? "rounded-lg px-2.5 py-1.5" : "rounded-lg px-2.5 py-2"} text-sm text-left
         flex items-center justify-between gap-2
         transition-colors duration-instant
         ${

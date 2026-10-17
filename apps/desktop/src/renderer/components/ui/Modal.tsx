@@ -12,6 +12,7 @@ interface ModalProps {
   subtitle?: string;
   headerActions?: ReactNode;
   children: ReactNode;
+  footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "full" | "fullscreen";
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
@@ -45,6 +46,7 @@ export function Modal({
   subtitle,
   headerActions,
   children,
+  footer,
   size = "md",
   showCloseButton = true,
   closeOnBackdrop = true,
@@ -181,7 +183,9 @@ export function Modal({
         aria-hidden="true"
         className={clsx(
           "absolute inset-0 bg-background/60 backdrop-blur-md transition-opacity",
-          isAnimating ? "duration-base ease-enter opacity-100" : "duration-quick ease-exit opacity-0",
+          isAnimating
+            ? "duration-base ease-enter opacity-100"
+            : "duration-quick ease-exit opacity-0",
         )}
         onClick={closeOnBackdrop ? onClose : undefined}
       />
@@ -255,6 +259,7 @@ export function Modal({
 
         {/* Form / Content Area */}
         <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
+        {footer && <div className="shrink-0 bg-card px-6 pb-5">{footer}</div>}
       </div>
     </div>
   );

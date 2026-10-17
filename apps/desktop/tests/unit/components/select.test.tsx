@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,96 @@ import { renderWithI18n } from "../../helpers/i18n";
 describe("Select", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["trigger", "104px"],
+    ["default", "180px"],
+  ] as const)(
+    "uses %s dropdown width for a compact trigger",
+    async (dropdownWidth, expectedWidth) => {
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+        x: 20,
+        y: 20,
+        left: 20,
+        top: 20,
+        right: 124,
+        bottom: 56,
+        width: 104,
+        height: 36,
+        toJSON: () => ({}),
+      });
+      await renderWithI18n(
+        <Select
+          ariaLabel="Columns"
+          value="auto"
+          onChange={vi.fn()}
+          dropdownWidth={dropdownWidth}
+          options={[{ value: "auto", label: "Auto" }]}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Columns" }));
+      const menu = screen.getByRole("listbox");
+      expect(menu.style.width).toBe(expectedWidth);
+      expect(menu).not.toHaveClass("min-w-[180px]");
+    },
+  );
+
+  it("anchors upward menus to the trigger and keeps narrow right-edge menus in view", async () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 940,
+      y: 700,
+      left: 940,
+      top: 700,
+      right: 1010,
+      bottom: 740,
+      width: 70,
+      height: 40,
+      toJSON: () => ({}),
+    });
+    await renderWithI18n(
+      <Select
+        ariaLabel="Quality"
+        value="standard"
+        onChange={vi.fn()}
+        options={[{ value: "standard", label: "Standard" }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Quality" }));
+    const menu = screen.getByRole("listbox");
+    expect(menu.style.bottom).toBe(`${window.innerHeight - 700 + 4}px`);
+    expect(menu.style.top).toBe("");
+    expect(
+      Number.parseFloat(menu.style.left) + Number.parseFloat(menu.style.width),
+    ).toBeLessThanOrEqual(window.innerWidth - 12);
+  });
+
+  it("opens below the trigger without overlapping it when space below is limited", async () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 20,
+      y: 500,
+      left: 20,
+      top: 500,
+      right: 240,
+      bottom: 540,
+      width: 220,
+      height: 40,
+      toJSON: () => ({}),
+    });
+    await renderWithI18n(
+      <Select
+        ariaLabel="Ratio"
+        value="1:1"
+        onChange={vi.fn()}
+        options={[{ value: "1:1", label: "1:1" }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ratio" }));
+    const menu = screen.getByRole("listbox");
+    expect(menu.style.top).toBe("544px");
+    expect(Number.parseFloat(menu.style.maxHeight)).toBeLessThanOrEqual(
+      window.innerHeight - 544 - 12,
+    );
   });
 
   it("does not attach outside-click listeners while closed", async () => {
@@ -81,7 +171,9 @@ describe("Select", () => {
 
     const option = await screen.findByText("Marketing");
     expect(option).toBeInTheDocument();
-    expect(option.closest("[style='overflow: hidden; height: 80px;']")).toBeNull();
+    expect(
+      option.closest("[style='overflow: hidden; height: 80px;']"),
+    ).toBeNull();
 
     await user.click(option);
 
@@ -112,7 +204,9 @@ describe("Select", () => {
     await user.click(trigger);
 
     expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("listbox", { name: "Language" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("listbox", { name: "Language" }),
+    ).toBeInTheDocument();
     const selectedOption = screen.getByRole("option", { name: "English" });
     expect(selectedOption).toHaveAttribute("aria-selected", "true");
     expect(selectedOption.querySelector("svg")).toHaveAttribute(
