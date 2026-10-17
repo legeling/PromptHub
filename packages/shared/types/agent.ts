@@ -879,6 +879,10 @@ export interface AgentProviderCurrentState {
   status: AgentProviderCurrentStateStatus;
   currentProfileId: string | null;
   nativeConfig: AgentProviderNativeConfigSummary | null;
+  officialService?: {
+    summary: AgentProviderNativeConfigSummary;
+    status: "active" | "inactive" | "unavailable";
+  } | null;
   checkedAt: number;
 }
 
@@ -886,20 +890,29 @@ export interface AgentCodexAccountSummary {
   id: string;
   label: string;
   maskedAccountId: string | null;
+  /** Display-only identity from the encrypted login; never an authorization claim. */
+  email?: string | null;
+  /** Missing on older responses; false identifies a pending login record. */
+  hasAuth?: boolean;
+  /** Selected pending record awaiting an explicit save after native login. */
+  isLoginPending?: boolean;
   isActive: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
 export interface ImportAgentCodexAccountRequest {
+  /** Existing record to rename or update. Omit to create. */
+  id?: string;
   label: string;
   /** Write-only. Main process responses must never echo this value. */
-  authJson: string;
+  authJson?: string;
 }
 
 export interface AgentCodexAccountActivationResult {
   account: AgentCodexAccountSummary;
   preservedCurrent: boolean;
+  requiresLogin?: boolean;
 }
 
 export interface CreateAgentProviderProfileRequest {
@@ -1358,6 +1371,7 @@ export type AgentQuotaPeriod =
 
 export type AgentQuotaValue =
   | { kind: "percentage"; remainingPercent: number }
+  | { kind: "balance"; remainingAmount: number; unit: "credits" | "resets" }
   | {
       kind: "amount";
       remainingPercent: number;

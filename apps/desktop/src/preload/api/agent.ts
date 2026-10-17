@@ -272,8 +272,15 @@ export const agentApi = {
     ipcRenderer.invoke(IPC_CHANNELS.AGENT_USAGE_GET, agentId, options),
   listCodexAccounts: (): Promise<AgentCodexAccountSummary[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.AGENT_CODEX_ACCOUNTS_LIST),
-  saveCurrentCodexAccount: (label: string): Promise<AgentCodexAccountSummary> =>
-    ipcRenderer.invoke(IPC_CHANNELS.AGENT_CODEX_ACCOUNT_SAVE_CURRENT, label),
+  saveCurrentCodexAccount: (
+    label: string,
+    id?: string,
+  ): Promise<AgentCodexAccountSummary> =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.AGENT_CODEX_ACCOUNT_SAVE_CURRENT,
+      label,
+      id,
+    ),
   importCodexAccount: (
     request: ImportAgentCodexAccountRequest,
   ): Promise<AgentCodexAccountSummary> =>

@@ -31,16 +31,43 @@ export function registerAgentCodexAccountIPC(
   registerSafeHandler(IPC_CHANNELS.AGENT_CODEX_ACCOUNTS_LIST, () =>
     service.list(),
   );
-  registerSafeHandler(IPC_CHANNELS.AGENT_CODEX_ACCOUNT_SAVE_CURRENT, (label) =>
-    service.saveCurrent(label as string),
+  registerSafeHandler(
+    IPC_CHANNELS.AGENT_CODEX_ACCOUNT_SAVE_CURRENT,
+    (label, id) => {
+      if (
+        typeof label !== "string" ||
+        (id !== undefined && typeof id !== "string")
+      ) {
+        throw new Error("AGENT_CODEX_ACCOUNT_REQUEST_INVALID");
+      }
+      return service.saveCurrent(label, typeof id === "string" ? id : undefined);
+    },
   );
-  registerSafeHandler(IPC_CHANNELS.AGENT_CODEX_ACCOUNT_IMPORT, (request) =>
-    service.importAccount(request as ImportAgentCodexAccountRequest),
-  );
+  registerSafeHandler(IPC_CHANNELS.AGENT_CODEX_ACCOUNT_IMPORT, (request) => {
+    if (!isAccountRequest(request))
+      throw new Error("AGENT_CODEX_ACCOUNT_REQUEST_INVALID");
+    return service.importAccount(request);
+  });
   registerSafeHandler(IPC_CHANNELS.AGENT_CODEX_ACCOUNT_ACTIVATE, (id) =>
     service.activate(id as string),
   );
   registerSafeHandler(IPC_CHANNELS.AGENT_CODEX_ACCOUNT_DELETE, (id) =>
     service.delete(id as string),
+  );
+}
+
+function isAccountRequest(
+  value: unknown,
+): value is ImportAgentCodexAccountRequest {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return (
+    "label" in value &&
+    typeof value.label === "string" &&
+    (!("id" in value) ||
+      value.id === undefined ||
+      typeof value.id === "string") &&
+    (!("authJson" in value) ||
+      value.authJson === undefined ||
+      typeof value.authJson === "string")
   );
 }

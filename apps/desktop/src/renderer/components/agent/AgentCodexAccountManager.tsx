@@ -3,7 +3,9 @@ import {
   CheckCircle2Icon,
   KeyRoundIcon,
   Loader2Icon,
+  PencilIcon,
   PlusIcon,
+  RefreshCwIcon,
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -24,10 +26,17 @@ export function AgentCodexAccountManager() {
   const { showToast } = useToast();
   const [accounts, setAccounts] = useState<AgentCodexAccountSummary[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<"save" | "import" | null>(null);
+  const [dialog, setDialog] = useState<
+    "save" | "import" | "edit" | "capture" | null
+  >(null);
+  const [editTarget, setEditTarget] = useState<AgentCodexAccountSummary | null>(
+    null,
+  );
   const [label, setLabel] = useState("");
   const [authJson, setAuthJson] = useState("");
   const [deleteTarget, setDeleteTarget] =
+    useState<AgentCodexAccountSummary | null>(null);
+  const [loginTarget, setLoginTarget] =
     useState<AgentCodexAccountSummary | null>(null);
 
   const load = useCallback(async () => {
@@ -48,25 +57,28 @@ export function AgentCodexAccountManager() {
   function closeDialog(): void {
     if (busy) return;
     setDialog(null);
+    setEditTarget(null);
     setLabel("");
     setAuthJson("");
   }
 
   async function save(): Promise<void> {
     const name = label.trim();
-    if (!name) return;
+    if (!name || busy) return;
     setBusy("save");
     try {
-      if (dialog === "save") {
-        await window.api.agent.saveCurrentCodexAccount(name);
+      if (dialog === "save" || dialog === "capture") {
+        await window.api.agent.saveCurrentCodexAccount(name, editTarget?.id);
       } else {
         await window.api.agent.importCodexAccount({
+          id: editTarget?.id,
           label: name,
           authJson,
         });
       }
       await load();
       setDialog(null);
+      setEditTarget(null);
       setLabel("");
       setAuthJson("");
       showToast(t("agents.providerProfiles.codexAccounts.saved"), "success");
@@ -81,11 +93,22 @@ export function AgentCodexAccountManager() {
   }
 
   async function activate(account: AgentCodexAccountSummary): Promise<void> {
-    if (account.isActive) return;
+    if (account.isActive || busy) return;
     setBusy(account.id);
     try {
-      await window.api.agent.activateCodexAccount(account.id);
+      const result = await window.api.agent.activateCodexAccount(account.id);
+      setLoginTarget(null);
       await load();
+      if (result.requiresLogin) {
+        setEditTarget(result.account);
+        setLabel(result.account.label);
+        setDialog("capture");
+        showToast(
+          t("agents.providerProfiles.codexAccounts.readyToLogin"),
+          "success",
+        );
+        return;
+      }
       showToast(
         t("agents.providerProfiles.codexAccounts.switched", {
           name: account.label,
@@ -109,6 +132,7 @@ export function AgentCodexAccountManager() {
       await window.api.agent.deleteCodexAccount(deleteTarget.id);
       setDeleteTarget(null);
       await load();
+      showToast(t("agents.providerProfiles.codexAccounts.deleted"), "success");
     } catch (error) {
       showToast(
         t(`agents.providerProfiles.codexAccounts.errors.${errorKey(error)}`),
@@ -132,6 +156,15 @@ export function AgentCodexAccountManager() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={t("agents.refresh")}
+              onClick={() => void load()}
+              disabled={busy !== null}
+            >
+              <RefreshCwIcon className="h-3.5 w-3.5" />
+            </Button>
             <Button
               size="sm"
               variant="secondary"
@@ -165,7 +198,7 @@ export function AgentCodexAccountManager() {
             {accounts.map((account) => (
               <li
                 key={account.id}
-                className="flex min-h-16 items-center gap-3 py-3"
+                className="flex min-h-16 flex-wrap items-center gap-3 py-3"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   {account.isActive ? (
@@ -174,7 +207,7 @@ export function AgentCodexAccountManager() {
                     <KeyRoundIcon className="h-4 w-4" />
                   )}
                 </span>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-40">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium text-foreground">
                       {account.label}
@@ -184,14 +217,72 @@ export function AgentCodexAccountManager() {
                         {t("agents.providerProfiles.codexAccounts.current")}
                       </span>
                     ) : null}
+                    {account.hasAuth === false ? (
+                      <span className="text-xs text-muted-foreground">
+                        {t(
+                          account.isLoginPending
+                            ? "agents.providerProfiles.codexAccounts.loginSelected"
+                            : "agents.providerProfiles.codexAccounts.pending",
+                        )}
+                      </span>
+                    ) : null}
                   </div>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {account.maskedAccountId ??
-                      t("agents.providerProfiles.codexAccounts.unknownAccount")}
+                  <span className="mt-0.5 block break-all text-xs text-muted-foreground">
+                    {account.email ??
+                      account.maskedAccountId ??
+                      t(
+                        account.hasAuth === false
+                          ? "agents.providerProfiles.codexAccounts.pendingHint"
+                          : "agents.providerProfiles.codexAccounts.unknownAccount",
+                      )}
                   </span>
                 </div>
-                {!account.isActive ? (
-                  <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t(
+                      "agents.providerProfiles.codexAccounts.edit",
+                      { name: account.label },
+                    )}
+                    disabled={busy !== null}
+                    onClick={() => {
+                      setEditTarget(account);
+                      setLabel(account.label);
+                      setAuthJson("");
+                      setDialog("edit");
+                    }}
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                  {account.hasAuth === false ? (
+                    <>
+                      {!account.isLoginPending ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={busy !== null}
+                          onClick={() => setLoginTarget(account)}
+                        >
+                          {t(
+                            "agents.providerProfiles.codexAccounts.switchAndLogin",
+                          )}
+                        </Button>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          setEditTarget(account);
+                          setLabel(account.label);
+                          setDialog("capture");
+                        }}
+                      >
+                        {t("agents.providerProfiles.codexAccounts.capture")}
+                      </Button>
+                    </>
+                  ) : !account.isActive ? (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -203,22 +294,22 @@ export function AgentCodexAccountManager() {
                       ) : null}
                       {t("agents.providerProfiles.codexAccounts.switch")}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={t(
-                        "agents.providerProfiles.codexAccounts.delete",
-                        {
-                          name: account.label,
-                        },
-                      )}
-                      onClick={() => setDeleteTarget(account)}
-                      disabled={busy !== null}
-                    >
-                      <Trash2Icon className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : null}
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t(
+                      "agents.providerProfiles.codexAccounts.delete",
+                      {
+                        name: account.label,
+                      },
+                    )}
+                    onClick={() => setDeleteTarget(account)}
+                    disabled={busy !== null}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -229,9 +320,13 @@ export function AgentCodexAccountManager() {
         isOpen={dialog !== null}
         onClose={closeDialog}
         title={t(
-          dialog === "save"
-            ? "agents.providerProfiles.codexAccounts.saveTitle"
-            : "agents.providerProfiles.codexAccounts.importTitle",
+          dialog === "edit"
+            ? "agents.providerProfiles.codexAccounts.editTitle"
+            : dialog === "capture"
+              ? "agents.providerProfiles.codexAccounts.captureTitle"
+              : dialog === "save"
+                ? "agents.providerProfiles.codexAccounts.saveTitle"
+                : "agents.providerProfiles.codexAccounts.importTitle",
         )}
         size="lg"
         closeOnBackdrop={!busy}
@@ -252,16 +347,33 @@ export function AgentCodexAccountManager() {
               "agents.providerProfiles.codexAccounts.labelExample",
             )}
             autoFocus
+            maxLength={80}
+            disabled={busy !== null}
           />
-          {dialog === "import" ? (
-            <Textarea
-              label={t("agents.providerProfiles.codexAccounts.authJson")}
-              value={authJson}
-              onChange={(event) => setAuthJson(event.target.value)}
-              rows={10}
-              spellCheck={false}
-              className="font-mono text-xs"
-            />
+          {dialog === "capture" ? (
+            <p className="rounded-lg bg-muted p-3 text-sm leading-6 text-muted-foreground">
+              {t("agents.providerProfiles.codexAccounts.captureHint")}
+            </p>
+          ) : null}
+          {dialog === "import" || dialog === "edit" ? (
+            <>
+              <Textarea
+                label={t("agents.providerProfiles.codexAccounts.authJson")}
+                value={authJson}
+                onChange={(event) => setAuthJson(event.target.value)}
+                rows={10}
+                spellCheck={false}
+                className="font-mono text-xs"
+                disabled={busy !== null}
+              />
+              <p className="text-xs leading-5 text-muted-foreground">
+                {t(
+                  dialog === "edit"
+                    ? "agents.providerProfiles.codexAccounts.editAuthHint"
+                    : "agents.providerProfiles.codexAccounts.optionalAuthHint",
+                )}
+              </p>
+            </>
           ) : null}
           <p className="text-xs leading-5 text-muted-foreground">
             {t("agents.providerProfiles.codexAccounts.securityHint")}
@@ -270,14 +382,7 @@ export function AgentCodexAccountManager() {
             <Button type="button" variant="secondary" onClick={closeDialog}>
               {t("common.cancel")}
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                busy !== null ||
-                !label.trim() ||
-                (dialog === "import" && !authJson.trim())
-              }
-            >
+            <Button type="submit" disabled={busy !== null || !label.trim()}>
               {busy === "save" ? (
                 <Loader2Icon className="h-4 w-4 animate-spin" />
               ) : null}
@@ -286,6 +391,23 @@ export function AgentCodexAccountManager() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={loginTarget !== null}
+        onClose={() => {
+          if (!busy) setLoginTarget(null);
+        }}
+        onConfirm={() => {
+          if (loginTarget) void activate(loginTarget);
+        }}
+        title={t("agents.providerProfiles.codexAccounts.switchAndLogin")}
+        message={t("agents.providerProfiles.codexAccounts.switchLoginMessage", {
+          name: loginTarget?.label ?? "",
+        })}
+        confirmText={t("agents.providerProfiles.codexAccounts.switchAndLogin")}
+        cancelText={t("common.cancel")}
+        isLoading={loginTarget !== null && busy === loginTarget.id}
+      />
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}
