@@ -2,6 +2,59 @@
 
 ## 2026-10-17
 
+### Skill 扩展回归：存在未修复问题
+
+范围为 Skill 导入、完整包、商店、分发状态、同步、导出和 CLI 现有能力。
+下表为 Windows / Node 24.19.0 的扩展运行结果；不是全工作区或发布验收。
+命令在对应包目录调用 `node node_modules/vitest/vitest.mjs`，其中 `node`
+指 Node 24；各命令附加 `--minWorkers=1`，unit 的 `--maxWorkers=2`，其余为 1。
+
+| 包及 Vitest 参数 | 实际结果 |
+| --- | --- |
+| Desktop：`run --project unit skill github-token platform-visibility renderer-persistence` | 175 文件：158 通过、17 失败；1621 用例通过、73 失败；3 个未处理异常 |
+| Desktop：`run --project integration skill` | 13 文件：12 通过、1 失败；61 用例通过、5 失败 |
+| Core：`run skill` | 22 文件：21 通过、1 失败；167 用例通过、1 失败 |
+| CLI：`run skill` | 7 文件：5 通过、2 失败；30 用例通过、2 失败；其中共享目录测试隔离已随后修复，定向复跑 1 用例通过 |
+
+已复现的实现缺口（尚未修复）：
+
+- `use-skill-platform.ts` 的异步状态读取缺少请求归属检查。复用 hook 并切换
+  Skill 后，旧请求的成功结果会覆盖新 Skill 的安装状态并清空选择；旧请求的
+  失败也会污染新 Skill 的错误状态。
+- 首次读取失败后，显式刷新成功仍未清除 `platformError`，分发操作继续被错误
+  状态拦截。
+- 新增 `skill-platform-request-lifecycle.test.ts`：正常加载/选择用例通过，
+  上述 3 个回归用例失败。证据来自真实 hook 与 Zustand store，preload I/O
+  使用替身；部分详情入口会通过 key 重挂载组件，不能据此断言所有界面切换均
+  触发竞态。实际 GUI 入口仍需验收。
+
+测试隔离修复：`apps/cli/tests/skill-shared-target.test.ts` 原先仅修改 `HOME`，
+Windows 的 `os.homedir()` 仍解析真实用户目录。现改为将 `os.homedir()` 定向到
+测试临时目录，并在清理时恢复。真实用户共享目录中本轮产生的固定测试夹具已
+核对内容并清理。修复后真实 CLI/Core 安装、分发、卸载及源目录保留用例通过。
+
+其余失败分类与待核实边界：
+
+- Git 夹具依赖宿主 `core.autocrlf`、`core.symlinks`。临时对子进程设为
+  `false`、`true` 后，`skill-installer-remote-git-package.test.ts` 与
+  `skill-nested-git-source-update.test.ts` 合计 22 用例通过；未改全局 Git 配置。
+  此定向诊断使用 Node 22.23.3，不能替代上表 Node 24 的原始失败记录。
+- Core `skill-snapshot-limits.test.ts` 的 FIFO 夹具调用 Windows 不存在的
+  `mkfifo`，在进入产品逻辑前失败。
+- 多项旧测试仍假设 Cherry Studio 支持软链接或使用旧数据库布局，与当前
+  `skills.md` 的 2.1.6 / copy-only 契约不一致；另有旧 UI 文案、导出 API、
+  Windows 路径与 mock 行为断言。不得通过恢复过时契约或放宽断言消除失败。
+- `skill-platform-symlink-reconciliation.test.ts` 的实际文件系统旧链接恢复
+  失败、CLI `skill.test.ts` 的 repo-files 路径分隔符契约，以及导航/状态缓存
+  测试仍需逐项定位，尚不能全部归因于环境。
+- 未处理异常涉及 jsdom 缺少 `setPointerCapture` 和 i18next mock 缺少导出。
+
+新增/修改测试的定向 ESLint、Desktop `typecheck:tests`、CLI `typecheck`
+通过；类型检查使用默认 Node 22，存在 engine 警告。已通过的集成测试覆盖真实
+preload/IPC、SQLite 和临时文件系统链路；网络与认证使用夹具，不证明实际
+GitHub 网络、用户 SSH 凭据或原生 Agent 可用。未运行 GUI/E2E、Web 或 release
+harness；未修复产品逻辑，新增回归保持失败，未关闭相关问题。
+
 ### 全工作区分批提交检查：未完成验收
 
 本次记录覆盖分批提交前的合并工作区检查；各功能文档中既有定向验收记录不等于
