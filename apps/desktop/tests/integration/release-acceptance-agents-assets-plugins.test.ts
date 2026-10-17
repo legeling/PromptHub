@@ -87,9 +87,20 @@ it("Plugin canonical local import/full package/version/reopen/update/distribute/
     expect(fs.readFileSync(path.join(dest, "assets/blob.bin"))).toEqual(
       Buffer.from([0, 128, 255]),
     );
-    expect(fs.existsSync(path.join(dest, target.nativeMarker))).toBe(true);
+    if (target.id === "shared-agents") {
+      expect(fileInventory(dest)).toEqual(sourceBefore);
+      expect(fs.realpathSync(dest)).toBe(
+        fs.realpathSync(installed.plugin.localPackagePath),
+      );
+    } else {
+      if (!target.nativeMarker)
+        throw new Error(`Missing native marker: ${target.id}`);
+      expect(fs.existsSync(path.join(dest, target.nativeMarker))).toBe(true);
+    }
     expect(result.targets[0].mode).toBe(
-      target.id === "codex" ? "symlink" : "copy",
+      target.id === "codex" || target.id === "shared-agents"
+        ? "symlink"
+        : "copy",
     );
     service.removePluginDistribution({ pluginId: id, targetIds: [target.id] });
     expect(fs.existsSync(dest)).toBe(false);

@@ -96,6 +96,7 @@ beforeEach(async () => {
     library: null,
     targetStatus: [],
     targetPresets: [],
+    deployablePlatformIds: [],
     selectedServerId: null,
   });
 });
@@ -180,7 +181,11 @@ async function source() {
 
 it("imports selected Agent MCP through the renderer action and real preload/IPC, edits, reopens and projects real credentials", async () => {
   const { preset, status } = await source();
-  useMcpStore.setState({ targetPresets: [preset], targetStatus: status });
+  useMcpStore.setState({
+    targetPresets: [preset],
+    targetStatus: status,
+    deployablePlatformIds: ["antigravity"],
+  });
   const bindings = {
     t: i18n.t,
     showToast: vi.fn(),

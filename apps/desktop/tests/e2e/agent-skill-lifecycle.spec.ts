@@ -236,10 +236,10 @@ test("creates, reads, updates, versions, distributes, restarts, and deletes a Sk
     await page.getByRole("button", { name: "Symlink", exact: true }).click();
     await codexTarget.click();
     await page
-      .getByRole("button", { name: "Install All", exact: true })
+      .getByRole("button", { name: "Apply changes", exact: true })
       .click();
     await expect(
-      page.getByText(`${SKILL_NAME} installed to Codex successfully`, {
+      page.getByText("Applied 1 changes.", {
         exact: true,
       }),
     ).toBeVisible();
@@ -254,15 +254,11 @@ test("creates, reads, updates, versions, distributes, restarts, and deletes a Sk
       mode: "symlink",
     });
 
-    await page.getByRole("button", { name: "Uninstall", exact: true }).click();
-    const uninstallDialog = page.getByRole("alertdialog", {
-      name: "Confirm Uninstall",
-    });
-    await expect(uninstallDialog).toBeVisible();
-    await uninstallDialog.getByRole("button", { name: "Uninstall" }).click();
-    await expect(
-      page.getByText("Uninstall successful", { exact: true }),
-    ).toBeVisible();
+    await expect(codexTarget).toHaveAttribute("aria-pressed", "true");
+    await codexTarget.click();
+    await page
+      .getByRole("button", { name: "Apply changes", exact: true })
+      .click();
     await expect.poll(() => fs.existsSync(installedSkillDir)).toBe(false);
     expect(fs.existsSync(sourceRepoPath)).toBe(true);
     expect(fs.readFileSync(path.join(sourceRepoPath, EXTRA_FILE), "utf8")).toBe(
