@@ -131,21 +131,38 @@ describe("AgentUsageBanner", () => {
   });
 
   it.each([
-    ["network-error", "Cannot connect to the usage service. Check your network and PromptHub proxy settings."],
-    ["timeout", "The usage request timed out. Check your network and proxy, then retry."],
-    ["http-error", "The usage service returned an HTTP error. Try again later."],
+    [
+      "network-error",
+      "Cannot connect to the usage service. Check your network and PromptHub proxy settings.",
+    ],
+    [
+      "timeout",
+      "The usage request timed out. Check your network and proxy, then retry.",
+    ],
+    [
+      "http-error",
+      "The usage service returned an HTTP error. Try again later.",
+    ],
     ["unrecognized", "Usage data could not be retrieved right now. Try again."],
-  ])("explains %s and retries through the usage API", async (errorCode, message) => {
-    window.api.agent.getUsage = vi.fn()
-      .mockResolvedValueOnce(createQuota({ status: "unavailable", metrics: [], errorCode }))
-      .mockResolvedValueOnce(createQuota());
-    await renderWithI18n(<AgentUsageBanner agent={agent} />);
-    expect(await screen.findByText(message)).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(screen.queryByText(message)).toBeNull());
-    expect(await screen.findAllByRole("progressbar")).toHaveLength(2);
-    expect(window.api.agent.getUsage).toHaveBeenLastCalledWith(agent.id, { forceRefresh: true });
-  });
+  ])(
+    "explains %s and retries through the usage API",
+    async (errorCode, message) => {
+      window.api.agent.getUsage = vi
+        .fn()
+        .mockResolvedValueOnce(
+          createQuota({ status: "unavailable", metrics: [], errorCode }),
+        )
+        .mockResolvedValueOnce(createQuota());
+      await renderWithI18n(<AgentUsageBanner agent={agent} />);
+      expect(await screen.findByText(message)).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+      expect(await screen.findAllByRole("progressbar")).toHaveLength(2);
+      expect(window.api.agent.getUsage).toHaveBeenLastCalledWith(agent.id, {
+        forceRefresh: true,
+      });
+    },
+  );
 
   it("renders compact window meters with countdowns and plan badge without a provider note", async () => {
     window.api.agent.getUsage = vi.fn().mockResolvedValue(createQuota());
@@ -154,12 +171,12 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(
       screen.getByRole("progressbar", {
-        name: "7-day window: 82% remaining",
+        name: "Weekly balance: 82% remaining",
       }),
     ).toBeVisible();
     expect(screen.queryByRole("progressbar", { name: /Opus/ })).toBeNull();
@@ -194,7 +211,7 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "7-day Opus window: 5% remaining",
+        name: "Weekly Opus balance: 5% remaining",
       }),
     ).toBeVisible();
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
@@ -221,12 +238,12 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "7-day window: 82% remaining",
+        name: "Weekly balance: 82% remaining",
       }),
     ).toBeVisible();
     expect(screen.getAllByRole("progressbar")).toHaveLength(1);
     expect(
-      screen.queryByRole("progressbar", { name: /5-hour window/ }),
+      screen.queryByRole("progressbar", { name: /5-hour balance/ }),
     ).toBeNull();
     expect(screen.queryByRole("progressbar", { name: /Opus/ })).toBeNull();
   });
@@ -273,7 +290,7 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "Weekly quota: 60% remaining",
+        name: "Weekly balance: 60% remaining",
       }),
     ).toBeVisible();
 
@@ -451,22 +468,22 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "Weekly quota: 80% remaining",
+        name: "Weekly balance: 80% remaining",
       }),
     ).toBeVisible();
     expect(
       screen.getByRole("progressbar", {
-        name: "5-hour window: 50% remaining",
+        name: "5-hour balance: 50% remaining",
       }),
     ).toBeVisible();
     expect(
       screen.getByRole("progressbar", {
-        name: "Weekly quota: 100% remaining",
+        name: "Weekly balance: 100% remaining",
       }),
     ).toBeVisible();
     expect(
       screen.getByRole("progressbar", {
-        name: "5-hour window: 25% remaining",
+        name: "5-hour balance: 25% remaining",
       }),
     ).toBeVisible();
     expect(screen.getAllByRole("progressbar")).toHaveLength(4);
@@ -475,19 +492,21 @@ describe("AgentUsageBanner", () => {
     const geminiGroup = document.querySelector(
       '[data-usage-group="model-group:gemini"]',
     );
-    const geminiRings = geminiGroup?.querySelector("[data-usage-rings]");
+    const geminiRings = geminiGroup?.lastElementChild;
     expect(geminiRings).toHaveClass("flex", "flex-wrap");
     expect(geminiRings?.children).toHaveLength(2);
-    expect(geminiRings?.children[0]).toHaveClass("w-44");
+    expect(geminiRings?.children[0]).toHaveClass(
+      "flex-[1_1_12rem]",
+      "border",
+      "rounded-xl",
+    );
     expect(
       screen.queryByText("Monthly prompt credits"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText("49,500 / 50,000 credits remaining"),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("usage-ring-groups")).toHaveStyle({
-      gridTemplateColumns: "repeat(auto-fit, minmax(min(25rem, 100%), 1fr))",
-    });
+    expect(screen.getByTestId("usage-groups")).toHaveClass("flex", "flex-wrap");
   });
 
   it("renders the banner for kimi after the usage capability flip", async () => {
@@ -532,10 +551,10 @@ describe("AgentUsageBanner", () => {
     await renderWithI18n(<AgentUsageBanner agent={kimiAgent} />);
 
     const weekly = await screen.findByRole("progressbar", {
-      name: "Weekly quota: 45% remaining",
+      name: "Weekly balance: 45% remaining",
     });
     const rolling = screen.getByRole("progressbar", {
-      name: "Rolling window: 90% remaining",
+      name: "Rolling balance: 90% remaining",
     });
     expect(weekly).toHaveAttribute("data-usage-visual", "ring");
     expect(rolling).toHaveAttribute("data-usage-visual", "ring");
@@ -550,7 +569,7 @@ describe("AgentUsageBanner", () => {
 
     await renderWithI18n(<AgentUsageBanner agent={agent} />);
     await screen.findByRole("progressbar", {
-      name: "5-hour window: 58% remaining",
+      name: "5-hour balance: 58% remaining",
     });
     expect(getUsage).toHaveBeenCalledTimes(1);
 
@@ -717,7 +736,7 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(window.api.agent.getUsage).toHaveBeenCalledWith("claude");
@@ -744,12 +763,12 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(
       screen.getByRole("progressbar", {
-        name: "7-day window: 82% remaining",
+        name: "Weekly balance: 82% remaining",
       }),
     ).toBeVisible();
   });
@@ -769,7 +788,7 @@ describe("AgentUsageBanner", () => {
 
     await renderWithI18n(<AgentUsageBanner agent={agent} />);
     await screen.findByRole("progressbar", {
-      name: "5-hour window: 58% remaining",
+      name: "5-hour balance: 58% remaining",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
@@ -777,7 +796,7 @@ describe("AgentUsageBanner", () => {
     await waitFor(() => expect(getUsage).toHaveBeenCalledTimes(2));
     expect(
       screen.getByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(screen.queryByRole("progressbar", { name: /: 0%/ })).toBeNull();
@@ -816,7 +835,7 @@ describe("AgentUsageBanner", () => {
 
     expect(
       screen.getByRole("progressbar", {
-        name: "5-hour window: 10% remaining",
+        name: "5-hour balance: 10% remaining",
       }),
     ).toBeVisible();
     expect(screen.queryByText("Cached quota · updating")).toBeNull();
@@ -827,11 +846,13 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     await waitFor(() => {
-      const raw = window.localStorage.getItem(`prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`);
+      const raw = window.localStorage.getItem(
+        `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
+      );
       expect(raw).not.toBeNull();
       const cached = JSON.parse(raw as string) as AgentUsageQuota;
       const fiveHour = cached.metrics.find(
@@ -860,7 +881,7 @@ describe("AgentUsageBanner", () => {
     ).toBeVisible();
     expect(
       screen.getByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
   });
@@ -888,7 +909,7 @@ describe("AgentUsageBanner", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     resolveUsage(createQuota());
     await screen.findByRole("progressbar", {
-      name: "5-hour window: 58% remaining",
+      name: "5-hour balance: 58% remaining",
     });
   });
 
@@ -913,16 +934,19 @@ describe("AgentUsageBanner", () => {
 
     expect(
       await screen.findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("progressbar", { name: "5-hour window: 0%" }),
+      screen.queryByRole("progressbar", { name: "5-hour balance: 0%" }),
     ).not.toBeInTheDocument();
   });
 
   it("rejects malformed V2 cache payloads and tolerates storage failures", () => {
-    window.localStorage.setItem(`prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`, "{");
+    window.localStorage.setItem(
+      `prompthub.agent-usage.claude.${encodeURIComponent(agent.paths.root)}`,
+      "{",
+    );
     expect(readCachedAgentUsage("claude", agent.paths.root)).toBeNull();
 
     window.localStorage.setItem(
@@ -979,7 +1003,9 @@ describe("AgentUsageBanner", () => {
     setItem.mockImplementationOnce(() => {
       throw new Error("quota exceeded");
     });
-    expect(() => writeCachedAgentUsage(agent.paths.root, createQuota())).not.toThrow();
+    expect(() =>
+      writeCachedAgentUsage(agent.paths.root, createQuota()),
+    ).not.toThrow();
     setItem.mockRestore();
   });
 
@@ -1029,7 +1055,9 @@ describe("AgentUsageBanner", () => {
         }),
       ),
     );
-    expect(readCachedAgentUsage("antigravity", agent.paths.root)?.metrics).toHaveLength(1);
+    expect(
+      readCachedAgentUsage("antigravity", agent.paths.root)?.metrics,
+    ).toHaveLength(1);
   });
 
   it("ignores a completed request after the banner unmounts", async () => {

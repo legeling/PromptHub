@@ -212,6 +212,19 @@ describe("agent provider tray service", () => {
       platformId: "claude",
       status: "verified",
       currentProfileId: "profile-1",
+      officialService: {
+        status: "inactive",
+        summary: {
+          classification: "official",
+          name: "Anthropic",
+          providerKind: "anthropic",
+          protocol: "platform-native",
+          endpoint: null,
+          model: null,
+          credential: "unknown",
+          officialRestoreAvailable: true,
+        },
+      },
       nativeConfig: {
         classification: "custom",
         name: "claude current",
@@ -228,6 +241,19 @@ describe("agent provider tray service", () => {
       platformId: "qwen",
       status: "none",
       currentProfileId: null,
+      officialService: {
+        status: "active",
+        summary: {
+          classification: "official",
+          name: "qwen current",
+          providerKind: "qwen-oauth",
+          protocol: "platform-native",
+          endpoint: null,
+          model: "qwen-model",
+          credential: "platform-managed",
+          officialRestoreAvailable: false,
+        },
+      },
       nativeConfig: {
         classification: "official",
         name: "qwen current",
@@ -274,6 +300,19 @@ describe("agent provider tray service", () => {
       status: "unavailable",
       currentProfileId: null,
       nativeConfig: null,
+      officialService: {
+        status: "unavailable",
+        summary: {
+          classification: "official",
+          name: "Anthropic",
+          providerKind: "anthropic",
+          protocol: "platform-native",
+          endpoint: null,
+          model: null,
+          credential: "unknown",
+          officialRestoreAvailable: false,
+        },
+      },
       checkedAt: expect.any(Number),
     });
   });

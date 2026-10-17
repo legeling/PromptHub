@@ -24,7 +24,7 @@ describe("Agent Codex account preload API", () => {
 
     expect(mocks.invoke.mock.calls).toEqual([
       [IPC_CHANNELS.AGENT_CODEX_ACCOUNTS_LIST],
-      [IPC_CHANNELS.AGENT_CODEX_ACCOUNT_SAVE_CURRENT, "Personal"],
+      [IPC_CHANNELS.AGENT_CODEX_ACCOUNT_SAVE_CURRENT, "Personal", undefined],
       [IPC_CHANNELS.AGENT_CODEX_ACCOUNT_IMPORT, imported],
       [IPC_CHANNELS.AGENT_CODEX_ACCOUNT_ACTIVATE, "account-2"],
       [IPC_CHANNELS.AGENT_CODEX_ACCOUNT_DELETE, "account-1"],

@@ -582,40 +582,42 @@ describe("Agent workspace shell", () => {
       ),
     ).toBeVisible();
 
-    await act(async () => useMcpStore.setState({
-      targetPresets: [
-        {
-          id: "preset-claude",
-          target: "claude",
-          scope: "global",
-          label: "Claude Code",
-          path: "~/.claude.json",
-          platformId: "claude",
-        },
-      ],
-      targetStatus: [
-        {
-          presetId: "preset-claude",
-          path: "~/.claude.json",
-          exists: true,
-          serverNames: ["fs"],
-          servers: [
-            {
-              id: "server-fs",
-              name: "fs",
-              displayName: "Filesystem",
-              transport: "stdio",
-              command: "npx",
-              args: ["-y", "@modelcontextprotocol/server-filesystem"],
-              enabled: true,
-              source: { type: "import", label: "Claude Code" },
-              createdAt: 0,
-              updatedAt: 0,
-            },
-          ],
-        },
-      ],
-    }));
+    await act(async () =>
+      useMcpStore.setState({
+        targetPresets: [
+          {
+            id: "preset-claude",
+            target: "claude",
+            scope: "global",
+            label: "Claude Code",
+            path: "~/.claude.json",
+            platformId: "claude",
+          },
+        ],
+        targetStatus: [
+          {
+            presetId: "preset-claude",
+            path: "~/.claude.json",
+            exists: true,
+            serverNames: ["fs"],
+            servers: [
+              {
+                id: "server-fs",
+                name: "fs",
+                displayName: "Filesystem",
+                transport: "stdio",
+                command: "npx",
+                args: ["-y", "@modelcontextprotocol/server-filesystem"],
+                enabled: true,
+                source: { type: "import", label: "Claude Code" },
+                createdAt: 0,
+                updatedAt: 0,
+              },
+            ],
+          },
+        ],
+      }),
+    );
     fireEvent.click(
       await screen.findByRole("button", {
         name: /open mcp details filesystem/i,
@@ -1201,12 +1203,12 @@ describe("Agent workspace shell", () => {
     const usageBanner = await screen.findByRole("region", { name: "Usage" });
     expect(
       await within(usageBanner).findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(
       within(usageBanner).getByRole("progressbar", {
-        name: "7-day window: 82% remaining",
+        name: "Weekly balance: 82% remaining",
       }),
     ).toBeVisible();
     expect(within(usageBanner).getByText("Claude Pro")).toBeVisible();

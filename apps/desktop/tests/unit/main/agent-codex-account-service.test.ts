@@ -72,7 +72,10 @@ describe("Agent Codex account service", () => {
   it("refuses disabled account mutations but preserves historical listing and cleanup", async () => {
     const { root, authPath, service } = await harness();
     await fs.writeFile(authPath, auth("current"));
-    const historical = await service.importAccount({ label: "Historical", authJson: auth("historical") });
+    const historical = await service.importAccount({
+      label: "Historical",
+      authJson: auth("historical"),
+    });
     const vaultPath = path.join(root, "private", "codex-accounts.json");
     const originalVault = await fs.readFile(vaultPath, "utf8");
     const originalAuth = await fs.readFile(authPath, "utf8");
@@ -81,12 +84,23 @@ describe("Agent Codex account service", () => {
     const enabled = definition.capabilities.providerModel.enabled;
     definition.capabilities.providerModel.enabled = false;
     try {
-      await expect(service.saveCurrent("Disabled")).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
-      await expect(service.importAccount({ label: "Disabled", authJson: auth("disabled") })).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
-      await expect(service.activate(historical.id)).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+      await expect(service.saveCurrent("Disabled")).rejects.toThrow(
+        "AGENT_PROVIDER_ADAPTER_UNSUPPORTED",
+      );
+      await expect(
+        service.importAccount({
+          label: "Disabled",
+          authJson: auth("disabled"),
+        }),
+      ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+      await expect(service.activate(historical.id)).rejects.toThrow(
+        "AGENT_PROVIDER_ADAPTER_UNSUPPORTED",
+      );
       expect(await fs.readFile(vaultPath, "utf8")).toBe(originalVault);
       expect(await fs.readFile(authPath, "utf8")).toBe(originalAuth);
-      expect((await service.list()).map(({ id }) => id)).toEqual([historical.id]);
+      expect((await service.list()).map(({ id }) => id)).toEqual([
+        historical.id,
+      ]);
       await service.delete(historical.id);
       expect(await service.list()).toEqual([]);
       expect(await fs.readFile(authPath, "utf8")).toBe(originalAuth);
@@ -128,7 +142,9 @@ describe("Agent Codex account service", () => {
     expect(persisted).not.toContain("token-acct-current");
     expect(persisted).not.toContain("token-acct-work");
     expect(persisted).not.toContain('"access_token"');
-    expect((await fs.stat(vaultPath)).mode & 0o777).toBe(0o600);
+    // Windows permissions are ACL-based; POSIX mode bits are not supported.
+    if (process.platform !== "win32")
+      expect((await fs.stat(vaultPath)).mode & 0o777).toBe(0o600);
     expect(JSON.stringify(listed)).not.toContain("token-");
   });
 
@@ -150,7 +166,8 @@ describe("Agent Codex account service", () => {
 
     expect(result.preservedCurrent).toBe(true);
     expect(await fs.readFile(authPath, "utf8")).toBe(auth("acct-b"));
-    expect((await fs.stat(authPath)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32")
+      expect((await fs.stat(authPath)).mode & 0o777).toBe(0o600);
     expect(await fs.readFile(configPath, "utf8")).toBe('model = "gpt-5.6"\n');
     expect((await fs.readdir(codexRoot)).sort()).toEqual([
       "auth.json",
@@ -173,10 +190,6 @@ describe("Agent Codex account service", () => {
     expect(await service.list()).toMatchObject([
       { id: account.id, isActive: true },
     ]);
-    await expect(service.delete(account.id)).rejects.toThrow(
-      "AGENT_CODEX_ACCOUNT_ACTIVE_DELETE_REFUSED",
-    );
-
     const result = await service.activate(account.id);
 
     expect(result).toMatchObject({ preservedCurrent: true });
@@ -205,7 +218,7 @@ describe("Agent Codex account service", () => {
     expect(await fs.readFile(authPath, "utf8")).toBe(original);
   });
 
-  it("rejects invalid input and refuses to delete the active account", async () => {
+  it("rejects invalid input and removes an active snapshot without logging out", async () => {
     const { root, authPath, service } = await harness();
     await expect(
       service.importAccount({ label: "", authJson: auth("a") }),
@@ -231,9 +244,9 @@ describe("Agent Codex account service", () => {
 
     await fs.writeFile(authPath, auth("acct-active"), { mode: 0o600 });
     const active = await service.saveCurrent("Active");
-    await expect(service.delete(active.id)).rejects.toThrow(
-      "AGENT_CODEX_ACCOUNT_ACTIVE_DELETE_REFUSED",
-    );
+    await service.delete(active.id);
+    expect(await service.list()).toEqual([]);
+    expect(await fs.readFile(authPath, "utf8")).toBe(auth("acct-active"));
     expect(await fs.readdir(path.join(root, "private"))).toEqual([
       "codex-accounts.json",
     ]);

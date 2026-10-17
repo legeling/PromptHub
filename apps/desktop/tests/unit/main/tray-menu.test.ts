@@ -159,7 +159,7 @@ describe("tray asset menu", () => {
     expect(details.map((item) => item.label)).toEqual([
       "Plan: Allegretto",
       "Cached",
-      "Weekly quota — 34% remaining · Resets in 1d 0h",
+      "Weekly balance — 34% remaining · Resets in 1d 0h",
       "Credits private — 81% remaining",
     ]);
     expect(JSON.stringify(template)).not.toMatch(/[\u0000\n]/);
@@ -286,10 +286,10 @@ describe("tray asset menu", () => {
     );
     const details = codex?.submenu as MenuItemConstructorOptions[];
     expect(details.map((item) => item.label)).toEqual([
-      "Daily quota — Unlimited",
-      "Monthly quota — 50% remaining · 5/10 credits",
-      "Billing cycle — Unknown",
-      "5-hour window — 20% remaining · Resets in 2h 0m",
+      "Daily balance — Unlimited",
+      "Monthly balance — 50% remaining · 5/10 credits",
+      "Billing-cycle balance — Unknown",
+      "5-hour balance — 20% remaining · Resets in 2h 0m",
       "Provider quota — 70% remaining · Reset pending",
       "Model Name — Unknown",
       "Amount — 60% remaining · 6/10",

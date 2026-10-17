@@ -87,9 +87,12 @@ describe("Agent Codex account manager", () => {
     fireEvent.change(within(dialog).getByLabelText("Account name"), {
       target: { value: "Work" },
     });
-    fireEvent.change(within(dialog).getByLabelText("auth.json contents"), {
-      target: { value: secret },
-    });
+    fireEvent.change(
+      within(dialog).getByLabelText("auth.json content (optional)"),
+      {
+        target: { value: secret },
+      },
+    );
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
