@@ -1,3 +1,4 @@
+import { createCherryStudioSchema } from "../../fixtures/cherry-studio";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
@@ -772,7 +773,7 @@ describe("SkillInstaller.scanPlatformSkills", () => {
     const cherryRoot = path.join(tmpDir, "CherryStudio");
     const cherrySkillsDir = path.join(cherryRoot, "Data", "Skills");
     const skillDir = path.join(cherrySkillsDir, "writer");
-    const dbPath = path.join(cherryRoot, "Data", "agents.db");
+    const dbPath = path.join(cherryRoot, "Data", "cherrystudio.sqlite");
     await fs.mkdir(skillDir, { recursive: true });
     await fs.writeFile(
       path.join(skillDir, "SKILL.md"),
@@ -780,28 +781,14 @@ describe("SkillInstaller.scanPlatformSkills", () => {
     );
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
     const database = new Database(dbPath);
-    database.exec(`
-      CREATE TABLE skills (
-        id text PRIMARY KEY NOT NULL,
-        folder_name text NOT NULL
-      );
-      CREATE TABLE agents (
-        id text PRIMARY KEY NOT NULL,
-        accessible_paths text
-      );
-      CREATE TABLE agent_skills (
-        agent_id text NOT NULL,
-        skill_id text NOT NULL,
-        is_enabled integer DEFAULT false NOT NULL
-      );
-    `);
+    createCherryStudioSchema(database);
     database.run(
-      "INSERT INTO skills (id, folder_name) VALUES (?, ?)",
+      "INSERT INTO agent_global_skill (id, folder_name) VALUES (?, ?)",
       "skill-1",
       "writer",
     );
     database.run(
-      "INSERT INTO agent_skills (agent_id, skill_id, is_enabled) VALUES (?, ?, 0)",
+      "INSERT INTO agent_skill (agent_id, skill_id, is_enabled) VALUES (?, ?, 0)",
       "agent-1",
       "skill-1",
     );
@@ -819,11 +806,14 @@ describe("SkillInstaller.scanPlatformSkills", () => {
     const verifyDb = new Database(dbPath);
     try {
       expect(
-        verifyDb.get("SELECT id FROM skills WHERE id = ?", "skill-1"),
+        verifyDb.get(
+          "SELECT id FROM agent_global_skill WHERE id = ?",
+          "skill-1",
+        ),
       ).toBeFalsy();
       expect(
         verifyDb.get(
-          "SELECT skill_id FROM agent_skills WHERE skill_id = ?",
+          "SELECT skill_id FROM agent_skill WHERE skill_id = ?",
           "skill-1",
         ),
       ).toBeFalsy();
@@ -837,7 +827,7 @@ describe("SkillInstaller.scanPlatformSkills", () => {
     const cherryRoot = path.join(tmpDir, "CherryStudio");
     const cherrySkillsDir = path.join(cherryRoot, "Data", "Skills");
     const skillDir = path.join(cherrySkillsDir, "find-skills");
-    const dbPath = path.join(cherryRoot, "Data", "agents.db");
+    const dbPath = path.join(cherryRoot, "Data", "cherrystudio.sqlite");
     await fs.mkdir(skillDir, { recursive: true });
     await fs.writeFile(
       path.join(skillDir, "SKILL.md"),
@@ -845,24 +835,9 @@ describe("SkillInstaller.scanPlatformSkills", () => {
     );
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
     const database = new Database(dbPath);
-    database.exec(`
-      CREATE TABLE skills (
-        id text PRIMARY KEY NOT NULL,
-        folder_name text NOT NULL,
-        source text NOT NULL
-      );
-      CREATE TABLE agents (
-        id text PRIMARY KEY NOT NULL,
-        accessible_paths text
-      );
-      CREATE TABLE agent_skills (
-        agent_id text NOT NULL,
-        skill_id text NOT NULL,
-        is_enabled integer DEFAULT false NOT NULL
-      );
-    `);
+    createCherryStudioSchema(database);
     database.run(
-      "INSERT INTO skills (id, folder_name, source) VALUES (?, ?, ?)",
+      "INSERT INTO agent_global_skill (id, folder_name, source) VALUES (?, ?, ?)",
       "skill-1",
       "find-skills",
       "builtin",
@@ -1111,9 +1086,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     );
     expect(branchSpy).toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(result[0].source_url).toBe(
-      "git@github.com:icelemon/skills.git",
-    );
+    expect(result[0].source_url).toBe("git@github.com:icelemon/skills.git");
     expect(result[0].content_url).toBe(
       "https://raw.githubusercontent.com/icelemon/skills/main/github-skill/SKILL.md",
     );
