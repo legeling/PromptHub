@@ -1,5 +1,5 @@
 import { formatSkillPlatformError } from "../../services/skill-platform-error";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   Skill,
   SkillInstallMode,
@@ -186,14 +186,30 @@ export function useSkillPlatform(
     setDetectedPlatforms(detected);
   }, [runtimeCapabilities.skillPlatformIntegration]);
 
+  const activeSkill = useRef(skillId);
+  activeSkill.current = skillId;
+  const statusRequest = useRef(0);
+
   const refreshInstallStatus = useCallback(async () => {
+    const request = ++statusRequest.current;
     if (!skillId || !runtimeCapabilities.skillPlatformIntegration) {
       setInstallStatus({});
       setInstallDetails({});
       setSelectedPlatforms(new Set());
       return;
     }
-    const details = await window.api.skill.getMdInstallStatusDetails(skillId);
+    let details: SkillPlatformInstallStatusMap;
+    try {
+      details = await window.api.skill.getMdInstallStatusDetails(skillId);
+    } catch (error) {
+      // Superseded reads no longer own this panel's error state.
+      if (request !== statusRequest.current || activeSkill.current !== skillId)
+        return;
+      throw error;
+    }
+    if (request !== statusRequest.current || activeSkill.current !== skillId)
+      return;
+    setPlatformError(null);
     const status = Object.fromEntries(
       Object.entries(details).map(([platformId, installStatus]) => [
         platformId,
@@ -211,14 +227,22 @@ export function useSkillPlatform(
   ]);
 
   useEffect(() => {
+    let active = true;
     setIsLoading(true);
     setPlatformError(null);
     void Promise.all([loadPlatforms(), refreshInstallStatus()])
       .catch((error: unknown) => {
+        if (!active) return;
         console.error("Failed to load skill platform status:", error);
         setPlatformError(formatSkillPlatformError(error));
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+      ++statusRequest.current;
+    };
   }, [loadPlatforms, refreshInstallStatus]);
 
   const availablePlatforms = useMemo(

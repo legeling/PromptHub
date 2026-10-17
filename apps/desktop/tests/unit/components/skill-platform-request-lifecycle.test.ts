@@ -129,3 +129,14 @@ it("clears a status error after a successful explicit refresh", async () => {
   expect(result.current.installStatus).toEqual({ claude: true });
   expect(result.current.platformError).toBeNull();
 });
+
+it("ignores a superseded failure after the same Skill was refreshed successfully", async () => {
+  const api = prepareApi();
+  const old = deferredStatus();
+  api.getMdInstallStatusDetails.mockReturnValueOnce(old.promise);
+  const { result } = renderHook(() => useSkillPlatform(first, "copy"));
+  await act(async () => result.current.refreshInstallStatus());
+  await act(async () => old.reject(new Error("Superseded status failure")));
+  expect(result.current.platformError).toBeNull();
+  expect(result.current.installStatus).toEqual({ claude: true });
+});
