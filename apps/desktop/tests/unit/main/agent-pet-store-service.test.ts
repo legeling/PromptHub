@@ -6,8 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AgentPetStoreService } from "../../../src/main/services/agent-pet-store-service";
 
-const CATALOG_URL =
-  "https://raw.githubusercontent.com/legeling/awesome-codex-pet/main/pets.json";
+const CATALOG_URL = "https://codexpet.top/pets.json";
 const RAW_ROOT =
   "https://raw.githubusercontent.com/legeling/awesome-codex-pet/main/";
 const PREVIEW_ROOT = "https://codexpet.top/assets/previews/";
@@ -273,23 +272,14 @@ describe("AgentPetStoreService", () => {
     expect(previewRequests).toBe(2);
   });
 
-  it("falls back to the validated package spritesheet when a gallery preview is unavailable", async () => {
+  it("falls back to the website thumbnail without contacting GitHub", async () => {
     const catalog = [{ slug: "nova--alice", name: "Nova", author: "Alice" }];
-    const manifest = {
-      id: "nova--alice",
-      displayName: "Nova",
-      spritesheetPath: "spritesheet.webp",
-      spriteVersionNumber: 2,
-    };
     const fetchImpl = vi.fn(async (url: string) => {
       if (url === CATALOG_URL) return response(JSON.stringify(catalog), url);
       if (url === `${PREVIEW_ROOT}nova--alice/webp/idle.webp`) {
         return response("missing", url, { status: 404 });
       }
-      if (url === `${RAW_ROOT}pets/nova--alice/pet.json`) {
-        return response(JSON.stringify(manifest), url);
-      }
-      if (url === `${RAW_ROOT}pets/nova--alice/spritesheet.webp`) {
+      if (url === `${PREVIEW_ROOT}nova--alice/thumbnail.webp`) {
         return response(new Uint8Array([1, 2, 3]), url);
       }
       throw new Error(`unexpected URL ${url}`);
@@ -306,8 +296,43 @@ describe("AgentPetStoreService", () => {
     expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
       CATALOG_URL,
       `${PREVIEW_ROOT}nova--alice/webp/idle.webp`,
-      `${RAW_ROOT}pets/nova--alice/pet.json`,
-      `${RAW_ROOT}pets/nova--alice/spritesheet.webp`,
+      `${PREVIEW_ROOT}nova--alice/thumbnail.webp`,
+    ]);
+  });
+
+  it("keeps website failures on the website and allows an explicit catalog retry", async () => {
+    const fetchImpl = vi.fn(async (url: string) =>
+      response("unavailable", url, { status: 503 }),
+    );
+    const service = new AgentPetStoreService({
+      dataRoot: root,
+      appearanceService: { importPet, getOverview } as never,
+      fetchImpl: fetchImpl as never,
+    });
+    await expect(service.list({ agentId: "codex" })).rejects.toThrow("503");
+    fetchImpl.mockImplementationOnce(async (url) =>
+      response(
+        JSON.stringify([
+          {
+            slug: "nova--alice",
+            name: "Nova",
+            repositoryPath: "https://github.com/example/pet",
+          },
+        ]),
+        url,
+      ),
+    );
+    await expect(
+      service.list({ agentId: "codex", refresh: true }),
+    ).resolves.toMatchObject({ total: 1 });
+    await expect(service.getPreview("codex", "nova--alice")).rejects.toThrow(
+      "503",
+    );
+    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+      CATALOG_URL,
+      CATALOG_URL,
+      `${PREVIEW_ROOT}nova--alice/webp/idle.webp`,
+      `${PREVIEW_ROOT}nova--alice/thumbnail.webp`,
     ]);
   });
 
@@ -384,9 +409,17 @@ describe("AgentPetStoreService", () => {
       fetchImpl: hangingFetch as never,
     });
     const request = timed.list({ agentId: "codex" });
-    const rejection = expect(request).rejects.toThrow("request aborted");
+    const rejection = expect(request).rejects.toThrow(
+      "PET_STORE_REQUEST_TIMEOUT",
+    );
     await vi.advanceTimersByTimeAsync(10_001);
     await rejection;
     expect(aborted).toBe(true);
+    hangingFetch.mockImplementationOnce(async () =>
+      response("[]", CATALOG_URL),
+    );
+    await expect(
+      timed.list({ agentId: "codex", refresh: true }),
+    ).resolves.toMatchObject({ total: 0 });
   });
 });

@@ -17,16 +17,18 @@ const updatePetMetadataMock = vi.fn();
 const listPetStoreMock = vi.fn();
 const installPetStoreMock = vi.fn();
 const getPetStorePreviewMock = vi.fn();
+const sessionFetchMock = vi.fn();
 
 vi.mock("electron", () => ({
   app: { once: vi.fn() },
   dialog: { showOpenDialog: showOpenDialogMock },
   ipcMain: { handle: handleMock },
+  session: { defaultSession: { fetch: sessionFetchMock } },
 }));
 
 type Handler = (...args: unknown[]) => Promise<unknown>;
 
-async function setup() {
+async function setup(realPetStore = false) {
   vi.resetModules();
   handleMock.mockReset();
   const service = {
@@ -54,7 +56,9 @@ async function setup() {
   ]);
   registerAgentAppearanceIPC({
     createService: () => service as never,
-    createPetStoreService: () => petStoreService as never,
+    ...(realPetStore
+      ? {}
+      : { createPetStoreService: () => petStoreService as never }),
   });
   return {
     IPC_CHANNELS,
@@ -65,9 +69,38 @@ async function setup() {
 }
 
 describe("Agent appearance IPC", () => {
+  it("loads the official Pet catalog through the system proxy session and can refresh after a failure", async () => {
+    getOverviewMock.mockResolvedValue({ pets: [] });
+    sessionFetchMock
+      .mockReset()
+      .mockRejectedValueOnce(new Error("Network unavailable"));
+    const { handlers, IPC_CHANNELS } = await setup(true);
+    const list = handlers[IPC_CHANNELS.AGENT_APPEARANCE_PET_STORE_LIST];
+    await expect(list(null, { agentId: "codex" })).rejects.toThrow(
+      "Network unavailable",
+    );
+    sessionFetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify([{ slug: "nova--alice", name: "Nova" }])),
+    );
+    await expect(
+      list(null, { agentId: "codex", refresh: true }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [{ id: "nova--alice", name: "Nova" }],
+    });
+    expect(sessionFetchMock).toHaveBeenCalledWith(
+      "https://codexpet.top/pets.json",
+      expect.objectContaining({
+        redirect: "error",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
+
   it("blocks disabled appearance before opening dialogs or using the pet store", async () => {
     const { handlers, IPC_CHANNELS } = await setup();
-    const { getAgentDefinitionById } = await import("@prompthub/shared/constants/agent-definitions");
+    const { getAgentDefinitionById } =
+      await import("@prompthub/shared/constants/agent-definitions");
     const definition = getAgentDefinitionById("codex");
     if (!definition) throw new Error("Missing Codex fixture");
     const capability = definition.capabilities.appearance;
@@ -79,9 +112,13 @@ describe("Agent appearance IPC", () => {
         IPC_CHANNELS.AGENT_APPEARANCE_IMPORT_THEME,
         IPC_CHANNELS.AGENT_APPEARANCE_IMPORT_PET,
       ]) {
-        await expect(handlers[channel](null, "codex")).rejects.toThrow("AGENT_APPEARANCE_UNSUPPORTED");
+        await expect(handlers[channel](null, "codex")).rejects.toThrow(
+          "AGENT_APPEARANCE_UNSUPPORTED",
+        );
       }
-      await expect(handlers[IPC_CHANNELS.AGENT_APPEARANCE_PET_STORE_LIST](null, {})).rejects.toThrow("AGENT_APPEARANCE_UNSUPPORTED");
+      await expect(
+        handlers[IPC_CHANNELS.AGENT_APPEARANCE_PET_STORE_LIST](null, {}),
+      ).rejects.toThrow("AGENT_APPEARANCE_UNSUPPORTED");
       expect(showOpenDialogMock).not.toHaveBeenCalled();
       expect(getOverviewMock).not.toHaveBeenCalled();
       expect(importThemeMock).not.toHaveBeenCalled();

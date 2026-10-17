@@ -1174,6 +1174,7 @@
       "searchPetsAction": "Rechercher des Pets",
       "noStorePets": "Aucun Pet correspondant.",
       "petStoreLoadFailed": "Impossible de charger la boutique de Pets",
+      "petStoreTimeout": "La requête a expiré. Vérifiez le proxy dans les paramètres réseau, puis actualisez pour réessayer.",
       "installPet": "Installer le Pet",
       "petInstalled": "Installé",
       "editPet": "Modifier {{name}}",

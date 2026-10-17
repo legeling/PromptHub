@@ -1173,6 +1173,7 @@
       "searchPetsAction": "搜尋 Pet",
       "noStorePets": "找不到符合的 Pet。",
       "petStoreLoadFailed": "Pet 商店載入失敗",
+      "petStoreTimeout": "請求逾時，請檢查網路設定中的代理後重新整理重試。",
       "installPet": "安裝 Pet",
       "petInstalled": "已安裝",
       "editPet": "編輯 {{name}}",

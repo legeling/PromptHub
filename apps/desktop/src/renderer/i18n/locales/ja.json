@@ -1173,6 +1173,7 @@
       "searchPetsAction": "Pet を検索",
       "noStorePets": "一致する Pet はありません。",
       "petStoreLoadFailed": "Pet ストアを読み込めませんでした",
+      "petStoreTimeout": "リクエストがタイムアウトしました。ネットワーク設定のプロキシを確認し、更新して再試行してください。",
       "installPet": "Pet をインストール",
       "petInstalled": "インストール済み",
       "editPet": "{{name}} を編集",

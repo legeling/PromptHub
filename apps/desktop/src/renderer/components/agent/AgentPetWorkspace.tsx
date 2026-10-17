@@ -646,7 +646,10 @@ export function AgentPetWorkspace(props: AgentPetWorkspaceProps) {
             </form>
             {storeError ? (
               <div className="rounded-md border border-destructive/30 bg-card px-4 py-3 text-sm text-destructive">
-                {t("agents.appearance.petStoreLoadFailed")}: {storeError}
+                {t("agents.appearance.petStoreLoadFailed")}:{" "}
+                {storeError.includes("PET_STORE_REQUEST_TIMEOUT")
+                  ? t("agents.appearance.petStoreTimeout")
+                  : storeError}
               </div>
             ) : null}
             {storeLoading && !store ? (

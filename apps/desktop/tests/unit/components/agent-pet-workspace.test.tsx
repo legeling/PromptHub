@@ -70,6 +70,25 @@ function renderWorkspace(
 }
 
 describe("AgentPetWorkspace", () => {
+  it("explains a timed out catalog request and lets refresh recover", async () => {
+    vi.mocked(window.api.agent.listAppearancePetStore).mockRejectedValueOnce(
+      new Error(
+        "Error invoking remote method 'agent:appearance:pet-store:list': Error: PET_STORE_REQUEST_TIMEOUT: Official Pet request timed out after 10000ms",
+      ),
+    );
+    await renderWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Awesome Codex Pet" }));
+    expect(
+      await screen.findByText(/请求超时，请检查网络设置中的代理后刷新重试/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Error invoking remote method/),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(await screen.findByText("商店宠物")).toBeInTheDocument();
+    expect(screen.queryByText(/请求超时/)).not.toBeInTheDocument();
+  });
+
   beforeEach(() => {
     installWindowMocks({
       api: {

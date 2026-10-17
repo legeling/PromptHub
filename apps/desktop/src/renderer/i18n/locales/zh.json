@@ -1174,6 +1174,7 @@
       "searchPetsAction": "搜索 Pet",
       "noStorePets": "没有找到匹配的 Pet。",
       "petStoreLoadFailed": "Pet 商店加载失败",
+      "petStoreTimeout": "请求超时，请检查网络设置中的代理后刷新重试。",
       "installPet": "安装 Pet",
       "petInstalled": "已安装",
       "editPet": "编辑 {{name}}",

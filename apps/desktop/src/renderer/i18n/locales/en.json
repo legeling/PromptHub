@@ -1174,6 +1174,7 @@
       "searchPetsAction": "Search Pets",
       "noStorePets": "No matching Pets found.",
       "petStoreLoadFailed": "Pet Store could not be loaded",
+      "petStoreTimeout": "The request timed out. Check the proxy in Network settings, then refresh to retry.",
       "installPet": "Install Pet",
       "petInstalled": "Installed",
       "editPet": "Edit {{name}}",

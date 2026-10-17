@@ -1174,6 +1174,7 @@
       "searchPetsAction": "Pets suchen",
       "noStorePets": "Keine passenden Pets gefunden.",
       "petStoreLoadFailed": "Pet-Store konnte nicht geladen werden",
+      "petStoreTimeout": "Zeitüberschreitung. Prüfen Sie den Proxy in den Netzwerkeinstellungen und aktualisieren Sie, um es erneut zu versuchen.",
       "installPet": "Pet installieren",
       "petInstalled": "Installiert",
       "editPet": "{{name}} bearbeiten",

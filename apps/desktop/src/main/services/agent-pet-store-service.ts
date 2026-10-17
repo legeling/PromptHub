@@ -15,7 +15,7 @@ const RAW_ORIGIN = "https://raw.githubusercontent.com";
 const RAW_PREFIX = "/legeling/awesome-codex-pet/main/";
 const PREVIEW_ORIGIN = "https://codexpet.top";
 const PREVIEW_PREFIX = "/assets/previews/";
-const CATALOG_URL = `${RAW_ORIGIN}${RAW_PREFIX}pets.json`;
+const CATALOG_URL = `${PREVIEW_ORIGIN}/pets.json`;
 const DEFAULT_PAGE_SIZE = 18;
 const MAX_PAGE_SIZE = 48;
 const CATALOG_BYTES = 2 * 1024 * 1024;
@@ -46,12 +46,6 @@ interface StoreManifest {
   id: string;
   spritesheetPath: string;
   value: Record<string, unknown>;
-}
-
-function spritesheetMimeType(spritesheetPath: string): string {
-  return path.extname(spritesheetPath).toLowerCase() === ".png"
-    ? "image/png"
-    : "image/webp";
 }
 
 function previewCacheExtension(mime: string): "webp" | "png" {
@@ -147,9 +141,10 @@ function rawOfficialUrl(relativePath: string): string {
   return url.toString();
 }
 
-function previewOfficialUrl(petId: string): string {
+function previewOfficialUrl(petId: string, thumbnail = false): string {
   if (!isSafeId(petId)) throw new Error("Invalid official Pet id");
-  return `${PREVIEW_ORIGIN}${PREVIEW_PREFIX}${encodeURIComponent(petId)}/webp/idle.webp`;
+  const asset = thumbnail ? "thumbnail.webp" : "webp/idle.webp";
+  return `${PREVIEW_ORIGIN}${PREVIEW_PREFIX}${encodeURIComponent(petId)}/${asset}`;
 }
 
 function isAllowlistedOfficialUrl(value: string): boolean {
@@ -157,7 +152,7 @@ function isAllowlistedOfficialUrl(value: string): boolean {
   if (url.search || url.hash) return false;
   if (url.origin === RAW_ORIGIN) return url.pathname.startsWith(RAW_PREFIX);
   if (url.origin === PREVIEW_ORIGIN) {
-    return url.pathname.startsWith(PREVIEW_PREFIX);
+    return url.href === CATALOG_URL || url.pathname.startsWith(PREVIEW_PREFIX);
   }
   return false;
 }
@@ -287,19 +282,19 @@ export class AgentPetStoreService {
       );
       return previewDataUrl(bytes, "image/webp");
     } catch {
-      return await this.getPackagePreview(item);
+      return await this.getThumbnailPreview(item);
     }
   }
 
-  private async getPackagePreview(item: CatalogRecord): Promise<string> {
-    const manifest = await this.getManifest(item);
+  private async getThumbnailPreview(item: CatalogRecord): Promise<string> {
     const bytes = await this.fetchBytes(
-      rawOfficialUrl(`pets/${item.id}/${manifest.spritesheetPath}`),
-      SPRITE_BYTES,
+      previewOfficialUrl(item.id, true),
+      PREVIEW_BYTES,
     );
-    const mime = spritesheetMimeType(manifest.spritesheetPath);
-    await this.writePreviewCache(item.id, bytes, mime).catch(() => undefined);
-    return previewDataUrl(bytes, mime);
+    await this.writePreviewCache(item.id, bytes, "image/webp").catch(
+      () => undefined,
+    );
+    return previewDataUrl(bytes, "image/webp");
   }
 
   private get previewCacheDirectory(): string {
@@ -496,6 +491,14 @@ export class AgentPetStoreService {
         throw new Error(`Official Pet request failed (${response.status})`);
       }
       return await readBoundedBody(response, maxBytes);
+    } catch (cause) {
+      if (controller.signal.aborted) {
+        throw new Error(
+          `PET_STORE_REQUEST_TIMEOUT: Official Pet request timed out after ${REQUEST_TIMEOUT_MS}ms (${url})`,
+          { cause },
+        );
+      }
+      throw cause;
     } finally {
       clearTimeout(timeout);
     }

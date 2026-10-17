@@ -12,6 +12,7 @@ import type {
 import { getDataDir } from "../runtime-paths";
 import { AgentAppearanceService } from "../services/agent-appearance-service";
 import { AgentPetStoreService } from "../services/agent-pet-store-service";
+import { fetchWithNetworkProxy } from "../services/network-proxy";
 import { CodexDreamSkinEngine } from "../services/codex-dream-skin-engine";
 import { SkillInstaller } from "../services/skill-installer";
 import { getPlatformRootDir } from "../services/skill-installer-utils";
@@ -144,6 +145,7 @@ export function registerAgentAppearanceIPC(
         : new AgentPetStoreService({
             dataRoot: getDataDir(),
             appearanceService,
+            fetchImpl: fetchWithNetworkProxy,
           });
     }
     return petStoreService;

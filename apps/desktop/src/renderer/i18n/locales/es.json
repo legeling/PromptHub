@@ -1174,6 +1174,7 @@
       "searchPetsAction": "Buscar Pets",
       "noStorePets": "No se encontraron Pets coincidentes.",
       "petStoreLoadFailed": "No se pudo cargar la tienda de Pets",
+      "petStoreTimeout": "La solicitud ha agotado el tiempo de espera. Revisa el proxy en los ajustes de red y actualiza para reintentar.",
       "installPet": "Instalar Pet",
       "petInstalled": "Instalado",
       "editPet": "Editar {{name}}",
