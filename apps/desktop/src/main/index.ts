@@ -1100,7 +1100,7 @@ registerDataPathChangeIPC({
   scheduleRelaunch: scheduleAppRelaunch,
 });
 
-registerNativeShellIPC(isDev);
+registerNativeShellIPC();
 
 // App startup
 // 应用启动

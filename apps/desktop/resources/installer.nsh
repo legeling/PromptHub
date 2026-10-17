@@ -28,6 +28,9 @@
 
 !macro customUnInstall
   ${ifNot} ${isUpdated}
+    DeleteRegValue HKCU "Software\Classes\AppUserModelId\com.prompthub.app" "DisplayName"
+    DeleteRegValue HKCU "Software\Classes\AppUserModelId\com.prompthub.app" "IconUri"
+    DeleteRegKey /ifempty HKCU "Software\Classes\AppUserModelId\com.prompthub.app"
     DeleteRegKey SHELL_CONTEXT "${PROMPTHUB_INSTALL_STATE_KEY}"
   ${endif}
 !macroend

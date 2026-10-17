@@ -3,8 +3,14 @@ import path from "path";
 import { app, ipcMain, Notification, shell } from "electron";
 
 import { openDirectoryPath } from "../shell-open-path";
+import {
+  configureNotificationIdentity,
+  prepareNotificationIcon,
+} from "../native-notifications";
 
-export function registerNativeShellIPC(isDev: boolean): void {
+export function registerNativeShellIPC(): void {
+  configureNotificationIdentity();
+  let registeredNotificationIcon: string | undefined;
   ipcMain.handle("shell:openPath", async (_event, folderPath: string) => {
     const homePath = app.getPath("home");
     return openDirectoryPath(folderPath, {
@@ -34,9 +40,9 @@ export function registerNativeShellIPC(isDev: boolean): void {
         );
       }
       if (!Notification.isSupported()) return false;
-      const icon = isDev
-        ? path.join(__dirname, "../../resources/icon.png")
-        : path.join(process.resourcesPath, "icon.png");
+      const icon =
+        registeredNotificationIcon ?? (await prepareNotificationIcon());
+      registeredNotificationIcon = icon;
       new Notification({
         title: options.title,
         body: options.body,

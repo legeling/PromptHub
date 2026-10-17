@@ -26,6 +26,10 @@
 
 ### 2.2 Desktop Application Shell
 
+- Windows 系统通知在开发与安装环境中均显示 PromptHub 名称和应用图标。主进程在创建窗口前设置 AppUserModelID；安装版沿用安装器的 `com.prompthub.app`，开发版使用独立的 `com.prompthub.app.dev`，显示名称仍为 PromptHub。通知 PNG 按 `app.isPackaged` 选择真实资源，不能以是否加载 Vite 判断资源布局。
+- 开发版首次发送系统通知时，在当前用户 Start Menu 的 `PromptHub Development/PromptHub.lnk` 注册 ICO 和开发入口；仅更新具有相同开发 AppUserModelID 的快捷方式，不覆盖安装版或其他程序的快捷方式。安装版快捷方式继续由安装器维护。
+- 快捷方式名称和 `Notification.title` 不能替代通知顶部来源名称。开发版与安装版首次通知前，均在 `HKCU\Software\Classes\AppUserModelId\<当前 ID>` 幂等写入 `DisplayName=PromptHub`、`IconUri=<当前 PNG 绝对路径>`，完成后才发送并缓存本进程注册成功状态。只写这两个产品资源值，不修改系统通知权限或激活处理器；两步写入任一步失败则不发送，保留错误并允许下次重试补齐。重启重新注册以适应应用更新或目录移动。快捷方式及这两个值是可重建 OS 集成元数据，不承载业务数据；手动删除相应开发快捷方式与开发 ID 下的两个值可撤销开发注册。安装器卸载清理当前用户安装版资源值，更新安装时保留。
+
 - 桌面一级模块由统一的 `AppModule` 状态驱动，当前稳定模块包括 Prompt、Skill、Agent、Rules、MCP 与 Plugin；设置入口固定在一级 rail 底部。
 - 快捷键设置采用紧凑行：上下留白 12px，说明与标题间隔 2px，作用域下拉按钮和录入框统一 36px 高。空间不足时操作区换行，不裁切标签或控件；保留录入、清除、冲突提示与焦点样式，沿用设置主题变量。
 - 一级模块的显隐与顺序使用同一份持久化偏好。恢复旧快照时必须过滤未知项与重复项；当前模块被隐藏时必须回退到第一个可见模块。
