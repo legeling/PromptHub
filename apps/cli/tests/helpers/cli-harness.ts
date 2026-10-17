@@ -33,18 +33,30 @@ export async function withTempHome<T>(
   rootDir: string,
   run: (homeDir: string) => Promise<T>,
 ): Promise<T> {
-  const originalHome = process.env.HOME;
   const homeDir = path.join(rootDir, "home");
-  fs.mkdirSync(homeDir, { recursive: true });
+  // os.homedir() uses USERPROFILE on Windows, including in child processes.
+  const environment: Record<string, string> = {
+    HOME: homeDir,
+    USERPROFILE: homeDir,
+    APPDATA: path.join(homeDir, "AppData", "Roaming"),
+    LOCALAPPDATA: path.join(homeDir, "AppData", "Local"),
+    XDG_CONFIG_HOME: path.join(homeDir, ".config"),
+  };
+  const originals = Object.keys(environment).map((key) => ({
+    key,
+    value: process.env[key],
+  }));
+  for (const directory of Object.values(environment)) {
+    fs.mkdirSync(directory, { recursive: true });
+  }
 
   try {
-    process.env.HOME = homeDir;
+    Object.assign(process.env, environment);
     return await run(homeDir);
   } finally {
-    if (originalHome === undefined) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = originalHome;
+    for (const { key, value } of originals) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
     }
   }
 }

@@ -16,7 +16,12 @@ import {
 import type { SkillSafetyReport } from "@prompthub/shared/types";
 import { SKILL_PACKAGE_FINGERPRINT_ALGORITHM } from "@prompthub/shared/utils/skill-source-update";
 
-import { execCli, makeTempRoot, withDataDir } from "./helpers/cli-harness";
+import {
+  execCli,
+  makeTempRoot,
+  withDataDir,
+  withTempHome,
+} from "./helpers/cli-harness";
 
 describe("CLI skill commands", () => {
   const tempDirs: string[] = [];
@@ -913,7 +918,6 @@ describe("CLI skill commands", () => {
 
   it("installs platform skills as full directories instead of only SKILL.md", async () => {
     const root = makeTempRoot(tempDirs);
-    const originalHome = process.env.HOME;
     const skillDir = path.join(root, "directory-platform-skill");
     fs.mkdirSync(path.join(skillDir, "assets"), { recursive: true });
     fs.writeFileSync(
@@ -936,10 +940,7 @@ describe("CLI skill commands", () => {
       "utf8",
     );
 
-    try {
-      process.env.HOME = path.join(root, "home");
-      fs.mkdirSync(process.env.HOME, { recursive: true });
-
+    await withTempHome(root, async (home) => {
       const installRes = await execCli([
         ...withDataDir(root),
         "skill",
@@ -959,7 +960,7 @@ describe("CLI skill commands", () => {
       expect(installMdRes.exitCode).toBe(0);
 
       const platformDir = path.join(
-        process.env.HOME,
+        home,
         ".claude",
         "skills",
         "directory-platform-skill",
@@ -971,9 +972,7 @@ describe("CLI skill commands", () => {
       expect(
         fs.readFileSync(path.join(platformDir, "assets", "helper.txt"), "utf8"),
       ).toBe("helper");
-    } finally {
-      process.env.HOME = originalHome;
-    }
+    });
   });
   it("reports a missing package on read and distribution without reconstructing it from SQL", async () => {
     const root = makeTempRoot(tempDirs);
