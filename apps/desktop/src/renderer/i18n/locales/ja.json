@@ -2107,6 +2107,7 @@
     "cliGlobalBinHint": "CLI は {{path}} にインストールされました。端末で prompthub が見つからない場合、このディレクトリを PATH に追加して端末を開き直してください。",
     "cliCopyCommand": "コピー",
     "cliStatusLoadFailed": "PromptHub CLI の状態読み込みに失敗しました",
+
     "cliCachedStatus": "最終確認：{{time}}。更新すると再確認できます。",
     "openSource": "オープンソースプロジェクト",
     "projectRepository": "プロジェクトリポジトリ",

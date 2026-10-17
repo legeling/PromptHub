@@ -234,9 +234,9 @@ interface McpMockOptions {
 
 function installMcpMocks(options: McpMockOptions = {}) {
   const servers = options.servers ?? [filesystemServer];
-  const platformIds = (options.targetPresets ?? [codexTarget, claudeTarget]).flatMap(
-    (preset) => preset.platformId ? [preset.platformId] : [],
-  );
+  const platformIds = (
+    options.targetPresets ?? [codexTarget, claudeTarget]
+  ).flatMap((preset) => (preset.platformId ? [preset.platformId] : []));
   const targetStatus = options.targetStatus ?? [
     {
       presetId: codexTarget.id,
@@ -254,7 +254,13 @@ function installMcpMocks(options: McpMockOptions = {}) {
   return installWindowMocks({
     api: {
       skill: {
-        getSupportedPlatforms: vi.fn().mockResolvedValue(SKILL_PLATFORMS.filter((platform) => platformIds.includes(platform.id))),
+        getSupportedPlatforms: vi
+          .fn()
+          .mockResolvedValue(
+            SKILL_PLATFORMS.filter((platform) =>
+              platformIds.includes(platform.id),
+            ),
+          ),
         detectPlatforms: vi.fn().mockResolvedValue(platformIds),
       },
       mcp: {

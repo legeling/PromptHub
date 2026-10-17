@@ -2107,6 +2107,7 @@
     "cliGlobalBinHint": "CLI in {{path}} installiert. Falls das Terminal prompthub nicht findet, fügen Sie dieses Verzeichnis zum PATH hinzu und öffnen Sie das Terminal erneut.",
     "cliCopyCommand": "Kopieren",
     "cliStatusLoadFailed": "PromptHub CLI-Status konnte nicht geladen werden",
+
     "cliCachedStatus": "Zuletzt geprüft: {{time}}. Zum erneuten Prüfen aktualisieren.",
     "openSource": "Open-Source-Projekt",
     "projectRepository": "Projekt-Repository",

@@ -2108,6 +2108,7 @@
     "cliGlobalBinHint": "CLI installé dans {{path}}. Si le terminal ne trouve pas prompthub, ajoutez ce répertoire au PATH puis rouvrez le terminal.",
     "cliCopyCommand": "Copier",
     "cliStatusLoadFailed": "Échec du chargement de l'état de PromptHub CLI",
+
     "cliCachedStatus": "Dernière vérification : {{time}}. Actualisez pour vérifier à nouveau.",
     "openSource": "Projet open source",
     "projectRepository": "Dépôt du projet",

@@ -2109,6 +2109,7 @@
     "cliGlobalBinHint": "CLI 已安装在 {{path}}。如果终端找不到 prompthub，请将此目录加入终端 PATH 后重新打开终端。",
     "cliCopyCommand": "复制",
     "cliStatusLoadFailed": "加载 PromptHub CLI 状态失败",
+
     "cliCachedStatus": "上次检查：{{time}}。刷新可重新检查。",
     "openSource": "开源项目",
     "projectRepository": "项目仓库",

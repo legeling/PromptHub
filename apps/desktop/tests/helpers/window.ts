@@ -496,8 +496,8 @@ function createWindowApiDefaults() {
     },
     skill: {
       saveSafetyReport: vi.fn(),
-      saveExport: vi.fn().mockResolvedValue({ status: "canceled" }),
       exportZip: vi.fn(),
+      saveExport: vi.fn().mockResolvedValue({ status: "canceled" }),
       listRemoteBranches: vi.fn(),
       runPackageOperation: vi.fn(),
       listLocalFilesByPath: vi.fn(),

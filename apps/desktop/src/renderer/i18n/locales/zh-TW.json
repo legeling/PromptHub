@@ -2107,6 +2107,7 @@
     "cliGlobalBinHint": "CLI 已安裝於 {{path}}。若終端找不到 prompthub，請將此目錄加入終端 PATH 後重新開啟終端。",
     "cliCopyCommand": "複製",
     "cliStatusLoadFailed": "載入 PromptHub CLI 狀態失敗",
+
     "cliCachedStatus": "上次檢查：{{time}}。重新整理可再次檢查。",
     "openSource": "開源專案",
     "projectRepository": "專案倉庫",
