@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 import type { PluginLibraryEntry } from "@prompthub/shared/types/plugin";
 import {
   CorePluginError,
@@ -35,6 +36,18 @@ export function normalizePluginDirectorySegment(value: string): string {
       "Invalid Plugin directory segment",
     );
   return segment;
+}
+
+export function resolveSharedPluginTargetPath(
+  plugin: PluginLibraryEntry,
+  homeDir = os.homedir(),
+): string {
+  return path.join(
+    homeDir,
+    ".agents",
+    "plugins",
+    normalizePluginDirectorySegment(plugin.name || plugin.id),
+  );
 }
 
 export function resolvePluginPackageTargetPath(

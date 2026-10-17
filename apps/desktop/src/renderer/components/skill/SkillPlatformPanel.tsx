@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckIcon,
-  AlertTriangleIcon,
-  CheckSquareIcon,
   CopyPlusIcon,
   FileTextIcon,
   FolderPlusIcon,
@@ -12,20 +10,23 @@ import {
   LinkIcon,
   Loader2Icon,
   SendIcon,
-  SquareIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   Settings2Icon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
 import type { Skill, SkillProject } from "@prompthub/shared/types";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import { getProtocolDisplayLabel, getSkillSourceMeta } from "./detail-utils";
+import { getSkillSourceMeta } from "./detail-utils";
 import { getRuntimeCapabilities } from "../../runtime";
 import type { ProjectDeployedSkillTarget } from "../../services/project-skill-targets";
-import { SkillPlatformTargetRow } from "./SkillPlatformTargetRow";
+import { SkillDistributionControls } from "./SkillDistributionControls";
 
 interface SkillPlatformPanelProps {
+  distributionOnly?: boolean;
+  distributionLayout?: "grid" | "list";
+  onCancel?: () => void;
+  isLoading?: boolean;
+  platformError?: string | null;
   availablePlatforms: SkillPlatform[];
   handleExport: (format: "skillmd" | "zip") => void;
   installMode: "copy" | "symlink";
@@ -41,7 +42,7 @@ interface SkillPlatformPanelProps {
   skillMdInstallStatus: Record<string, boolean>;
   t: TFunction;
   togglePlatformSelection: (platformId: string) => void;
-  uninstallFromPlatform: (platformId: string) => void;
+  uninstallFromPlatform?: (platformId: string) => void;
   uninstalledPlatforms: SkillPlatform[];
   onBatchInstall: () => void;
   projects?: SkillProject[];
@@ -81,6 +82,11 @@ const PROJECT_TARGET_OPTIONS = [
 ] as const;
 
 export function SkillPlatformPanel({
+  distributionOnly = false,
+  distributionLayout = "list",
+  onCancel,
+  isLoading = false,
+  platformError = null,
   availablePlatforms,
   handleExport,
   installMode,
@@ -90,14 +96,11 @@ export function SkillPlatformPanel({
   selectedPlatforms,
   selectedSkill,
   selectAllPlatforms,
-  deselectAllPlatforms,
   setInstallMode,
   setProjectDeployMode,
   skillMdInstallStatus,
   t,
   togglePlatformSelection,
-  uninstallFromPlatform,
-  uninstalledPlatforms,
   onBatchInstall,
   projects,
   getProjectDeployTargets,
@@ -116,18 +119,14 @@ export function SkillPlatformPanel({
     runtimeCapabilities.desktopWindowControls && sourceMeta?.kind === "local";
   const normalizedProjects = projects ?? [];
   const hasGlobalIntegration =
-    showPlatformIntegration && availablePlatforms.length > 0;
+    showPlatformIntegration &&
+    (availablePlatforms.length > 0 || isLoading || Boolean(platformError));
   const hasProjectIntegration =
     showPlatformIntegration &&
     typeof getProjectDeployTargets === "function" &&
     typeof onCreateProject === "function" &&
     typeof onDeployToProjects === "function";
   const showIntegrationSection = hasGlobalIntegration || hasProjectIntegration;
-  const hasSharedDiscoveryRisk =
-    selectedPlatforms.has("agent-skills-global") &&
-    ["gemini", "augment", "windsurf", "opencode"].some((platformId) =>
-      selectedPlatforms.has(platformId),
-    );
   const [integrationScope, setIntegrationScope] = useState<
     "global" | "project"
   >(hasGlobalIntegration ? "global" : "project");
@@ -299,22 +298,30 @@ export function SkillPlatformPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="space-y-6">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center justify-between">
-          <span>
-            {showPlatformIntegration
-              ? t("skill.platformIntegration", "Platform Integration")
-              : t("skill.webSkillLibrary", "Skill Workspace")}
-          </span>
-          <span className="text-[10px]">SKILL.md</span>
-        </h3>
+        {!distributionOnly && (
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center justify-between">
+            <span>
+              {showPlatformIntegration
+                ? t("skill.distribution.title")
+                : t("skill.webSkillLibrary", "Skill Workspace")}
+            </span>
+          </h3>
+        )}
 
         {showIntegrationSection && (
-          <section className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
+          <section
+            className={
+              distributionOnly
+                ? "space-y-4"
+                : "bg-card rounded-2xl border border-border p-4 space-y-4"
+            }
+          >
             {hasGlobalIntegration && hasProjectIntegration ? (
               <div className="flex items-center gap-1 rounded-lg bg-accent/50 p-1">
                 <button
                   type="button"
                   aria-pressed={integrationScope === "global"}
+                  disabled={isBatchInstalling || isProjectDeploying}
                   onClick={() => setIntegrationScope("global")}
                   className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                     integrationScope === "global"
@@ -599,20 +606,6 @@ export function SkillPlatformPanel({
                       })}
                     </div>
 
-                    {hasSharedDiscoveryRisk ? (
-                      <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                        <AlertTriangleIcon
-                          aria-hidden="true"
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                        />
-                        <span>
-                          {t(
-                            "skill.sharedTargetDuplicateWarning",
-                            "The selected Agent may discover both its native Skill copy and the shared ~/.agents/skills copy.",
-                          )}
-                        </span>
-                      </div>
-                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -657,275 +650,166 @@ export function SkillPlatformPanel({
                   </>
                 )}
               </>
+            ) : isLoading ? (
+              <p role="status">{t("common.loading")}</p>
+            ) : platformError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {platformError}
+              </p>
             ) : (
-              <>
-                <div className="text-sm font-semibold text-foreground">
-                  {t("skill.globalDistribution", "Global Distribution")}
-                </div>
-                <div className="flex items-center gap-1 rounded-lg bg-accent/50 p-1">
-                  <button
-                    type="button"
-                    aria-pressed={installMode === "copy"}
-                    onClick={() => setInstallMode("copy")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors ${
-                      installMode === "copy"
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <CopyPlusIcon aria-hidden="true" className="w-3 h-3" />
-                    {t("skill.copyMode", "Copy")}
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={installMode === "symlink"}
-                    onClick={() => setInstallMode("symlink")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors ${
-                      installMode === "symlink"
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <LinkIcon aria-hidden="true" className="w-3 h-3" />
-                    {t("skill.symlink", "Symlink")}
-                  </button>
-                </div>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  {installMode === "copy"
-                    ? t(
-                        "skill.copyModeDesc",
-                        "Copy: Copies the SKILL.md file to each platform directory. Each copy is independent — edits in PromptHub won't sync automatically.",
-                      )
-                    : t(
-                        "skill.symlinkDesc",
-                        "Symlink: Creates a symbolic link pointing to the source file. All platforms share the same source — edits sync instantly, but requires filesystem support.",
-                      )}
-                </p>
-
-                {uninstalledPlatforms.length > 0 && (
-                  <div className="flex flex-col gap-2 p-3 bg-accent/30 rounded-xl border border-border">
-                    <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={
-                          selectedPlatforms.size === uninstalledPlatforms.length
-                            ? deselectAllPlatforms
-                            : selectAllPlatforms
-                        }
-                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
-                        disabled={isBatchInstalling}
-                      >
-                        {selectedPlatforms.size ===
-                        uninstalledPlatforms.length ? (
-                          <>
-                            <CheckSquareIcon
-                              aria-hidden="true"
-                              className="w-4 h-4"
-                            />
-                            {t("skill.deselectAll", "Deselect All")}
-                          </>
-                        ) : (
-                          <>
-                            <SquareIcon
-                              aria-hidden="true"
-                              className="w-4 h-4"
-                            />
-                            {t("skill.selectAll", "Select All")}
-                          </>
-                        )}
-                      </button>
-                      {selectedPlatforms.size > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {selectedPlatforms.size}{" "}
-                          {t("skill.selected", "selected")}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onBatchInstall}
-                      disabled={
-                        selectedPlatforms.size === 0 || isBatchInstalling
-                      }
-                      className="w-full px-3 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
-                    >
-                      {isBatchInstalling ? (
-                        <>
-                          <Loader2Icon
-                            aria-hidden="true"
-                            className="w-3.5 h-3.5 animate-spin"
-                          />
-                          {installProgress
-                            ? `${installProgress.current}/${installProgress.total}`
-                            : t("skill.installing", "Installing...")}
-                        </>
-                      ) : (
-                        <>
-                          <SendIcon
-                            aria-hidden="true"
-                            className="w-3.5 h-3.5"
-                          />
-                          {t("skill.batchInstall", "Install All")}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  {availablePlatforms.map((platform) => {
-                    const isInstalled = skillMdInstallStatus[platform.id];
-                    const isSelected = selectedPlatforms.has(platform.id);
-
-                    return (
-                      <SkillPlatformTargetRow
-                        key={platform.id}
-                        isBatchInstalling={isBatchInstalling}
-                        isInstalled={Boolean(isInstalled)}
-                        isSelected={isSelected}
-                        onToggle={() => togglePlatformSelection(platform.id)}
-                        onUninstall={() => uninstallFromPlatform(platform.id)}
-                        platform={platform}
-                        t={t}
-                      />
-                    );
-                  })}
-                </div>
-              </>
+              <SkillDistributionControls
+                availablePlatforms={availablePlatforms}
+                skillName={selectedSkill.name}
+                installMode={installMode}
+                setInstallMode={setInstallMode}
+                installStatus={skillMdInstallStatus}
+                selectedPlatforms={selectedPlatforms}
+                isBusy={isBatchInstalling}
+                installProgress={installProgress}
+                onToggle={togglePlatformSelection}
+                onSelectAll={selectAllPlatforms}
+                onApply={onBatchInstall}
+                onCancel={onCancel}
+                layout={distributionLayout}
+              />
             )}
           </section>
         )}
 
-        <section className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
-            {t("skill.metadata")}
-          </h3>
-          <div className="grid grid-cols-1 gap-3">
-            <div className="flex justify-between items-center text-sm gap-4">
-              <span className="text-muted-foreground">{t("skill.id")}</span>
-              <span className="font-mono text-[10px] bg-accent px-2 py-0.5 rounded truncate max-w-[150px]">
-                {selectedSkill.id}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm gap-4">
-              <span className="text-muted-foreground">
-                {t("skill.protocol")}
-              </span>
-              <span className="font-bold uppercase tracking-tight flex items-center gap-1 text-primary text-xs">
-                <ChevronRightIcon aria-hidden="true" className="w-3.5 h-3.5" />
-                {getProtocolDisplayLabel(selectedSkill.protocol_type)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm gap-4">
-              <span className="text-muted-foreground">
-                {t("skill.createdAt")}
-              </span>
-              <span className="text-xs opacity-80">
-                {new Date(selectedSkill.created_at).toLocaleDateString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm gap-4">
-              <span className="text-muted-foreground">
-                {t("skill.updatedAt")}
-              </span>
-              <span className="text-xs opacity-80">
-                {new Date(selectedSkill.updated_at).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-        </section>
+        {!distributionOnly && (
+          <>
+            <section className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
+                {t("skill.metadata")}
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                <div className="flex justify-between items-center text-sm gap-4">
+                  <span className="text-muted-foreground">{t("skill.id")}</span>
+                  <span className="font-mono text-[10px] bg-accent px-2 py-0.5 rounded truncate max-w-[150px]">
+                    {selectedSkill.id}
+                  </span>
+                </div>
 
-        <section className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
-            {t("skill.export")}
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleExport("skillmd")}
-              className="flex flex-col items-center gap-1 p-3 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors"
-            >
-              <FileTextIcon
-                aria-hidden="true"
-                className="w-5 h-5 text-primary"
-              />
-              <span className="font-medium text-xs">SKILL.md</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport("zip")}
-              className="flex flex-col items-center gap-1 p-3 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors"
-            >
-              <PackageIcon
-                aria-hidden="true"
-                className="w-5 h-5 text-primary"
-              />
-              <span className="font-medium text-xs">ZIP</span>
-            </button>
-          </div>
-        </section>
+                <div className="flex justify-between items-center text-sm gap-4">
+                  <span className="text-muted-foreground">
+                    {t("skill.createdAt")}
+                  </span>
+                  <span className="text-xs opacity-80">
+                    {new Date(selectedSkill.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm gap-4">
+                  <span className="text-muted-foreground">
+                    {t("skill.updatedAt")}
+                  </span>
+                  <span className="text-xs opacity-80">
+                    {new Date(selectedSkill.updated_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <section className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
+                {t("skill.export")}
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleExport("skillmd")}
+                  className="flex flex-col items-center gap-1 p-3 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors"
+                >
+                  <FileTextIcon
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <span className="font-medium text-xs">SKILL.md</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("zip")}
+                  className="flex flex-col items-center gap-1 p-3 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors"
+                >
+                  <PackageIcon
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <span className="font-medium text-xs">ZIP</span>
+                </button>
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
-      <div className="pt-6">
-        {sourceMeta &&
-          (sourceMeta.kind === "local" && showLocalSourceShortcut ? (
-            <button
-              type="button"
-              onClick={() => window.electron?.openPath?.(sourceMeta.value)}
-              className="w-full min-h-[148px] flex items-center gap-3 p-5 bg-accent/70 border border-border text-foreground rounded-2xl hover:bg-accent transition-colors text-left"
-              title={sourceMeta.displayValue}
-            >
-              <FolderOpenIcon aria-hidden="true" className="w-5 h-5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold break-words">
-                  {sourceMeta.sourceLabel}
+      {!distributionOnly && (
+        <div className="pt-6">
+          {sourceMeta &&
+            (sourceMeta.kind === "local" && showLocalSourceShortcut ? (
+              <button
+                type="button"
+                onClick={() => window.electron?.openPath?.(sourceMeta.value)}
+                className="w-full min-h-[148px] flex items-center gap-3 p-5 bg-accent/70 border border-border text-foreground rounded-2xl hover:bg-accent transition-colors text-left"
+                title={sourceMeta.displayValue}
+              >
+                <FolderOpenIcon
+                  aria-hidden="true"
+                  className="w-5 h-5 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold break-words">
+                    {sourceMeta.sourceLabel}
+                  </div>
+                  <div className="mt-1 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
+                    {sourceMeta.displayValue}
+                  </div>
                 </div>
-                <div className="mt-1 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
-                  {sourceMeta.displayValue}
-                </div>
-              </div>
-            </button>
-          ) : sourceMeta.kind === "local" ? (
-            <div
-              className="w-full min-h-[148px] flex items-center gap-3 p-5 bg-accent/70 border border-border text-foreground rounded-2xl text-left"
-              title={sourceMeta.displayValue}
-            >
-              <FolderOpenIcon aria-hidden="true" className="w-5 h-5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold break-words">
-                  {sourceMeta.sourceLabel}
-                </div>
-                <div className="mt-1 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
-                  {sourceMeta.displayValue}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <a
-              href={sourceMeta.value}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`w-full min-h-[148px] flex items-center gap-3 p-5 text-white rounded-2xl hover:opacity-90 transition-opacity text-left ${
-                sourceMeta.kind === "github" ? "bg-[#24292e]" : "bg-slate-700"
-              }`}
-              title={sourceMeta.displayValue}
-            >
-              {sourceMeta.kind === "github" ? (
-                <GithubIcon aria-hidden="true" className="w-5 h-5 shrink-0" />
-              ) : (
-                <LinkIcon aria-hidden="true" className="w-5 h-5 shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold break-words">
-                  {sourceMeta.sourceLabel}
-                </div>
-                <div className="mt-1 whitespace-normal break-words text-xs leading-relaxed text-white/70">
-                  {sourceMeta.displayValue}
+              </button>
+            ) : sourceMeta.kind === "local" ? (
+              <div
+                className="w-full min-h-[148px] flex items-center gap-3 p-5 bg-accent/70 border border-border text-foreground rounded-2xl text-left"
+                title={sourceMeta.displayValue}
+              >
+                <FolderOpenIcon
+                  aria-hidden="true"
+                  className="w-5 h-5 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold break-words">
+                    {sourceMeta.sourceLabel}
+                  </div>
+                  <div className="mt-1 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
+                    {sourceMeta.displayValue}
+                  </div>
                 </div>
               </div>
-            </a>
-          ))}
-      </div>
+            ) : (
+              <a
+                href={sourceMeta.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-full min-h-[148px] flex items-center gap-3 p-5 text-white rounded-2xl hover:opacity-90 transition-opacity text-left ${
+                  sourceMeta.kind === "github" ? "bg-[#24292e]" : "bg-slate-700"
+                }`}
+                title={sourceMeta.displayValue}
+              >
+                {sourceMeta.kind === "github" ? (
+                  <GithubIcon aria-hidden="true" className="w-5 h-5 shrink-0" />
+                ) : (
+                  <LinkIcon aria-hidden="true" className="w-5 h-5 shrink-0" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold break-words">
+                    {sourceMeta.sourceLabel}
+                  </div>
+                  <div className="mt-1 whitespace-normal break-words text-xs leading-relaxed text-white/70">
+                    {sourceMeta.displayValue}
+                  </div>
+                </div>
+              </a>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

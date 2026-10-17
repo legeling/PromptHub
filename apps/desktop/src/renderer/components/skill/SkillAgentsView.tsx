@@ -1,3 +1,4 @@
+import { getSkillPlatformErrorFeedback } from "../../services/skill-platform-error";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -445,8 +446,8 @@ export function SkillAgentsView() {
     } catch (error) {
       console.error("Failed to install skill to agent:", error);
       showToast(
-        t("skill.agentInstallFailed", "Failed to install skill to agent"),
-        "error",
+        getSkillPlatformErrorFeedback(error).reason,
+          getSkillPlatformErrorFeedback(error).severity,
       );
     } finally {
       setImportingJob(null);

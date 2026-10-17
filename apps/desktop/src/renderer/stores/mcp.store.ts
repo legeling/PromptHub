@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { loadDeployableAgentPlatformIds } from "../services/platform-visibility";
 import type { McpTargetPreset } from "@prompthub/core";
 import type {
   McpCreateFromSourceRequest,
@@ -58,6 +59,7 @@ interface McpState {
   loadingMoreMarketSourceId: string | null;
   marketError: string | null;
   targetPresets: McpTargetPreset[];
+  deployablePlatformIds: string[];
   targetStatus: McpTargetStatusEntry[];
   healthChecks: McpHealthCheckResult[];
   targetSyncChecks: McpTargetSyncCheck[];
@@ -347,6 +349,7 @@ export const useMcpStore = create<McpState>()(
       loadingMoreMarketSourceId: null,
       marketError: null,
       targetPresets: [],
+      deployablePlatformIds: [],
       targetStatus: [],
       healthChecks: [],
       targetSyncChecks: [],
@@ -386,13 +389,16 @@ export const useMcpStore = create<McpState>()(
         });
         const request = (async (): Promise<void> => {
           try {
-            const [targetPresets, targetStatus] = await Promise.all([
-              window.api.mcp.getTargetPresets(),
-              window.api.mcp.getTargetStatus(),
-            ]);
+            const [targetPresets, targetStatus, deployablePlatformIds] =
+              await Promise.all([
+                window.api.mcp.getTargetPresets(),
+                window.api.mcp.getTargetStatus(),
+                loadDeployableAgentPlatformIds(),
+              ]);
             set({
               targetPresets,
               targetStatus,
+              deployablePlatformIds,
               hasLoadedTargetInventory: true,
               isLoadingTargetInventory: false,
               targetInventoryError: null,

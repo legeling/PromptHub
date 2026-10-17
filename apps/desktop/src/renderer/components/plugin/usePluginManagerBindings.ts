@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { getPluginTargetPlatformId } from "./plugin-detail-utils";
+import { filterVisiblePluginTargets } from "./plugin-detail-utils";
 import { useMcpStore } from "../../stores/mcp.store";
 import { usePluginStore } from "../../stores/plugin.store";
 import {
@@ -69,11 +69,16 @@ export function usePluginManagerBindings() {
     (state) => state.disabledPlatformIds,
   );
   const targetMatrix = useMemo(() => {
-    const disabled = new Set(disabledPlatformIds);
-    return rawPluginStore.targetMatrix.filter(
-      (target) => !disabled.has(getPluginTargetPlatformId(target.id)),
+    return filterVisiblePluginTargets(
+      rawPluginStore.targetMatrix,
+      rawPluginStore.deployablePlatformIds,
+      disabledPlatformIds,
     );
-  }, [disabledPlatformIds, rawPluginStore.targetMatrix]);
+  }, [
+    disabledPlatformIds,
+    rawPluginStore.deployablePlatformIds,
+    rawPluginStore.targetMatrix,
+  ]);
   const pluginStore = { ...rawPluginStore, targetMatrix };
   const skillBindings = usePluginManagerSkillBindings();
   const mcpBindings = usePluginManagerMcpBindings();

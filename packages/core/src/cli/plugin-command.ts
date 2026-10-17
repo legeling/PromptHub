@@ -2,6 +2,7 @@ import { CorePluginError, CorePluginLibraryService } from "../plugin-library";
 import {
   getPluginTargetPlatformId,
   resolvePluginPackageTargetPath,
+  resolveSharedPluginTargetPath,
 } from "../plugin-target-paths";
 import type { PluginTargetPathResolver } from "../plugin-library/shared";
 import { getCliAgentAssetInventory } from "./agent-assets";
@@ -21,6 +22,8 @@ async function createTargetResolver(databaseHooks: CliDatabaseHooks): Promise<{
     ),
   );
   const resolvePath: PluginTargetPathResolver = (targetId, plugin) => {
+    if (targetId === "shared-agents")
+      return resolveSharedPluginTargetPath(plugin);
     const platformId = getPluginTargetPlatformId(targetId);
     const agent = platformId ? agents.get(platformId) : undefined;
     if (!agent?.paths.plugins)

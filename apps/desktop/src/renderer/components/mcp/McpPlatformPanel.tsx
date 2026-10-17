@@ -1,19 +1,19 @@
+import { isSharedMcpTargetPreset } from "@prompthub/shared/utils/mcp-shared-targets";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  CheckIcon,
   CheckSquareIcon,
   DownloadIcon,
   Loader2Icon,
   SquareIcon,
-  Trash2Icon,
+  Settings2Icon,
 } from "lucide-react";
 import type {
   McpServerConfig,
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 import type { McpTargetPreset } from "@prompthub/core";
-import { PlatformIcon } from "../ui/PlatformIcon";
+import { McpTargetCard } from "./McpTargetCard";
 import { isServerOnPreset } from "./mcp-form-utils";
 
 interface McpPlatformPanelProps {
@@ -60,9 +60,16 @@ export function McpPlatformPanel({
   const selectedPresets = targetPresets.filter((preset) =>
     selectedIds.has(preset.id),
   );
+  const agentPresets = targetPresets.filter(
+    (preset) => !isSharedMcpTargetPreset(preset),
+  );
+  const sharedPresets = targetPresets.filter(isSharedMcpTargetPreset);
+  const selectableAgents = undistributed.filter(
+    (preset) => !isSharedMcpTargetPreset(preset),
+  );
   const allSelected =
-    undistributed.length > 0 &&
-    undistributed.every((preset) => selectedIds.has(preset.id));
+    selectableAgents.length > 0 &&
+    selectableAgents.every((preset) => selectedIds.has(preset.id));
 
   const toggleSelection = (presetId: string) => {
     setSelectedIds((current) => {
@@ -100,6 +107,19 @@ export function McpPlatformPanel({
       setBusyId(null);
     }
   };
+
+  const renderTarget = (preset: McpTargetPreset) => (
+    <McpTargetCard
+      key={preset.id}
+      preset={preset}
+      enabled={server.enabled}
+      isDistributed={distributedIds.has(preset.id)}
+      isSelected={selectedIds.has(preset.id)}
+      isBusy={busyId === preset.id || isBatchApplying}
+      onToggle={() => toggleSelection(preset.id)}
+      onRemove={() => void handleSingle(preset, onRemove)}
+    />
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -154,11 +174,14 @@ export function McpPlatformPanel({
                   <button
                     type="button"
                     onClick={() =>
-                      setSelectedIds(
-                        allSelected
-                          ? new Set()
-                          : new Set(undistributed.map((preset) => preset.id)),
-                      )
+                      setSelectedIds((current) => {
+                        const next = new Set(current);
+                        for (const preset of selectableAgents) {
+                          if (allSelected) next.delete(preset.id);
+                          else next.add(preset.id);
+                        }
+                        return next;
+                      })
                     }
                     className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
@@ -204,115 +227,25 @@ export function McpPlatformPanel({
               </div>
             ) : null}
 
-            {targetPresets.map((preset) => {
-              const isDistributed = distributedIds.has(preset.id);
-              const isSelected = selectedIds.has(preset.id);
-              const isBusy = busyId === preset.id;
-              const cardClassName = `flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
-                isDistributed
-                  ? "cursor-default border-primary bg-primary/5"
-                  : isSelected
-                    ? "cursor-pointer border-primary bg-primary/10"
-                    : "cursor-pointer border-border bg-accent/30 hover:bg-accent/50"
-              } ${isBusy || (!server.enabled && !isDistributed) ? "opacity-70" : ""}`;
-              const cardContent = (
-                <>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div
-                      aria-hidden="true"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center"
-                    >
-                      <PlatformIcon
-                        platformId={preset.platformId ?? preset.id}
-                        size={28}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="truncate text-sm font-medium text-foreground">
-                        {preset.label}
-                      </h4>
-                      <p className="truncate font-mono text-[10px] text-muted-foreground">
-                        {isDistributed
-                          ? t("mcp.distributed", "Distributed")
-                          : isSelected
-                            ? t("mcp.selected", "Selected")
-                            : t("skill.clickToSelect", "Click to select")}
-                      </p>
-                      <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/80">
-                        {preset.path}
-                      </p>
-                    </div>
-                  </div>
-
-                  {isBusy ? (
-                    <Loader2Icon
-                      className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  ) : isDistributed ? (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <CheckIcon
-                        className="h-4 w-4 text-primary"
-                        aria-hidden="true"
-                      />
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleSingle(preset, onRemove);
-                        }}
-                        title={t(
-                          "mcp.removeFromTarget",
-                          "Remove from platform",
-                        )}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2Icon
-                          className="h-3.5 w-3.5"
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      aria-hidden="true"
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground/30"
-                      }`}
-                    >
-                      {isSelected ? (
-                        <CheckIcon className="h-3 w-3 text-white" />
-                      ) : null}
-                    </div>
-                  )}
-                </>
-              );
-
-              if (!isDistributed) {
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    disabled={!server.enabled || isBusy}
-                    aria-label={preset.label}
-                    aria-pressed={isSelected}
-                    title={t("skill.clickToSelect", "Click to select")}
-                    onClick={() => toggleSelection(preset.id)}
-                    className={cardClassName}
-                  >
-                    {cardContent}
-                  </button>
-                );
-              }
-
-              return (
-                <div key={preset.id} className={cardClassName}>
-                  {cardContent}
-                </div>
-              );
-            })}
+            {agentPresets.map(renderTarget)}
+            {sharedPresets.length > 0 ? (
+              <section
+                aria-label={t("skill.distribution.advancedTargets")}
+                className="space-y-3 border-t border-border pt-4"
+              >
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  <Settings2Icon className="h-4 w-4" aria-hidden="true" />
+                  {t("skill.distribution.advancedTargets")}
+                  <span className="rounded border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-normal text-amber-700 dark:text-amber-300">
+                    {t("skill.distribution.experimental")}
+                  </span>
+                </h4>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t("mcp.sharedConfigHint")}
+                </p>
+                {sharedPresets.map(renderTarget)}
+              </section>
+            ) : null}
           </div>
         </section>
       </div>

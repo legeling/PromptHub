@@ -1,29 +1,20 @@
-import { CheckIcon, CopyIcon, ChevronRightIcon } from "lucide-react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import type { TFunction } from "i18next";
-import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import type {
-  Skill,
-  SkillPlatformInstallStatusMap,
-} from "@prompthub/shared/types";
-import { getProtocolDisplayLabel } from "./detail-utils";
+import type { Skill } from "@prompthub/shared/types";
 import { SkillAssetTopology } from "./SkillAssetTopology";
 import { useToast } from "../ui/Toast";
 
 interface SkillCodePaneProps {
-  availablePlatforms: SkillPlatform[];
   copyStatus: Record<string, boolean>;
   handleCopy: (text: string, key: string) => void;
-  installDetails: SkillPlatformInstallStatusMap;
   selectedSkill: Skill;
   skillContent: string;
   t: TFunction;
 }
 
 export function SkillCodePane({
-  availablePlatforms,
   copyStatus,
   handleCopy,
-  installDetails,
   selectedSkill,
   skillContent,
   t,
@@ -62,22 +53,13 @@ export function SkillCodePane({
           {t("skill.metadata")}
         </h3>
         <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <div className="text-[11px] font-medium text-muted-foreground">
                 {t("skill.id")}
               </div>
               <div className="mt-1 truncate font-mono text-xs">
                 {selectedSkill.id}
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] font-medium text-muted-foreground">
-                {t("skill.protocol")}
-              </div>
-              <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
-                <ChevronRightIcon aria-hidden="true" className="w-4 h-4" />
-                {getProtocolDisplayLabel(selectedSkill.protocol_type)}
               </div>
             </div>
             <div>
@@ -101,8 +83,6 @@ export function SkillCodePane({
       </section>
 
       <SkillAssetTopology
-        availablePlatforms={availablePlatforms}
-        installDetails={installDetails}
         onOpenLocalPath={(localPath) => {
           void handleOpenLocalSource(localPath);
         }}

@@ -1,3 +1,4 @@
+import { exportSkillFile } from "./export-skill";
 import { useTranslation } from "react-i18next";
 import {
   XIcon,
@@ -11,7 +12,6 @@ import {
   Edit3Icon,
   BookOpenIcon,
   CodeIcon,
-  ChevronRightIcon,
   PencilIcon,
   FileTextIcon,
   PackageIcon,
@@ -37,12 +37,7 @@ import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import "highlight.js/styles/github-dark.css";
-import {
-  downloadSkillExport,
-  downloadSkillZipExport,
-  getErrorMessage,
-  getSkillSourceMeta,
-} from "./detail-utils";
+import { getErrorMessage, getSkillSourceMeta } from "./detail-utils";
 import { useSkillPlatform } from "./use-skill-platform";
 import { copyTextToClipboard } from "../../utils/clipboard";
 
@@ -85,6 +80,7 @@ export function SkillDetailView() {
     Record<string, ReturnType<typeof setTimeout>>
   >({});
   const isMountedRef = useRef(true);
+  const exportInFlightRef = useRef(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFileEditorOpen, setIsFileEditorOpen] = useState(false);
@@ -265,27 +261,28 @@ export function SkillDetailView() {
   };
 
   const handleExport = async (format: "skillmd" | "zip") => {
-    if (!selectedSkill) return;
+    if (!selectedSkill || exportInFlightRef.current) return;
+    exportInFlightRef.current = true;
     try {
-      if (format === "zip") {
-        const zipResult = await window.api.skill.exportZip(selectedSkill.id);
-        downloadSkillZipExport(zipResult);
-      } else {
-        const content = await window.api.skill.export(selectedSkill.id, format);
-        downloadSkillExport(content, selectedSkill.name, format);
-      }
-
-      if (!isMountedRef.current) {
-        return;
-      }
+      const result = await exportSkillFile(selectedSkill, format);
+      if (result.status === "canceled") return;
+      if (result.status === "failed")
+        throw new Error("Skill export was not saved");
+      showToast(
+        result.status === "saved"
+          ? t("skill.exportSaved", { fileName: result.fileName })
+          : t("skill.exportDownloadStarted"),
+        result.status === "saved" ? "success" : "info",
+      );
+      if (!isMountedRef.current) return;
       const statusKey = `export_${format}`;
       setCopyStatus((current) => ({ ...current, [statusKey]: true }));
       scheduleCopyStatusReset(statusKey);
     } catch (error) {
-      showToast(
-        `${t("skill.exportFailed", "Export failed")}: ${getErrorMessage(error)}`,
-        "error",
-      );
+      console.error("Failed to export Skill", error);
+      showToast(t("skill.exportSaveFailed"), "error");
+    } finally {
+      exportInFlightRef.current = false;
     }
   };
 
@@ -676,15 +673,7 @@ export function SkillDetailView() {
                     {selectedSkill.id}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm border-b border-white/5 pb-3">
-                  <span className="text-muted-foreground">
-                    {t("skill.protocol")}
-                  </span>
-                  <span className="font-bold uppercase tracking-tight flex items-center gap-1.5 text-primary">
-                    <ChevronRightIcon aria-hidden="true" className="w-4 h-4" />
-                    {selectedSkill.protocol_type}
-                  </span>
-                </div>
+
                 <div className="flex justify-between items-center text-sm border-b border-white/5 pb-3">
                   <span className="text-muted-foreground">
                     {t("skill.createdAt")}

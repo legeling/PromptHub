@@ -211,7 +211,7 @@ describe("SkillFullDetailPage async actions", () => {
     installWindowMocks();
     useSkillPlatformMock.mockReturnValue({
       availablePlatforms: [],
-      batchInstall: vi.fn().mockResolvedValue({
+      applyPlatformChanges: vi.fn().mockResolvedValue({
         successCount: 0,
         totalCount: 0,
         failures: [],
@@ -267,6 +267,12 @@ describe("SkillFullDetailPage async actions", () => {
         "aria-hidden",
         "true",
       );
+    }
+
+    for (const button of buttons.slice(1, 7)) {
+      expect(button.textContent).toBe("");
+      expect(button).toHaveAttribute("aria-label");
+      expect(button.getAttribute("title")).toBeTruthy();
     }
 
     await act(async () => {
@@ -1016,7 +1022,7 @@ describe("SkillFullDetailPage async actions", () => {
   it("names the copied-distribution delete checkbox by its primary label", async () => {
     useSkillPlatformMock.mockReturnValue({
       availablePlatforms: [{ id: "claude", name: "Claude Code" }],
-      batchInstall: vi.fn().mockResolvedValue({
+      applyPlatformChanges: vi.fn().mockResolvedValue({
         successCount: 0,
         totalCount: 0,
         failures: [],
@@ -1069,7 +1075,7 @@ describe("SkillFullDetailPage async actions", () => {
     );
     useSkillPlatformMock.mockReturnValue({
       availablePlatforms: [{ id: "claude", name: "Claude Code" }],
-      batchInstall,
+      applyPlatformChanges: batchInstall,
       deselectAllPlatforms: vi.fn(),
       installProgress: null,
       installDetails: {},
@@ -1086,7 +1092,7 @@ describe("SkillFullDetailPage async actions", () => {
       await renderWithI18n(<SkillFullDetailPage />, { language: "en" });
     });
 
-    const installButton = screen.getByRole("button", { name: "Install All" });
+    const installButton = screen.getByRole("button", { name: "Apply changes" });
     await act(async () => {
       fireEvent.click(installButton);
       fireEvent.click(installButton);
@@ -1105,60 +1111,23 @@ describe("SkillFullDetailPage async actions", () => {
     });
   });
 
-  it("ignores repeated platform uninstall confirmations while the first uninstall is pending", async () => {
-    let resolveUninstall: (() => void) | undefined;
-    const uninstallFromPlatform = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveUninstall = resolve;
-        }),
-    );
+  it("ignores repeated apply clicks while a staged uninstall is pending", async () => {
+    let finish: (() => void) | undefined;
+    const apply = vi.fn(() => new Promise<{successCount: number; totalCount: number; failures: []; fallbacks: []}>((resolve) => {
+      finish = () => resolve({ successCount: 1, totalCount: 1, failures: [], fallbacks: [] });
+    }));
     useSkillPlatformMock.mockReturnValue({
       availablePlatforms: [{ id: "claude", name: "Claude Code" }],
-      batchInstall: vi.fn().mockResolvedValue({
-        successCount: 0,
-        totalCount: 0,
-        failures: [],
-        fallbacks: [],
-      }),
-      deselectAllPlatforms: vi.fn(),
-      installProgress: null,
-      installDetails: { claude: { installed: true, mode: "copy" } },
-      installStatus: { claude: true },
-      isBatchInstalling: false,
-      selectedPlatforms: new Set<string>(),
-      selectAllPlatforms: vi.fn(),
-      togglePlatformSelection: vi.fn(),
-      uninstallFromPlatform,
-      uninstalledPlatforms: [],
+      applyPlatformChanges: apply, installStatus: { claude: true },
+      selectedPlatforms: new Set(["claude"]), isBatchInstalling: false,
+      installProgress: null, uninstalledPlatforms: [],
+      togglePlatformSelection: vi.fn(), selectAllPlatforms: vi.fn(), deselectAllPlatforms: vi.fn(),
     });
-
-    await act(async () => {
-      await renderWithI18n(<SkillFullDetailPage />, { language: "en" });
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Uninstall" }));
-
-    const uninstallButtons = screen.getAllByRole("button", {
-      name: "Uninstall",
-    });
-    const confirmUninstallButton =
-      uninstallButtons[uninstallButtons.length - 1];
-    if (!confirmUninstallButton) {
-      throw new Error("Confirm uninstall button not found");
-    }
-
-    await act(async () => {
-      fireEvent.click(confirmUninstallButton);
-      fireEvent.click(confirmUninstallButton);
-      await Promise.resolve();
-    });
-
-    expect(uninstallFromPlatform).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      resolveUninstall?.();
-    });
+    await act(async () => { await renderWithI18n(<SkillFullDetailPage />, { language: "en" }); });
+    const button = screen.getByRole("button", { name: "Apply changes" });
+    await act(async () => { fireEvent.click(button); fireEvent.click(button); });
+    expect(apply).toHaveBeenCalledTimes(1);
+    await act(async () => { finish?.(); });
   });
 
   it("ignores repeated project deploy clicks while the first project deploy is pending", async () => {

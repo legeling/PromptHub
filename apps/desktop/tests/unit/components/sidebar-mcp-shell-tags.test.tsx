@@ -275,6 +275,46 @@ describe("Sidebar", () => {
       .__PROMPTHUB_WEB__;
   });
 
+  it.each(["mcp", "plugin"] as const)(
+    "counts only available %s Agent targets",
+    async (appModule) => {
+      useUIStore.setState({ appModule });
+      useSettingsStore.setState({ disabledPlatformIds: [] });
+      useMcpStore.setState({
+        deployablePlatformIds: ["codex"],
+        targetPresets: (["codex", "claude"] as const).map((id) => ({
+          id,
+          platformId: id,
+          label: id,
+          target: id,
+          scope: "global",
+          path: `/fixture/${id}/mcp.json`,
+        })),
+      });
+      usePluginStore.setState({
+        deployablePlatformIds: ["codex"],
+        targetMatrix: ["codex", "claude-code"].map((id) => ({
+          id,
+          displayName: id,
+          status: "native",
+          enabled: true,
+        })),
+      });
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} layout="combined" />,
+        { language: "en" },
+      );
+      const label = appModule === "mcp" ? "Agent MCP" : "Agent Plugin";
+      expect(
+        within(screen.getByRole("button", { name: label })).getByText("1"),
+      ).toBeInTheDocument();
+      act(() => useSettingsStore.setState({ disabledPlatformIds: ["codex"] }));
+      expect(
+        within(screen.getByRole("button", { name: label })).getByText("0"),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("hides disabled home modules from the rail", async () => {
     useSettingsStore.setState({
       desktopHomeModules: ["skill"],

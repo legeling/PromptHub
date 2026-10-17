@@ -3715,6 +3715,32 @@
       "createFolder": "フォルダーを作成できませんでした。再試行してください。",
       "rename": "名前を変更できませんでした。再試行してください。",
       "delete": "削除できませんでした。再試行してください。"
+    },
+    "distribution": {
+      "title": "配布",
+      "dialogTitle": "Skill を配布",
+      "platforms": "プラットフォームへの配布",
+      "advancedTargets": "詳細な配布先",
+      "selectAllPlatforms": "全プラットフォームを選択",
+      "sharedDirectory": "共有 Skill ディレクトリ",
+      "experimental": "試験的",
+      "sharedDescription": "このディレクトリに対応する Agent で共有します。",
+      "sharedCompatibility": "対応する Agent のみが読み取ります。通常は有効にする必要はありません。",
+      "sharedExcluded": "「全プラットフォームを選択」の対象外です。",
+      "copyHint": "Skill パッケージ全体をコピーします。コピーは自動更新されません。",
+      "symlinkHint": "Skill の編集がリンク先のプラットフォームに反映されます。",
+      "pendingInstall": "インストール予定",
+      "pendingUninstall": "アンインストール予定",
+      "notInstalled": "未インストール",
+      "copyOnly": "コピーのみ",
+      "selectionSummary": "{{count}} 個のプラットフォームを選択 · {{shared}}",
+      "sharedEnabled": "共有ディレクトリ有効",
+      "sharedDisabled": "共有ディレクトリ無効",
+      "pendingSummary": "インストール予定 {{install}} · アンインストール予定 {{uninstall}}",
+      "applyChanges": "変更を適用",
+      "changesApplied": "{{count}} 件の変更を適用しました。",
+      "redistribute": "再配布",
+      "redistributeHint": "選択した方法でチェック済みの {{count}} 件を更新します。"
     }
   },
   "error": {
@@ -3882,6 +3908,8 @@
     "resizeAria": "フォルダサイドバーの幅を変更"
   },
   "mcp": {
+    "sharedConfig": "共有 MCP 設定",
+    "sharedConfigHint": "pi-mcp-adapter などの対応クライアント向けです。すべての Agent が読み込むわけではありません。「すべて選択」の対象外です。",
     "noDescription": "説明はありません",
     "history": {
       "title": "バージョン履歴",
@@ -4225,6 +4253,8 @@
     }
   },
   "plugin": {
+    "sharedDirectory": "共有 Plugin ディレクトリ",
+    "sharedDirectoryHint": "パッケージ全体を ~/.agents/plugins/<名前>/ に保存します。利用には対応クライアントまたは別途登録が必要です。「すべて選択」の対象外です。",
     "title": "プラグイン",
     "subtitle": "完全な能力バンドルとエージェントターゲットを管理します。",
     "detailRenderError": "この Plugin は現在開けません",

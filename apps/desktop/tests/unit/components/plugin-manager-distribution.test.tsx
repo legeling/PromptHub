@@ -27,6 +27,7 @@ import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { renderWithI18n } from "../../helpers/i18n";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 
 vi.mock("../../../src/renderer/components/skill/SkillFileEditor", () => ({
   SkillFileEditor: ({
@@ -425,6 +426,12 @@ function resetSettingsStore() {
 }
 
 function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
+  window.api.skill.getSupportedPlatforms = vi
+    .fn()
+    .mockResolvedValue(SKILL_PLATFORMS);
+  window.api.skill.detectPlatforms = vi
+    .fn()
+    .mockResolvedValue(["codex", "claude", "opencode"]);
   let currentLibrary = libraryOverride;
   const okPackageHealthCheck: PluginPackageHealthCheck = {
     status: "ok",
@@ -587,6 +594,58 @@ describe("PluginManager", () => {
     resetUiStore();
     resetSettingsStore();
     installPluginApiMock();
+  });
+
+  it("hides undetected Agents from detail, including unsupported greyed-out targets", async () => {
+    installPluginApiMock({
+      ...installedLibrary,
+      plugins: [{ ...installedGmailPlugin, distributedTargetIds: [] }],
+    });
+    vi.mocked(window.api.skill.detectPlatforms).mockResolvedValue(["codex"]);
+    usePluginStore.setState({ selectedTab: "library" });
+    await renderPluginManager();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Gmail. Read and manage Gmail",
+      }),
+    );
+    expect(await screen.findByRole("button", { name: "Codex" })).toBeEnabled();
+    expect(screen.queryByText("Claude Code")).not.toBeInTheDocument();
+    expect(screen.queryByText("OpenCode")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Distribute to selected Agents" }),
+    );
+    await waitFor(() =>
+      expect(window.api.plugin.distributePlugin).toHaveBeenCalledWith({
+        pluginId: "gmail",
+        targetIds: ["codex"],
+        mode: "copy",
+      }),
+    );
+  });
+
+  it("shows no Agent targets when none are detected or configured", async () => {
+    installPluginApiMock(installedLibrary);
+    vi.mocked(window.api.skill.detectPlatforms).mockResolvedValue([]);
+    usePluginStore.setState({ selectedTab: "library" });
+    await renderPluginManager();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select Agent targets for Gmail",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Select Agent targets",
+    });
+    expect(within(dialog).queryByText("Codex")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("Claude Code")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("OpenCode")).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Distribute to selected Agents",
+      }),
+    ).toBeDisabled();
   });
 
   it("reacts to disabled Agent settings without changing capability switches (#237)", async () => {

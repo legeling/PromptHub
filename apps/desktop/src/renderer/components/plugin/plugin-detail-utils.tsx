@@ -318,6 +318,20 @@ export function getPluginTargetPlatformId(targetId: string): string {
   return iconIds[targetId] ?? targetId;
 }
 
+export function filterVisiblePluginTargets(
+  targets: PluginTargetCompatibility[],
+  deployablePlatformIds: string[],
+  disabledPlatformIds: string[],
+): PluginTargetCompatibility[] {
+  const deployable = new Set(deployablePlatformIds);
+  const disabled = new Set(disabledPlatformIds);
+  return targets.filter((target) => {
+    if (target.id === "shared-agents") return true;
+    const platformId = getPluginTargetPlatformId(target.id);
+    return deployable.has(platformId) && !disabled.has(platformId);
+  });
+}
+
 export function getPluginTargetMatrixForEntry(
   targets: PluginTargetCompatibility[],
   plugin: PluginLibraryEntry,
@@ -351,6 +365,7 @@ export function getPluginTargetDescription(
   target: PluginTargetCompatibility,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
+  if (target.id === "shared-agents") return t("plugin.sharedDirectoryHint");
   if (target.unsupportedReason === "native-manifest-required") {
     return t("plugin.targetDescriptions.nativeManifestRequired", {
       name: target.displayName,

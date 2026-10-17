@@ -328,6 +328,7 @@ export function getStatusLabel(
     return t("plugin.targetStatus.unsupportedPlugin", "Unsupported");
   }
   const labels: Record<PluginTargetStatus, string> = {
+    shared: t("plugin.sharedDirectory"),
     native: t("plugin.targetStatus.native", "Native"),
     adapter: t("plugin.targetStatus.adapter", "Adapter"),
     "runtime-only": t("plugin.targetStatus.runtimeOnly", "Runtime only"),

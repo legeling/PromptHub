@@ -111,9 +111,13 @@ describe("SkillQuickInstall", () => {
     expect(togglePlatformSelectionMock).toHaveBeenCalledWith("claude");
     expect(
       screen.getByRole("button", {
-        name: "Apply changes (install 0, uninstall 0)",
+        name: "Redistribute",
       }),
-    ).toBeDisabled();
+    ).toBeEnabled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Redistribute" }));
+    });
+    expect(applyPlatformChangesMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not offer changes when the initial platform status could not be read", async () => {
@@ -149,7 +153,7 @@ describe("SkillQuickInstall", () => {
     await act(async () => {
       fireEvent.click(
         screen.getByRole("button", {
-          name: "Apply changes (install 1, uninstall 0)",
+          name: "Apply changes",
         }),
       );
       await Promise.resolve();
@@ -191,7 +195,7 @@ describe("SkillQuickInstall", () => {
     );
 
     const installButton = screen.getByRole("button", {
-      name: "Apply changes (install 1, uninstall 0)",
+      name: "Apply changes",
     });
     fireEvent.click(installButton);
     fireEvent.click(installButton);
@@ -229,7 +233,9 @@ describe("SkillQuickInstall", () => {
       "true",
     );
 
-    const selectAllButton = screen.getByRole("button", { name: "Select All" });
+    const selectAllButton = screen.getByRole("button", {
+      name: "Select all platforms",
+    });
     expect(selectAllButton).toHaveAttribute("type", "button");
 
     const copyModeButton = screen.getByRole("button", { name: "Copy" });
@@ -252,7 +258,7 @@ describe("SkillQuickInstall", () => {
     expect(togglePlatformSelectionMock).toHaveBeenNthCalledWith(2, "claude");
 
     const installButton = screen.getByRole("button", {
-      name: "Apply changes (install 1, uninstall 0)",
+      name: "Apply changes",
     });
     expect(installButton).toHaveAttribute("type", "button");
     expect(installButton.querySelector("svg")).toHaveAttribute(

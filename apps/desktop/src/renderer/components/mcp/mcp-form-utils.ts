@@ -50,14 +50,14 @@ function linesToRecord(value: string): Record<string, string> {
   return Object.fromEntries(
     value
       .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
+      .filter((line) => line.trim().length > 0)
       .map((line) => {
         const index = line.indexOf("=");
         return index === -1
-          ? [line, ""]
-          : [line.slice(0, index), line.slice(index + 1)];
-      }),
+          ? [line.trim(), ""]
+          : [line.slice(0, index).trim(), line.slice(index + 1)];
+      })
+      .filter(([key]) => key.length > 0),
   );
 }
 
@@ -83,14 +83,17 @@ export function serverToForm(server: McpServerConfig | null): McpFormState {
   };
 }
 
-export function formToDraft(form: McpFormState): McpServerDraft {
-  return {
+export function formToDraft(
+  form: McpFormState,
+  server?: McpServerConfig | null,
+): McpServerDraft {
+  const draft: McpServerDraft = {
     name: form.name,
     displayName: form.displayName,
     description: form.description,
     transport: form.transport,
     command: form.command,
-    args: form.args.split(/\r?\n/).filter(Boolean),
+    args: form.args === "" ? [] : form.args.split(/\r?\n/),
     cwd: form.cwd,
     env: linesToRecord(form.env),
     envRefs: linesToRecord(form.envRefs),
@@ -103,6 +106,15 @@ export function formToDraft(form: McpFormState): McpServerDraft {
       .filter(Boolean),
     enabled: form.enabled,
   };
+  if (server) {
+    const original = serverToForm(server);
+    for (const key of Object.keys(original) as Array<keyof McpFormState>) {
+      // The form and its draft share these keys; unchanged fields are patches,
+      // not replacements of potentially multiline or redacted source values.
+      if (form[key] === original[key]) delete draft[key];
+    }
+  }
+  return draft;
 }
 
 export function textInputClass(): string {

@@ -16,6 +16,7 @@ import type {
 } from "@prompthub/shared/types/plugin";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { PlatformIcon } from "../ui/PlatformIcon";
+import { SharedPluginTargetCard } from "./SharedPluginTargetCard";
 import { useToast } from "../ui/Toast";
 import {
   getPluginTargetDescription,
@@ -101,17 +102,26 @@ export function PluginPlatformPanel({
 
   const selectAllTargets = () => {
     setSelectedTargetIds(
-      new Set(undistributedTargets.map((target) => target.id)),
+      (current) =>
+        new Set([...current, ...selectableAgents.map((target) => target.id)]),
     );
   };
 
   const deselectAllTargets = () => {
-    setSelectedTargetIds(new Set());
+    setSelectedTargetIds(
+      (current) => new Set([...current].filter((id) => id === "shared-agents")),
+    );
   };
 
+  const sharedTarget = effectiveTargetMatrix.find(
+    (target) => target.id === "shared-agents",
+  );
+  const selectableAgents = undistributedTargets.filter(
+    (target) => target.id !== "shared-agents",
+  );
   const selectedAll =
-    undistributedTargets.length > 0 &&
-    selectedCount === undistributedTargets.length;
+    selectableAgents.length > 0 &&
+    selectableAgents.every((target) => selectedTargetIds.has(target.id));
 
   const distributeToSelectedTargets = async () => {
     if (!localPackagePath || selectedCount === 0 || isDistributing) {
@@ -253,141 +263,143 @@ export function PluginPlatformPanel({
           ) : null}
 
           <div className="space-y-2">
-            {effectiveTargetMatrix.map((target) => {
-              const isDistributed = distributedTargetIds.has(target.id);
-              const selected =
-                !isDistributed && selectedTargetIds.has(target.id);
-              const description = getPluginTargetDescription(target, t);
-              const content = (
-                <>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div
-                      aria-hidden="true"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center"
-                    >
-                      <PlatformIcon
-                        platformId={getPluginTargetPlatformId(target.id)}
-                        size={28}
-                      />
+            {effectiveTargetMatrix
+              .filter((target) => target.id !== "shared-agents")
+              .map((target) => {
+                const isDistributed = distributedTargetIds.has(target.id);
+                const selected =
+                  !isDistributed && selectedTargetIds.has(target.id);
+                const description = getPluginTargetDescription(target, t);
+                const content = (
+                  <>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        aria-hidden="true"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center"
+                      >
+                        <PlatformIcon
+                          platformId={getPluginTargetPlatformId(target.id)}
+                          size={28}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <h4 className="truncate text-sm font-medium text-foreground">
+                            {target.displayName}
+                          </h4>
+                          {target.status === "native" ? (
+                            <span className="shrink-0 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:text-emerald-300">
+                              {t("plugin.targetStatus.native", "Native")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
+                          {isDistributed
+                            ? t("plugin.installed", "Installed")
+                            : selected
+                              ? t(
+                                  "plugin.selectedForDistribution",
+                                  "Selected for Plugin distribution",
+                                )
+                              : target.enabled
+                                ? t("skill.clickToSelect", "Click to select")
+                                : description}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <h4 className="truncate text-sm font-medium text-foreground">
-                          {target.displayName}
-                        </h4>
-                        {target.status === "native" ? (
-                          <span className="shrink-0 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:text-emerald-300">
-                            {t("plugin.targetStatus.native", "Native")}
-                          </span>
+                    {isDistributed ? (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <CheckIcon
+                          aria-hidden="true"
+                          className="h-4 w-4 text-primary"
+                        />
+                        {onRemoveDistribution ? (
+                          <button
+                            type="button"
+                            onClick={() => setPendingRemoveTarget(target)}
+                            disabled={isRemovingTargetId === target.id}
+                            className="text-[10px] text-destructive transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                            title={t("plugin.removePluginFromAgent", {
+                              agent: target.displayName,
+                              name: plugin.displayName,
+                              defaultValue: "Remove {{name}} from {{agent}}",
+                            })}
+                            aria-label={t("plugin.removePluginFromAgent", {
+                              agent: target.displayName,
+                              name: plugin.displayName,
+                              defaultValue: "Remove {{name}} from {{agent}}",
+                            })}
+                          >
+                            {isRemovingTargetId === target.id ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Loader2Icon
+                                  aria-hidden="true"
+                                  className="h-3 w-3 animate-spin"
+                                />
+                                {t("plugin.removing", "Removing...")}
+                              </span>
+                            ) : (
+                              t("plugin.removeFromAgent", "Remove from Agent")
+                            )}
+                          </button>
                         ) : null}
                       </div>
-                      <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
-                        {isDistributed
-                          ? t("plugin.installed", "Installed")
-                          : selected
-                            ? t(
-                                "plugin.selectedForDistribution",
-                                "Selected for Plugin distribution",
-                              )
-                            : target.enabled
-                              ? t("skill.clickToSelect", "Click to select")
-                              : description}
-                      </p>
-                    </div>
-                  </div>
-                  {isDistributed ? (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <CheckIcon
+                    ) : (
+                      <div
                         aria-hidden="true"
-                        className="h-4 w-4 text-primary"
-                      />
-                      {onRemoveDistribution ? (
-                        <button
-                          type="button"
-                          onClick={() => setPendingRemoveTarget(target)}
-                          disabled={isRemovingTargetId === target.id}
-                          className="text-[10px] text-destructive transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                          title={t("plugin.removePluginFromAgent", {
-                            agent: target.displayName,
-                            name: plugin.displayName,
-                            defaultValue: "Remove {{name}} from {{agent}}",
-                          })}
-                          aria-label={t("plugin.removePluginFromAgent", {
-                            agent: target.displayName,
-                            name: plugin.displayName,
-                            defaultValue: "Remove {{name}} from {{agent}}",
-                          })}
-                        >
-                          {isRemovingTargetId === target.id ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Loader2Icon
-                                aria-hidden="true"
-                                className="h-3 w-3 animate-spin"
-                              />
-                              {t("plugin.removing", "Removing...")}
-                            </span>
-                          ) : (
-                            t("plugin.removeFromAgent", "Remove from Agent")
-                          )}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : (
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                          selected
+                            ? "border-primary bg-primary"
+                            : "border-muted-foreground/30"
+                        }`}
+                      >
+                        {selected ? (
+                          <CheckIcon className="h-3 w-3 text-white" />
+                        ) : null}
+                      </div>
+                    )}
+                  </>
+                );
+
+                if (!target.enabled) {
+                  return (
                     <div
-                      aria-hidden="true"
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                        selected
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground/30"
-                      }`}
+                      key={target.id}
+                      className="flex w-full items-center justify-between rounded-xl border border-border bg-accent/20 p-3 text-left opacity-55"
                     >
-                      {selected ? (
-                        <CheckIcon className="h-3 w-3 text-white" />
-                      ) : null}
+                      {content}
                     </div>
-                  )}
-                </>
-              );
+                  );
+                }
 
-              if (!target.enabled) {
+                if (isDistributed) {
+                  return (
+                    <div
+                      key={target.id}
+                      className="flex w-full items-center justify-between rounded-xl border border-primary bg-primary/5 p-3 text-left"
+                    >
+                      {content}
+                    </div>
+                  );
+                }
+
                 return (
-                  <div
+                  <button
                     key={target.id}
-                    className="flex w-full items-center justify-between rounded-xl border border-border bg-accent/20 p-3 text-left opacity-55"
+                    type="button"
+                    aria-label={target.displayName}
+                    aria-pressed={selected}
+                    onClick={() => toggleTarget(target)}
+                    className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
+                      selected
+                        ? "cursor-pointer border-primary bg-primary/10"
+                        : "cursor-pointer border-border bg-accent/30 hover:bg-accent/50"
+                    }`}
                   >
                     {content}
-                  </div>
+                  </button>
                 );
-              }
-
-              if (isDistributed) {
-                return (
-                  <div
-                    key={target.id}
-                    className="flex w-full items-center justify-between rounded-xl border border-primary bg-primary/5 p-3 text-left"
-                  >
-                    {content}
-                  </div>
-                );
-              }
-
-              return (
-                <button
-                  key={target.id}
-                  type="button"
-                  aria-label={target.displayName}
-                  aria-pressed={selected}
-                  onClick={() => toggleTarget(target)}
-                  className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
-                    selected
-                      ? "cursor-pointer border-primary bg-primary/10"
-                      : "cursor-pointer border-border bg-accent/30 hover:bg-accent/50"
-                  }`}
-                >
-                  {content}
-                </button>
-              );
-            })}
+              })}
           </div>
 
           {!localPackagePath ? (
@@ -397,6 +409,27 @@ export function PluginPlatformPanel({
                 "This Plugin has no local package folder yet, so files and adapter output cannot be generated.",
               )}
             </p>
+          ) : null}
+          {sharedTarget ? (
+            <SharedPluginTargetCard
+              selected={selectedTargetIds.has(sharedTarget.id)}
+              installed={distributedTargetIds.has(sharedTarget.id)}
+              busy={
+                isDistributing ||
+                isRemovingTargetId === sharedTarget.id ||
+                !localPackagePath
+              }
+              onToggle={() => toggleTarget(sharedTarget)}
+              onRemove={
+                onRemoveDistribution
+                  ? () =>
+                      setPendingRemoveTarget({
+                        ...sharedTarget,
+                        displayName: t("plugin.sharedDirectory"),
+                      })
+                  : undefined
+              }
+            />
           ) : null}
         </section>
       </div>

@@ -17,6 +17,7 @@ import type {
   SkillGalleryColumnMode,
 } from "../../stores/skill.store";
 import { Select, type SelectOption } from "../ui/Select";
+import { GalleryColumnSelect } from "../ui/GalleryColumnSelect";
 import { SkillTagSearchFilter } from "./SkillTagSearchFilter";
 
 export interface SkillManagerFilterOption {
@@ -186,15 +187,13 @@ function GalleryLayoutControls(props: HeaderProps) {
         />
       </div>
       {props.viewMode === "gallery" ? (
-        <Select
+        <GalleryColumnSelect
           ariaLabel={props.t("skill.galleryColumnsLabel", "Skill card columns")}
           value={props.galleryColumns}
           onChange={(value) =>
             props.onGalleryColumnsChange(value as SkillGalleryColumnMode)
           }
           options={props.galleryColumnOptions}
-          className="w-[118px]"
-          triggerClassName="h-10 w-full rounded-lg border border-border app-wallpaper-surface px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/30 flex items-center justify-between gap-2"
         />
       ) : null}
     </>

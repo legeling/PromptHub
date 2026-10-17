@@ -269,21 +269,31 @@ function ManagedSkillHeaderActions({
   const { t } = useTranslation();
   return (
     <>
-      <SourceUpdateHeaderAction sourceUpdate={sourceUpdate} />
-      <button
-        type="button"
+      <SourceUpdateHeaderAction sourceUpdate={sourceUpdate} iconOnly />
+      <IconAction
         onClick={onOpenSnapshot}
         disabled={isCreatingSnapshot}
-        className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
+        busy={isCreatingSnapshot}
+        label={t("skill.snapshot", "Snapshot")}
         title={snapshotLabel}
-      >
-        <SaveIcon className="h-4 w-4" aria-hidden="true" />
-        {t("skill.snapshot", "Snapshot")}
-      </button>
+        icon={
+          isCreatingSnapshot ? (
+            <Loader2Icon className="h-5 w-5 animate-spin" aria-hidden="true" />
+          ) : (
+            <SaveIcon className="h-5 w-5" aria-hidden="true" />
+          )
+        }
+      />
       <button
         type="button"
         onClick={onToggleFavorite}
-        className={`p-2.5 rounded-full transition-all active:scale-press-in ${
+        aria-label={
+          selectedSkill.is_favorite
+            ? t("skill.removeFavorite", "Remove Favorite")
+            : t("skill.addFavorite", "Add to Favorites")
+        }
+        aria-pressed={selectedSkill.is_favorite}
+        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all active:scale-press-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
           selectedSkill.is_favorite
             ? "text-yellow-500 hover:text-yellow-600"
             : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
@@ -321,11 +331,41 @@ function ManagedSkillHeaderActions({
 
 function SourceUpdateHeaderAction({
   sourceUpdate,
+  iconOnly = false,
+}: {
+  sourceUpdate: SourceUpdateHeaderState;
+  iconOnly?: boolean;
+}) {
+  if (!sourceUpdate.hasMetadata) return null;
+
+  if (iconOnly) {
+    const busy = sourceUpdate.checking || sourceUpdate.updating;
+    return (
+      <IconAction
+        label={sourceUpdate.buttonLabel}
+        onClick={() => void sourceUpdate.onCheck()}
+        disabled={busy}
+        busy={busy}
+        icon={
+          busy ? (
+            <Loader2Icon className="h-5 w-5 animate-spin" aria-hidden="true" />
+          ) : (
+            <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
+          )
+        }
+      />
+    );
+  }
+
+  return <SourceUpdateTextAction sourceUpdate={sourceUpdate} />;
+}
+
+function SourceUpdateTextAction({
+  sourceUpdate,
 }: {
   sourceUpdate: SourceUpdateHeaderState;
 }) {
   const { t } = useTranslation();
-  if (!sourceUpdate.hasMetadata) return null;
 
   return (
     <>
@@ -354,26 +394,34 @@ function SourceUpdateHeaderAction({
 
 function IconAction({
   destructive = false,
+  disabled = false,
+  busy = false,
   icon,
   label,
+  title = label,
   onClick,
 }: {
   destructive?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
   icon: React.ReactNode;
   label: string;
+  title?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`p-2.5 text-muted-foreground rounded-full transition-all active:scale-press-in ${
+      disabled={disabled}
+      aria-busy={busy || undefined}
+      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground rounded-full transition-all active:scale-press-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 ${
         destructive
           ? "hover:text-destructive hover:bg-destructive/10"
           : "hover:text-primary hover:bg-primary/10"
       }`}
       aria-label={label}
-      title={label}
+      title={title}
     >
       {icon}
     </button>

@@ -3715,6 +3715,32 @@
       "createFolder": "No se pudo crear la carpeta. Inténtelo de nuevo.",
       "rename": "No se pudo cambiar el nombre. Inténtelo de nuevo.",
       "delete": "No se pudo eliminar el archivo o la carpeta. Inténtelo de nuevo."
+    },
+    "distribution": {
+      "title": "Distribución",
+      "dialogTitle": "Distribuir Skill",
+      "platforms": "Distribución a plataformas",
+      "advancedTargets": "Destinos avanzados",
+      "selectAllPlatforms": "Seleccionar plataformas",
+      "sharedDirectory": "Directorio Skill compartido",
+      "experimental": "Experimental",
+      "sharedDescription": "Compartido por los Agents compatibles con este directorio.",
+      "sharedCompatibility": "Solo lo leen los Agents compatibles; normalmente no es necesario activarlo.",
+      "sharedExcluded": "Excluido de « Seleccionar plataformas ».",
+      "copyHint": "Copia el paquete Skill completo. Las copias no se actualizan automáticamente.",
+      "symlinkHint": "Los cambios del Skill se sincronizan con las plataformas enlazadas.",
+      "pendingInstall": "Por instalar",
+      "pendingUninstall": "Por desinstalar",
+      "notInstalled": "No instalado",
+      "copyOnly": "Solo copia",
+      "selectionSummary": "{{count}} plataformas seleccionadas · {{shared}}",
+      "sharedEnabled": "Directorio compartido activado",
+      "sharedDisabled": "Directorio compartido desactivado",
+      "pendingSummary": "Por instalar: {{install}} · Por desinstalar: {{uninstall}}",
+      "applyChanges": "Aplicar cambios",
+      "changesApplied": "Se aplicaron {{count}} cambios.",
+      "redistribute": "Redistribuir",
+      "redistributeHint": "Actualizar {{count}} destinos marcados con el método elegido."
     }
   },
   "error": {
@@ -3882,6 +3908,8 @@
     "resizeAria": "Cambiar el ancho de la barra lateral de carpetas"
   },
   "mcp": {
+    "sharedConfig": "Configuración MCP compartida",
+    "sharedConfigHint": "Para clientes compatibles como pi-mcp-adapter. No todos los Agents leen este archivo. Excluida de Seleccionar todo.",
     "noDescription": "Sin descripción",
     "history": {
       "title": "Historial de versiones",
@@ -4225,6 +4253,8 @@
     }
   },
   "plugin": {
+    "sharedDirectory": "Directorio compartido de Plugins",
+    "sharedDirectoryHint": "Guarda el paquete completo en ~/.agents/plugins/<nombre>/. Requiere un cliente compatible o un registro independiente. Se excluye de « Seleccionar todo ».",
     "title": "Plugins",
     "subtitle": "Gestiona paquetes completos de capacidades y sus destinos de agentes.",
     "detailRenderError": "Este plugin no se puede abrir ahora",

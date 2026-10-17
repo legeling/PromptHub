@@ -3,6 +3,7 @@ import {
   CheckIcon,
   CheckSquareIcon,
   CopyPlusIcon,
+  FolderIcon,
   LinkIcon,
   SendIcon,
   SquareIcon,
@@ -52,6 +53,7 @@ function getStatusLabel(
     return t("plugin.targetStatus.unsupportedPlugin", "Unsupported");
   }
   const labels: Record<PluginTargetStatus, string> = {
+    shared: t("plugin.sharedDirectory"),
     native: t("plugin.targetStatus.native", "Native"),
     adapter: t("plugin.targetStatus.adapter", "Adapter"),
     "runtime-only": t("plugin.targetStatus.runtimeOnly", "Runtime only"),
@@ -70,6 +72,7 @@ function getTargetDescription(
       name: target.displayName,
     });
   }
+  if (target.id === "shared-agents") return t("plugin.sharedDirectoryHint");
   const localizedDescription = t(`plugin.targetDescriptions.${target.id}`, {
     defaultValue: "",
     name: target.displayName,
@@ -271,7 +274,13 @@ function PluginTargetRow({
     <button
       type="button"
       disabled={!target.enabled}
-      aria-label={target.enabled ? target.displayName : undefined}
+      aria-label={
+        target.enabled
+          ? target.id === "shared-agents"
+            ? t("plugin.sharedDirectory")
+            : target.displayName
+          : undefined
+      }
       aria-pressed={target.enabled ? selected : undefined}
       onClick={onToggle}
       className={`flex w-full items-center justify-between rounded-2xl border p-3 text-left transition-all ${rowStateClass}`}
@@ -281,15 +290,21 @@ function PluginTargetRow({
           aria-hidden="true"
           className="flex h-10 w-10 shrink-0 items-center justify-center"
         >
-          <PlatformIcon
-            platformId={getTargetPlatformIconId(target.id)}
-            size={28}
-          />
+          {target.id === "shared-agents" ? (
+            <FolderIcon className="h-7 w-7 text-primary" />
+          ) : (
+            <PlatformIcon
+              platformId={getTargetPlatformIconId(target.id)}
+              size={28}
+            />
+          )}
         </div>
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <h4 className="truncate text-sm font-medium text-foreground">
-              {target.displayName}
+              {target.id === "shared-agents"
+                ? t("plugin.sharedDirectory")
+                : target.displayName}
             </h4>
             <span
               className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusClass}`}
@@ -383,14 +398,17 @@ export function PluginAgentTargetPicker({
     [selectedPlugins, unscopedTargetMatrix],
   );
   const enabledTargets = useMemo(
-    () => targetMatrix.filter((target) => target.enabled),
+    () =>
+      targetMatrix.filter(
+        (target) => target.enabled && target.id !== "shared-agents",
+      ),
     [targetMatrix],
   );
   const primaryPlugin = selectedPlugins[0] ?? null;
   const isBatchDistribution = selectedPlugins.length > 1;
   const selectedAll =
     enabledTargets.length > 0 &&
-    selectedTargetIds.size === enabledTargets.length;
+    enabledTargets.every((target) => selectedTargetIds.has(target.id));
 
   useEffect(() => {
     if (!isOpen) return;
@@ -511,11 +529,14 @@ export function PluginAgentTargetPicker({
           selectedAll={selectedAll}
           selectedCount={selectedTargetIds.size}
           onToggleAll={() =>
-            setSelectedTargetIds(
-              selectedAll
-                ? new Set()
-                : new Set(enabledTargets.map((target) => target.id)),
-            )
+            setSelectedTargetIds((current) => {
+              const next = new Set(current);
+              for (const target of enabledTargets) {
+                if (selectedAll) next.delete(target.id);
+                else next.add(target.id);
+              }
+              return next;
+            })
           }
         />
         <div className="space-y-2">

@@ -1,3 +1,5 @@
+import { exportSkillFile } from "./export-skill";
+import { formatSkillPlatformError, getSkillPlatformFailureSeverity, getSkillPlatformErrorFeedback } from "../../services/skill-platform-error";
 import { runSkillContentSafetyScan } from "../../services/skill-content-scan";
 import { useTranslation } from "react-i18next";
 import { SaveIcon } from "lucide-react";
@@ -21,8 +23,6 @@ import { Modal, Textarea } from "../ui";
 import "highlight.js/styles/github-dark.css";
 import "./SkillMarkdown.css";
 import {
-  downloadSkillExport,
-  downloadSkillZipExport,
   formatSkillSafetyScanError,
   formatSkillTranslationError,
   getErrorMessage,
@@ -135,6 +135,7 @@ export function SkillFullDetailPage({
     Record<string, ReturnType<typeof setTimeout>>
   >({});
   const isMountedRef = useRef(true);
+  const exportInFlightRef = useRef(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"preview" | "code" | "files">(
     "preview",
@@ -156,10 +157,6 @@ export function SkillFullDetailPage({
   );
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeletingSkill, setIsDeletingSkill] = useState(false);
-  const [pendingUninstallPlatform, setPendingUninstallPlatform] = useState<
-    string | null
-  >(null);
-  const [isUninstallingPlatform, setIsUninstallingPlatform] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -199,7 +196,6 @@ export function SkillFullDetailPage({
   const snapshotCreateInFlightRef = useRef(false);
   const deleteInFlightRef = useRef(false);
   const platformInstallInFlightRef = useRef(false);
-  const platformUninstallInFlightRef = useRef(false);
   const [isRetranslatePromptOpen, setIsRetranslatePromptOpen] = useState(false);
 
   useEffect(() => {
@@ -512,7 +508,9 @@ export function SkillFullDetailPage({
 
   const {
     availablePlatforms,
-    batchInstall: installSelectedPlatforms,
+    applyPlatformChanges: installSelectedPlatforms,
+    isLoading: isPlatformLoading,
+    platformError,
     deselectAllPlatforms,
     installProgress,
     installDetails: skillMdInstallDetails = {},
@@ -521,7 +519,6 @@ export function SkillFullDetailPage({
     selectedPlatforms,
     selectAllPlatforms,
     togglePlatformSelection,
-    uninstallFromPlatform: uninstallSkillFromPlatform,
     uninstalledPlatforms,
   } = useSkillPlatform(selectedSkill, installMode);
 
@@ -532,35 +529,9 @@ export function SkillFullDetailPage({
     platformInstallInFlightRef.current = true;
     try {
       const result = await installSelectedPlatforms();
+      if (result.statusRefreshFailed) showToast(t("skill.platformStatusRefreshFailed"), "warning");
       if (result.successCount > 0) {
-        const failedPlatformIds = new Set(
-          result.failures.map((failure) => failure.platformId),
-        );
-        const successfulPlatforms = Array.from(selectedPlatforms)
-          .filter((platformId) => !failedPlatformIds.has(platformId))
-          .slice(0, result.successCount)
-          .map(
-            (platformId) =>
-              availablePlatforms.find((entry) => entry.id === platformId)
-                ?.name ?? platformId,
-          );
-        showToast(
-          successfulPlatforms.length === 1
-            ? t("skill.installToPlatformSuccess", {
-                skill: selectedSkill.name,
-                platform: successfulPlatforms[0],
-                defaultValue:
-                  "{{skill}} installed to {{platform}} successfully",
-              })
-            : t("skill.installToPlatformsSuccess", {
-                skill: selectedSkill.name,
-                count: result.successCount,
-                platforms: successfulPlatforms.join(", "),
-                defaultValue:
-                  "{{skill}} installed to {{count}} platforms successfully: {{platforms}}",
-              }),
-          "success",
-        );
+        showToast(t("skill.distribution.changesApplied", { count: result.successCount }), "success");
       }
       if (result.fallbacks.length > 0) {
         const details = result.fallbacks
@@ -605,50 +576,21 @@ export function SkillFullDetailPage({
           })
           .join("\n");
         showToast(
-          t("skill.installPartialFailure", {
+          t("skill.platformChangesFailed", {
             details,
             defaultValue: "Some platforms could not be installed\n{{details}}",
           }),
-          "error",
+          getSkillPlatformFailureSeverity(result.failures),
         );
       }
     } catch (error) {
       console.error("Batch install failed:", error);
       showToast(
-        `${t("skill.updateFailed")}: ${getErrorMessage(error)}`,
-        "error",
+        formatSkillPlatformError(error),
+        getSkillPlatformErrorFeedback(error).severity,
       );
     } finally {
       platformInstallInFlightRef.current = false;
-    }
-  };
-
-  const requestUninstallFromPlatform = (platformId: string) => {
-    setPendingUninstallPlatform(platformId);
-  };
-
-  const confirmUninstallFromPlatform = async () => {
-    if (!pendingUninstallPlatform || platformUninstallInFlightRef.current) {
-      return;
-    }
-
-    const platformId = pendingUninstallPlatform;
-    platformUninstallInFlightRef.current = true;
-    setIsUninstallingPlatform(true);
-
-    try {
-      await uninstallSkillFromPlatform(platformId);
-      showToast(t("skill.uninstallSuccess", "Uninstall successful"), "success");
-    } catch (error) {
-      console.error(`Failed to uninstall from ${platformId}:`, error);
-      showToast(
-        `${t("skill.updateFailed")}: ${getErrorMessage(error)}`,
-        "error",
-      );
-    } finally {
-      platformUninstallInFlightRef.current = false;
-      setIsUninstallingPlatform(false);
-      setPendingUninstallPlatform(null);
     }
   };
 
@@ -747,27 +689,27 @@ export function SkillFullDetailPage({
   };
 
   const handleExport = async (format: "skillmd" | "zip") => {
-    if (!selectedSkill) return;
+    if (!selectedSkill || exportInFlightRef.current) return;
+    exportInFlightRef.current = true;
     try {
-      if (format === "zip") {
-        const zipResult = await window.api.skill.exportZip(selectedSkill.id);
-        downloadSkillZipExport(zipResult);
-      } else {
-        const content = await window.api.skill.export(selectedSkill.id, format);
-        downloadSkillExport(content, selectedSkill.name, format);
-      }
-
-      if (!isMountedRef.current) {
-        return;
-      }
+      const result = await exportSkillFile(selectedSkill, format);
+      if (result.status === "canceled") return;
+      if (result.status === "failed") throw new Error("Skill export was not saved");
+      showToast(
+        result.status === "saved"
+          ? t("skill.exportSaved", { fileName: result.fileName })
+          : t("skill.exportDownloadStarted"),
+        result.status === "saved" ? "success" : "info",
+      );
+      if (!isMountedRef.current) return;
       const statusKey = `export_${format}`;
       setCopyStatus((current) => ({ ...current, [statusKey]: true }));
       scheduleCopyStatusReset(statusKey);
     } catch (error) {
-      showToast(
-        `${t("skill.exportFailed", "Export failed")}: ${getErrorMessage(error)}`,
-        "error",
-      );
+      console.error("Failed to export Skill", error);
+      showToast(t("skill.exportSaveFailed"), "error");
+    } finally {
+      exportInFlightRef.current = false;
     }
   };
 
@@ -1027,10 +969,8 @@ export function SkillFullDetailPage({
         agentContext={agentContext}
         canEditFiles={runtimeCapabilities.skillFileEditing}
         codePaneProps={{
-          availablePlatforms,
           copyStatus,
           handleCopy,
-          installDetails: skillMdInstallDetails,
           selectedSkill,
           skillContent: effectiveSkillMdContent,
           t,
@@ -1044,6 +984,8 @@ export function SkillFullDetailPage({
         isSavingUserNotes={isSavingUserNotes}
         platformPanelProps={{
           availablePlatforms,
+          isLoading: isPlatformLoading,
+          platformError,
           handleExport,
           installMode,
           installProgress,
@@ -1068,7 +1010,6 @@ export function SkillFullDetailPage({
           t,
           togglePlatformSelection,
           getProjectDeployTargets,
-          uninstallFromPlatform: requestUninstallFromPlatform,
           uninstalledPlatforms,
         }}
         previewPaneProps={{
@@ -1246,52 +1187,6 @@ export function SkillFullDetailPage({
           </div>
         }
         confirmText={t("skill.removeFromProject", "Remove from Project")}
-        cancelText={t("common.cancel", "Cancel")}
-      />
-      <ConfirmDialog
-        isOpen={pendingUninstallPlatform !== null}
-        onClose={() => {
-          if (!isUninstallingPlatform) {
-            setPendingUninstallPlatform(null);
-          }
-        }}
-        onConfirm={() => {
-          void confirmUninstallFromPlatform();
-        }}
-        variant="destructive"
-        isLoading={isUninstallingPlatform}
-        title={t("skill.confirmUninstallTitle", "Confirm Uninstall")}
-        message={
-          <div className="space-y-2">
-            <p>
-              {t(
-                "skill.confirmUninstallMessage",
-                "Are you sure you want to uninstall this skill from {{platform}}?",
-                {
-                  platform:
-                    availablePlatforms.find(
-                      (platform) => platform.id === pendingUninstallPlatform,
-                    )?.name ||
-                    pendingUninstallPlatform ||
-                    "",
-                },
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground/80">
-              {skillMdInstallDetails[pendingUninstallPlatform || ""]?.mode ===
-              "symlink"
-                ? t(
-                    "skill.platformUninstallSymlinkHint",
-                    "This removes the symlink from the selected platform. The PromptHub source stays in place.",
-                  )
-                : t(
-                    "skill.platformUninstallCopyHint",
-                    "This removes the copied skill folder from the selected platform.",
-                  )}
-            </p>
-          </div>
-        }
-        confirmText={t("skill.uninstall", "Uninstall")}
         cancelText={t("common.cancel", "Cancel")}
       />
       <ConfirmDialog

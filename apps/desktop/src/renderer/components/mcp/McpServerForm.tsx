@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeftIcon,
@@ -144,6 +144,26 @@ export function McpServerForm({
   const [form, setForm] = useState<McpFormState>(() =>
     serverToForm(selectedServer),
   );
+  const savingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const save = async (): Promise<void> => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    setSaveError(false);
+    try {
+      await onSave(
+        selectedServer?.id ?? null,
+        formToDraft(form, selectedServer),
+      );
+    } catch {
+      setSaveError(true);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     setForm(serverToForm(selectedServer));
@@ -175,7 +195,7 @@ export function McpServerForm({
       }
       onSubmit={(event) => {
         event.preventDefault();
-        void onSave(selectedServer?.id ?? null, formToDraft(form));
+        void save();
       }}
     >
       <div
@@ -252,7 +272,8 @@ export function McpServerForm({
           ) : null}
           <button
             type="submit"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            disabled={isSaving}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             <SaveIcon className="h-4 w-4" aria-hidden="true" />
             {t("common.save", "Save")}
@@ -260,8 +281,13 @@ export function McpServerForm({
         </div>
       </div>
 
+      {saveError && (
+        <p role="alert" className="px-5 py-2 text-sm text-destructive">
+          {t("mcp.saveFailed")}
+        </p>
+      )}
       <div className={bodyClassName}>
-        <div className={fieldGridClassName}>
+        <fieldset disabled={isSaving} className={fieldGridClassName}>
           {selectedServer && sourceSummary ? (
             <section className="sm:col-span-2 rounded-lg border border-border bg-background p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -476,7 +502,7 @@ export function McpServerForm({
               />
             </Field>
           </div>
-        </div>
+        </fieldset>
         {hasPlatformPanel ? (
           <div className="min-w-0">{platformPanel}</div>
         ) : null}

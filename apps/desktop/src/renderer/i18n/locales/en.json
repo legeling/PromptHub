@@ -3725,6 +3725,32 @@
       "createFolder": "Could not create the folder. Please try again.",
       "rename": "Could not rename the file or folder. Please try again.",
       "delete": "Could not delete the file or folder. Please try again."
+    },
+    "distribution": {
+      "title": "Distribution",
+      "dialogTitle": "Distribute Skill",
+      "platforms": "Platform distribution",
+      "advancedTargets": "Advanced targets",
+      "selectAllPlatforms": "Select all platforms",
+      "sharedDirectory": "Shared Skill directory",
+      "experimental": "Experimental",
+      "sharedDescription": "Shared by Agents that support this directory.",
+      "sharedCompatibility": "Only compatible Agents read this directory; usually no need to enable it.",
+      "sharedExcluded": "Not included in “Select all platforms”.",
+      "copyHint": "Copies the entire Skill package. Copies do not update automatically.",
+      "symlinkHint": "Edits to the Skill sync to linked platforms.",
+      "pendingInstall": "Pending install",
+      "pendingUninstall": "Pending uninstall",
+      "notInstalled": "Not installed",
+      "copyOnly": "Copy only",
+      "selectionSummary": "{{count}} platforms selected · {{shared}}",
+      "sharedEnabled": "Shared directory enabled",
+      "sharedDisabled": "Shared directory disabled",
+      "pendingSummary": "Pending install {{install}} · Pending uninstall {{uninstall}}",
+      "applyChanges": "Apply changes",
+      "changesApplied": "Applied {{count}} changes.",
+      "redistribute": "Redistribute",
+      "redistributeHint": "Refresh {{count}} checked targets using the selected method."
     }
   },
   "error": {
@@ -3922,6 +3948,8 @@
     "resizeAria": "Resize folder sidebar"
   },
   "mcp": {
+    "sharedConfig": "Shared MCP config",
+    "sharedConfigHint": "For compatible clients such as pi-mcp-adapter. Not all Agents read this file. Excluded from Select all.",
     "noDescription": "No description provided",
     "history": {
       "title": "Versions",
@@ -4265,6 +4293,8 @@
     }
   },
   "plugin": {
+    "sharedDirectory": "Shared Plugin directory",
+    "sharedDirectoryHint": "Store the complete package in ~/.agents/plugins/<name>/. A compatible client or separate registration is required to use it. Excluded from Select all.",
     "title": "Plugins",
     "subtitle": "Manage complete Plugin bundles and their Agent Plugin targets.",
     "detailRenderError": "This plugin cannot be opened right now",

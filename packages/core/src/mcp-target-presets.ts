@@ -1,4 +1,8 @@
 import os from "os";
+import {
+  SHARED_MCP_PRESET_ID,
+  SHARED_MCP_RELATIVE_PATH,
+} from "@prompthub/shared/utils/mcp-shared-targets";
 import path from "path";
 import {
   getPlatformById,
@@ -80,15 +84,26 @@ export function getMcpTargetPresets(
       platformId: id,
     };
   });
-  const shared = sharedApplicationTargets(homeDir, targetPlatform);
+  const applications = applicationTargets(homeDir, targetPlatform);
   return primary.flatMap((preset) => {
-    if (preset.id === "pi") return [...shared.slice(0, 3), preset];
-    if (preset.id === "cursor") return [preset, ...shared.slice(3)];
+    if (preset.id === "pi") return [sharedCompatibilityTarget(homeDir), preset];
+    if (preset.id === "cursor") return [preset, ...applications];
     return [preset];
   });
 }
 
-function sharedApplicationTargets(
+function sharedCompatibilityTarget(homeDir: string): McpTargetPreset {
+  return {
+    id: SHARED_MCP_PRESET_ID,
+    target: "pi",
+    scope: "global",
+    label: "Shared MCP (~/.agents/mcp/mcp.json)",
+    path: path.join(homeDir, SHARED_MCP_RELATIVE_PATH),
+    platformId: "pi",
+  };
+}
+
+function applicationTargets(
   homeDir: string,
   targetPlatform: NodeJS.Platform,
 ): McpTargetPreset[] {
@@ -99,30 +114,6 @@ function sharedApplicationTargets(
         ? path.join(homeDir, "AppData", "Roaming")
         : path.join(homeDir, ".config");
   return [
-    {
-      id: "pi-shared",
-      target: "pi",
-      scope: "global",
-      label: "Pi (shared MCP)",
-      path: path.join(homeDir, ".config", "mcp", "mcp.json"),
-      platformId: "pi",
-    },
-    {
-      id: "pi-agents",
-      target: "pi",
-      scope: "global",
-      label: "Pi (.agents)",
-      path: path.join(homeDir, ".agents", "mcp.json"),
-      platformId: "pi",
-    },
-    {
-      id: "pi-agents-nested",
-      target: "pi",
-      scope: "global",
-      label: "Pi (.agents nested)",
-      path: path.join(homeDir, ".agents", "mcp", "mcp.json"),
-      platformId: "pi",
-    },
     {
       id: "claude-desktop",
       target: "claude-desktop",

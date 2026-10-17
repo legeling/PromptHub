@@ -1,4 +1,5 @@
 import { notifyTaskResult } from "../../services/application-notifications";
+import { getSkillPlatformFailureSeverity, getSkillPlatformErrorFeedback } from "../../services/skill-platform-error";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -63,7 +64,7 @@ export function SkillBatchDeployDialog({
   const [isDeploying, setIsDeploying] = useState(false);
   const deployInFlightRef = useRef(false);
   const [lastFailures, setLastFailures] = useState<
-    Array<{ skillId: string; platformId: string; reason: string }>
+    Array<{ skillId: string; platformId: string; reason: string; severity: "warning" | "error" }>
   >([]);
   const [progress, setProgress] = useState<{
     current: number;
@@ -183,10 +184,15 @@ export function SkillBatchDeployDialog({
               Array.from(selectedPlatforms),
               setProgress,
             );
-      await onComplete?.();
+      let statusRefreshFailed = false;
+      try { await onComplete?.(); } catch (error) {
+        statusRefreshFailed = true;
+        console.error("Batch distribution completed, but refresh failed:", error);
+        showToast(t("skill.platformStatusRefreshFailed"), "warning");
+      }
       setLastFailures(result.failures);
 
-      const needsAttention = result.failures.length > 0 || result.fallbacks.length > 0;
+      const needsAttention = result.failures.length > 0 || result.fallbacks.length > 0 || statusRefreshFailed;
       notifyTaskResult("resourceTask", needsAttention ? (result.successCount === 0 ? "error" : "attention") : "success", "skill", needsAttention);
 
       if (result.fallbacks.length > 0) {
@@ -221,17 +227,17 @@ export function SkillBatchDeployDialog({
             preview,
             defaultValue: `${result.failures.length} target(s) failed to sync: ${preview}`,
           }),
-          "error",
+          getSkillPlatformFailureSeverity(result.failures),
         );
-      } else {
+      } else if (!statusRefreshFailed) {
         onClose();
       }
     } catch (error) {
       console.error("Failed to batch deploy skills:", error);
       notifyTaskResult("resourceTask", "error", "skill", true);
       showToast(
-        `${t("skill.updateFailed", "Update failed")}: ${String(error)}`,
-        "error",
+        getSkillPlatformErrorFeedback(error).reason,
+        getSkillPlatformErrorFeedback(error).severity,
       );
     } finally {
       deployInFlightRef.current = false;
@@ -594,7 +600,7 @@ export function SkillBatchDeployDialog({
               ) : null}
 
               {lastFailures.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+                <div className={`mt-4 rounded-xl border p-3 ${getSkillPlatformFailureSeverity(lastFailures) === "warning" ? "border-border bg-muted/40" : "border-destructive/20 bg-destructive/5"}`}>
                   <div className="text-sm font-medium text-foreground">
                     {t("skill.batchDeployFailureList", "Failed Targets")}
                   </div>

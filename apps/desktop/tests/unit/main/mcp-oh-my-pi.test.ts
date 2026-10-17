@@ -1,3 +1,4 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { getMcpTargetPresets } from "@prompthub/core";
@@ -17,14 +18,14 @@ describe("Oh My Pi MCP target", () => {
     ).toMatchObject({
       id: "oh-my-pi",
       label: "Oh My Pi",
-      path: "/Users/test/.omp/agent/mcp.json",
+      path: path.join("/Users/test", ".omp", "agent", "mcp.json"),
       platformId: "oh-my-pi",
     });
     expect(MCP_JSON_TARGETS).toContain("oh-my-pi");
     expect(getMcpServersJsonKey("oh-my-pi")).toBe("mcpServers");
   });
 
-  it("exposes Pi adapter global paths without conflating them with Oh My Pi", () => {
+  it("offers native Pi and only the selected shared compatibility path", () => {
     const presets = getMcpTargetPresets("/Users/test", "darwin", {});
 
     expect(
@@ -32,10 +33,11 @@ describe("Oh My Pi MCP target", () => {
         .filter((preset) => preset.target === "pi")
         .map((preset) => [preset.id, preset.path]),
     ).toEqual([
-      ["pi-shared", "/Users/test/.config/mcp/mcp.json"],
-      ["pi-agents", "/Users/test/.agents/mcp.json"],
-      ["pi-agents-nested", "/Users/test/.agents/mcp/mcp.json"],
-      ["pi", "/Users/test/.pi/agent/mcp.json"],
+      [
+        "pi-agents-nested",
+        path.join("/Users/test", ".agents", "mcp", "mcp.json"),
+      ],
+      ["pi", path.join("/Users/test", ".pi", "agent", "mcp.json")],
     ]);
     expect(getMcpServersJsonKey("pi")).toBe("mcpServers");
     expect(MCP_JSON_TARGETS).toContain("pi");

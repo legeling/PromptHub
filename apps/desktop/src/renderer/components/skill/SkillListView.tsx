@@ -65,19 +65,6 @@ function getSafetyIconProps(level: SkillSafetyLevel): {
   }
 }
 
-function normalizePlatformStatusMap(value: unknown): Record<string, boolean> {
-  if (!value || typeof value !== "object") {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, boolean] => {
-      const [, installed] = entry;
-      return typeof installed === "boolean";
-    }),
-  );
-}
-
 interface SkillListViewProps {
   skills: Skill[];
   skillsWithStoreUpdates?: Set<string>;
@@ -89,8 +76,6 @@ interface SkillListViewProps {
   selectedSkillIds?: Set<string>;
   onToggleSelection?: (skillId: string) => void;
 }
-
-const skillPlatformStatusCache = new Map<string, Record<string, boolean>>();
 
 /**
  * Compact List View for Skills
@@ -129,9 +114,9 @@ export function SkillListView({
   );
 
   // Platform status cache
-  const [platformStatuses, setPlatformStatuses] = useState<
-    Record<string, Record<string, boolean>>
-  >({});
+  const platformStatuses =
+    useSkillStore((state) => state.skillPlatformStatuses) ?? {};
+  const loadDeployedStatus = useSkillStore((state) => state.loadDeployedStatus);
   const [supportedPlatforms, setSupportedPlatforms] = useState<SkillPlatform[]>(
     [],
   );
@@ -158,56 +143,16 @@ export function SkillListView({
     loadPlatforms();
   }, [runtimeCapabilities.skillPlatformIntegration]);
 
-  // Load install status for all skills
+  // Share the same session snapshot as gallery icons and distribution counts.
   useEffect(() => {
-    if (!runtimeCapabilities.skillPlatformIntegration) {
-      setPlatformStatuses({});
-      return;
+    if (runtimeCapabilities.skillPlatformIntegration && skills.length > 0) {
+      void loadDeployedStatus();
     }
-
-    const loadStatuses = async () => {
-      const nextStatuses = Object.fromEntries(
-        skills.map((skill) => [
-          skill.id,
-          skillPlatformStatusCache.get(skill.id) ?? {},
-        ]),
-      );
-      setPlatformStatuses(nextStatuses);
-
-      const skillIdsToRefresh = Array.from(
-        new Set(skills.map((skill) => skill.id)),
-      );
-
-      try {
-        const statusBySkillId = (await window.api.skill.getMdInstallStatusBatch(
-          skillIdsToRefresh,
-        )) as Record<string, unknown>;
-
-        for (const [skillId, status] of Object.entries(statusBySkillId)) {
-          skillPlatformStatusCache.set(
-            skillId,
-            normalizePlatformStatusMap(status),
-          );
-        }
-
-        setPlatformStatuses(
-          Object.fromEntries(
-            skills.map((skill) => [
-              skill.id,
-              skillPlatformStatusCache.get(skill.id) ?? {},
-            ]),
-          ),
-        );
-      } catch (error) {
-        console.error("Failed to load install status batch:", error);
-      }
-    };
-    if (skills.length > 0) {
-      void loadStatuses();
-    } else {
-      setPlatformStatuses({});
-    }
-  }, [runtimeCapabilities.skillPlatformIntegration, skills]);
+  }, [
+    runtimeCapabilities.skillPlatformIntegration,
+    skills,
+    loadDeployedStatus,
+  ]);
 
   const availablePlatforms = useMemo(() => {
     return filterDeployablePlatforms(
@@ -300,7 +245,6 @@ export function SkillListView({
           ).slice(0, 3);
           const sourceBadges = buildMySkillSourceBadges(skill, t);
           const hasMetadata = sourceBadges.length > 0 || visibleTags.length > 0;
-          const isFirstRow = virtualRow.index === 0;
           const selectionLabel = isChecked
             ? t("common.selected", "已选中")
             : t("common.select", "选择");
@@ -353,14 +297,12 @@ export function SkillListView({
                 width: "100%",
                 transform: `translateY(${virtualRow.start}px)`,
               }}
-              className={`group flex min-h-[72px] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                isFirstRow ? "" : "border-t border-border"
-              } ${
+              className={`group flex min-h-[72px] items-center gap-3 border-b border-border/60 px-5 py-3 cursor-pointer transition-colors ${
                 selectionMode && isChecked
-                  ? "bg-primary/8"
+                  ? "bg-primary/10"
                   : isSelected
-                    ? "bg-primary/5"
-                    : "hover:bg-accent/50"
+                    ? "bg-primary/10"
+                    : "hover:bg-primary/5"
               }`}
             >
               {selectionMode && (

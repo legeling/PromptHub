@@ -55,10 +55,8 @@ describe("SkillCodePane", () => {
 
     await renderWithI18n(
       <SkillCodePane
-        availablePlatforms={[]}
         copyStatus={{ raw: false }}
         handleCopy={vi.fn()}
-        installDetails={{}}
         selectedSkill={makeSkill({
           local_repo_path: "/tmp/code-skill",
           source_url: undefined,
@@ -74,6 +72,10 @@ describe("SkillCodePane", () => {
     });
 
     expect(sourceButton).toHaveAttribute("type", "button");
+    expect(screen.queryByText("skill.protocol")).not.toBeInTheDocument();
+    expect(screen.getByText("skill.id")).toBeInTheDocument();
+    expect(screen.getByText("skill.createdAt")).toBeInTheDocument();
+    expect(screen.getByText("skill.updatedAt")).toBeInTheDocument();
     expect(screen.getByText("PromptHub managed package")).toBeInTheDocument();
     expect(screen.getByText("No upstream source recorded")).toBeInTheDocument();
     expect(document.querySelector("a[title='/tmp/code-skill']")).toBeNull();
@@ -96,10 +98,8 @@ describe("SkillCodePane", () => {
 
     await renderWithI18n(
       <SkillCodePane
-        availablePlatforms={[]}
         copyStatus={{ raw: false }}
         handleCopy={vi.fn()}
-        installDetails={{}}
         selectedSkill={makeSkill({
           local_repo_path: "/tmp/missing-skill",
           source_url: undefined,
@@ -132,10 +132,8 @@ describe("SkillCodePane", () => {
     await renderWithI18n(
       <form onSubmit={onSubmit}>
         <SkillCodePane
-          availablePlatforms={[]}
           copyStatus={{ raw: false }}
           handleCopy={handleCopy}
-          installDetails={{}}
           selectedSkill={makeSkill()}
           skillContent={"# Code Skill\nUse carefully."}
           t={translate as TFunction}

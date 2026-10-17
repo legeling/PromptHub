@@ -1,6 +1,7 @@
 import { publishNotification } from "../services/application-notifications";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { loadDeployableAgentPlatformIds } from "../services/platform-visibility";
 import type {
   PluginDistributeMode,
   PluginDistributeResult,
@@ -42,6 +43,7 @@ interface PluginState {
   marketSources: PluginMarketSource[];
   customStoreSources: CustomStoreSource[];
   targetMatrix: PluginTargetCompatibility[];
+  deployablePlatformIds: string[];
   sourceUpdateChecks: Record<string, PluginSourceUpdateCheck>;
   packageHealthChecks: Record<string, PluginPackageHealthCheck>;
   versionsByPluginId: Record<string, PluginVersion[]>;
@@ -287,6 +289,7 @@ export const usePluginStore = create<PluginState>()(
       marketSources: [],
       customStoreSources: [],
       targetMatrix: [],
+      deployablePlatformIds: [],
       sourceUpdateChecks: {},
       packageHealthChecks: {},
       versionsByPluginId: {},
@@ -322,9 +325,13 @@ export const usePluginStore = create<PluginState>()(
         });
         const request = (async (): Promise<void> => {
           try {
-            const targetMatrix = await window.api.plugin.getTargetMatrix();
+            const [targetMatrix, deployablePlatformIds] = await Promise.all([
+              window.api.plugin.getTargetMatrix(),
+              loadDeployableAgentPlatformIds(),
+            ]);
             set({
               targetMatrix,
+              deployablePlatformIds,
               hasLoadedTargetInventory: true,
               isLoadingTargetInventory: false,
               targetInventoryError: null,
@@ -595,7 +602,13 @@ export const usePluginStore = create<PluginState>()(
           pluginId,
           get().marketSources,
         );
-        if (check.status === "update-available" || check.status === "conflict") publishNotification({ category: "resourceUpdate", outcome: check.status === "conflict" ? "attention" : "available", id: `${pluginId}:${check.remotePackageHash ?? check.remoteManifestHash ?? "update"}`, module: "plugin" });
+        if (check.status === "update-available" || check.status === "conflict")
+          publishNotification({
+            category: "resourceUpdate",
+            outcome: check.status === "conflict" ? "attention" : "available",
+            id: `${pluginId}:${check.remotePackageHash ?? check.remoteManifestHash ?? "update"}`,
+            module: "plugin",
+          });
         set((state) => ({
           sourceUpdateChecks: {
             ...state.sourceUpdateChecks,

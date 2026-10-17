@@ -10,6 +10,7 @@ import type { McpManagerBindings } from "./useMcpManagerBindings";
 
 interface McpVisibleTargetPresetOptions {
   disabledPlatformIds: string[];
+  deployablePlatformIds: string[];
   skillProjects: McpManagerBindings["skillProjects"];
   targetPresets: McpTargetPreset[];
 }
@@ -24,8 +25,13 @@ function useVisibleMcpTargetPresets(options: McpVisibleTargetPresetOptions) {
       filterVisibleMcpTargetPresets(
         options.targetPresets.filter((preset) => preset.scope !== "workspace"),
         options.disabledPlatformIds,
+        options.deployablePlatformIds,
       ),
-    [options.disabledPlatformIds, options.targetPresets],
+    [
+      options.disabledPlatformIds,
+      options.deployablePlatformIds,
+      options.targetPresets,
+    ],
   );
   const visibleProjectTargetPresets = useMemo(
     () =>
@@ -80,6 +86,7 @@ function useVisibleMcpTargetStatus(
 export function useMcpManagerTargets(bindings: McpManagerBindings) {
   const presets = useVisibleMcpTargetPresets({
     disabledPlatformIds: bindings.disabledPlatformIds,
+    deployablePlatformIds: bindings.mcpStore.deployablePlatformIds,
     skillProjects: bindings.skillProjects,
     targetPresets: bindings.mcpStore.targetPresets,
   });

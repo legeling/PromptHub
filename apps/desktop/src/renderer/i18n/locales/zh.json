@@ -3725,6 +3725,32 @@
       "createFolder": "创建文件夹失败，请重试。",
       "rename": "重命名失败，请重试。",
       "delete": "删除失败，请重试。"
+    },
+    "distribution": {
+      "title": "分发",
+      "dialogTitle": "分发 Skill",
+      "platforms": "平台分发",
+      "advancedTargets": "高级目标",
+      "selectAllPlatforms": "全选平台",
+      "sharedDirectory": "共享 Skill 目录",
+      "experimental": "实验性",
+      "sharedDescription": "供支持此目录的 Agent 共用。",
+      "sharedCompatibility": "仅兼容的 Agent 会读取，通常无需启用。",
+      "sharedExcluded": "不参与“全选平台”。",
+      "copyHint": "复制整个 Skill 包，各副本不会自动更新。",
+      "symlinkHint": "修改 Skill 后，已链接的平台同步更新。",
+      "pendingInstall": "待安装",
+      "pendingUninstall": "待卸载",
+      "notInstalled": "未安装",
+      "copyOnly": "仅支持复制",
+      "selectionSummary": "已选 {{count}} 个平台 · {{shared}}",
+      "sharedEnabled": "共享目录已启用",
+      "sharedDisabled": "共享目录未启用",
+      "pendingSummary": "待安装 {{install}} · 待卸载 {{uninstall}}",
+      "applyChanges": "应用变更",
+      "changesApplied": "已应用 {{count}} 项变更。",
+      "redistribute": "重新分发",
+      "redistributeHint": "使用当前方式更新 {{count}} 个已勾选目标。"
     }
   },
   "error": {
@@ -3920,6 +3946,8 @@
     "resizeAria": "调整文件夹侧边栏宽度"
   },
   "mcp": {
+    "sharedConfig": "共享 MCP 配置",
+    "sharedConfigHint": "供 pi-mcp-adapter 等兼容客户端读取，并非所有 Agent 都支持。不参与“全选”。",
     "noDescription": "暂无描述",
     "history": {
       "title": "版本历史",
@@ -4263,6 +4291,8 @@
     }
   },
   "plugin": {
+    "sharedDirectory": "共享 Plugin 目录",
+    "sharedDirectoryHint": "将完整插件包存放到 ~/.agents/plugins/<名称>/。使用时需要客户端支持该目录或另行注册。不参与“全选”。",
     "title": "Plugins",
     "subtitle": "管理完整 Plugin 能力包及其 Agent Plugin 目标。",
     "detailRenderError": "当前无法打开这个 Plugin",

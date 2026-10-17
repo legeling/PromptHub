@@ -31,6 +31,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Modal } from "../ui/Modal";
 import { Select } from "../ui/Select";
+import { GalleryColumnSelect } from "../ui/GalleryColumnSelect";
 import { PluginAgentTargetPicker } from "./PluginAgentTargetPicker";
 import { PluginFullDetailPage } from "./PluginFullDetailPage";
 import { SkillRenderBoundary } from "../skill/SkillRenderBoundary";
@@ -498,7 +499,7 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
                     </button>
                   </div>
                   {libraryViewMode === "gallery" ? (
-                    <Select
+                    <GalleryColumnSelect
                       ariaLabel={t(
                         "plugin.galleryColumnsLabel",
                         "Plugin card columns",
@@ -510,8 +511,6 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
                         )
                       }
                       options={libraryGalleryColumnOptions}
-                      className="w-[118px]"
-                      triggerClassName="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border app-wallpaper-surface px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   ) : null}
                 </>

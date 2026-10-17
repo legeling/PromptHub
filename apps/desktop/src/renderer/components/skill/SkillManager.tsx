@@ -39,7 +39,7 @@ import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { getRemoteStoreSkills } from "../../services/remote-store-entry";
 import { getSkillsWithStoreUpdates } from "../../services/skill-library-update-status";
 import { getRuntimeCapabilities } from "../../runtime";
-import { filterDeployablePlatforms } from "../../services/platform-visibility";
+import { filterVisiblePlatforms } from "../../services/platform-visibility";
 import { SkillManagerLibraryHeader } from "./SkillManagerLibraryHeader";
 import { SkillManagerLibraryContent } from "./SkillManagerLibraryContent";
 import { SkillViewTransition } from "./SkillViewTransition";
@@ -57,7 +57,6 @@ import {
   hasFileItems,
   mergeDeleteDistributionSummaries,
   normalizeDroppedSkillPath,
-  normalizePlatformStatusMap,
   shouldRenderSelectedSkillDetail,
   summarizeInstallDetails,
   withTimeout,
@@ -154,10 +153,9 @@ export function SkillManager() {
   const [supportedPlatforms, setSupportedPlatforms] = useState<SkillPlatform[]>(
     [],
   );
-  const [detectedPlatforms, setDetectedPlatforms] = useState<string[]>([]);
-  const [skillPlatformStatuses, setSkillPlatformStatuses] = useState<
-    Record<string, Record<string, boolean>>
-  >({});
+  const skillPlatformStatuses = useSkillStore(
+    (state) => state.skillPlatformStatuses,
+  );
   const galleryColumnOptions = useMemo<SelectOption[]>(
     () =>
       SKILL_GALLERY_COLUMNS.map((columns) => ({
@@ -177,19 +175,15 @@ export function SkillManager() {
     [galleryColumns],
   );
   const availableSkillPlatforms = useMemo(
-    () =>
-      filterDeployablePlatforms(
-        supportedPlatforms,
-        detectedPlatforms,
-        disabledPlatformIds,
-      ),
-    [detectedPlatforms, disabledPlatformIds, supportedPlatforms],
+    () => filterVisiblePlatforms(supportedPlatforms, disabledPlatformIds),
+    [disabledPlatformIds, supportedPlatforms],
   );
   const distributedPlatformsBySkillId = useMemo(() => {
     const next = new Map<string, Array<Pick<SkillPlatform, "id" | "name">>>();
 
     for (const skill of skills) {
-      const status = skillPlatformStatuses[skill.id] ?? {};
+      const status = skillPlatformStatuses?.[skill.id];
+      if (!status || supportedPlatforms.length === 0) continue;
       next.set(
         skill.id,
         availableSkillPlatforms
@@ -199,7 +193,12 @@ export function SkillManager() {
     }
 
     return next;
-  }, [availableSkillPlatforms, skillPlatformStatuses, skills]);
+  }, [
+    availableSkillPlatforms,
+    skillPlatformStatuses,
+    skills,
+    supportedPlatforms.length,
+  ]);
   const webSkillLibraryMode =
     !runtimeCapabilities.skillDistribution && !runtimeCapabilities.skillStore;
   const legacyDistributionView = storeView === "distribution";
@@ -628,48 +627,13 @@ export function SkillManager() {
 
   useEffect(() => {
     let disposed = false;
-    let idleId: number | undefined;
-    let timeoutId: number | undefined;
-    const browserWindow = window as Window & {
-      requestIdleCallback?: (
-        callback: IdleRequestCallback,
-        options?: IdleRequestOptions,
-      ) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-
     void loadRegistry().catch(() => undefined);
     void loadSkills({ preferCache: true }).then(() => {
-      if (disposed) return;
-
-      if (!runtimeCapabilities.skillDistribution) {
-        return;
-      }
-
-      const run = () => {
-        if (!disposed) {
-          void loadDeployedStatus();
-        }
-      };
-
-      if (typeof browserWindow.requestIdleCallback === "function") {
-        idleId = browserWindow.requestIdleCallback(run, { timeout: 800 });
-      } else {
-        timeoutId = window.setTimeout(run, 80);
-      }
+      if (!disposed && runtimeCapabilities.skillDistribution)
+        void loadDeployedStatus();
     });
-
     return () => {
       disposed = true;
-      if (
-        idleId !== undefined &&
-        typeof browserWindow.cancelIdleCallback === "function"
-      ) {
-        browserWindow.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
     };
   }, [
     loadRegistry,
@@ -679,90 +643,22 @@ export function SkillManager() {
   ]);
 
   useEffect(() => {
-    if (!runtimeCapabilities.skillPlatformIntegration) {
-      setSupportedPlatforms([]);
-      setDetectedPlatforms([]);
-      return;
-    }
-
+    if (!runtimeCapabilities.skillPlatformIntegration) return;
     let disposed = false;
-    void Promise.all([
-      window.api.skill.getSupportedPlatforms(),
-      window.api.skill.detectPlatforms(),
-    ])
-      .then(([platforms, detected]) => {
-        if (disposed) {
-          return;
-        }
-        setSupportedPlatforms((current) =>
-          platforms.length === 0 && current.length === 0 ? current : platforms,
-        );
-        setDetectedPlatforms((current) =>
-          detected.length === 0 && current.length === 0 ? current : detected,
-        );
+    // Installed status already proves the target exists. Brand metadata does
+    // not need to wait for a second platform-directory detection scan.
+    void window.api.skill
+      .getSupportedPlatforms()
+      .then((platforms) => {
+        if (!disposed) setSupportedPlatforms(platforms);
       })
-      .catch((error) => {
-        if (disposed) {
-          return;
-        }
-        console.error("Failed to load skill platforms:", error);
-        setSupportedPlatforms([]);
-        setDetectedPlatforms([]);
-      });
-
+      .catch((error) =>
+        console.error("Failed to load skill platforms:", error),
+      );
     return () => {
       disposed = true;
     };
   }, [runtimeCapabilities.skillPlatformIntegration]);
-
-  useEffect(() => {
-    if (
-      !runtimeCapabilities.skillPlatformIntegration ||
-      skills.length === 0 ||
-      availableSkillPlatforms.length === 0
-    ) {
-      setSkillPlatformStatuses((current) =>
-        Object.keys(current).length === 0 ? current : {},
-      );
-      return;
-    }
-
-    let disposed = false;
-    void window.api.skill
-      .getMdInstallStatusBatch(
-        Array.from(new Set(skills.map((skill) => skill.id))),
-      )
-      .then((statusBySkillId) => {
-        if (disposed) {
-          return;
-        }
-        setSkillPlatformStatuses(
-          Object.fromEntries(
-            Object.entries(statusBySkillId as Record<string, unknown>).map(
-              ([skillId, status]) => [
-                skillId,
-                normalizePlatformStatusMap(status),
-              ],
-            ),
-          ),
-        );
-      })
-      .catch((error) => {
-        if (disposed) {
-          return;
-        }
-        console.error("Failed to load skill install status:", error);
-        setSkillPlatformStatuses({});
-      });
-
-    return () => {
-      disposed = true;
-    };
-  }, [
-    availableSkillPlatforms.length,
-    runtimeCapabilities.skillPlatformIntegration,
-    skills,
-  ]);
 
   useEffect(() => {
     setCurrentPage(1);

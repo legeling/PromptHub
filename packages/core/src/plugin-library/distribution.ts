@@ -1,5 +1,9 @@
 import fs from "fs";
 import path from "path";
+import {
+  assertSharedPluginOwnership,
+  writeSharedPluginPackage,
+} from "../plugin-shared-distribution";
 import { isAntigravityPluginManifest } from "@prompthub/shared/utils/antigravity-plugin";
 
 import type {
@@ -441,6 +445,20 @@ export function writePluginPackageToAgentTarget(
   targetId: string,
   plugin: PluginLibraryEntry,
 ): PluginDistributeMode {
+  if (targetId === "shared-agents") {
+    const marker = findPluginPackageMarkerPath(sourcePath);
+    if (!marker)
+      throw new CorePluginError(
+        "INVALID_MANIFEST",
+        "Shared Plugin package has no manifest",
+      );
+    validateLocalPluginPackage(
+      sourcePath,
+      readLocalPluginManifest(path.join(sourcePath, marker)).manifest,
+    );
+    writeSharedPluginPackage(sourcePath, targetPath, mode, plugin);
+    return mode;
+  }
   if (canPassthroughNativePluginPackage(sourcePath, targetId)) {
     writePluginPackageToTarget(sourcePath, targetPath, mode);
     return mode;
@@ -482,6 +500,15 @@ export function deletePluginPackageTarget(targetPath: string): void {
 }
 
 const PLUGIN_TARGET_MATRIX: PluginTargetCompatibility[] = [
+  {
+    id: "shared-agents",
+    displayName: "Shared Plugin directory",
+    status: "shared",
+    enabled: true,
+    installSurface: "~/.agents/plugins/<name>/",
+    description:
+      "Store the complete package in a shared directory; compatible clients or separate registration are required.",
+  },
   {
     id: "codex",
     displayName: "Codex",
@@ -783,6 +810,8 @@ function removeTargets(
         `无法解析 Agent Plugin 目标路径: ${targetId}`,
       );
     }
+    if (targetId === "shared-agents")
+      assertSharedPluginOwnership(targetPath, plugin);
     deletePluginPackageTarget(targetPath);
     removedTargetIds.push(targetId);
   }
@@ -840,6 +869,8 @@ export function deleteDistributedPluginTargets(
         "MISSING_TARGET_PATH",
         `Cannot resolve Plugin target: ${targetId}`,
       );
+    if (targetId === "shared-agents")
+      assertSharedPluginOwnership(targetPath, plugin);
     assertSafeExistingPluginTarget(targetPath, "remove");
     return targetPath;
   });

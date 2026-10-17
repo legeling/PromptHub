@@ -12,6 +12,7 @@ import { McpManager } from "../../../src/renderer/components/mcp/McpManager";
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import type { McpTargetPreset } from "@prompthub/core";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import type { McpServerConfig } from "@prompthub/shared/types/mcp";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
@@ -193,6 +194,10 @@ function resetMcpStore() {
     loadingMarketSourceId: null,
     marketError: null,
     targetPresets: [],
+    deployablePlatformIds: [],
+    hasLoadedTargetInventory: false,
+    isLoadingTargetInventory: false,
+    targetInventoryError: null,
     targetStatus: [],
     healthChecks: [],
     selectedServerId: null,
@@ -229,6 +234,9 @@ interface McpMockOptions {
 
 function installMcpMocks(options: McpMockOptions = {}) {
   const servers = options.servers ?? [filesystemServer];
+  const platformIds = (options.targetPresets ?? [codexTarget, claudeTarget]).flatMap(
+    (preset) => preset.platformId ? [preset.platformId] : [],
+  );
   const targetStatus = options.targetStatus ?? [
     {
       presetId: codexTarget.id,
@@ -245,6 +253,10 @@ function installMcpMocks(options: McpMockOptions = {}) {
   ];
   return installWindowMocks({
     api: {
+      skill: {
+        getSupportedPlatforms: vi.fn().mockResolvedValue(SKILL_PLATFORMS.filter((platform) => platformIds.includes(platform.id))),
+        detectPlatforms: vi.fn().mockResolvedValue(platformIds),
+      },
       mcp: {
         getLibrary: vi.fn().mockResolvedValue({
           kind: "prompthub-mcp-library",

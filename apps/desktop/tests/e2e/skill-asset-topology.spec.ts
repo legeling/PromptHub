@@ -30,7 +30,8 @@ async function openSkillTopology(page: Page): Promise<Locator> {
   ).toBeVisible();
   await expect(
     topology.getByText("Distributed targets", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(topology.getByRole("listitem")).toHaveCount(2);
   return topology;
 }
 

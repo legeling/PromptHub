@@ -60,7 +60,8 @@ const useSettingsStoreMock = vi.fn();
 const useToastMock = vi.fn();
 const useSkillPlatformMock = vi.fn();
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: translate,
     i18n: { language: "en" },
@@ -210,7 +211,7 @@ async function renderProjectDistribution(options?: {
   useToastMock.mockReturnValue({ showToast: options?.showToast ?? vi.fn() });
   useSkillPlatformMock.mockReturnValue({
     availablePlatforms: [{ id: "claude", name: "Claude Code" }],
-    batchInstall: vi.fn().mockResolvedValue({
+    applyPlatformChanges: vi.fn().mockResolvedValue({
       successCount: 0,
       totalCount: 0,
       failures: [],
@@ -299,47 +300,34 @@ describe("Skill detail project distribution", () => {
     expect(setProjectSkillImportModePreference).not.toHaveBeenCalled();
   });
 
-  it("requires confirmation before uninstalling a global platform skill", async () => {
-    const uninstallFromPlatform = vi.fn().mockResolvedValue(undefined);
-    const showToast = vi.fn();
-
+  it("stages global removal until the user applies the changes", async () => {
+    const applyPlatformChanges = vi
+      .fn()
+      .mockResolvedValue({
+        successCount: 1,
+        totalCount: 1,
+        failures: [],
+        fallbacks: [],
+      });
     await renderProjectDistribution({
-      showToast,
       skipProjectTabClick: true,
       skillPlatformState: {
-        installDetails: { claude: { installed: true, mode: "symlink" } },
         installStatus: { claude: true },
-        uninstallFromPlatform,
-        uninstalledPlatforms: [],
+        selectedPlatforms: new Set(["claude"]),
+        applyPlatformChanges,
       },
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "Uninstall" }));
-
-    expect(
-      screen.getByText(
-        "Are you sure you want to uninstall this skill from Claude Code?",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "This removes the symlink from the platform directory. Your local Skill stays in PromptHub.",
-      ),
-    ).toBeInTheDocument();
-    expect(uninstallFromPlatform).not.toHaveBeenCalled();
-
-    const uninstallButtons = screen.getAllByRole("button", {
-      name: "Uninstall",
-    });
-    fireEvent.click(uninstallButtons[uninstallButtons.length - 1]);
-
-    await waitFor(() => {
-      expect(uninstallFromPlatform).toHaveBeenCalledWith("claude");
-      expect(showToast).toHaveBeenCalledWith("Uninstall successful", "success");
-    });
+    expect(screen.getByRole("button", { name: "Claude Code" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByText("Pending uninstall")).toBeInTheDocument();
+    expect(applyPlatformChanges).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
+    await waitFor(() => expect(applyPlatformChanges).toHaveBeenCalledTimes(1));
   });
 
-  it("shows the skill and platform name after a global platform install succeeds", async () => {
+  it("reports applied changes after a global platform operation succeeds", async () => {
     const showToast = vi.fn();
 
     await renderProjectDistribution({
@@ -347,7 +335,7 @@ describe("Skill detail project distribution", () => {
       skipProjectTabClick: true,
       skillPlatformState: {
         availablePlatforms: [{ id: "cherry-studio", name: "Cherry Studio" }],
-        batchInstall: vi.fn().mockResolvedValue({
+        applyPlatformChanges: vi.fn().mockResolvedValue({
           successCount: 1,
           totalCount: 1,
           failures: [],
@@ -358,13 +346,10 @@ describe("Skill detail project distribution", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Install All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
 
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith(
-        "write installed to Cherry Studio successfully",
-        "success",
-      );
+      expect(showToast).toHaveBeenCalledWith("Applied 1 changes.", "success");
     });
   });
 

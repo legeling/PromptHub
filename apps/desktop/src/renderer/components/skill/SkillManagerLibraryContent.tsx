@@ -101,9 +101,7 @@ function SkillGalleryItem({ index, skill, ...props }: GalleryItemProps) {
   return (
     <SkillGalleryCard
       animationDelayMs={Math.min(index, MAX_STAGGERED_CARDS) * CARD_STAGGER_MS}
-      distributedPlatforms={
-        props.distributedPlatformsBySkillId.get(skill.id) ?? []
-      }
+      distributedPlatforms={props.distributedPlatformsBySkillId.get(skill.id)}
       hasStoreUpdate={props.skillsWithStoreUpdates.has(skill.id)}
       isSelected={props.selectedSkillIds.has(skill.id)}
       isSelectionMode={props.isSelectionMode}
@@ -292,7 +290,7 @@ export function SkillManagerLibraryContent(
       <div
         className={
           props.viewMode === "list"
-            ? "flex-1 overflow-hidden scrollbar-hide"
+            ? "flex-1 overflow-hidden scrollbar-hide app-wallpaper-panel"
             : "flex-1 overflow-y-auto scrollbar-hide"
         }
       >

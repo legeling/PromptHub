@@ -1,25 +1,17 @@
 import {
-  CopyIcon,
   DatabaseIcon,
   ExternalLinkIcon,
   FolderSyncIcon,
-  LinkIcon,
   NetworkIcon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
 
-import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import type {
-  Skill,
-  SkillPlatformInstallStatusMap,
-} from "@prompthub/shared/types";
+import type { Skill } from "@prompthub/shared/types";
 
 import { isLinkedLocalSkill } from "../../services/skill-source-resolver";
 import { getSkillSourceMeta } from "./detail-utils";
 
 interface SkillAssetTopologyProps {
-  availablePlatforms: SkillPlatform[];
-  installDetails: SkillPlatformInstallStatusMap;
   onOpenLocalPath: (path: string) => void;
   selectedSkill: Skill;
   t: TFunction;
@@ -46,8 +38,6 @@ function PathButton({
 }
 
 export function SkillAssetTopology({
-  availablePlatforms,
-  installDetails,
   onOpenLocalPath,
   selectedSkill,
   t,
@@ -56,12 +46,6 @@ export function SkillAssetTopology({
     ? getSkillSourceMeta({ ...selectedSkill, local_repo_path: undefined }, t)
     : null;
   const linkedExternal = isLinkedLocalSkill(selectedSkill);
-  const platformNames = new Map(
-    availablePlatforms.map((platform) => [platform.id, platform.name]),
-  );
-  const installedTargets = Object.entries(installDetails).filter(
-    ([, status]) => status.installed,
-  );
 
   return (
     <section className="space-y-4" aria-labelledby="skill-asset-topology-title">
@@ -71,7 +55,7 @@ export function SkillAssetTopology({
       >
         {t("skill.assetTopology", "Asset topology")}
       </h3>
-      <ol className="grid overflow-hidden rounded-lg border border-border app-wallpaper-surface lg:grid-cols-3 lg:divide-x lg:divide-border">
+      <ol className="grid overflow-hidden rounded-lg border border-border app-wallpaper-surface lg:grid-cols-2 lg:divide-x lg:divide-border">
         <li className="min-w-0 border-b border-border p-4 lg:border-b-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <NetworkIcon aria-hidden="true" className="h-4 w-4 text-primary" />
@@ -112,7 +96,7 @@ export function SkillAssetTopology({
           )}
         </li>
 
-        <li className="min-w-0 border-b border-border p-4 lg:border-b-0">
+        <li className="min-w-0 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold">
             {linkedExternal ? (
               <FolderSyncIcon
@@ -153,62 +137,6 @@ export function SkillAssetTopology({
               onClick={() => onOpenLocalPath(selectedSkill.local_repo_path!)}
             />
           ) : null}
-        </li>
-
-        <li className="min-w-0 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <NetworkIcon aria-hidden="true" className="h-4 w-4 text-primary" />
-            {t("skill.topologyDistributed", "Distributed targets")}
-          </div>
-          {installedTargets.length === 0 ? (
-            <div className="mt-2">
-              <p className="text-xs font-medium">
-                {t("skill.topologyNotDistributed", "Not distributed")}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t(
-                  "skill.topologyNotDistributedDesc",
-                  "No platform copy or symlink is currently detected.",
-                )}
-              </p>
-            </div>
-          ) : (
-            <ul className="mt-2 divide-y divide-border/70">
-              {installedTargets.map(([platformId, status]) => {
-                const symlink = status.mode === "symlink";
-                return (
-                  <li key={platformId} className="py-2 first:pt-0 last:pb-0">
-                    <div className="flex items-center justify-between gap-2 text-xs font-medium">
-                      <span className="min-w-0 truncate">
-                        {platformNames.get(platformId) ?? platformId}
-                      </span>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
-                        {symlink ? (
-                          <LinkIcon aria-hidden="true" className="h-3 w-3" />
-                        ) : (
-                          <CopyIcon aria-hidden="true" className="h-3 w-3" />
-                        )}
-                        {symlink
-                          ? t("skill.symlink", "Symlink")
-                          : t("skill.copyMode", "Copy")}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {symlink
-                        ? t(
-                            "skill.topologySymlinkFollows",
-                            "Edits follow the editable package immediately.",
-                          )
-                        : t(
-                            "skill.topologyCopyOverwrite",
-                            "Redistribution overwrites this target.",
-                          )}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </li>
       </ol>
     </section>

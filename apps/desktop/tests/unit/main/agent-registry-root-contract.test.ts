@@ -82,7 +82,7 @@ it("preserves Qwen's declared relative environment-root contract", async () => {
   ).toBe(path.join(expected, "settings.json"));
 });
 
-it("does not move shared Pi or separate application targets with an Agent root", () => {
+it("does not move separate application targets with an Agent root", () => {
   const overrides = Object.fromEntries(
     AGENT_DEFINITIONS.map(({ platform }) => [
       platform.id,
@@ -91,13 +91,8 @@ it("does not move shared Pi or separate application targets with an Agent root",
   );
   const before = getMcpTargetPresets(home, "darwin", {});
   const after = getMcpTargetPresets(home, "darwin", {}, overrides);
-  for (const id of [
-    "pi-shared",
-    "pi-agents",
-    "pi-agents-nested",
-    "claude-desktop",
-    "vscode",
-  ]) {
+  for (const id of ["claude-desktop", "vscode"]) {
+    expect(before.some((p) => p.id === id)).toBe(true);
     expect(after.find((p) => p.id === id)).toEqual(
       before.find((p) => p.id === id),
     );

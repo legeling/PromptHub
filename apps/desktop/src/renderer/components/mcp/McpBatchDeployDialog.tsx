@@ -1,7 +1,12 @@
+import {
+  getSharedMcpConfigPath,
+  isSharedMcpTargetPreset,
+} from "@prompthub/shared/utils/mcp-shared-targets";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckSquareIcon,
+  FolderIcon,
   Loader2Icon,
   SendIcon,
   SquareIcon,
@@ -46,13 +51,23 @@ export function McpBatchDeployDialog({
     [selectedTargetIds, targetPresets],
   );
   const totalTargets = enabledServers.length * selectedPresets.length;
+  const agentPresets = targetPresets.filter(
+    (preset) => !isSharedMcpTargetPreset(preset),
+  );
+  const allAgentsSelected =
+    agentPresets.length > 0 &&
+    agentPresets.every((preset) => selectedTargetIds.has(preset.id));
 
   useEffect(() => {
     setSelectedTargetIds((current) => {
       if (current.size > 0) {
         return current;
       }
-      return new Set(targetPresets.map((preset) => preset.id));
+      return new Set(
+        targetPresets
+          .filter((preset) => !isSharedMcpTargetPreset(preset))
+          .map((preset) => preset.id),
+      );
     });
   }, [targetPresets]);
 
@@ -69,11 +84,14 @@ export function McpBatchDeployDialog({
   };
 
   const handleToggleAll = () => {
-    if (selectedTargetIds.size === targetPresets.length) {
-      setSelectedTargetIds(new Set());
-      return;
-    }
-    setSelectedTargetIds(new Set(targetPresets.map((preset) => preset.id)));
+    setSelectedTargetIds((current) => {
+      const next = new Set(current);
+      for (const preset of agentPresets) {
+        if (allAgentsSelected) next.delete(preset.id);
+        else next.add(preset.id);
+      }
+      return next;
+    });
   };
 
   const handleApply = async () => {
@@ -162,7 +180,7 @@ export function McpBatchDeployDialog({
                     onClick={handleToggleAll}
                     className="text-xs font-medium text-primary hover:underline"
                   >
-                    {selectedTargetIds.size === targetPresets.length
+                    {allAgentsSelected
                       ? t("mcp.deselectAll", "Deselect all")
                       : t("mcp.selectAll", "Select all")}
                   </button>
@@ -176,6 +194,10 @@ export function McpBatchDeployDialog({
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {targetPresets.map((preset) => {
+                    const sharedPath = getSharedMcpConfigPath(preset);
+                    const label = sharedPath
+                      ? `${t("mcp.sharedConfig")} (${sharedPath})`
+                      : preset.label;
                     const isSelected = selectedTargetIds.has(preset.id);
                     const distributedCount = enabledServers.filter((server) =>
                       isServerOnPreset(targetStatus, preset.id, server.name),
@@ -184,6 +206,7 @@ export function McpBatchDeployDialog({
                       <button
                         key={preset.id}
                         type="button"
+                        aria-label={label}
                         aria-pressed={isSelected}
                         onClick={() => toggleTarget(preset.id)}
                         className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
@@ -196,15 +219,25 @@ export function McpBatchDeployDialog({
                           aria-hidden="true"
                           className="rounded-xl bg-accent p-2"
                         >
-                          <PlatformIcon
-                            platformId={preset.platformId ?? preset.id}
-                            size={20}
-                          />
+                          {sharedPath ? (
+                            <FolderIcon className="h-5 w-5 text-primary" />
+                          ) : (
+                            <PlatformIcon
+                              platformId={preset.platformId ?? preset.id}
+                              size={20}
+                            />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium">
-                            {preset.label}
+                            {label}
                           </div>
+
+                          {sharedPath ? (
+                            <p className="text-xs text-muted-foreground">
+                              {t("mcp.sharedConfigHint")}
+                            </p>
+                          ) : null}
                           <div className="truncate text-xs text-muted-foreground">
                             {distributedCount}/{enabledServers.length}{" "}
                             {t("mcp.distributed", "Distributed")}

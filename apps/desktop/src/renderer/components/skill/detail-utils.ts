@@ -197,21 +197,6 @@ export interface GroupedSkillSafetyFinding {
   findings: SkillSafetyFinding[];
 }
 
-export function getProtocolDisplayLabel(
-  protocolType: Skill["protocol_type"],
-): string {
-  switch (protocolType) {
-    case "skill":
-      return "SKILL.md";
-    case "mcp":
-      return "MCP";
-    case "claude-code":
-      return "Claude Code";
-    default:
-      return protocolType;
-  }
-}
-
 export function getSkillSourceMeta(
   skill: Skill,
   t?: TFunction,

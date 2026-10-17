@@ -60,3 +60,15 @@ export function filterDeployablePlatforms(
     disabledPlatformIds,
   );
 }
+
+/** Resolve the same Agent availability used by Skill distribution, before capability filtering. */
+export async function loadDeployableAgentPlatformIds(): Promise<string[]> {
+  const [platforms, detectedIds] = await Promise.all([
+    window.api.skill.getSupportedPlatforms(),
+    window.api.skill.detectPlatforms(),
+  ]);
+  // Settings visibility is applied by consumers so toggles take effect immediately.
+  return filterDeployablePlatforms(platforms, detectedIds, []).map(
+    (platform) => platform.id,
+  );
+}

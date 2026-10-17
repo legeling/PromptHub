@@ -1,3 +1,7 @@
+import {
+  getSkillPlatformErrorFeedback,
+  formatSkillPlatformFallbackReason,
+} from "./skill-platform-error";
 import type {
   Skill,
   SkillInstallMode,
@@ -15,6 +19,7 @@ export interface BatchSkillSyncFallback {
 }
 
 export interface BatchSkillSyncFailure {
+  severity: "warning" | "error";
   skillId: string;
   platformId: string;
   reason: string;
@@ -51,10 +56,6 @@ function isCopyFallback(
   );
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export async function syncSkillsToPlatforms(
   skills: Skill[],
   platformIds: string[],
@@ -72,7 +73,7 @@ export async function syncSkillsToPlatforms(
   const fallbacks: BatchSkillSyncFallback[] = [];
 
   for (const skill of skills) {
-    const skillMdContent = await window.api.skill.export(skill.id, "skillmd");
+    let exportedContent: Promise<string> | undefined;
 
     for (const platformId of platformIds) {
       current += 1;
@@ -83,31 +84,38 @@ export async function syncSkillsToPlatforms(
         platformId,
       });
 
-        try {
-          if (installMode === "symlink") {
-            const result = await window.api.skill.installMdSymlink(
-              skill.id,
-              skillMdContent,
+      try {
+        exportedContent ??= window.api.skill.export(skill.id, "skillmd");
+        const skillMdContent = await exportedContent;
+        if (installMode === "symlink") {
+          const result = await window.api.skill.installMdSymlink(
+            skill.id,
+            skillMdContent,
+            platformId,
+          );
+          if (isCopyFallback(result)) {
+            fallbacks.push({
+              skillId: skill.id,
               platformId,
-            );
-            if (isCopyFallback(result)) {
-              fallbacks.push({
-                skillId: skill.id,
-                platformId,
-                requestedMode: result.requestedMode,
-                effectiveMode: result.effectiveMode,
-                reason: result.fallbackReason,
-              });
-            }
-          } else {
-            await window.api.skill.installMd(skill.id, skillMdContent, platformId);
+              requestedMode: result.requestedMode,
+              effectiveMode: result.effectiveMode,
+              reason: formatSkillPlatformFallbackReason(),
+            });
           }
+        } else {
+          await window.api.skill.installMd(
+            skill.id,
+            skillMdContent,
+            platformId,
+          );
+        }
         successCount += 1;
       } catch (error) {
+        console.error("Skill platform operation failed:", error);
         failures.push({
           skillId: skill.id,
           platformId,
-          reason: getErrorMessage(error),
+          ...getSkillPlatformErrorFeedback(error),
         });
       }
     }
@@ -149,10 +157,11 @@ export async function unsyncSkillsFromPlatforms(
         await window.api.skill.uninstallMd(skill.id, platformId);
         successCount += 1;
       } catch (error) {
+        console.error("Skill platform operation failed:", error);
         failures.push({
           skillId: skill.id,
           platformId,
-          reason: getErrorMessage(error),
+          ...getSkillPlatformErrorFeedback(error),
         });
       }
     }

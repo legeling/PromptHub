@@ -23,6 +23,7 @@ import type {
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 import { Select, type SelectOption } from "../ui/Select";
+import { GalleryColumnSelect } from "../ui/GalleryColumnSelect";
 import { McpServerList, type McpServerViewMode } from "./McpServerList";
 import {
   hasFileItems,
@@ -471,15 +472,13 @@ function McpLibraryHeader(props: McpLibraryWorkspaceProps) {
               </button>
             </div>
             {viewMode === "gallery" ? (
-              <Select
+              <GalleryColumnSelect
                 ariaLabel={t("mcp.galleryColumnsLabel", "MCP card columns")}
                 value={galleryColumns}
                 onChange={(value) =>
                   onChangeGalleryColumns(value as McpGalleryColumnMode)
                 }
                 options={galleryColumnOptions}
-                className="w-[118px]"
-                triggerClassName="h-10 w-full rounded-lg border border-border app-wallpaper-surface px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/30 flex items-center justify-between gap-2"
               />
             ) : null}
             <div className="h-4 w-px bg-border" />

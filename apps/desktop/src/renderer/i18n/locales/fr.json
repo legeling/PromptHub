@@ -3716,6 +3716,32 @@
       "createFolder": "Impossible de créer le dossier. Réessayez.",
       "rename": "Impossible de renommer le fichier ou le dossier. Réessayez.",
       "delete": "Impossible de supprimer le fichier ou le dossier. Réessayez."
+    },
+    "distribution": {
+      "title": "Distribution",
+      "dialogTitle": "Distribuer le Skill",
+      "platforms": "Distribution aux plateformes",
+      "advancedTargets": "Cibles avancées",
+      "selectAllPlatforms": "Toutes les plateformes",
+      "sharedDirectory": "Dossier Skill partagé",
+      "experimental": "Expérimental",
+      "sharedDescription": "Partagé par les Agents compatibles avec ce dossier.",
+      "sharedCompatibility": "Seuls les Agents compatibles le lisent ; son activation est généralement inutile.",
+      "sharedExcluded": "Exclu de « Toutes les plateformes ».",
+      "copyHint": "Copie le paquet Skill complet. Les copies ne se mettent pas à jour automatiquement.",
+      "symlinkHint": "Les modifications du Skill se répercutent sur les plateformes liées.",
+      "pendingInstall": "À installer",
+      "pendingUninstall": "À désinstaller",
+      "notInstalled": "Non installé",
+      "copyOnly": "Copie uniquement",
+      "selectionSummary": "{{count}} plateformes sélectionnées · {{shared}}",
+      "sharedEnabled": "Dossier partagé activé",
+      "sharedDisabled": "Dossier partagé désactivé",
+      "pendingSummary": "À installer : {{install}} · À désinstaller : {{uninstall}}",
+      "applyChanges": "Appliquer",
+      "changesApplied": "{{count}} modifications appliquées.",
+      "redistribute": "Redistribuer",
+      "redistributeHint": "Actualiser les {{count}} cibles cochées avec la méthode choisie."
     }
   },
   "error": {
@@ -3883,6 +3909,8 @@
     "resizeAria": "Redimensionner la barre latérale des dossiers"
   },
   "mcp": {
+    "sharedConfig": "Configuration MCP partagée",
+    "sharedConfigHint": "Pour les clients compatibles tels que pi-mcp-adapter. Tous les Agents ne lisent pas ce fichier. Exclue de Tout sélectionner.",
     "noDescription": "Aucune description",
     "history": {
       "title": "Historique des versions",
@@ -4226,6 +4254,8 @@
     }
   },
   "plugin": {
+    "sharedDirectory": "Dossier de Plugins partagé",
+    "sharedDirectoryHint": "Stocke le paquet complet dans ~/.agents/plugins/<nom>/. Un client compatible ou un enregistrement séparé est nécessaire. Exclu de « Tout sélectionner ».",
     "title": "Plugins",
     "subtitle": "Gérer les bundles de capacités complets et leurs cibles d'agents.",
     "detailRenderError": "Ce plugin ne peut pas être ouvert pour le moment",

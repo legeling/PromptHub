@@ -101,6 +101,7 @@ function createMcpSave(options: McpSourceActionOptions) {
       );
     } catch (error) {
       options.reportError(error);
+      throw error;
     }
   };
 }
@@ -129,6 +130,7 @@ function createMcpCreate(options: McpSourceActionOptions) {
       );
     } catch (error) {
       options.reportError(error);
+      throw error;
     }
   };
 }

@@ -29,6 +29,7 @@ import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { renderWithI18n } from "../../helpers/i18n";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 
 vi.mock("../../../src/renderer/components/skill/SkillFileEditor", () => ({
   SkillFileEditor: ({
@@ -426,6 +427,12 @@ function resetSettingsStore() {
 }
 
 function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
+  window.api.skill.getSupportedPlatforms = vi
+    .fn()
+    .mockResolvedValue(SKILL_PLATFORMS);
+  window.api.skill.detectPlatforms = vi
+    .fn()
+    .mockResolvedValue(["codex", "claude", "opencode"]);
   let currentLibrary = libraryOverride;
   const okPackageHealthCheck: PluginPackageHealthCheck = {
     status: "ok",

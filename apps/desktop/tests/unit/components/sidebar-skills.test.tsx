@@ -628,16 +628,14 @@ describe("Sidebar", () => {
     expect(useUIStore.getState().isSidebarCollapsed).toBe(true);
   });
 
-  it("returns to card mode when opening ordinary prompt collections", async () => {
+  it("restores the last list layout when opening ordinary prompt collections", async () => {
     useUIStore.setState({
       appModule: "prompt",
       viewMode: "prompt",
       isSidebarCollapsed: false,
     });
-    usePromptStore.setState({
-      promptTypeFilter: "all",
-      viewMode: "graph",
-    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    usePromptStore.getState().setViewMode("list");
+    usePromptStore.getState().setViewMode("graph");
 
     await act(async () => {
       await renderWithI18n(
@@ -648,7 +646,7 @@ describe("Sidebar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
 
-    expect(usePromptStore.getState().viewMode).toBe("card");
+    expect(usePromptStore.getState().viewMode).toBe("list");
     expect(useFolderStore.getState().selectedFolderId).toBe("favorites");
   });
 

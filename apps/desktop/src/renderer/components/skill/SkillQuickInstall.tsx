@@ -1,19 +1,19 @@
-import { useTranslation } from "react-i18next";
 import {
-  XIcon,
-  CheckIcon,
-  CopyPlusIcon,
-  Loader2Icon,
-  LinkIcon,
-  CuboidIcon,
-  SendIcon,
-} from "lucide-react";
+  formatSkillPlatformError,
+  getSkillPlatformFailureSeverity,
+  getSkillPlatformErrorFeedback,
+} from "../../services/skill-platform-error";
+import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
 import type { Skill } from "@prompthub/shared/types";
-import { PlatformIcon } from "../ui/PlatformIcon";
-import { getErrorMessage } from "./detail-utils";
+import { Modal } from "../ui/Modal";
+import {
+  SkillDistributionControls,
+  SkillDistributionFooter,
+} from "./SkillDistributionControls";
+import { SkillQuickProjectDistribution } from "./SkillQuickProjectDistribution";
 import { useSkillPlatform, type SkillInstallMode } from "./use-skill-platform";
 
 interface SkillQuickInstallProps {
@@ -31,6 +31,8 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     (state) => state.skillInstallMethod,
   );
   const { showToast } = useToast();
+  const [scope, setScope] = useState<"global" | "project">("global");
+  const [isProjectBusy, setIsProjectBusy] = useState(false);
   const [isClosingSoon, setIsClosingSoon] = useState(false);
   const [isInstallPending, setIsInstallPending] = useState(false);
   const [installMode, setInstallMode] =
@@ -69,7 +71,6 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
 
   const handleInstall = async () => {
     if (
-      selectedPlatforms.size === 0 ||
       isLoading ||
       platformError ||
       isClosingSoon ||
@@ -83,6 +84,8 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     setIsInstallPending(true);
     try {
       const result = await applyPlatformChanges();
+      if (result.statusRefreshFailed)
+        showToast(t("skill.platformStatusRefreshFailed"), "warning");
       if (result.successCount > 0) {
         showToast(
           `${t("skill.installSuccess", "Operation successful")} ${result.successCount}/${result.totalCount}`,
@@ -112,12 +115,16 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
             details,
             defaultValue: "Some platform changes failed\n{{details}}",
           }),
-          "error",
+          getSkillPlatformFailureSeverity(result.failures),
         );
       }
       // Only auto-close when every selected platform succeeded. Otherwise
       // keep the modal open so the user can retry or inspect the failures.
-      if (result.successCount > 0 && result.failures.length === 0) {
+      if (
+        result.successCount > 0 &&
+        result.failures.length === 0 &&
+        !result.statusRefreshFailed
+      ) {
         setIsClosingSoon(true);
         clearCloseTimer();
         closeTimerRef.current = setTimeout(() => {
@@ -128,8 +135,8 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     } catch (error) {
       console.error("Install failed:", error);
       showToast(
-        `${t("skill.updateFailed")}: ${getErrorMessage(error)}`,
-        "error",
+        formatSkillPlatformError(error),
+        getSkillPlatformErrorFeedback(error).severity,
       );
     } finally {
       installPendingRef.current = false;
@@ -137,196 +144,115 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     }
   };
 
-  const installCount = availablePlatforms.filter(
-    (platform) =>
-      selectedPlatforms.has(platform.id) && !installStatus[platform.id],
-  ).length;
-  const uninstallCount = availablePlatforms.filter(
-    (platform) =>
-      selectedPlatforms.has(platform.id) && installStatus[platform.id],
-  ).length;
   const isInstalling = isBatchInstalling || isInstallPending || isClosingSoon;
-
+  const isBusy = isInstalling || isProjectBusy;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-base">
-      <div className="app-wallpaper-panel-strong border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-smooth">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 text-primary rounded-xl">
-              <CuboidIcon aria-hidden="true" className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-foreground">
-                {t("skill.managePlatforms")}
-              </h3>
-              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {skill.name}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            aria-label={t("common.close", "Close")}
-            onClick={onClose}
-            disabled={isInstalling}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-          >
-            <XIcon aria-hidden="true" className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 scrollbar-hide">
-          {platformError ? (
-            <p role="alert" className="text-sm text-destructive">
-              {platformError}
-            </p>
-          ) : isLoading ? (
-            <p role="status">{t("common.loading")}</p>
-          ) : availablePlatforms.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">
-                {t("skill.noPlatformsDetected", "No platforms detected")}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t("skill.platformSelectionHint")}
-                </p>
-                <button
-                  type="button"
-                  onClick={selectAllPlatforms}
-                  className="text-xs text-primary hover:underline"
-                  disabled={isInstalling}
-                >
-                  {t("skill.selectAll")}
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1 rounded-lg bg-accent/50 p-1">
-                <button
-                  type="button"
-                  aria-pressed={installMode === "copy"}
-                  onClick={() => setInstallMode("copy")}
-                  disabled={isInstalling}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    installMode === "copy"
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <CopyPlusIcon aria-hidden="true" className="w-3.5 h-3.5" />
-                  {t("skill.copyMode", "Copy")}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={installMode === "symlink"}
-                  onClick={() => setInstallMode("symlink")}
-                  disabled={isInstalling}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    installMode === "symlink"
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <LinkIcon aria-hidden="true" className="w-3.5 h-3.5" />
-                  {t("skill.symlink", "Symlink")}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {availablePlatforms.map((platform) => {
-                  const isInstalled = installStatus[platform.id];
-                  const isSelected =
-                    Boolean(isInstalled) !== selectedPlatforms.has(platform.id);
-
-                  return (
-                    <button
-                      type="button"
-                      key={platform.id}
-                      aria-pressed={isSelected}
-                      disabled={isInstalling}
-                      onClick={() => {
-                        togglePlatformSelection(platform.id);
-                      }}
-                      className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "bg-primary/10 border-primary cursor-pointer"
-                          : "bg-accent/30 border-border hover:bg-accent/50 cursor-pointer"
-                      } ${isInstalling ? "opacity-60 cursor-wait" : ""}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          aria-hidden="true"
-                          className="w-8 h-8 flex items-center justify-center flex-shrink-0"
-                        >
-                          <PlatformIcon
-                            aria-hidden="true"
-                            platformId={platform.id}
-                            size={26}
-                          />
-                        </div>
-                        <span className="font-medium text-sm">
-                          {platform.name}
-                        </span>
-                      </div>
-                      <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? "bg-primary border-primary"
-                            : "border-muted-foreground/30"
-                        }`}
-                      >
-                        {isSelected && (
-                          <CheckIcon
-                            aria-hidden="true"
-                            className="w-3 h-3 text-white"
-                          />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        {!isLoading && !platformError && availablePlatforms.length > 0 && (
-          <div className="p-5 border-t border-border shrink-0">
+    <Modal
+      isOpen
+      onClose={() => {
+        if (!isBusy) onClose();
+      }}
+      title={t("skill.distribution.dialogTitle")}
+      subtitle={skill.name}
+      size="lg"
+      closeOnEscape={!isBusy}
+      closeOnBackdrop={!isBusy}
+      showCloseButton={!isBusy}
+      footer={
+        scope === "global" && !isLoading && !platformError ? (
+          <SkillDistributionFooter
+            availablePlatforms={availablePlatforms}
+            installStatus={installStatus}
+            selectedPlatforms={selectedPlatforms}
+            isBusy={isInstalling}
+            installProgress={installProgress}
+            onApply={() => void handleInstall()}
+            onCancel={onClose}
+            layout="grid"
+          />
+        ) : undefined
+      }
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        const controls = Array.from(
+          event.currentTarget.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), [href], input:not(:disabled), [tabindex="0"]',
+          ),
+        );
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (!first) {
+          event.preventDefault();
+          return;
+        }
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === event.currentTarget)
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }}
+    >
+      <div className="mb-5 flex gap-1 rounded-lg bg-accent/50 p-1">
+        {(["global", "project"] satisfies Array<"global" | "project">).map(
+          (value) => (
             <button
               type="button"
-              onClick={handleInstall}
-              disabled={selectedPlatforms.size === 0 || isInstalling}
-              className="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors hover:bg-primary/90"
+              key={value}
+              aria-pressed={scope === value}
+              disabled={isBusy}
+              onClick={() => setScope(value)}
+              className={
+                "flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors disabled:opacity-60 " +
+                (scope === value
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground")
+              }
             >
-              {isInstalling ? (
-                <>
-                  <Loader2Icon
-                    aria-hidden="true"
-                    className="w-4 h-4 animate-spin"
-                  />
-                  {installProgress
-                    ? `${installProgress.current}/${installProgress.total}`
-                    : t("skill.installing")}
-                </>
-              ) : (
-                <>
-                  <SendIcon aria-hidden="true" className="w-4 h-4" />
-                  {t("skill.applyPlatformChanges", {
-                    install: installCount,
-                    uninstall: uninstallCount,
-                  })}
-                </>
+              {t(
+                value === "global"
+                  ? "skill.globalDistribution"
+                  : "skill.projectDistribution",
               )}
             </button>
-          </div>
+          ),
         )}
       </div>
-    </div>
+      {scope === "project" ? (
+        <SkillQuickProjectDistribution
+          skill={skill}
+          onClose={onClose}
+          onBusyChange={setIsProjectBusy}
+        />
+      ) : platformError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {platformError}
+        </p>
+      ) : isLoading ? (
+        <p role="status">{t("common.loading")}</p>
+      ) : (
+        <SkillDistributionControls
+          availablePlatforms={availablePlatforms}
+          skillName={skill.name}
+          installMode={installMode}
+          setInstallMode={setInstallMode}
+          installStatus={installStatus}
+          selectedPlatforms={selectedPlatforms}
+          isBusy={isInstalling}
+          installProgress={installProgress}
+          onToggle={togglePlatformSelection}
+          onSelectAll={selectAllPlatforms}
+          onApply={() => void handleInstall()}
+          onCancel={onClose}
+          layout="grid"
+          hideFooter
+        />
+      )}
+    </Modal>
   );
 }

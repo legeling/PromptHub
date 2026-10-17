@@ -1,3 +1,4 @@
+import { isSharedMcpTargetPreset } from "@prompthub/shared/utils/mcp-shared-targets";
 import type { McpTargetPreset } from "@prompthub/core";
 import type { SkillProject } from "@prompthub/shared/types";
 
@@ -191,13 +192,14 @@ export function mergeMcpTargetPresets(
 export function filterVisibleMcpTargetPresets(
   presets: McpTargetPreset[],
   disabledPlatformIds: string[],
+  deployablePlatformIds?: string[],
 ): McpTargetPreset[] {
-  if (disabledPlatformIds.length === 0) {
-    return presets;
-  }
-
   const disabledSet = new Set(disabledPlatformIds);
   return presets.filter(
-    (preset) => !disabledSet.has(preset.platformId ?? preset.id),
+    (preset) =>
+      isSharedMcpTargetPreset(preset) ||
+      (!disabledSet.has(preset.platformId ?? preset.id) &&
+        (deployablePlatformIds === undefined ||
+          deployablePlatformIds.includes(preset.platformId ?? preset.id))),
   );
 }

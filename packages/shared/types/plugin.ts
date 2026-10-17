@@ -21,6 +21,7 @@ export type PluginTrustLevel = "official" | "verified" | "community" | "custom";
 export type PluginSourceKind = "market" | "git" | "ssh" | "http" | "local";
 
 export type PluginTargetStatus =
+  | "shared"
   | "native"
   | "adapter"
   | "runtime-only"

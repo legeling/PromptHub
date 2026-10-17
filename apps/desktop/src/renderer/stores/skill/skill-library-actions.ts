@@ -40,11 +40,15 @@ function shouldReuseDeployedStatus(
 
 function isDeployedStatusFresh(
   options: { force?: boolean } | undefined,
+  get: SkillStoreGet,
 ): boolean {
   return Boolean(
     !options?.force &&
     deployedStatusLoadedAt > 0 &&
-    Date.now() - deployedStatusLoadedAt < DEPLOYED_STATUS_CACHE_TTL_MS,
+    Date.now() - deployedStatusLoadedAt < DEPLOYED_STATUS_CACHE_TTL_MS &&
+    get().skills.every(
+      (skill) => get().skillPlatformStatuses[skill.id] !== undefined,
+    ),
   );
 }
 
@@ -52,21 +56,42 @@ async function refreshDeployedStatus(
   set: SkillStoreSet,
   get: SkillStoreGet,
 ): Promise<void> {
-  const deployedSkillNames = new Set<string>();
   try {
     const skillIds = get().skills.map((skill) => skill.id);
+    const skillPlatformStatuses: Record<string, Record<string, boolean>> = {};
     if (skillIds.length > 0) {
       const statuses = await window.api.skill.getMdInstallStatusBatch(skillIds);
       for (const [skillId, status] of Object.entries(statuses)) {
-        if (Object.values(status).some(Boolean))
-          deployedSkillNames.add(skillId);
+        if (status && typeof status === "object" && !Array.isArray(status)) {
+          skillPlatformStatuses[skillId] = Object.fromEntries(
+            Object.entries(status).filter(
+              (entry): entry is [string, boolean] =>
+                typeof entry[1] === "boolean",
+            ),
+          );
+        }
       }
     }
+    // Missing rows are failed/unknown checks, not proof of uninstallation.
+    const next = Object.fromEntries(
+      get().skills.flatMap((skill) => {
+        const status =
+          skillPlatformStatuses[skill.id] ??
+          get().skillPlatformStatuses[skill.id];
+        return status ? [[skill.id, status]] : [];
+      }),
+    );
+    const deployedSkillNames = new Set(
+      Object.entries(next)
+        .filter(([, status]) => Object.values(status).some(Boolean))
+        .map(([skillId]) => skillId),
+    );
+    set({ skillPlatformStatuses: next, deployedSkillNames });
     deployedStatusLoadedAt = Date.now();
   } catch (error) {
     console.warn("Failed to load deployed status:", error);
+    deployedStatusLoadedAt = 0;
   }
-  set({ deployedSkillNames });
 }
 
 async function loadDeployedStatus(
@@ -74,8 +99,8 @@ async function loadDeployedStatus(
   get: SkillStoreGet,
   options: { force?: boolean } | undefined,
 ): Promise<void> {
-  if (shouldReuseDeployedStatus(options)) return deployedStatusRefreshPromise!;
-  if (isDeployedStatusFresh(options)) return;
+  if (shouldReuseDeployedStatus(options)) await deployedStatusRefreshPromise;
+  if (isDeployedStatusFresh(options, get)) return;
   deployedStatusRefreshPromise = refreshDeployedStatus(set, get).finally(() => {
     deployedStatusRefreshPromise = null;
   });
@@ -240,9 +265,7 @@ function getScannedPlatformName(scanned: ScannedSkill): string | undefined {
     : undefined;
 }
 
-function getImportedSourcePath(
-  scanned: ScannedSkill,
-): string {
+function getImportedSourcePath(scanned: ScannedSkill): string {
   if (
     scanned.installMode === "symlink" &&
     !scanned.isPromptHubManagedLink &&
@@ -392,9 +415,8 @@ function createLibraryScanActions(set: SkillStoreSet, get: SkillStoreGet) {
     scanLocalPreview: async (customPaths) => {
       set({ isLoading: true, error: null });
       try {
-        const scannedSkills = await window.api.skill.scanLocalPreview(
-          customPaths,
-        );
+        const scannedSkills =
+          await window.api.skill.scanLocalPreview(customPaths);
         set({ isLoading: false });
         return scannedSkills;
       } catch (error) {
@@ -626,6 +648,7 @@ export function createSkillLibraryActions(
   | "filterType"
   | "filterTags"
   | "deployedSkillNames"
+  | "skillPlatformStatuses"
   | "pendingPluginChildDeploySkillIds"
 > {
   return Object.assign(

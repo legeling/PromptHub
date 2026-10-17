@@ -3715,6 +3715,32 @@
       "createFolder": "Der Ordner konnte nicht erstellt werden. Bitte erneut versuchen.",
       "rename": "Umbenennen fehlgeschlagen. Bitte erneut versuchen.",
       "delete": "Löschen fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "distribution": {
+      "title": "Verteilung",
+      "dialogTitle": "Skill verteilen",
+      "platforms": "Plattformverteilung",
+      "advancedTargets": "Erweiterte Ziele",
+      "selectAllPlatforms": "Alle Plattformen wählen",
+      "sharedDirectory": "Gemeinsames Skill-Verzeichnis",
+      "experimental": "Experimentell",
+      "sharedDescription": "Für Agents, die dieses Verzeichnis unterstützen.",
+      "sharedCompatibility": "Nur kompatible Agents lesen es; eine Aktivierung ist meist nicht erforderlich.",
+      "sharedExcluded": "Nicht in „Alle Plattformen wählen“ enthalten.",
+      "copyHint": "Kopiert das gesamte Skill-Paket. Kopien werden nicht automatisch aktualisiert.",
+      "symlinkHint": "Skill-Änderungen werden auf verknüpften Plattformen übernommen.",
+      "pendingInstall": "Zur Installation",
+      "pendingUninstall": "Zur Deinstallation",
+      "notInstalled": "Nicht installiert",
+      "copyOnly": "Nur Kopieren",
+      "selectionSummary": "{{count}} Plattformen gewählt · {{shared}}",
+      "sharedEnabled": "Gemeinsames Verzeichnis aktiv",
+      "sharedDisabled": "Gemeinsames Verzeichnis inaktiv",
+      "pendingSummary": "Installieren: {{install}} · Deinstallieren: {{uninstall}}",
+      "applyChanges": "Änderungen anwenden",
+      "changesApplied": "{{count}} Änderungen angewendet.",
+      "redistribute": "Erneut verteilen",
+      "redistributeHint": "{{count}} markierte Ziele mit der gewählten Methode aktualisieren."
     }
   },
   "error": {
@@ -3882,6 +3908,8 @@
     "resizeAria": "Ordner-Seitenleiste vergrößern oder verkleinern"
   },
   "mcp": {
+    "sharedConfig": "Geteilte MCP-Konfiguration",
+    "sharedConfigHint": "Für kompatible Clients wie pi-mcp-adapter. Nicht alle Agents lesen diese Datei. Von Alle auswählen ausgenommen.",
     "noDescription": "Keine Beschreibung",
     "history": {
       "title": "Versionsverlauf",
@@ -4225,6 +4253,8 @@
     }
   },
   "plugin": {
+    "sharedDirectory": "Gemeinsames Plugin-Verzeichnis",
+    "sharedDirectoryHint": "Speichert das gesamte Paket unter ~/.agents/plugins/<Name>/. Ein kompatibler Client oder eine separate Registrierung ist erforderlich. Von „Alle auswählen“ ausgeschlossen.",
     "title": "Plugins",
     "subtitle": "Vollständige Fähigkeitspakete und ihre Agent-Ziele verwalten.",
     "detailRenderError": "Dieses Plugin kann gerade nicht geöffnet werden",

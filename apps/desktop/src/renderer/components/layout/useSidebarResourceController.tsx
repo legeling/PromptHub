@@ -12,6 +12,7 @@ import {
 } from "../../services/mcp-target-presets";
 import { MCP_OFFICIAL_MARKET_SOURCE_ID } from "@prompthub/shared/constants/mcp-market";
 import type { PageType } from "./sidebar-controller-types";
+import { filterVisiblePluginTargets } from "../plugin/plugin-detail-utils";
 
 function collectUniqueTags(tagGroups: Array<readonly string[] | undefined>) {
   return Array.from(
@@ -76,6 +77,9 @@ function useSidebarMcpBindings() {
     (state) => state.remoteMarketEntries,
   );
   const mcpTargetPresets = useMcpStore((state) => state.targetPresets);
+  const mcpDeployablePlatformIds = useMcpStore(
+    (state) => state.deployablePlatformIds,
+  );
   const mcpSelectedTab = useMcpStore((state) => state.selectedTab);
   const mcpSelectedMarketSourceId = useMcpStore(
     (state) => state.selectedMarketSourceId,
@@ -99,6 +103,7 @@ function useSidebarMcpBindings() {
     mcpMarketSources,
     mcpRemoteMarketEntries,
     mcpTargetPresets,
+    mcpDeployablePlatformIds,
     mcpSelectedTab,
     mcpSelectedMarketSourceId,
     mcpFilterTags,
@@ -114,7 +119,22 @@ function useSidebarMcpBindings() {
 function useSidebarPluginBindings() {
   const pluginLibrary = usePluginStore((state) => state.library);
   const pluginMarketSources = usePluginStore((state) => state.marketSources);
-  const pluginTargetMatrix = usePluginStore((state) => state.targetMatrix);
+  const rawPluginTargetMatrix = usePluginStore((state) => state.targetMatrix);
+  const deployablePlatformIds = usePluginStore(
+    (state) => state.deployablePlatformIds,
+  );
+  const disabledPlatformIds = useSettingsStore(
+    (state) => state.disabledPlatformIds,
+  );
+  const pluginTargetMatrix = useMemo(
+    () =>
+      filterVisiblePluginTargets(
+        rawPluginTargetMatrix,
+        deployablePlatformIds,
+        disabledPlatformIds,
+      ),
+    [rawPluginTargetMatrix, deployablePlatformIds, disabledPlatformIds],
+  );
   const pluginSelectedTab = usePluginStore((state) => state.selectedTab);
   const pluginSelectedMarketSourceId = usePluginStore(
     (state) => state.selectedMarketSourceId,
@@ -278,8 +298,13 @@ function useSidebarMcpTargetCounts(
       filterVisibleMcpTargetPresets(
         mcp.mcpTargetPresets.filter((preset) => preset.scope !== "workspace"),
         settings.disabledPlatformIds,
+        mcp.mcpDeployablePlatformIds,
       ).length,
-    [mcp.mcpTargetPresets, settings.disabledPlatformIds],
+    [
+      mcp.mcpTargetPresets,
+      mcp.mcpDeployablePlatformIds,
+      settings.disabledPlatformIds,
+    ],
   );
   const visibleMcpProjectTargetCount = useMemo(
     () =>

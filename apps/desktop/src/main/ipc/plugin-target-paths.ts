@@ -3,6 +3,7 @@ import type { PluginLibraryEntry } from "@prompthub/shared/types/plugin";
 import {
   getPluginTargetPlatformId,
   resolvePluginPackageTargetPath,
+  resolveSharedPluginTargetPath,
 } from "@prompthub/core/plugin-target-paths";
 export { normalizePluginDirectorySegment } from "@prompthub/core/plugin-target-paths";
 import {
@@ -14,6 +15,8 @@ export function resolveAgentPluginTargetPath(
   targetId: string,
   plugin: PluginLibraryEntry,
 ): string | undefined {
+  if (targetId === "shared-agents")
+    return resolveSharedPluginTargetPath(plugin);
   const platformId = getPluginTargetPlatformId(targetId);
   if (!platformId) {
     return undefined;

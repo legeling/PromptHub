@@ -2,35 +2,10 @@ import { fireEvent, screen } from "@testing-library/react";
 import { useTranslation } from "react-i18next";
 import { describe, expect, it, vi } from "vitest";
 
-import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import type {
-  Skill,
-  SkillPlatformInstallStatusMap,
-} from "@prompthub/shared/types";
+import type { Skill } from "@prompthub/shared/types";
 
 import { SkillAssetTopology } from "../../../src/renderer/components/skill/SkillAssetTopology";
 import { renderWithI18n } from "../../helpers/i18n";
-
-const platforms: SkillPlatform[] = [
-  {
-    id: "codex",
-    name: "Codex CLI",
-    icon: "terminal",
-    rootDir: { darwin: "~/.codex", win32: "~/.codex", linux: "~/.codex" },
-    skillsRelativePath: "skills",
-  },
-  {
-    id: "claude",
-    name: "Claude Code",
-    icon: "terminal",
-    rootDir: {
-      darwin: "~/.claude",
-      win32: "~/.claude",
-      linux: "~/.claude",
-    },
-    skillsRelativePath: "skills",
-  },
-];
 
 const baseSkill: Skill = {
   id: "skill-1",
@@ -44,18 +19,14 @@ const baseSkill: Skill = {
 
 function TopologyHarness({
   skill,
-  installDetails,
   onOpenLocalPath = vi.fn(),
 }: {
   skill: Skill;
-  installDetails: SkillPlatformInstallStatusMap;
   onOpenLocalPath?: (path: string) => void;
 }) {
   const { t } = useTranslation();
   return (
     <SkillAssetTopology
-      availablePlatforms={platforms}
-      installDetails={installDetails}
       onOpenLocalPath={onOpenLocalPath}
       selectedSkill={skill}
       t={t}
@@ -64,7 +35,7 @@ function TopologyHarness({
 }
 
 describe("SkillAssetTopology", () => {
-  it("separates remote source, managed package, and mixed platform copies", async () => {
+  it("shows only source and editable package while preserving the local folder action", async () => {
     const onOpenLocalPath = vi.fn();
     await renderWithI18n(
       <TopologyHarness
@@ -72,10 +43,6 @@ describe("SkillAssetTopology", () => {
           ...baseSkill,
           source_url: "https://github.com/example/writer-skill",
           local_repo_path: "/PromptHub/data/skills/writer",
-        }}
-        installDetails={{
-          codex: { installed: true, mode: "copy" },
-          claude: { installed: true, mode: "symlink" },
         }}
         onOpenLocalPath={onOpenLocalPath}
       />,
@@ -88,16 +55,8 @@ describe("SkillAssetTopology", () => {
     expect(
       screen.getByText("/PromptHub/data/skills/writer"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Codex CLI")).toBeInTheDocument();
-    expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(screen.getByText("Copy")).toBeInTheDocument();
-    expect(screen.getByText("Symlink")).toBeInTheDocument();
-    expect(
-      screen.getByText("Redistribution overwrites this target."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Edits follow the editable package immediately."),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("Distributed targets")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
     fireEvent.click(
       screen.getByRole("button", {
         name: "/PromptHub/data/skills/writer",
@@ -118,7 +77,6 @@ describe("SkillAssetTopology", () => {
           source_url: linkedPath,
           local_repo_path: linkedPath,
         }}
-        installDetails={{}}
         onOpenLocalPath={onOpenLocalPath}
       />,
       { language: "en" },
@@ -130,7 +88,7 @@ describe("SkillAssetTopology", () => {
         "Edits write directly to this external folder; PromptHub does not replace it with a managed copy.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Not distributed")).toBeInTheDocument();
+    expect(screen.queryByText("Not distributed")).not.toBeInTheDocument();
     expect(
       screen.queryByText("PromptHub managed package"),
     ).not.toBeInTheDocument();
@@ -144,22 +102,16 @@ describe("SkillAssetTopology", () => {
     expect(onOpenLocalPath).toHaveBeenNthCalledWith(2, linkedPath);
   });
 
-  it("labels database-only content and preserves unknown target identifiers", async () => {
-    await renderWithI18n(
-      <TopologyHarness
-        skill={baseSkill}
-        installDetails={{
-          external: { installed: true, mode: "copy" },
-        }}
-      />,
-      { language: "en" },
-    );
+  it("labels database-only content without a distribution placeholder", async () => {
+    await renderWithI18n(<TopologyHarness skill={baseSkill} />, {
+      language: "en",
+    });
 
     expect(screen.getByText("Database content only")).toBeInTheDocument();
     expect(
       screen.getByText("This Skill has no editable package directory."),
     ).toBeInTheDocument();
-    expect(screen.getByText("external")).toBeInTheDocument();
+    expect(screen.queryByText("Distributed targets")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

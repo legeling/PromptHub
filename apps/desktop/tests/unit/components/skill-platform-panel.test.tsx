@@ -119,6 +119,8 @@ describe("SkillPlatformPanel", () => {
       setInstallMode,
     });
 
+    expect(screen.queryByText("Protocol")).not.toBeInTheDocument();
+
     expect(screen.getByRole("button", { name: "Copy" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -145,8 +147,8 @@ describe("SkillPlatformPanel", () => {
 
     expect(platform).toHaveAttribute("aria-pressed", "true");
 
-    fireEvent.keyDown(platform, { key: " " });
-    fireEvent.keyDown(platform, { key: "Enter" });
+    platform.focus();
+    await userEvent.setup().keyboard("[Space][Enter]");
 
     expect(togglePlatformSelection).toHaveBeenCalledTimes(2);
     expect(togglePlatformSelection).toHaveBeenNthCalledWith(1, "claude");
@@ -174,7 +176,7 @@ describe("SkillPlatformPanel", () => {
           onBatchInstall={onBatchInstall}
           selectedPlatforms={new Set<string>(["claude"])}
           selectedSkill={makeSkill()}
-          selectAllPlatforms={vi.fn()}
+          selectAllPlatforms={deselectAllPlatforms}
           deselectAllPlatforms={deselectAllPlatforms}
           setInstallMode={vi.fn()}
           skillMdInstallStatus={{}}
@@ -187,8 +189,8 @@ describe("SkillPlatformPanel", () => {
       { language: "en" },
     );
 
-    const deselectAll = screen.getByRole("button", { name: "Deselect All" });
-    const batchInstall = screen.getByRole("button", { name: "Install All" });
+    const deselectAll = screen.getByRole("button", { name: "Select all platforms" });
+    const batchInstall = screen.getByRole("button", { name: "Apply changes" });
     const exportSkillMd = screen.getByRole("button", { name: "SKILL.md" });
     const exportZip = screen.getByRole("button", { name: "ZIP" });
     const openSource = screen.getByRole("button", {
