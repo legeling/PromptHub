@@ -26,6 +26,8 @@ import { useSettingsStore } from "../../stores/settings.store";
 import { useUIStore, type SettingsSectionId } from "../../stores/ui.store";
 import { getRuntimeCapabilities, isWebRuntime } from "../../runtime";
 import { Spinner } from "../ui";
+import { SettingsSearch } from "./SettingsSearch";
+import { SettingsSearchTarget } from "./settings-search-target";
 
 interface BackupImportControllerLike {
   requestFileSelection: () => void;
@@ -41,7 +43,11 @@ interface SettingsPageProps {
 // 设置菜单项 - 使用 key 而非硬编码文本
 const DESKTOP_SETTINGS_MENU = [
   { id: "general", labelKey: "settings.general", icon: SettingsIcon },
-  { id: "notifications", labelKey: "notificationSettings.title", icon: BellIcon },
+  {
+    id: "notifications",
+    labelKey: "notificationSettings.title",
+    icon: BellIcon,
+  },
   { id: "appearance", labelKey: "settings.appearance", icon: PaletteIcon },
   { id: "data", labelKey: "settings.data", icon: DatabaseIcon },
   { id: "network", labelKey: "settings.network", icon: WifiIcon },
@@ -64,7 +70,11 @@ const WEB_SETTINGS_MENU = [
   { id: "about", labelKey: "settings.about", icon: InfoIcon },
 ] as const;
 
-const NotificationSettings = lazy(() => import("./NotificationSettings").then((module) => ({ default: module.NotificationSettings })));
+const NotificationSettings = lazy(() =>
+  import("./NotificationSettings").then((module) => ({
+    default: module.NotificationSettings,
+  })),
+);
 const GeneralSettings = lazy(() =>
   import("./GeneralSettings").then((module) => ({
     default: module.GeneralSettings,
@@ -246,6 +256,8 @@ export function SettingsPage({
   const [activeDataSubsection, setActiveDataSubsection] =
     useState<DataSettingsSubsectionId>("local");
   const { t } = useTranslation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTargetKey, setSearchTargetKey] = useState("");
 
   useEffect(() => {
     if (!pendingSettingsSection) {
@@ -258,6 +270,8 @@ export function SettingsPage({
       settingsMenu.some((item) => item.id === requestedSection)
     ) {
       setActiveSection(requestedSection as SettingsSectionId);
+      setSearchQuery("");
+      setSearchTargetKey("");
     }
   }, [consumeSettingsSectionRequest, pendingSettingsSection, settingsMenu]);
 
@@ -267,10 +281,10 @@ export function SettingsPage({
         return <WebWorkspaceSettings onNavigate={setActiveSection} />;
       case "devices":
         return <WebDeviceSettings />;
-      case "notifications":
-        return <NotificationSettings />;
       case "general":
         return <GeneralSettings />;
+      case "notifications":
+        return <NotificationSettings />;
       case "appearance":
         return <AppearanceSettings />;
       case "security":
@@ -323,145 +337,175 @@ export function SettingsPage({
   );
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* 设置侧边栏 */}
-      <div className="w-56 app-wallpaper-panel border-r border-border flex flex-col">
-        {/* 返回按钮 */}
-        <div className="p-3 border-b border-border">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
-            <span>{t("common.back")}</span>
-          </button>
-        </div>
-
-        {/* 菜单列表 */}
-        <nav className="flex-1 overflow-y-auto p-2 space-y-1">
-          {settingsMenu.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveSection(item.id)}
-              aria-pressed={activeSection === item.id}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-quick ${
-                activeSection === item.id
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground/80 hover:bg-muted/70"
-              }`}
-            >
-              <item.icon className="w-4 h-4" aria-hidden="true" />
-              <span>{t(item.labelKey)}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {activeSubmenu ? (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <SettingsSearch
+        query={searchQuery}
+        onQueryChange={(query) => {
+          setSearchQuery(query);
+          setSearchTargetKey("");
+        }}
+        menu={settingsMenu}
+        webRuntime={webRuntime}
+        onSelect={(result) => {
+          setActiveSection(result.section);
+          if (result.dataSubsection)
+            setActiveDataSubsection(result.dataSubsection);
+          setSearchTargetKey(result.labelKey);
+          setSearchQuery("");
+        }}
+      />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* 设置侧边栏 */}
         <div className="w-56 app-wallpaper-panel border-r border-border flex flex-col">
+          {/* 返回按钮 */}
+          <div className="p-3 border-b border-border">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
+              <span>{t("common.back")}</span>
+            </button>
+          </div>
+
+          {/* 菜单列表 */}
           <nav className="flex-1 overflow-y-auto p-2 space-y-1">
-            {activeSubmenu.groups.map((group) => (
-              <section key={group.labelKey} className="space-y-1 pb-3">
-                <div className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-muted-foreground">
-                  <span className="shrink-0">
-                    {String(t(group.labelKey, group.fallback))}
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => activeSubmenu.onSelect(item.id)}
-                    aria-pressed={activeSubmenu.activeId === item.id}
-                    aria-label={`${String(t(item.labelKey, item.fallback))}${
-                      item.id in enabledSubsections &&
-                      enabledSubsections[
-                        item.id as keyof typeof enabledSubsections
-                      ]
-                        ? ` ${t("common.enabled")}`
-                        : ""
-                    }`}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-quick ${
-                      activeSubmenu.activeId === item.id
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-foreground/80 hover:bg-muted/70"
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4" aria-hidden="true" />
-                    <span className="min-w-0 flex-1 text-left">
-                      {String(t(item.labelKey, item.fallback))}
-                    </span>
-                    {item.id in enabledSubsections &&
-                    enabledSubsections[
-                      item.id as keyof typeof enabledSubsections
-                    ] ? (
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          syncProvider ===
-                          (item.id === "selfHosted" ? "self-hosted" : item.id)
-                            ? activeSubmenu.activeId === item.id
-                              ? "bg-white/20 text-white"
-                              : "bg-primary/10 text-primary"
-                            : activeSubmenu.activeId === item.id
-                              ? "bg-white/15 text-white/90"
-                              : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {t("common.enabled")}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </section>
+            {settingsMenu.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveSection(item.id);
+                  setSearchQuery("");
+                  setSearchTargetKey("");
+                }}
+                aria-pressed={activeSection === item.id}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-quick ${
+                  activeSection === item.id
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-foreground/80 hover:bg-muted/70"
+                }`}
+              >
+                <item.icon className="w-4 h-4" aria-hidden="true" />
+                <span>{t(item.labelKey)}</span>
+              </button>
             ))}
           </nav>
         </div>
-      ) : null}
 
-      {/* 设置内容区 - 自适应宽度 */}
-      <div
-        className={
-          activeSection === "ai"
-            ? "flex-1 overflow-hidden app-wallpaper-section"
-            : "flex-1 overflow-y-auto px-5 py-5 app-wallpaper-section sm:px-6 xl:px-8 2xl:px-10"
-        }
-      >
+        {activeSubmenu ? (
+          <div className="w-56 app-wallpaper-panel border-r border-border flex flex-col">
+            <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+              {activeSubmenu.groups.map((group) => (
+                <section key={group.labelKey} className="space-y-1 pb-3">
+                  <div className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-muted-foreground">
+                    <span className="shrink-0">
+                      {String(t(group.labelKey, group.fallback))}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        activeSubmenu.onSelect(item.id);
+                        setSearchQuery("");
+                        setSearchTargetKey("");
+                      }}
+                      aria-pressed={activeSubmenu.activeId === item.id}
+                      aria-label={`${String(t(item.labelKey, item.fallback))}${
+                        item.id in enabledSubsections &&
+                        enabledSubsections[
+                          item.id as keyof typeof enabledSubsections
+                        ]
+                          ? ` ${t("common.enabled")}`
+                          : ""
+                      }`}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-quick ${
+                        activeSubmenu.activeId === item.id
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-foreground/80 hover:bg-muted/70"
+                      }`}
+                    >
+                      <item.icon className="w-4 h-4" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 text-left">
+                        {String(t(item.labelKey, item.fallback))}
+                      </span>
+                      {item.id in enabledSubsections &&
+                      enabledSubsections[
+                        item.id as keyof typeof enabledSubsections
+                      ] ? (
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                            syncProvider ===
+                            (item.id === "selfHosted" ? "self-hosted" : item.id)
+                              ? activeSubmenu.activeId === item.id
+                                ? "bg-white/20 text-white"
+                                : "bg-primary/10 text-primary"
+                              : activeSubmenu.activeId === item.id
+                                ? "bg-white/15 text-white/90"
+                                : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {t("common.enabled")}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </section>
+              ))}
+            </nav>
+          </div>
+        ) : null}
+
+        {/* 设置内容区 - 自适应宽度 */}
         <div
-          data-testid="settings-content-shell"
           className={
             activeSection === "ai"
-              ? "h-full max-w-none"
-              : "w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
+              ? "flex-1 overflow-hidden app-wallpaper-section"
+              : "flex-1 overflow-y-auto px-5 py-5 app-wallpaper-section sm:px-6 xl:px-8 2xl:px-10"
           }
         >
-          {activeSection === "ai" ? null : (
-            <h1 className="text-lg font-semibold mb-4">
-              {t(
-                settingsMenu.find((m) => m.id === activeSection)?.labelKey ||
-                  "",
-              )}
-            </h1>
-          )}
           <div
-            key={activeSection}
+            data-testid="settings-content-shell"
             className={
               activeSection === "ai"
-                ? "h-full animate-in fade-in slide-in-from-bottom-2 duration-base"
-                : "animate-in fade-in slide-in-from-bottom-2 duration-base"
+                ? "h-full max-w-none"
+                : "w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
             }
           >
-            <Suspense
-              fallback={
-                <SettingsContentFallback
-                  label={t("common.loading", "Loading...")}
-                />
+            {activeSection === "ai" ? null : (
+              <h1 className="text-lg font-semibold mb-4">
+                {t(
+                  settingsMenu.find((m) => m.id === activeSection)?.labelKey ||
+                    "",
+                )}
+              </h1>
+            )}
+            <div
+              key={activeSection}
+              className={
+                activeSection === "ai"
+                  ? "h-full animate-in fade-in slide-in-from-bottom-2 duration-base"
+                  : "animate-in fade-in slide-in-from-bottom-2 duration-base"
               }
             >
-              {renderContent()}
-            </Suspense>
+              <Suspense
+                fallback={
+                  <SettingsContentFallback
+                    label={t("common.loading", "Loading...")}
+                  />
+                }
+              >
+                <SettingsSearchTarget.Provider
+                  value={searchTargetKey ? t(searchTargetKey) : ""}
+                >
+                  {renderContent()}
+                </SettingsSearchTarget.Provider>
+              </Suspense>
+            </div>
           </div>
         </div>
       </div>

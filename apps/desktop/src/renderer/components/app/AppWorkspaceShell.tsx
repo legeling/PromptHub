@@ -76,11 +76,13 @@ export function AppWorkspaceShell({
             />
 
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <TopBar
-                onOpenSettings={() => onNavigate("settings")}
-                updateAvailable={updateAvailable}
-                onShowUpdateDialog={onOpenUpdater}
-              />
+              {currentPage === "home" ? (
+                <TopBar
+                  onOpenSettings={() => onNavigate("settings")}
+                  updateAvailable={updateAvailable}
+                  onShowUpdateDialog={onOpenUpdater}
+                />
+              ) : null}
 
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 {currentPage === "home" ? (

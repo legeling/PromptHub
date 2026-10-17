@@ -57,7 +57,9 @@ vi.mock("../../../src/renderer/components/settings/CLISettings", () => ({
 vi.mock("../../../src/renderer/components/settings/DataSettings", () => {
   dataSettingsModuleLoadMock();
   return {
-    DataSettings: () => <div>data-content</div>,
+    DataSettings: ({ activeSubsection }: { activeSubsection: string }) => (
+      <div data-subsection={activeSubsection}>data-content</div>
+    ),
   };
 });
 vi.mock("../../../src/renderer/components/settings/NetworkSettings", () => {
@@ -422,5 +424,23 @@ describe("SettingsPage", () => {
     expect(contentShell).not.toHaveClass("mx-auto");
     expect(contentShell).toHaveClass("2xl:max-w-7xl");
     expect(contentShell).toHaveClass("w-full");
+  });
+  it("opens the matching data subsection from settings search", async () => {
+    useSettingsStoreMock.mockReturnValue({
+      syncProvider: "manual",
+      webdavEnabled: false,
+      selfHostedSyncEnabled: false,
+      s3StorageEnabled: false,
+    });
+    await renderWithI18n(<SettingsPage onBack={vi.fn()} />, { language: "en" });
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Search settings" }),
+      { target: { value: "webdav" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /WebDAV/ }));
+    expect(await screen.findByText("data-content")).toHaveAttribute(
+      "data-subsection",
+      "webdav",
+    );
   });
 });

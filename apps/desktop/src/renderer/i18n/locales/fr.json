@@ -4636,5 +4636,10 @@
     "copy": "Copie du Prompt réussie",
     "save": "Enregistrement manuel du Prompt réussi",
     "description": "Choisissez les événements à signaler. Les notifications restent dans l’application si le système est désactivé ou si la condition d’arrière-plan n’est pas remplie."
+  },
+  "settingsSearch": {
+    "placeholder": "Rechercher des paramètres",
+    "results": "Résultats des paramètres",
+    "empty": "Aucun paramètre correspondant"
   }
 }

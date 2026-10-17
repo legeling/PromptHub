@@ -4635,5 +4635,10 @@
     "copy": "Prompt copiado correctamente",
     "save": "Prompt guardado manualmente",
     "description": "Elige los eventos que quieres recibir. Los avisos permanecen en la aplicación si se desactivan las notificaciones del sistema o no se cumple la condición de segundo plano."
+  },
+  "settingsSearch": {
+    "placeholder": "Buscar ajustes",
+    "results": "Resultados de ajustes",
+    "empty": "No hay ajustes coincidentes"
   }
 }

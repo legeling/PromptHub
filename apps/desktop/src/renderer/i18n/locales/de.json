@@ -4635,5 +4635,10 @@
     "copy": "Prompt erfolgreich kopiert",
     "save": "Prompt manuell gespeichert",
     "description": "Wählen Sie die gewünschten Ereignisse. Bei deaktivierten Systembenachrichtigungen oder nicht erfüllter Hintergrundbedingung bleibt die Meldung in der App."
+  },
+  "settingsSearch": {
+    "placeholder": "Einstellungen suchen",
+    "results": "Suchergebnisse für Einstellungen",
+    "empty": "Keine passenden Einstellungen"
   }
 }

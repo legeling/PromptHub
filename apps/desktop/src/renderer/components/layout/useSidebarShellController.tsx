@@ -176,7 +176,7 @@ function useSidebarRailItems(
         key: module,
         label: getRailItemLabel(module, t),
         icon: getRailItemIcon(module),
-        active: ui.appModule === module,
+        active: currentPage === "home" && ui.appModule === module,
         onClick: () => {
           ui.setAppModule(module);
           if (closeTagPopover) closeTagPopover();

@@ -4675,5 +4675,10 @@
     "copy": "Copy Prompt success",
     "save": "Manual Prompt save success",
     "description": "Choose which events can notify you. System notifications stay in the app when disabled or suppressed by the background-only setting."
+  },
+  "settingsSearch": {
+    "placeholder": "Search settings",
+    "results": "Settings search results",
+    "empty": "No matching settings"
   }
 }

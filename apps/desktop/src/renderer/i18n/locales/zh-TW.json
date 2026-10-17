@@ -4635,5 +4635,10 @@
     "copy": "複製 Prompt 成功提示",
     "save": "手動儲存 Prompt 成功提示",
     "description": "依類別選擇提醒方式。系統通知關閉，或不符合「僅背景通知」條件時，提醒保留在應用程式內。"
+  },
+  "settingsSearch": {
+    "placeholder": "搜尋設定",
+    "results": "設定搜尋結果",
+    "empty": "沒有符合的設定"
   }
 }

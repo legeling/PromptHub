@@ -4,6 +4,7 @@ import { EyeIcon, EyeOffIcon, XIcon, AlertTriangleIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Select } from "../ui/Select";
 import { getShortcutKey } from "../../services/shortcut-key";
+import { useSettingsSearchTarget } from "./settings-search-target";
 
 // Settings section component - flattened design
 // 设置区块组件 - 扁平化设计
@@ -14,14 +15,16 @@ export function SettingSection({
   title: string;
   children: ReactNode;
 }) {
+  const { ref, highlighted } = useSettingsSearchTarget(title);
   return (
-    <div className="relative space-y-3">
-      <h3 className="text-sm font-medium text-muted-foreground">
-        {title}
-      </h3>
-      <div className="app-settings-card">
-        {children}
-      </div>
+    <div
+      ref={ref}
+      tabIndex={highlighted ? -1 : undefined}
+      data-setting-target={highlighted || undefined}
+      className={`relative space-y-3 ${highlighted ? "rounded-lg ring-2 ring-primary/50 outline-none" : ""}`}
+    >
+      <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+      <div className="app-settings-card">{children}</div>
     </div>
   );
 }
@@ -37,8 +40,14 @@ export function SettingItem({
   description?: string;
   children: ReactNode;
 }) {
+  const { ref, highlighted } = useSettingsSearchTarget(label);
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 last:border-0 transition-colors hover:bg-muted/20">
+    <div
+      ref={ref}
+      tabIndex={highlighted ? -1 : undefined}
+      data-setting-target={highlighted || undefined}
+      className={`flex items-center justify-between px-4 py-3 border-b border-border/70 last:border-0 transition-colors hover:bg-muted/20 ${highlighted ? "rounded-lg ring-2 ring-inset ring-primary/50 outline-none" : ""}`}
+    >
       <div>
         <div className="text-sm font-medium">{label}</div>
         {description && (

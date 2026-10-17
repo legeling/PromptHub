@@ -85,6 +85,22 @@ describe("Desktop navigation rail isolation", () => {
     expect(window.api.skill.detectPlatforms).not.toHaveBeenCalled();
   });
 
+  it("marks only Settings as the current destination while settings are open", async () => {
+    await renderSidebar(
+      <Sidebar layout="rail" currentPage="settings" onNavigate={vi.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: "Settings" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("button", { name: "Skills" })).not.toHaveClass(
+      "bg-primary",
+    );
+    expect(screen.getByRole("button", { name: "Skills" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
   it("lets the visible classification panel own one platform inventory read", async () => {
     await renderSidebar(
       <>

@@ -4673,5 +4673,10 @@
     "copy": "复制 Prompt 成功提示",
     "save": "手动保存 Prompt 成功提示",
     "description": "按类别选择提醒方式。系统通知关闭，或不满足“仅后台通知”条件时，提醒保留在应用内。"
+  },
+  "settingsSearch": {
+    "placeholder": "搜索设置",
+    "results": "设置搜索结果",
+    "empty": "没有匹配的设置"
   }
 }

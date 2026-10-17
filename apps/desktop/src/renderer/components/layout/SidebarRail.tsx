@@ -27,6 +27,7 @@ function SidebarRailItems({ controller }: SidebarRailProps) {
           key={item.key}
           onClick={item.onClick}
           aria-label={item.label}
+          aria-current={item.active ? "page" : undefined}
           title={item.label}
           className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-[11px] font-medium transition-colors titlebar-no-drag ${item.active ? "bg-primary text-white shadow-sm" : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}
         >
@@ -56,6 +57,9 @@ function SidebarRailSettings({ controller }: SidebarRailProps) {
         <button
           type="button"
           aria-label={controller.t("header.settings")}
+          aria-current={
+            controller.currentPage === "settings" ? "page" : undefined
+          }
           title={controller.t("header.settings")}
           onClick={openSettings}
           className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-colors ${controller.currentPage === "settings" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}
