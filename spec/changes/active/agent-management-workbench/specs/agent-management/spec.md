@@ -3045,7 +3045,7 @@ managed path MUST remain available to the path-open action but MUST NOT occupy
 the visible card body.
 
 The workspace MUST also provide a catalog sourced only from the hardcoded
-official `legeling/awesome-codex-pet` project and MUST identify that destination
+official website `https://codexpet.top/pets.json` and MUST identify that destination
 as `Awesome Codex Pet` in every supported locale. Catalog search and paging
 MUST be bounded. Editing the search field MUST NOT fetch or filter the catalog;
 only an explicit search-button action or Enter submission commits the query.
@@ -3057,13 +3057,19 @@ keep long titles, descriptions and metadata inside the card, and MUST NOT
 render the catalog identifier as source-path copy. Their image source MUST
 prefer the project's published
 `codexpet.top/assets/previews/<pet-id>/webp/idle.webp` preview and MUST fall back
-to the validated package spritesheet rather than a guessed repository path.
+to `codexpet.top/assets/previews/<pet-id>/thumbnail.webp`. Catalog browsing and
+preview loading MUST NOT request GitHub, including on website failure.
 Valid preview bytes MUST be reused from a bounded persistent cache across
 catalog refreshes and application restarts. Stale, invalid or excess cache
 entries MUST be removed without blocking catalog use.
 Catalog, manifest, sprite and preview responses MUST enforce timeouts and byte
-limits, MUST reject redirects or paths outside the two hardcoded official asset
-prefixes, and MUST NOT execute upstream installers or telemetry.
+limits, MUST reject redirects or paths outside the exact website catalog URL,
+website preview prefix and official raw repository package prefix, and MUST NOT
+execute upstream installers or telemetry. Only explicit installation may fetch
+the repository package; browsing does not download installation assets.
+All Pet store requests MUST use the current application network proxy policy.
+Catalog timeouts MUST show a localized retry hint instead of raw IPC/AbortError
+text, and a failed request MUST allow recovery by explicit refresh.
 Installing an item MUST stage and validate the package before reusing the
 existing Pet import transaction. Installed Pets remain filesystem-owned under
 the selected Codex root and remain outside PromptHub backup and sync.
@@ -3076,7 +3082,7 @@ the selected Codex root and remain outside PromptHub backup and sync.
 - And the catalog package is validated before appearing in the installed inventory
 - And every card uses the shared Agent asset-card measurements, gives the Pet preview primary visual weight and shows the sprite contract version
 - And the catalog destination is labelled `Awesome Codex Pet` without card text overflow
-- And the catalog preview loads from the published gallery or the validated package fallback
+- And the catalog preview loads from the published gallery or the website thumbnail fallback without a GitHub request
 - And a valid cached preview is reused without another upstream image request
 - And every installed card can open its exact directory
 - And no Pet bytes are copied into PromptHub durable storage
@@ -4248,19 +4254,28 @@ failures MUST remain typed and redacted.
 ### `FR-AGENT-125`: Codex Official Account Snapshot Switching
 
 For Codex's built-in OpenAI provider, PromptHub MUST let the user save the
-current official login, import another complete `auth.json` as a write-only
-account snapshot, list sanitized account summaries and switch the active
+current official login, optionally import `auth.json` as a write-only
+account snapshot, create pending login records, rename records, list sanitized
+account summaries including an available email and switch the active
 account by replacing the single native `~/.codex/auth.json`. PromptHub MUST NOT
 append an account array or otherwise change Codex's native authentication
 schema.
 
 Account snapshots MUST be encrypted at rest in a main-process-only PromptHub
-store. The renderer may receive only a user label, masked account identifier,
-timestamps and active state. Switching MUST preserve an unsaved current login,
+store. The renderer may receive a user label, display-only email, masked account
+identifier, timestamps, credential-presence and active state. Pending records
+provide Switch and sign in: after confirmation to close Codex, preserve the
+current login encrypted, remove only the native auth file, verify absence and
+restore the prior file on failure. Remember the selected pending record and
+never clear authentication again when reselecting it. After reopening Codex
+and signing in themselves, users explicitly save the login to that record.
+An edit with blank auth preserves the
+saved login. Switching MUST preserve an unsaved current login,
 write the selected snapshot atomically with owner-only permissions, re-read and
 verify it, and restore the exact previous file on failure. It MUST NOT modify
 `config.toml`, Provider Profiles, models, MCP, sessions or unrelated Codex
-state. An active snapshot MUST NOT be deletable.
+state. Deleting any saved record, including the active snapshot, MUST only
+remove PromptHub's record and MUST NOT log out or modify native authentication.
 
 #### Scenario: Switch between saved official accounts
 

@@ -2,6 +2,11 @@
 
 ## Added Requirements
 
+跨 Skill / MCP / Plugin 的公共管理接口、状态和界面合同由
+[公共资源架构](../../../../../knowledge/structure/resource-library-architecture.md) 定义（待实施）。
+Plugin 的当前存储权威见 [Storage Ownership](../../../../../knowledge/behavior/plugins.md#7-storage-ownership)；
+下述历史需求 ID 保留，旧 JSON/canonical 权威已被 Foundation 的 SQLite 与实际文件合同替代。
+
 ### Requirement: FR-PLUGIN-001 Plugin as a First-Class Distribution Surface
 
 PromptHub MUST model Plugin as a first-class distribution surface beside Skill and MCP.
@@ -467,29 +472,30 @@ PromptHub MUST model Plugin support as an adapter matrix across agent-native bun
 - **AND** requesting symlink mode for adapter targets still materializes a generated copy package and reports the actual copy result
 - **AND** Codex targets can still preserve Codex native package copy or symlink behavior when the source package already contains `.codex-plugin/plugin.json`
 
-### Requirement: FR-PLUGIN-010 Canonical Library Recovery Without Sync Identity
+### Requirement: FR-PLUGIN-010 Library Recovery Without Sync Identity
 
 PromptHub MUST read and migrate the local Plugin library independently of whether self-hosted sync has been configured.
 
 #### Scenario: Migrating superseded metadata before sync setup
 
-- **GIVEN** canonical file authority is active, `data/plugins/library.json` contains installed Plugins, and the renderer device document has a null `selfHostedDeviceId`
-- **WHEN** the Plugin library is read
-- **THEN** PromptHub migrates every valid Plugin into canonical resource bundles
-- **AND** preserves distributed Agent target mappings in a projection keyed by the deterministic local storage-root identity
-- **AND** removes superseded library/version metadata only after canonical publication verifies successfully
+- **GIVEN** historical Plugin JSON/bundles/device projections exist and self-hosted sync is not configured
+- **WHEN** the explicit startup storage migration runs before ordinary writes
+- **THEN** PromptHub adopts valid metadata and version identities into SQLite and preserves current/historical package files
+- **AND** preserves device-local target mappings without depending on a sync account identity
+- **AND** retains recovery copies and retires old inputs only through the verified SQLite/file publication boundary
 
-#### Scenario: Canonical bundles coexist with stale metadata
+#### Scenario: Historical sources coexist or reappear after migration
 
-- **GIVEN** valid canonical Plugin bundles already exist beside exact superseded Plugin metadata files
-- **WHEN** the Plugin library is read
-- **THEN** canonical bundles remain authoritative and stale regular metadata files are removed
-- **AND** same-name directories, symlinks, and undeclared root files remain rejected as unsafe
+- **GIVEN** historical Plugin bundles and metadata coexist before migration
+- **WHEN** the explicit migration validates and merges these inputs
+- **THEN** unique records, complete packages and history are preserved; conflicts and unsafe paths fail without silently deleting either side
+- **AND** after successful adoption, ordinary reads use SQLite and referenced package files without reconstructing a canonical JSON authority
+- **AND** retired sources that reappear require explicit recovery rather than overwriting current data
 
 ## Open Decisions
 
-- First implementation source of truth is decided: filesystem-backed `data/plugins/library.json`, with first-read migration from legacy `config/plugin-library.json`. `[待确认]` remains only for a later migration to SQLite or hybrid metadata if child bindings, sync, and update history require it.
+- Storage ownership is decided by Foundation: SQLite metadata/version records and actual package files. See [current ownership and historical inputs](../../../../../knowledge/behavior/plugins.md#7-storage-ownership); SQLite adoption is not an open design choice.
 - `[待确认]` Whether PromptHub should mirror a curated OpenAI-compatible Plugin Store index or let users add arbitrary official/community store sources first.
 - `[待确认]` Whether App/connector entries should be managed as PromptHub-local metadata first, or only as links to Codex/ChatGPT app authorization flows.
-- Plugin package history now has a first implementation as My Plugins snapshots independent of child Skill versions. Manual snapshots, rollback safety snapshots, and automatic pre-source-update snapshots are implemented. `[待确认]` remains only for future sync/SQLite history migration.
+- Plugin package history remains independent of child Skill versions. Manual snapshots, rollback safety snapshots and automatic pre-source-update snapshots retain their existing semantics; version records and package snapshots follow the current storage owner. Future synchronization changes remain outside this resource-interface convergence scope.
 - First adapter package marker generation is implemented for Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot / VS Code. `[待确认]` remains for deeper target-specific installer semantics beyond static marker generation.

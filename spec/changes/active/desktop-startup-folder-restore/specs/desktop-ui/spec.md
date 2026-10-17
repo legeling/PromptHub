@@ -15,6 +15,8 @@ settings 新增 `startupFolderMode: 'default' | 'last' | 'pinned'`（默认 `'de
 ### FR-STARTUP-003 恢复语义
 启动恢复等待主进程设置与应用初始化成功，再以现有文件夹选择 action 触发（与手动点击同一行为路径：解锁状态、prompt 列表刷新语义全部复用）。目标不存在时回落默认且不抛出错误。
 
+此处“默认”仅指文件夹范围。列表布局及重启恢复遵循 [Prompt 列表布局保留合同](../../../../../knowledge/behavior/prompt-workspace.md#27-prompt-type-and-list-layout)，不得因启动目录恢复或失效回落重置用户布局。
+
 ### FR-STARTUP-004 坏值防护（hydration 边界）
 设置读取在 zustand `merge` 时归一非法 mode/非字符串 id：mode 回 `default`，id 回 `null`。IPC 写入拒绝非法模式、非字符串/空白/null-byte id 和非布尔折叠状态；不向 localStorage 双写这些字段。
 

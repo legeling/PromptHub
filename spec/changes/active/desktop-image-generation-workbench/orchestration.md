@@ -77,7 +77,7 @@ interface ImageGenerationCapabilities {
 ```
 
 - Missing capability data uses conservative adapter defaults, normally one image per
-  request, one concurrent request, no seed and no reference images.
+  request, four concurrent requests per endpoint, no seed and no reference images.
 - Existing provider/model heuristics are centralized in one resolver; UI and request
   code cannot maintain separate support matrices.
 - Unsupported parameters are disabled before submission. A stored batch snapshot still
@@ -100,9 +100,13 @@ snapshot.
 
 ## Scheduling And Concurrency
 
-- Default concurrency is one in-flight request per provider endpoint.
-- A declared `maxConcurrency` may raise the endpoint limit, capped at four in the first
-  release.
+- Default concurrency is four in-flight requests per provider endpoint. A four-image
+  batch starts all four requests without waiting for earlier images to finish. Larger
+  batches wait for a free slot. Batches sharing an endpoint share this cap.
+- Confirmed 2026-10-17: this replaces the former serial default. Current model settings
+  do not expose a concurrency override; no new stored capability field is introduced.
+- Cancellation stops queued work and ignores late provider results. Each execution has
+  a separate identity so a retry cannot reactivate results from a cancelled run.
 - The application-wide scheduler is fair between batches: after one request settles, a
   waiting batch receives a turn before the same batch consumes another slot group.
 - Reference image decoding, hashing and filesystem writes do not run on the renderer

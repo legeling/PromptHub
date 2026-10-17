@@ -1,5 +1,42 @@
 # 活跃问题追踪：质量与工具链
 
+## 2026-10-17
+
+### 全工作区分批提交检查：未完成验收
+
+本次记录覆盖分批提交前的合并工作区检查；各功能文档中既有定向验收记录不等于
+本次组合代码通过全量检查。提交期间存在并行编辑，单测结果仅对应执行时的快照。
+最终源码与测试类型检查已再次通过。未执行本轮 Electron GUI/E2E 或 release harness。
+
+| 检查 | 实际结果 |
+| --- | --- |
+| `pnpm typecheck`、`pnpm typecheck:tests` | 分批前及收尾复跑通过 |
+| Desktop unit：109 个本次变更测试文件，`vitest run --project unit … --minWorkers=1 --maxWorkers=2` | 103 文件通过、6 文件失败；1252 用例通过、59 失败；另有 1 个未处理异常 |
+| Desktop Agent 定向补测：13 文件，同一 unit 命令 | 150 用例通过、27 失败 |
+| Core 定向：`generation-scheduler`、`mcp-json-editor`、`mcp-market-installation`、`prompt-test-history`、`skill-payload-upgrade`、`settings-sqlite` | 6 文件、49 用例通过 |
+| Desktop integration：`skill-github-auth-install`、`skill-repo-sync-crud`、`skill-store-archive-install`、`skill-platform-management` | 4 文件、18 用例通过；SQLite/临时文件系统测试，网络使用测试替身，不代表外网可用性 |
+| `pnpm lint` | 文件大小门禁失败：`AiTestModal.tsx` 1532 行、`image-generation-workbench.test.tsx` 1527 行，均超过该门禁 1500 行；未进入 ESLint |
+| `pnpm spec:test` | 4 项通过、1 项失败：拓扑路径匹配保留 CRLF 的 `\r`，报 `spec/workflow/00-intake/README.md` 路由不存在 |
+| `pnpm spec:index:check` | 初次索引过期；执行 `pnpm spec:index` 后复跑通过 |
+| `pnpm spec:traceability` | 16 个 change 校验通过 |
+
+待复核的 Desktop 单测文件（路径相对 `apps/desktop/tests/unit/`）：
+
+- `components/mcp-manager-detail-distribution.test.tsx`：保存入口查询存在多个匹配。
+- `components/skill-file-editor.test.tsx`：图片拖动状态断言失败；本次运行还出现
+  `event.currentTarget.setPointerCapture is not a function` 未处理异常。
+- `components/skill-i18n-detail.test.tsx`：详情展示断言失败。
+- `main/agent-registry-root-contract.test.ts`、`main/skill-installer-utils.test.ts`：Windows 路径分隔符断言失败。
+- `main/skill-installer-export-remote.test.ts`：Cherry Studio 数据库夹具缺失。
+- Agent 补测失败文件：`preload/agent-codex-account-api.test.ts`、
+  `components/agent-codex-account-manager.test.tsx`、`components/agent-usage-banner.test.tsx`、
+  `components/agent-usage-meter.test.tsx`、`main/agent-codex-account-ipc.test.ts`、
+  `main/agent-codex-account-service.test.ts`、`main/agent-provider-tray-service.test.ts`、
+  `main/tray-menu.test.ts`。涉及通道、状态文案、错误分类、Windows 权限和官方配置返回形状。
+
+以上失败未通过放宽断言或排除测试消除，也未据此关闭相关 issue。需要逐项确认
+实现与产品契约后修复，并重新运行相关回归；本次提交是代码检查点，不是发布通过记录。
+
 ## 2026-08-18
 
 ### 未解决

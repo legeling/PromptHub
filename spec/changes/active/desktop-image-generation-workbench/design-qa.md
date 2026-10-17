@@ -1,12 +1,13 @@
 # Desktop Image Generation Workbench Design QA
 
-## Current shell requirement (2026-10-13)
+## Current shell requirement (2026-10-17)
 
-`FR-IGW-016` now requires the shared TopBar, persistent Prompt search and one fixed
-sidebar toggle across Prompt views. The historical v4 review below that suppressed
-TopBar is superseded on this point; it is not current acceptance evidence.
+The current shell requirement is defined in `FR-IGW-016`: the workbench hides Prompt
+search and creation while retaining shared sidebar and theme controls. Grid placeholders
+are square. Earlier shell requirements and the historical v4 review below are superseded;
+current implementation verification is recorded in `tasks.md`.
 
-Verification: `pnpm --dir apps/desktop exec vitest run --project unit
+Historical verification (2026-10-13): `pnpm --dir apps/desktop exec vitest run --project unit
 tests/unit/components/top-bar.test.tsx tests/unit/components/image-generation-workbench.test.tsx
 tests/unit/components/sidebar-prompt-view-mode.test.tsx --maxWorkers=1 --minWorkers=1`
 passed all 77 cases. The component boundary covers shared control identity across view

@@ -64,6 +64,7 @@ stagger:  tight 16ms · normal 32ms · loose 60ms
   - `reduced`：所有 duration token 缩到约 60%
   - `standard`：覆盖 OS 偏好回到完整动画
 - `AppearanceSettings → Motion` 暴露给用户。
+- Spinner 只使用统一全局降级规则，不叠加 `motion-reduce:animate-none`，避免系统减少动态效果绕过应用显式 standard 设置。
 
 ### 6. 禁用清单（不允许出现的写法）
 

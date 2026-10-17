@@ -4,6 +4,10 @@
 
 Plugin 管理应作为 Skill/MCP 之上的分发层实现。它不替代 Skill，也不替代 MCP；它负责把多个能力作为一个可安装包发现、预览、安装、更新和卸载。
 
+三类资源统一接口、状态与界面的当前合同和修改范围见
+[公共资源架构](../../../knowledge/structure/resource-library-architecture.md)（待实施）。
+本设计保留 Plugin 特有的包、子资产与目标适配设计。
+
 官方 Codex 概念映射：
 
 - Skill: reusable workflow instructions, tells Codex how to perform a class of tasks.
@@ -33,8 +37,7 @@ The UI should avoid saying “install Skill” when the package contains multipl
 
 - Data model:
   - New shared plugin types in `packages/shared` for manifest, source, inventory, scan result, install result, conflict, and target distribution summary.
-  - Durable source of truth starts as a local JSON library file under the user data area: `<userData>/data/plugins/library.json`.
-  - SQLite remains a later migration option if plugin history, sync, or multi-user ownership requires relational metadata.
+  - SQLite owns Plugin metadata and version records; the filesystem owns actual current and historical package bytes. See [current storage ownership](../../../knowledge/behavior/plugins.md#7-storage-ownership).
 - Core workflows:
   - Shared scan/install/update/uninstall logic should live in `packages/core`.
   - Source cloning and static inventory parsing should reuse the Skill Git/source lessons: SSH uses local git, HTTP can use anonymous fetch but must explain rate limits.
@@ -52,21 +55,21 @@ The UI should avoid saying “install Skill” when the package contains multipl
 
 `DES-PLUGIN-002`
 
-Recommended first implementation:
-
-- Store installed plugin repositories under a PromptHub-owned plugin workspace, for example `<userData>/data/plugins/<source-slug>/repo`.
-- Store PromptHub plugin library metadata under a PromptHub-owned source of truth:
-  - option A: `<userData>/data/plugins/library.json`
-  - option B: SQLite `plugins`, `plugin_sources`, `plugin_assets`, `plugin_bindings`
-  - option C: hybrid SQLite metadata plus plugin repo directory
-
-Decision for the first implementation: use option A, `<userData>/data/plugins/library.json`, because installed Plugin metadata is user data and should live beside the managed plugin package workspace. Older builds wrote `<userData>/config/plugin-library.json`; when the data file is missing, the core service reads the legacy file, normalizes it into the data path immediately, and keeps the legacy file as a compatibility backup. If child asset bindings, update history, or sync ownership require relational metadata later, migrate to option C with the same compatibility reader.
+The former JSON MVP and canonical-file-authority choices are superseded by
+[Foundation data ownership](../foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants).
+The current owner and historical migration boundary are defined in
+[Plugin storage ownership](../../../knowledge/behavior/plugins.md#7-storage-ownership).
+`PluginLibraryStorage` delegates ordinary operations to `PluginStorage`/`PluginDB`;
+package publication shares the SQLite/file receipt boundary. A common resource interface does not introduce another metadata store.
 
 `DES-PLUGIN-011`
 
-Canonical migration treats superseded Plugin JSON metadata as a compatibility input, not as an invalid resource bundle. Exact regular `library.json`, `versions.json`, and `market-cache.json` files can coexist during migration; undeclared files, directories, and symlinks remain rejected. Publication uses the canonical journaled writer, verifies the resulting bundles and projection, and only then removes superseded library/version files.
-
-Canonical Plugin target projections are local to one PromptHub storage root, so their device identity is derived from the stable storage-root identity rather than the optional self-hosted sync identity. This keeps Plugin library reads and first-read migration available before cloud/self-hosted sync is configured, and prevents synchronization configuration changes from changing the projection identity.
+Historical Plugin metadata, bundles and device projections are explicit upgrade inputs to
+`plugin-sqlite-v1`, not alternative authorities on normal reads. Migration preserves
+unique identities, package/history bytes and device bindings through verified publication,
+recovery copies and conflict refusal. Migration and ordinary reads do not depend on
+self-hosted sync identity. The existing storage-root identity remains the historical
+device-projection validation boundary; it is not a reason to keep a second JSON writer.
 
 No durable business rule should live only in React state. The renderer only chooses filters, selected rows, and confirmation state.
 
@@ -126,8 +129,7 @@ Product behavior:
 
 Implementation boundary:
 
-- Installed plugin metadata remains in `<userData>/data/plugins/library.json`.
-- Downloaded plugin package files live under `<userData>/data/plugins/<plugin-id>/repo`.
+- Installed metadata and downloaded package locations follow [Plugin storage ownership](../../../knowledge/behavior/plugins.md#7-storage-ownership); JSON libraries and old repo paths are historical upgrade inputs.
 - The installed record stores the managed root, local repository path, and local package path so uninstall can clean only PromptHub-owned files.
 - Child asset import/distribution remains a later explicit action; installing a Codex official plugin does not automatically add child Skills/MCP into their libraries.
 
@@ -301,7 +303,7 @@ inventory extraction, and package fingerprinting complete, then cleaned.
 ## Tradeoffs
 
 - Treating Plugin as a wrapper around existing Skill/MCP flows reduces implementation risk, but the UI must clearly show the child inventory or users will not understand what was installed.
-- A JSON library file is faster for an MVP, but plugin installation has more relationships than MCP; SQLite is likely cleaner once child asset bindings, updates, and sync are included.
+- SQLite metadata plus actual package files is the selected Foundation boundary. JSON and canonical bundles remain historical inputs or explicit portable formats, not competing live databases.
 - Supporting official/community store sources early improves usefulness, but every source needs provenance labeling so users do not mistake community packages for trusted packages.
 
 ## Traceability

@@ -11,6 +11,15 @@
 - `apps/desktop` 是 PromptHub 的本地优先桌面应用主入口。
 - 桌面端负责本地数据管理、原生 OS 集成、加密/主密码能力、数据库索引、文件系统工作区与 IPC 能力。
 
+### 1.1 Main Window Preference
+
+- 主窗口重新创建或应用重启时恢复普通窗口的宽高、位置及最大化状态；首次启动沿用 1200 × 800。启动隐藏、最小化到托盘和全屏不能覆盖普通窗口尺寸，也不作为下次启动状态恢复。
+- 主进程拥有窗口状态，使用已有 SQLite `settings` 表中的私有 `desktopWindowState` JSON（`version: 1`、`bounds: { x, y, width, height }`、`maximized`）。不增加表、文件或 IPC，不进入 renderer 设置、云同步和便携设置导出；缺失或无效值回退默认状态，旧版本忽略新增键。
+- 调整大小和移动使用 300ms 防抖保存；关闭/退出前同步刷新。写入复用 SettingsDB 事务，失败保留旧值并记录错误。断电可能丢失最近尚未刷新的一次调整，不影响其他设置。
+- 恢复时按当前显示器工作区约束尺寸和位置；原显示器已断开时移回主显示器内。最大化窗口保存普通窗口边界，隐藏启动等到首次显示时才恢复最大化。
+- `window-state.ts` 的事件绑定编排集中管理捕获、防抖、首次显示及注销，允许该函数超过 50 行以保持所有 listener 与计时器的退出配对可见；原 `createWindow` 仅接入读取、构造参数和绑定，不承担序列化或边界计算。
+- 2026-10-17 验证：桌面 `window-state.test.ts` 6 项与 Core `settings-sqlite.test.ts` 9 项通过。窗口事件由 EventEmitter 替代，SQLite 使用临时文件并关闭重开；覆盖尺寸/位置/最大化、隐藏启动、最小化与全屏、断屏、小屏、负坐标、损坏数据、事务写入失败及私有设置保留。受影响源码 ESLint 与 diff 空白检查通过。`typecheck:tests` 被未修改的 `agent-codex-account.ipc.ts:38`（unknown 传入 string）阻塞。遵照用户要求未操作真实桌面，原生窗口恢复效果仍待用户验收。
+
 ### 2. Process Boundary
 
 - 原生文件系统、数据库、加密、备份恢复、平台集成等能力必须位于主进程。
@@ -18,14 +27,45 @@
 
 ### 2.1 Standalone CLI Boundary
 
+- 2026-10-17 CLI 持久缓存验证：7 个 CLI 定向测试文件共 54 项通过，覆盖临时文件缓存重开、24 小时过期、环境变化、手动刷新、并发去重、损坏恢复、写入失败与保留成功快照，以及已安装检测不等待远程发布。`typecheck:tests`、受影响模块 ESLint 和差异空白检查通过。未执行真实全局安装，桌面页面交互仍由用户验收。
+
+- CLI 状态属于本机观察结果。renderer 会话缓存负责页面切换和并发去重；主进程在 `getCacheDir()/cli-status.json` 原子保存版本 1 的成功检测结果与检查时间，跨重启最多复用 24 小时，并匹配本机平台、用户目录和 PATH/PNPM_HOME 指纹。页面显示上次检查时间，缓存不是永久安装事实。首次无缓存、缓存过期/损坏/环境变化、手动刷新或安装完成后才重新检测；失败不覆盖成功快照，读取损坏或写入失败记录日志并继续本机检测。文件是可删除重建的派生缓存，不进 SQLite、备份或同步，无数据迁移，回退旧版本可忽略该文件。安装动作从不依据缓存执行，开始安装时清除快照。
+
+- 检查 CLI 必须先解析命令路径，再识别旧 Desktop wrapper 和 Windows `PromptHub.exe`，不得直接执行未解析的 `prompthub --version`；旧 wrapper 即使在迁移前的数据目录也不能执行。包管理器探测和独立 CLI 版本探测继续在隐藏子进程中运行，不关闭主窗口。状态 IPC 在既有 startup.log 中记录开始、完成或失败及耗时/结果标记，不记录原始诊断、完整命令或凭据；异常继续由现有页面捕获，允许重试。
+
 - 桌面应用不再把 Electron 主进程作为 CLI runtime；旧 `PromptHub ... --cli` 调用必须在
   updater、数据库初始化、workspace migration 和窗口创建之前退出，并提示安装独立 CLI。
 - CLI 设置页检测到 userData `bin/` 下旧版 Desktop wrapper 时，只能有界读取并识别该
   普通文件，不能执行它做版本探测。只有 pnpm/npm 安装独立 CLI 成功后，才可再次确认并
   删除完全匹配的旧 wrapper；安装失败或文件已被替换时必须保留。
 
+- CLI 安装时保留用户选择的包管理器；pnpm 读取现有 global-bin-dir、PNPM_HOME 与 `pnpm bin -g`，仅在安装/探测子进程环境补齐 PATH，不写系统/用户环境变量，不运行 pnpm setup 或修改包管理器配置。发现 pnpm 全局目录中的命令时使用同一环境探测版本，并提示终端找不到命令时如何配置 PATH。
+- 安装失败沿用现有 IPC 返回，并新增可选 errorCode 分类环境、权限、超时、下载与其他错误；保留有界 stdout/stderr 详情。页面显示本地化简短提示与可展开诊断，重试时清空旧错误；不会在失败时删除旧 wrapper，不自动改用其他包管理器。无数据库或持久化设置变更；旧客户端仍可读取原 error 字段。后端探测/安装异常均进入结构化失败结果。
+- CLI 版本独立于桌面应用，开发和生产环境默认安装最新已发布的稳定 CLI。已安装 CLI 的状态检测只执行本地探测，不查询远程发布；未安装时为生成手动安装命令查询发布，实际安装始终重新查询。发布解析通过 Electron 网络栈查询 GitHub Releases，按由新到旧的发布顺序选择实际包含 CLI tgz 的正式发布，跳过草稿、预发布及不含 CLI 的发布；有界查询最多三页，每页 100 条、每请求 10 秒。安装和手动命令共用该次解析出的下载地址，校验下载域名和路径；不拼接桌面版本，不自动构建本地 CLI。查询失败保留本地安装状态、展示诊断并允许刷新，不生成猜测的安装命令。发布结果随成功观察快照缓存，仅供显示手动命令；实际安装重新解析。既有 CLI_STATUS IPC 增加可选 boolean force 参数，旧调用兼容；本地观察增加 checkedAt/fromCache 元数据，无新增通道或数据库 schema。命令定位及 npm 配置探测使用 3 秒超时，避免沿用安装的 120 秒上限。
+
+- 2026-10-17 安装回归：`pnpm --dir apps/desktop run test:unit tests/unit/main/cli-installer.test.ts tests/unit/main/cli-install-environment.test.ts tests/unit/main/cli-install-error.test.ts tests/unit/components/cli-settings.test.tsx --minWorkers=1 --maxWorkers=1` 共 28 项通过。覆盖子进程 PATH/Path 合并、配置目录与 PNPM_HOME/bin、安装后目录探测、失败保留 wrapper、stderr/超时分类、页面诊断/重试/IPC 拒绝。安装编排保留原探测→执行→清理的完整函数，允许超过 50 行；环境构造和错误分类独立，测试替换包管理器进程与 Electron 运输层，未证明联网安装。
+- 本机真实只读验证：原环境 `pnpm bin -g` 复现 global bin directory not in PATH；调用实际 `preparePnpmEnvironment` 后同一探测成功且父进程 PATH 未改变。未全局安装软件、未修改包管理器配置或系统环境，未执行 GUI。受影响模块 ESLint 与七语言 49 条文案校验通过。最终 `typecheck:tests` 被同期 Prompt 测试历史（响应判别、DB 查询类型与 window fixture）及 Skill catalogComplete 字段错误阻塞；未更改这些模块，CLI 修改未出现在错误列表中。
+
+- 2026-10-17 CLI 独立版本安装验证：`cli-installer`、`cli-install-source`、`cli-install-environment`、`cli-install-error` 与 `cli-settings` 五个定向测试文件共 39 项通过，源码类型检查、受影响模块 ESLint 和差异空白检查通过。覆盖桌面 0.6.0 使用已发布 CLI 0.5.9、pnpm/npm 共用解析地址、跳过无 CLI 的发布、分页、查询失败保留状态并禁止安装、非预期下载地址拒绝。实际只读调用解析器得到 v0.5.9，下载地址 HEAD 返回 200；未执行真实全局安装或桌面 GUI 操作。
+
+- 同批 `typecheck:tests` 未通过：`tests/e2e/prompt-test-streaming.spec.ts:80` 的既有调用缺少参数（TS2554），本次 CLI 文件无类型报错，未修改该 E2E 文件。
+
+- 2026-10-17 CLI 检查退出排查：六个 CLI 单元/组件测试文件共 44 项通过，`typecheck:tests`、受影响模块 ESLint 与差异空白检查通过。无窗口 Electron 33 实测连续两次状态检查，并在查询超时周期之后确认进程仍存活；以临时 PATH 放置旧 Desktop wrapper 和独立 CLI stub，验证旧 wrapper 未执行、独立版本 0.5.9 被识别，GitHub 发布查询正常。另验证 Electron 网络请求超时可捕获。测试未操作用户桌面窗口或全局安装；用户报告的整个应用退出尚未复现，开发启动日志存在短时间多次启动记录，不能据此确定闪退原因。新增 IPC 诊断用于区分检查中断、检查失败及正常完成。
+
+- 2026-10-17 CLI 会话缓存验证：`cli-settings.test.tsx` 10 项通过，使用真实会话 store 和 IPC 替身，覆盖返回页面保留安装结果、StrictMode/未完成请求重挂载去重、失败不自动重试及手动恢复、安装成功后更新缓存；`typecheck:tests`、受影响模块 ESLint 和差异空白检查通过。未操作桌面 GUI，不改变主进程检测或联网安装策略。
+
 ### 2.2 Desktop Application Shell
 
+- 模型服务不提供独立“高级参数”菜单或跳转到添加模型的“去配置”入口；翻译模式归入模型路由，沿用原 `translationMode` 设置。温度、输出长度及图像参数属于具体模型，仍通过模型的添加/编辑表单配置；编辑必须更新当前模型 ID，不能新增模型。空供应商和已配置供应商共用此导航约定。此调整只影响 Desktop renderer 入口和布局，不改变模型清单、路由/参数存储、IPC 或迁移。
+- 2026-10-17 模型参数入口验证：`pnpm --dir apps/desktop exec vitest run tests/unit/components/ai-settings-prototype.test.tsx tests/unit/components/ai-workbench-endpoints-section.test.tsx tests/unit/components/ai-workbench-routing-settings.test.tsx tests/unit/components/ai-workbench-model-form-modal.test.tsx --minWorkers=1 --maxWorkers=1` 40 项通过；覆盖空/已有供应商下路由页翻译选择、不弹出添加窗口，以及编辑现有模型温度后调用原 ID 的更新动作、未调用新增。设置 store 与供应商网络服务采用替身，不证明真实持久化或远端调用；`typecheck:tests`、受影响模块 ESLint 和差异空白检查通过。按用户要求未操作桌面 GUI。
+
+- 设置页面、分组和设置行以标题/选项为主，不显示通用概述、功能描述或静态使用提示；保留实际状态、数值/预览、错误诊断、不可用原因和操作确认。布尔启用偏好统一使用共享 `ToggleSwitch`，包含手动内容扫描和模型能力；多值模式仍使用选择控件。内容扫描方式复用共享 `Select` 自定义下拉，开关、方式、立即扫描采用同一卡片内的标准设置行，标题在左、控件在右，不嵌套额外操作卡片。扫描开关仅修改原 `skillSafetyScanEnabled` 偏好，不自动执行扫描；关闭隐藏扫描操作，重新开启保留原扫描方式。由既有 renderer settings store 与持久化路径持有数据，不新增字段、IPC 或迁移。
+- 2026-10-17 设置精简验证：19 个相关组件文件分批运行，160 项用例通过，`pnpm --dir apps/desktop typecheck:tests` 与受影响模块 ESLint 通过。末批命令：`pnpm --dir apps/desktop exec vitest run tests/unit/components/skill-content-scan-settings.test.tsx tests/unit/components/skill-settings.test.tsx tests/unit/components/data-settings-providers-upgrades.test.tsx tests/unit/components/about-settings.test.tsx tests/unit/components/web-workspace-settings.test.tsx tests/unit/components/ai-workbench-advanced-section.test.tsx tests/unit/components/cli-settings.test.tsx --minWorkers=1 --maxWorkers=1`（61 项）。其余通过项覆盖通知、外观及真实 store 工作流、搜索、模型配置、常规/网络/安全/快捷键、备份恢复和设备设置。扫描组件使用真实 renderer settings store，验证开关后可见操作、修改扫描方式、关闭并重挂载的状态，以及启用不自动扫描；扫描服务、持久化运输层使用替身。模型测试验证开关的能力值进入原保存动作。初轮旧文案/角色断言及 i18n mock 不完整已修正并复测；不包含 SQLite 重启、真实扫描或 GUI 验收，按用户要求未操作桌面。
+
+- 外观设置采用同一页纵向分组，顺序为主题模式、主题颜色、字体大小、桌面工作区、界面动画、桌面背景；不增加标签页或左右分栏。主题模式使用浅色、深色、跟随系统的缩略预览卡片；预览组铺满内容区，与字体和工作区卡片两端对齐；预览由内联 SVG 绘制，内部元素按容器百分比布局，图形高度限制为 7–10rem，保持宽屏紧凑、窄屏自适应，不再依赖位图拼图或固定宽高比裁切。分组标题复用设置页 text-sm/font-medium，选项标签沿用紧凑 13px，分组间距和下内边距各 20px，卡片内边距 12px，色块直径 32px；预制颜色保留原六色并新增蔷薇、珊瑚、琥珀、橄榄、石板，沿用 `themeColor/themeHue/themeSaturation` 设置字段和原持久化，不改变已有选择或数据结构，回退版本仍可按已存色相/饱和度呈现；字号示例保留对应的 14/16/18px。工作区沿用现有显隐与排序偏好，至少保留一个模块；背景预览位于开关、选图与滑块上方，未选图片显示静态 SVG 山景骨架与未选图提示，不播放加载动画、不写入示例图片，选择图片后替换为真实预览。沿用 renderer settings store、既有持久化及媒体协议，不增加数据库表或 IPC。布局在窄内容区域允许同组选项换行，支持深色主题、键盘焦点及减少动效。布局与控件已实施，桌面视觉与拖拽体验待用户 GUI 验收。主题缩略图为代码绘制的矢量示意，复用应用浅深色表面变量与当前主题强调色，背景图片只展示用户已有选择；示例壁纸不写入设置。自定义颜色输入的未完成文本仅保存在组件内，完整合法的十六进制值才交给原设置动作，失焦恢复最近合法值。
+- 2026-10-17 外观改版验证：外观组件、真实 renderer store 操作与设置搜索共 17 项通过，相关外观/背景/工作区 store 测试 28 项通过；Desktop 源码类型检查、包含源码与测试的 `typecheck:tests`、受影响模块 ESLint/Prettier 通过，七语言新增键及响应式 Tailwind 规则编译检查通过。组件测试替换原生选图与文件保存运输层，未证明真实文件选择、OS 主题联动或 GUI 绘制；按用户要求未启动/操作桌面 UI。外观分组保持设置搜索定位，组件按主题、颜色、工作区、背景责任拆分；声明式 JSX 沿用超过 50 行的组件例外，动态色值与拖拽 transform 仅作为现有 settings/DnD 数据接入，布局使用 Tailwind。
+- 2026-10-17 SVG 预览调整：主题卡片取消独立限宽，替换并移除位图资源；浅深色示意与应用共享表面色值，主题强调色沿用当前偏好。外观组件及真实 store 工作流 13 项通过，设置搜索 4 项通过（真实懒加载首次编译超过原 1 秒等待，改为有界 5 秒等待，保留定位和修改断言）；`typecheck:tests`、受影响 TSX ESLint、Tailwind 高度/配色/SVG fill 规则编译通过。未运行 GUI，窗口宽度下的绘制与两端对齐仍由用户验收。
+- 2026-10-17 预制颜色与背景空态：外观组件、真实 renderer store 工作流、旧外观快照规范化共 15 项通过；覆盖五个新色的选择、主题 CSS 变量更新、页面重开保留，以及背景骨架在选图后被真实预览替换。七语言 35 条颜色名称与受影响模块 ESLint 通过；未验证真实选图对话框或 GUI 绘制。
 - 普通设置页面的内容在侧栏右侧可用区域内水平居中，保留响应式最大宽度与两侧等距留白；窄窗口铺满可用内容宽度。模型服务保持自身多栏布局。
 - 业务与设置顶栏搜索共用响应式外框：窄窗口占满搜索区域，宽窗口按可用区域比例展开，不能固定在 `max-w-lg`；未聚焦且未悬停时隐藏背景、边框与阴影，仅保留搜索图标和文字，悬停时淡入轻微底色，聚焦时完整显示背景并平滑加宽、强调图标/外框，设置结果面板淡入展开。背景装饰与输入/图标分层，避免遮盖图标；动效复用现有 motion tokens 与减少/关闭动效偏好。
 - 2026-10-17 搜索外框验证：设置搜索/页面/独立顶栏与业务顶栏 5 个组件测试文件共 47 项通过，Desktop `typecheck`、受影响源码 ESLint 和 Prettier 通过；Tailwind 编译确认响应式宽度、聚焦宽度、图标状态和入场动效规则生成。未运行 GUI，窗口缩放与实际动效由用户验收。
@@ -48,8 +88,8 @@
 - 全局 Toast 通过 body portal 呈现，层级必须高于确认弹窗、编辑弹窗及其遮罩（当前 Toast 100001，确认弹窗 99999）。弹窗打开或操作失败后仍能读取和关闭提示，不被背景模糊覆盖；错误/警告使用 alert，其他反馈使用 status。`toast.test.tsx` 检查 portal、相对层级和弹窗保留，实际绘制遮挡不由 jsdom 断言证明。
 
 - 桌面一级模块由统一的 `AppModule` 状态驱动，当前稳定模块包括 Prompt、Skill、Agent、Rules、MCP 与 Plugin；设置入口固定在一级 rail 底部。
-- 快捷键设置采用紧凑行：上下留白 12px，说明与标题间隔 2px，作用域下拉按钮和录入框统一 36px 高。空间不足时操作区换行，不裁切标签或控件；保留录入、清除、冲突提示与焦点样式，沿用设置主题变量。
-- 一级模块的显隐与顺序使用同一份持久化偏好。恢复旧快照时必须过滤未知项与重复项；当前模块被隐藏时必须回退到第一个可见模块。
+- 快捷键设置采用紧凑行：上下留白 12px，作用域下拉按钮和按键框统一 36px 高。可编辑与固定快捷键共用 `ShortcutSettingRow` 和按键框尺寸、无衬线字体、主题底色/边框；固定项保持只读，右侧与可编辑按键框对齐。空间不足时操作区换行，不裁切标签或控件；保留录入、清除、冲突提示、搜索定位与焦点样式，沿用设置主题变量。
+- 一级模块显隐保留 `desktopHomeModules`，完整排列新增 `desktopHomeModuleOrder`（包含关闭模块），二者由同一 settings 动作原子更新并沿用 renderer persistence 写入现有 SQLite 设置记录和 renderer 启动缓存。关闭仅改变显隐，设置行不移到末尾；重新开启按完整排列恢复导航位置。拖动已启用模块只调整可见项相对顺序，关闭项保留槽位。旧快照缺少完整排列时从原可见顺序派生，再补缺失模块；此前已经丢失的隐藏位置无法恢复。不改表结构或新增 IPC，非法/重复项在恢复时过滤，后续模块追加默认位置；回退时旧版忽略新增字段，现有可见列表仍可读取。设置快照写入沿用原事务与失败重试，失败不改变磁盘已有快照；完整排序修复已通过 33 项定向测试，覆盖设置行关闭/重新开启、隐藏期间调整可见顺序、旧快照恢复，以及 renderer persistence 写入真实 SQLite 后关闭重开的顺序恢复；桌面视觉由用户验收。恢复旧快照时必须过滤未知项与重复项；当前模块被隐藏时必须回退到第一个可见模块。
 - 收起侧栏时只保留一级 rail，二级模块面板整体隐藏，主内容区使用释放后的空间；二级面板不得维护另一份一级模块选择状态。
 - Skill、MCP、Plugin 资料库的自动卡片排列共享 240px 最小列宽和实际容器宽度规则：能容纳三张卡片及间距时至少显示三列，更宽时继续增加；空间不足才降为两列或一列，单列不得撑出容器。手动列数与 Prompt 大／中／小卡片设置保持独立；复用这些组件的 Web 页面采用相同行为。
 
@@ -113,6 +153,8 @@
 - Agent 的 Provider & Model 页面必须复用同一套供应商 workbench 布局和 normalized model contract；平台差异只能存在于 main-process native adapter，不得为每个 Agent 复制 renderer 页面。
 - 用户侧统一使用“供应商”术语；内部 `ProviderProfile` 类型、存储和 IPC 名称仅作为兼容合同保留，不得直接成为界面文案。
 - Agent 当前原生配置是只读投影，不得提供“导入当前配置”或“转为可编辑配置”入口。供应商侧栏保留“从 PromptHub 导入”和新增供应商操作；两者必须显示图标与本地化文字，固定宽度侧栏允许纵向滚动，但列表行、内边距和 focus state 不得制造横向滚动条。
+- 有官方服务且已接入供应商读取的平台，侧栏固定保留“官方服务”内置条目；不得随第三方供应商启用或用户档案删除而消失，也不作为可删除的用户档案保存。主进程通过现有适配器生成 `officialService` 只读摘要，区分当前使用、未使用和读取不可用；当前官方配置默认选中该条目，详情复用模型、认证状态、已支持的额度模块及 Codex 账号管理。未使用时不展示第三方模型或缓存额度。Claude、Codex 的切回操作复用已有预览、备份、验证和回滚；其他平台不因此获得未适配的写入能力。Antigravity 识别 `google-antigravity`；OpenCode 按原生 `providerId` 识别 `opencode` / `opencode-go`，自定义端点覆盖不能冒充官方服务（[官方模型标识](https://opencode.ai/v2/docs/console/models/)、[Go 标识](https://opencode.ai/v2/docs/console/go/)）。Pi 保持多供应商模型目录，不生成虚构的 Pi 官方服务。
+- 此投影新增可选 IPC 响应字段，旧响应仍可显示原生配置，无 SQLite、文件布局或迁移变化；持久化与失败恢复继续由原有供应商服务负责。暂未接入的平台遵守 capability registry，不能凭占位条目宣称已读取账户。相关回归边界为 provider tray service、provider store 和 workbench；本次仅执行静态检查，未运行自动化测试或真实账号切换。
 - 从 PromptHub 导入供应商时必须复用 Model Services 的供应商图标，并按模型标识推断模型家族图标；协议选项由 main process 计算 PromptHub 上游协议与目标 Agent 可写协议的直接交集。界面必须显示并提交所选协议，main 必须重新验证；官方 OpenAI 直连优先 Responses，支持 Chat/Completions 的目标对第三方兼容端点优先使用该协议。当前 Codex 原生直连仅接受 Responses，缺省 `wire_api` 同样按 Responses 解释；不得通过本地代理伪装协议转换。
 - 初期供应商/模型配置仅支持 Claude Code、Codex、Antigravity、Pi、OpenCode。`supported` 表示完整 Provider adapter，`partial` 表示已有原生模型适配；Antigravity 不因此获得第三方供应商接入能力。其他 Agent 在此能力上标为暂不支持，不开放配置、导入、激活或探活入口。共享 capability registry 是页面、主进程与托盘的唯一支持范围真源。
 - 收敛范围不删除既有供应商档案、密钥、原生文件或会话，不新增数据库迁移；旧档案仍可备份、导出或删除，但不可新建、修改或激活到暂不支持的平台。恢复支持只需更新 registry 并重新验证适配器，不需要数据回迁。其他 Agent 保留既有 Skill、MCP、Plugin、规则与配置文件能力；没有原生 Plugin 协议的平台不因本轮扩大支持。已有历史会话读取保留，不新增适配，也不作为初期交付门槛。
@@ -223,6 +265,8 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - 桌面端编辑 Prompt 弹窗必须保留更强的已有内容上下文：`Basic Info` 中继续展示描述、Prompt 类型，以及 image Prompt 的参考媒体。
 - 文本 Prompt 的参考媒体在编辑场景中仍应收纳在 `More Settings` 中，不挤占基础编辑区。
 - Prompt 参考媒体的原始字节必须由 runtime path helper 管理在 `userData/data/assets/images/` 与 `userData/data/assets/videos/`；SQLite `prompts.images` / `prompts.videos` 只保存托管文件名数组，renderer 通过本地媒体协议读取，不能把任意来源绝对路径持久化到 Prompt。
+- 新建、编辑和独立 Prompt 编辑器的参考图片缩略图均可通过鼠标或键盘打开共享大图预览，保留当前图片顺序和独立移除动作。预览提供放大、缩小、滚轮缩放与重置；缩放范围为适应视口尺寸的 25%–400%，缩放保持当前视野中心，放大后可拖动或使用滚动条查看细节。换图或重新打开后恢复 100%。Escape 只关闭最上层图片预览，关闭后焦点回到触发缩略图，不能关闭或提交下层表单。缩放与当前预览仅由 renderer 临时状态持有，不改写原图、Prompt 记录、IPC 或存储布局，无迁移。
+- Prompt 异步界面的 mounted 标记必须在 effect setup 中恢复，兼容 StrictMode 清理后重放；导入、快速创建、图片反推、快速改写、编辑弹窗和独立编辑器在正常打开期间接受异步结果，实际关闭/卸载及已有 session 失效后继续丢弃迟到结果。AI 服务和持久化所有权不变。
 - 桌面端参考媒体选择器必须绑定发起 IPC 的 PromptHub 窗口，避免原生对话框被其他窗口遮挡；用户取消选择保持静默，picker/bridge/托管复制失败必须显示本地化错误提示，不能只写控制台。
 
 ### 8. Quick Add Prompt Creation
@@ -239,6 +283,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - 预览通道已精确匹配 GitHub Release tag 时，更新弹窗应优先展示该 Release 的发布说明，保留标题、Emoji、链接和经允许的 GitHub / Shields HTTPS 图片；未授权图片来源必须退化为 alt 文本。
 - 下载过程不得隐藏已获取的发布说明；进度条使用弹窗内容宽度，只展示一个权威百分比，并通过可访问的 `progressbar` 语义暴露进度。
 - 更新下载来源分为自动、官方源和镜像源；自动模式先尝试官方源，再按有界列表回退镜像。下载中切换来源必须取消当前传输、重新读取所选来源的更新元数据并从零开始，同时持续展示已下载大小、总大小、速度和手动网页下载入口。
+- 网络设置提供更新镜像的自动选择和内置镜像下拉选择；持久化、兼容及具体来源规则见 [FR-UPDATER-008](../../changes/active/update-channel-hardening/specs/release/spec.md#fr-updater-008-download-source-changes-must-restart-visibly-and-remain-recoverable)。该设置只控制桌面应用更新。
 
 ### 9.1 Direct macOS In-App Updates
 
@@ -265,9 +310,22 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - preload 必须缓冲 renderer 尚未订阅时收到的状态栏命令。MCP 与 Plugin 等按需加载工作台必须先注册创建监听器，再发布就绪状态；卸载时必须先撤销就绪状态，再清理监听器，避免首次点击或重渲染期间因 lazy mount 竞态而丢失命令。
 - 状态栏菜单文案必须覆盖桌面端七种语言，优先读取应用内已保存语言，并在数据库尚未可用时回退到系统语言。Renderer 的语言设置在用户切换和旧版本地状态恢复时都必须同步到 Main 设置数据库；同步恢复回调只能在 Zustand Store 完成初始化后执行，避免界面语言与原生菜单语言分叉。Renderer 没有持久化语言时，Zustand 临时默认值不得覆盖 Main 设置，必须由 Main 返回的已验证语言恢复界面；已有 Renderer 明确偏好继续优先并回写 Main。
 - 未来 Agent 管理入口只有在对应能力真正可用时才显示；不得展示不可执行的灰色占位项。
+- 启动时必须先恢复 SQLite 中的语言偏好，再应用到 i18n。设置 Store 可能在翻译资源加载前构建；其临时默认语言不得通过 `setLanguage` 在 App 初始化或热更新时回写数据库。只有用户主动选择才构成新的语言偏好。
+- Renderer persistence 取得 canonical 快照后，必须先合并并应用 `settings`（含语言），再注册整份设置的写入监听；只恢复 marketplace sources 不构成设置恢复完成。后续 Main 设置加载把保存的语言与其他字段一次性应用，不调用用户修改动作、不更新偏好修改时间；canonical 模式优先 SQLite，旧版 LocalStorage 偏好只在迁移前使用。翻译模块热重载保留已初始化的当前语言。无新 schema、存储副本或迁移；旧缺陷已经写成英文的偏好无法仅从语言值区分是否为用户选择，需用户重新选择一次目标语言。
+- 同一 renderer 的并发启动调用共享恢复 Promise，成功后只注册一组持久化监听；失败清除在途状态供重试，不把失败标记为初始化完成。语言恢复回归使用临时真实 SQLite、实际迁移和 Store，检查旧中文偏好迁入、其他设置写入、数据库关闭重开；翻译模块重载用例保留 i18next 实例验证语言，不能据此宣称已完成 Electron 原生冷启动或 Vite 实机验收。
+- 版本通道推断等会修改 Store 的启动动作必须放在旧配置迁移与 Main 设置恢复之后，避免 Zustand 写入覆盖尚未迁移的 LocalStorage 偏好。2026-10-17：`settings-language.test.ts`、`renderer-persistence.test.ts`、`i18n-init.test.ts`、`language-settings.test.tsx` 共 40 项通过；Desktop 源码/测试 TypeScript、相关 ESLint 和 diff whitespace 检查通过。本次不增加字段、迁移编号或存储副本，不自动改写已经保存为英文的用户偏好。
+
 - 旧版 Renderer 设置迁移必须保留语言字段的有效性：缺失或不支持的原值按未选择处理，不得把规范化产生的默认 `en` 作为明确偏好回写 Main。其他有效偏好照常迁移；本规则不增加持久化字段或改动 canonical renderer persistence。
 
 ### 9.4 Desktop Tray Agent Quotas
+
+- Overview 与托盘的周期指标统一使用剩余额度名称：日余额、周余额、月余额、5 小时余额、账期余额，以及实际时长对应的余额；Opus 等模型限定保留。七种语言同步表达剩余语义，既有翻译 key 保持兼容。圆环数值仍为剩余百分比，点数余额和可用重置次数保留各自单位与名称，不改变计算或重置时间。
+
+- 所有 Agent Overview 额度指标使用同一外层卡片：背景、边框、圆角、内边距、最小高度与模块间距一致，加载骨架复用该容器。内部按数据语义显示圆环、进度条、数值或未知/无限状态，不按 Agent 身份定制外壳，也不因是否存在余额而改变圆环外壳。每个指标独立成卡，同组左右排列并共享可用宽度，仅宽度不足时换行；按既有 scope 顺序展示分组，账户组使用整行。绝对余额和重置次数显示图标、标签和相邻的大号数值，不生成百分比或进度条；托盘仍使用原生文本菜单。此次仅调整 renderer 布局，不改变数据、缓存、IPC 或存储。
+
+- Codex 额度继续以主进程只读 `GET /backend-api/wham/usage` 为真源：同一响应中的 `credits.balance` 与 `rate_limit_reset_credits.available_count` 分别展示点数余额、可用重置次数，未知值不得显示为零。余额没有总额时不生成百分比；刷新复用既有 60 秒缓存，不新增数据库字段、迁移、购买或消费重置操作。
+- Codex 每个窗口保留实际 `limit_window_seconds`，不得将所有短窗口固定为 5 小时或所有长窗口固定为一周，也不得依据套餐补造缺失窗口。保留额外模型组窗口。Pro badge 按官方 `prolite` / `pro` / `promax` 区分档位，未知套餐只清理展示；Overview 与托盘共享格式化规则。
+- 兼容：同版 main/renderer 的 V2 额度值增加 `balance` 分支（绝对剩余数量、credits/resets 单位）；既有 amount/percentage/unlimited/unknown 不变，不落盘。旧响应缺失余额字段时省略该项，返回字段但数值无效时显示未知；查询失败沿用既有状态与缓存恢复。回退仅回退代码，无用户数据转换。
 
 - 初期额度查询仅支持 Claude Code、Codex、Antigravity 和已有的 Kimi Code；其他平台统一暂不支持，不读其额度凭据、不发出额度请求、不进入托盘额度列表。Overview 和调用入口使用同一共享 capability registry，不将未知额度伪造为零。
 - 状态栏额度只能通过 Electron 原生 `Menu` / submenu 呈现；不得为额度创建 renderer `BrowserWindow`、vibrancy 外壳、自绘卡片、产品图标行、套餐胶囊、环形/条形进度或展开控件。macOS、Windows 与 Linux 共享同一原生菜单信息层级。
@@ -356,8 +414,9 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 ### 9.15 Codex Official Account Switching
 
 - Codex 官方供应商继续只有一个原生 `auth.json`。PromptHub 可以在应用数据目录保存多份 main-process-only 的系统加密快照，但不得把账号数组写回 Codex 文件或改变 Codex 认证 schema。
-- 用户可保存当前登录、以 write-only 方式新增完整 `auth.json`、查看脱敏账号摘要并切换账号。切换只允许原子替换 `auth.json`，必须在成功前重读校验，失败时恢复此前原始字节；当前登录被 Codex 刷新或尚未保存时必须先更新或保留对应快照。
-- 账号管理不得返回或记录 token，不得修改 `config.toml`、供应商档案、模型、MCP、会话或其他 Codex 文件，也不得隐式联网验证。当前账号不可删除。
+- 用户可保存当前登录、新增账号、编辑名称与 write-only 认证信息、删除本地记录。新增时 `auth.json` 可选；空白记录显示“待登录”，提供“切换并登录”：确认先关闭 Codex 后，加密保留当前登录再移除原生 auth 文件，并重读确认已清空；失败恢复原文件。vault 的可选 pendingAccountId 记录所选待登录账号，重开仍可继续，重复选择同一待登录账号不再次清空；切回已保存账号、完成捕获或删除该待登录记录时清理标记。用户自行重新打开 Codex 登录目标账号后，通过该记录的“登录后保存”确认捕获当前登录，保留原记录 ID 与名称；同一登录已属于另一记录时提示使用已有记录，不悄悄覆盖。编辑时 auth 留空保留已有认证。所有记录包括当前账号均可删除，确认文案明确只删除 PromptHub 的记录和快照，不退出或修改 Codex 当前登录。
+- 列表显示邮箱（若原始登录包含）、名称、待登录/当前状态；缺少邮箱时回退脱敏账号标识。邮箱仅从 main 解密后的 JWT 显示声明提取并限长，不作为认证或账号匹配依据，不单独明文持久化。切换只允许原子替换 `auth.json`，必须在成功前重读校验，失败时恢复此前原始字节；当前登录被 Codex 刷新或尚未保存时必须先更新或保留对应快照。
+- 账号管理不得返回或记录 token，不得修改 `config.toml`、供应商档案、模型、MCP、会话或其他 Codex 文件，也不得隐式联网验证或自动登录。真源仍为 main-only 加密 vault 与 Codex 当前 auth。vault V2 以成对 null 的 ciphertext/authDigest 表示待登录；兼容读 V1，下次成功变更原子保存 V2，已有密文保持原样，不新增 SQLite 迁移。旧版拒读 V2 而非丢弃记录；降级需恢复升级前的 vault 备份，不能仅修改 version。激活失败继续恢复原生 auth 原始字节。新增/改名/删除只写 vault，失败不修改原生登录。
 
 ### 9.16 Canonical Data Recovery
 
@@ -471,6 +530,12 @@ When a user needs installation or usage help:
 ### Shortcut key identity
 
 快捷键录入和局部触发共用按键识别：Option/Alt 修饰的字母和数字使用 KeyboardEvent.code，避免 macOS 把 J、N 等转换为符号或 dead key 后保存错误 accelerator。没有 Alt 的普通按键保留键盘布局的 key 语义。快捷键设置仍为既有持久配置，不迁移或猜测已保存的符号快捷键；受影响的用户可重新录入。
+
+快捷键设置页完整区分可配置绑定与场景内固定操作：原有显示/隐藏、新建 Prompt、搜索、打开设置保留编辑和作用域选择；固定快捷键按通用、Prompt / Rules 搜索结果、Prompt 编辑、Skill 编辑、图片预览分组，只读显示，并可通过设置搜索定位。每组以实际处理器的适用上下文为准，不把搜索框里的 Tab 或图片预览里的方向键描述成全局操作。Windows/Linux 显示 Ctrl，macOS 显示 ⌘；代码编辑器重做在 Windows/Linux 为 Ctrl+Y，macOS 为 ⌘+Shift+Z。Ctrl/Cmd+F 的搜索兜底仅在该组合未被自定义绑定占用时生效。
+
+本次目录扩展由 desktop renderer 拥有，`shortcut-reference.ts` 是展示与搜索共用的固定操作索引；执行仍由 App、TopBar/TopBarRulesSearch、Prompt/Skill 编辑器及图片预览现有处理器负责。不新增持久状态、IPC 或按键监听，不修改已有用户绑定。回归覆盖设置页分组、固定项只读、平台按键显示及搜索定位；已有业务处理器测试负责场景内行为。
+
+2026-10-17 验证：`shortcuts-settings`、`settings-search`、`top-bar`、`image-preview-modal`、`skill-file-editor` 五个组件测试文件共 83 项通过；快捷键测试在异步渲染断言调整后单独复跑 11 项通过。desktop `typecheck`、本次 TypeScript 文件定向 ESLint、七语言目录键完整性检查通过。`typecheck:tests` 被未涉及的 `tests/e2e/prompt-test-history.spec.ts` 编码/字符串语法错误阻断；未进行桌面 GUI 或系统全局快捷键验证。
 
 ### Renderer 辅助状态的 SQLite 所有权
 

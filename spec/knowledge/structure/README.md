@@ -42,6 +42,8 @@ PromptHub 当前采用 topology 路由到 `spec/`，而不是默认的 `docs/`�
 
 ## 共享与边界原则
 
+- [Skill / MCP / Plugin 公共资源架构](resource-library-architecture.md)：统一契约、领域多态、修改范围与验收；当前待实施。
+
 - `packages/*` 承担跨 desktop / web / cli 共享的核心能力与类型
 - desktop 和 web 可以共享语义，但不能混淆运行时边界
 - main process 负责文件系统、数据库、加密和平台集成

@@ -155,7 +155,12 @@ width and the right-aligned value is the only visible percentage.
 
 Updater requests accept `automatic`, `official`, or `mirror` while retaining
 the legacy boolean input for compatibility. Automatic mode is a bounded linear
-sequence: one official candidate followed by four configured mirrors. A source
+sequence: one official candidate followed by the configured mirrors. Network
+settings supplies a typed mirror ID from the shared built-in catalog; `automatic`
+retains all four candidates and a concrete ID selects only that mirror. Unknown
+IDs normalize to `automatic` rather than being interpreted as arbitrary URLs.
+SQLite renderer settings persist the additive `updateMirrorSource` preference;
+the existing IPC requests carry it as `mirror` for both checks and downloads. A source
 change cancels the current `electron-updater` `CancellationToken`, waits for the
 old promise to settle, resets progress, refreshes metadata for the replacement
 provider, and starts a new verified download. This adds at most one metadata

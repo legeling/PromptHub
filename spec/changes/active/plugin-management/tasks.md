@@ -9,7 +9,7 @@
 - [x] Define Agent bundle adapter matrix across Codex, Claude Code, Cursor, Gemini CLI, Kiro, GitHub Copilot / VS Code Agent Plugins, runtime-only OpenCode/Cline, Windsurf/Devin, Roo, Cherry Studio, and pending targets.
 - [x] Add detailed Plugin Agent Adapter reference with target package markers, install surfaces, adapter outputs, disabled targets, and evidence sources.
 - [x] Tighten Plugin semantic gate so single-skill packages and runtime hook modules are not treated as full Plugin bundles.
-- [x] Decide Plugin source of truth for MVP: `data/plugins/library.json`, with first-read migration from legacy `config/plugin-library.json` and later SQLite/hybrid migration left open for child bindings and sync.
+- [x] Record the original JSON MVP decision (historical). It is superseded by [current SQLite/file ownership](../../../knowledge/behavior/plugins.md#7-storage-ownership); the former first-read migration is not the normal read contract.
 - [x] Define shared plugin contracts in `packages/shared`.
 - [x] Implement marketplace manifest parsing and semantic bundle classification in `packages/core` with no code execution.
 - [x] Implement install/delete metadata persistence for marketplace plugins.
@@ -139,7 +139,7 @@
 - `T-PLUGIN-005`: Expose Assistant-callable scan/install/distribute actions behind the same confirmations as UI. Covers `FR-PLUGIN-008`, `DES-PLUGIN-001`, `TEST-PLUGIN-005`.
 - `T-PLUGIN-006`: Implement Plugin Targets compatibility UI with `Native`, `Adapter`, `RuntimeOnly`, and `Composite` target statuses. Covers `FR-PLUGIN-009`, `DES-PLUGIN-006`, `TEST-PLUGIN-006`.
 - `T-PLUGIN-007`: Harden Plugin source reconciliation and Git transport diagnostics. Covers `FR-PLUGIN-003`, `FR-PLUGIN-006`, `DES-PLUGIN-010`, `TEST-PLUGIN-008`, `TEST-PLUGIN-009`.
-- `T-PLUGIN-008`: Migrate superseded Plugin metadata under canonical authority and decouple local target projections from optional sync identity. Covers `FR-PLUGIN-010`, `DES-PLUGIN-011`, `TEST-PLUGIN-010`.
+- `T-PLUGIN-008`: Preserve historical Plugin metadata, packages and device bindings through the Foundation SQLite/file migration, independently of sync identity. Existing canonical-stage evidence is historical; current acceptance follows `FR-PLUGIN-010`, `DES-PLUGIN-011`, `TEST-PLUGIN-010` and the Foundation implementation record.
 
 ## Verification Plan
 
@@ -153,4 +153,4 @@
 - `TEST-PLUGIN-007`: Semantic gate tests prove single `SKILL.md` sources and single JS/TS hook modules are not rendered as full Plugin bundles.
 - `TEST-PLUGIN-008`: Local and Git-backed fixtures prove content-only child-file changes are detected while unchanged packages remain up to date.
 - `TEST-PLUGIN-009`: Credentialed self-hosted Git fixtures prove stable credential-free identity, sanitized failures, bounded clone timeout, and temporary package cleanup.
-- `TEST-PLUGIN-010`: Canonical Plugin fixtures prove populated metadata migrates with a null self-hosted sync identity, canonical bundles win over stale metadata, unsafe coexistence artifacts remain rejected, and target mappings survive publication.
+- `TEST-PLUGIN-010`: Historical JSON/bundle fixtures cover startup SQLite adoption without sync setup, identity/package/history preservation, conflict refusal, unsafe paths, failure recovery/retry and ordinary reopen without JSON reconstruction. Use the Foundation migration test evidence; earlier canonical-stage tests alone do not prove current adoption.

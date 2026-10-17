@@ -2186,17 +2186,16 @@ and rollback remain exclusively owned by the activation service. Other
 platforms advertise no official restore until their default provider and model
 write contract is independently verified.
 
-The renderer represents the native source with the same bordered-card language
-as editable Profiles, without a selected left rail. Its detail pane uses a
-bounded grid of framed, sanitized fields and an explicit ownership notice. The
-notice is not merely copy: its primary action calls the existing redacted
-import/adopt flow, then immediately sets the newly created Profile as the
-right-pane edit target. This preserves the source-of-truth boundary: native
-files and credentials stay Agent-owned and main-process-only, while subsequent
-editing targets an independent PromptHub Profile and activation still uses the
-existing preview, backup, verification, and rollback path. Rendering remains
-`O(1)` for the native summary and does not add filesystem reads or network
-requests.
+The current UI contract is maintained in
+`spec/knowledge/behavior/desktop.md` under Provider & Model. Native summaries
+remain read-only; the earlier import/adopt UI proposal is superseded. An
+optional `officialService` projection keeps the built-in official entry
+visible independently of editable Profiles. Its status derives from the same
+adapter read as the native summary, with unavailable reads kept distinct from
+an inactive service. This adds no persisted Profile or additional filesystem
+read. Active details reuse the existing usage module and account manager;
+usage queries retain their capability and error handling boundaries. Official
+activation continues through the existing preview and rollback workflow.
 
 ## `DES-AGENT-104`: Right-Pane Provider Draft Editor
 
@@ -2292,15 +2291,26 @@ update reads the existing manifest, merges only validated display fields,
 revalidates the full result and atomically replaces `pet.json`, preserving
 unknown version-compatible fields. A separate main-process
 `AgentPetStoreService` owns network access. It accepts no caller-supplied URL.
-Catalog, manifests and installable spritesheets are restricted to the official
-raw GitHub repository prefix. Card previews first request the project's
+The catalog reads the website's published `https://codexpet.top/pets.json`;
+list/search/page/refresh never fall back to GitHub. Only explicit installation
+reads manifests and spritesheets from the official raw GitHub repository prefix.
+Card previews first request the project's
 published, frame-sized `codexpet.top/assets/previews/<safe-id>/webp/idle.webp`
-asset with a 2 MiB ceiling; if unavailable, the service validates `pet.json`
-and uses its allowlisted spritesheet as a 20 MiB fallback. This avoids fetching
-a multi-megabyte animation sheet for every healthy catalog card while retaining
-a deterministic recovery path. All requests enforce a 10-second timeout and
-reject redirects. The renderer loads at most four previews concurrently,
-deduplicates in-flight preview ids and retains at most 96 preview data URLs for
+asset with a 2 MiB ceiling; if unavailable, the service uses the same website's
+`assets/previews/<safe-id>/thumbnail.webp` with the same ceiling. Both failures
+remain visible to the preview caller without fetching a package from GitHub.
+The website catalog retains the existing schema normalization and 2 MiB limit;
+untrusted URL and install-command fields are ignored. All requests enforce a 10-second timeout and
+reject redirects. The IPC composition injects `fetchWithNetworkProxy` for every
+store request.
+This follows the current system/manual/direct proxy setting on each request,
+instead of capturing Node global fetch when the store is first opened. The
+previous global-fetch default bypassed the system proxy and could time out on
+GitHub. Timeouts retain their cause and carry `PET_STORE_REQUEST_TIMEOUT` across
+IPC; the catalog UI translates it into a network/proxy retry hint. A failed
+request does not populate the catalog cache, so an explicit refresh can recover.
+The renderer loads at most four previews concurrently, deduplicates in-flight
+preview ids and retains at most 96 preview data URLs for
 the active process. The main process persists valid preview bytes under
 `<dataRoot>/agent-pet-store/cache/previews`, reuses them for seven days across
 application restarts, and atomically writes then prunes the cache to at most 96
@@ -3410,7 +3420,8 @@ through fixed preload/IPC channels. Activation is serialized per vault, saves
 an unrecognized current file as a recovery account, decrypts and validates the
 target, writes a same-directory temporary file with mode `0600`, renames it over
 `auth.json`, re-reads its digest and rolls back to the prior bytes on any write
-or verification failure. Active entries cannot be deleted. The vault and native
+or verification failure. Deletion removes only the local snapshot, including
+when active; native login remains untouched. The vault and native
 payload are bounded to 32 accounts and 256 KiB per account.
 
 No database migration, provider activation, network call, process, watcher,
@@ -3418,6 +3429,35 @@ timer or background cache is introduced. List and activation are `O(A)` for at
 most 32 metadata records; native replacement is `O(B)` for a payload bounded to
 256 KiB. The account manager renders only inside Codex's official native
 provider detail and does not expose a general-purpose secret JSON editor.
+
+2026-10-17 CRUD extension: the existing import channel accepts optional `id`
+and optional write-only auth; `saveCurrent` accepts an optional destination ID.
+V2 vault records represent pending login with null ciphertext and digest; V1
+reads normalize in memory and successful mutations atomically persist V2.
+Renaming preserves credentials, capture retains record identity, and duplicate
+capture is refused. Email is derived from decrypted JWT display claims, never
+used as proof of login or persisted separately. Summary metadata carries only
+email and credential presence in addition to existing fields. No automatic
+login, logout, background watcher or network call is introduced. Storage and
+downgrade behavior are defined in desktop behavior section 9.15. The service
+factory retains its existing closure-based orchestration; the import mutation
+keeps validation, draft/update selection and a single atomic write together.
+Pending records also expose an explicit Switch and sign in action. After the
+user confirms closing Codex, activation preserves the current encrypted login
+before removing the native auth file and verifying absence; failure restores
+the prior native file. V2's optional `pendingAccountId` persists the selected
+pending record without a new schema version. A repeated selection is a no-op
+for native authentication, so a newly completed login is not removed. Capture,
+activation of a saved account and deletion of that pending record clear the
+marker. `requiresLogin` in the activation result opens the existing capture
+instructions instead of claiming that authentication has completed. No login
+process or browser is launched automatically.
+This follow-up passed desktop TypeScript and scoped ESLint. Seven locale JSON
+files were parsed during the copy update and `git diff --check` passed. No
+automated tests or real login/GUI interaction were run; the earlier snapshot
+tests do not establish the new pending-login, email, rename or active-record
+deletion behavior. Those workflow and V1/V2 compatibility cases remain to be
+verified through the existing service/IPC/preload/component regression suites.
 
 | Requirement    | Design          | Verification     | Task          |
 | -------------- | --------------- | ---------------- | ------------- |

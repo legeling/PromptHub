@@ -4,6 +4,21 @@ Status: review-pending — real Windows packaged UI acceptance remains
 
 ## Implemented Changes
 
+- 2026-10-17 authentication follow-up: package download callbacks now use the
+  existing settings credential reader. Configured GitHub tokens authenticate
+  zipball API requests; anonymous downloads retain codeload. Redirects never
+  forward the token to archive hosts. Git/SSH continue to use local credentials.
+- SSH scans preserve the original clone URL for later install/update and use
+  Git on self-hosted servers as well as GitHub. Canonical source identity stays
+  unchanged; existing HTTPS records are not inferred to be former SSH sources.
+- Catalog, package, import and branch errors distinguish API authentication,
+  rate limits, repository/ref access, SSH key/host verification, TLS and network
+  failures. Git reasons are classified before truncating diagnostics; HTTP
+  fallback reasons take precedence over an earlier Git failure. Settings now
+  explain where tokens apply and how to use an SSH import URL in all 7 locales.
+
+- 2026-10-17 follow-up: explicit-directory archive fallback extracts only the selected complete Skill package before applying per-package budgets; unrelated repository files no longer trip the 500-file limit. GitHub archive requests use codeload directly. Remote snapshot IPC/preload now preserves bounded error codes through Electron serialization, and renderer feedback localizes common proxy/network/package/storage failures. No global Git/proxy settings are changed.
+
 - Added one Git-first/HTTPS-archive fallback materializer shared by remote Skill
   install, fingerprint and snapshot paths. GitHub, GitLab.com and
   Gitea-compatible archive routes remain one deterministic attempt per source.
@@ -22,6 +37,60 @@ Status: review-pending — real Windows packaged UI acceptance remains
   cleanup, lifecycle propagation and renderer copy.
 
 ## Verification
+
+### 2026-10-17 Token and SSH follow-up
+
+- `skill-github-auth-install.test.ts`: 4 functional integration cases passed
+  through preload, registered IPC, actual settings persistence, SQLite and files.
+  They cover stored-token reuse after reopen, complete binary package import,
+  authentication failure without partial installation, corrected-token retry,
+  and SSH scan → install → reopen for GitHub and Gitea. HTTP/Git remote boundaries
+  use synthetic credentials and fixtures; no private account or live SSH key was
+  used. The previous archive installation integration also passed (3 cases).
+- Remote HTTP tests verify the Authorization header on the archive API and its
+  removal on the signed codeload redirect. Error and catalog tests cover 401,
+  403, rate limits, partial-catalog authentication failure, SSH errors and bounded
+  diagnostics. A focused Git/source-update selection passed 19 cases, and the
+  remote-content/scan selection passed 16 cases.
+- Source typechecking and focused ESLint passed. Broader test selection exposed
+  14 existing Windows path expectations in unrelated platform helpers and 2
+  Cherry Studio fixture failures. These are outside the GitHub/SSH transport
+  change and remain unresolved. Initial whole-test typechecking also encountered
+  malformed concurrent `prompt-test-history.spec.ts` content. On retry that
+  syntax issue was gone, but MCP shared-distribution tests still had 7 type
+  errors (`McpTransport` and Testing Library role options); the modified
+  GitHub/SSH files reported no type errors. Renderer/main/preload production
+  build and diff whitespace checks passed.
+- The live public archive probe was repeated after the credential changes:
+  `notion-meeting-intelligence` and `algorithmic-art` both downloaded through
+  real HTTP, installed into isolated storage, and survived database reopen.
+- Logs are in OS temp `prompthub-github-auth-20261017/`. No GUI was controlled;
+  real private-repository authentication and interactive SSH remain unverified.
+
+### 2026-10-17 download and error-feedback follow-up (Windows)
+
+- Focused unit regression: 146 tests passed across archive extraction/guards,
+  remote package adaptation, real filesystem replacement, snapshot IPC, localized
+  error feedback, locale consistency and detail utilities. Existing POSIX-only
+  path assertions were made portable; a chmod-based failure fixture was replaced
+  with a filesystem-copy failure after a partial write so Windows exercises
+  rollback rather than silently succeeding.
+- Public preload → registered IPC → real SQLite/filesystem integration: 3 tests
+  passed. Both store directory layouts preserve complete packages while ignoring
+  600 unrelated repository files; reopening preserves the installed records.
+  Proxy/timeout failure returns a bounded code, creates no partial Skill, cleans
+  staging and permits retry.
+- Live HTTP verification: the real remote downloader fetched the official
+  OpenAI `notion-meeting-intelligence` and Anthropic `algorithmic-art` packages
+  using codeload after an injected Git failure. Both installed through the public
+  package operation API into an isolated profile and remained readable after
+  database reopen. The isolated profile was removed. No Skill scripts ran.
+- Focused ESLint, source/test TypeScript checking, diff whitespace checks and
+  renderer/main/preload production builds passed. Detailed command logs and the live probe are retained
+  under the OS temporary directory `prompthub-skill-install-20261017/`.
+- Packaged GUI behavior remains unverified; the user chose to inspect the UI.
+
+### Original fallback implementation verification
 
 - Focused Vitest first pass: 193 assertions passed and one new real-filesystem
   fixture failed because jsdom-side dynamic ZIP generation retained only its
@@ -52,8 +121,9 @@ Status: review-pending — real Windows packaged UI acceptance remains
 ## Validation Boundary
 
 - A real Windows x64 packaged build was not launched or controlled. The user
-  did not authorize GUI/computer control in this request, and this macOS host
-  cannot prove Windows PATH inheritance or packaged toast layout.
+  chose to inspect the UI. The original verification ran on macOS; the follow-up
+  above exercises Windows service/API behavior but does not prove packaged PATH
+  inheritance or toast layout.
 - The change therefore remains review-pending rather than archived. Exit
   condition: install one GitHub store Skill on a clean Windows packaged build
   without Git, then force both Git/HTTP failure and confirm the localized

@@ -151,6 +151,17 @@ remain readable while untrusted image origins stay blocked.
 
 The download UI must expose automatic, official, and mirror source modes.
 Automatic mode tries the official source first and then a bounded mirror list.
+Network settings exposes the existing update-mirror toggle and a custom select
+for automatic mirror selection or one of the four built-in mirrors. Selecting
+a specific mirror restricts mirror attempts to that endpoint; automatic mirror
+selection retains the bounded fallback list. Official mode never uses a mirror.
+Both background/manual checks and downloads carry the selection. This setting
+applies to desktop application updates, not CLI, Skill, or package registries.
+The existing SQLite renderer-settings owner persists `updateMirrorSource` with
+`useUpdateMirror`; no new table or migration is required. Missing or unknown IDs
+normalize to `automatic`, preserving legacy settings and boolean IPC requests.
+Disabling mirror acceleration retains the selected ID. Existing transactional
+settings persistence and recovery apply; older versions ignore the added key.
 Changing source during a download must cancel the active transfer, refresh
 metadata for the selected source, reset visible progress to zero, and start a
 new verified download. The user must also retain a manual Releases download

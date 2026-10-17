@@ -200,6 +200,8 @@
 
 ### 3.3 技能内容来源
 
+GitHub 商店完整目录、失败保全及旧缓存重新校验约定见 [Content Sources](skill-store-requirements.md#33-content-sources)。下载失败的 Skill 不得静默丢弃并缓存成完整目录；Claude Code 与 OpenAI Codex 使用同一获取流程。
+
 预置技能的 SKILL.md 内容来源优先级：
 1. **本地内置**：App 内嵌常用技能的完整内容（离线可用）
 2. **远程获取**：从 GitHub 或 CDN 获取最新版本

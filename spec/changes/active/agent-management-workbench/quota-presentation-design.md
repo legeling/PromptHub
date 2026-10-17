@@ -70,6 +70,38 @@ Those variants are contract values, not new React components.
 
 ## Semantic Contract V2
 
+### Codex balance and tier extension (2026-10-17)
+
+The current contract also accepts `{ kind: "balance", remainingAmount: number,
+unit: "credits" | "resets" }`. A balance has no denominator, percentage, progress
+bar, or low-percentage warning. It is read from the existing WHAM usage response:
+`credits.balance` (including numeric strings), `credits.unlimited`, and
+`rate_limit_reset_credits.available_count`. Missing objects are omitted; an
+object without a valid nonnegative balance/count displays unknown. Counts must
+be safe integers. This is a same-build main/renderer contract extension with no
+persisted snapshots, database schema changes, or migration.
+
+Codex windows retain their actual duration. Primary/secondary slot position and
+subscription name do not determine window presence or duration. Additional
+provider buckets are bounded model-group metrics. Tier display is shared by
+Overview and native tray: `prolite` → Pro $100, `pro` → Pro $200, `promax` → Pro
+$500. This identifies the tier, not a billing invoice or grandfathered allowance.
+Other providers' plan names keep their existing presentation.
+
+Sources: [official pricing](https://learn.chatgpt.com/docs/pricing),
+[Pro tiers](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers),
+[upstream plan identities](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/auth.rs),
+[usage and reset summary](https://github.com/openai/codex/blob/main/codex-rs/backend-client/src/types.rs),
+[read-only usage request](https://github.com/openai/codex/blob/main/codex-rs/backend-client/src/client/rate_limit_resets.rs).
+The existing 60-second cache, refresh action, authentication, and error recovery
+remain authoritative. No extra balance endpoint or reset-consumption action is
+introduced. Live account/UI acceptance remains outstanding for this extension.
+
+Static verification for this extension: desktop and shared TypeScript checks
+and scoped desktop ESLint passed. Automated tests and live account/UI checks
+were not run for this change; the earlier verification status above applies to
+the original presentation implementation only.
+
 The adapter boundary normalizes provider payloads into quota semantics. It does
 not select a chart, layout, color, visible count or primary metric.
 
@@ -88,6 +120,7 @@ type AgentQuotaPeriod =
 
 type AgentQuotaValue =
   | { kind: "percentage"; remainingPercent: number }
+  | { kind: "balance"; remainingAmount: number; unit: "credits" | "resets" }
   | {
       kind: "amount";
       remainingPercent: number;
@@ -153,10 +186,16 @@ period and value semantics, never from Agent id or provider chart hints:
 | Finite percentage or amount with calendar day/week         | compact ring   | Daily and weekly reset windows share the same cycle semantics      |
 | Calendar month/billing cycle, lifetime or provider-defined | horizontal bar | Total/balance semantics are clearer as a linear remaining quantity |
 | Unlimited or unknown                                       | explicit text  | No trustworthy finite progress exists                              |
+| Absolute balance without a denominator                     | stat card      | Keep the number adjacent to its label without inventing a percentage |
 
 Rings are deliberately compact and compose side by side within a scope group;
 they are not the former oversized banner gauges. Bars span the available group
-width. Both visualizations expose the same `role="progressbar"`, remaining-value
+width. Account balances and reset counts use bordered, subtly tinted stat cards
+with a small semantic icon and prominent tabular number. They sit beside the
+window rings in one wrapping flex row; available content width determines when
+cards wrap. Labels and values stay together rather than occupying opposite ends
+of the whole banner. Numeric balance cards do not expose a progressbar role.
+Both progress visualizations expose the same `role="progressbar"`, remaining-value
 direction, warning thresholds and accessible label.
 
 The visual direction is always **remaining**:
@@ -237,15 +276,21 @@ The expanded Overview model list is bounded to 64 metrics and scrolls within
 the usage section. It must not expand the whole page indefinitely. The menu-bar
 popover keeps its fixed shell and scrolls internally.
 
-Overview column count is derived from the quota container with `auto-fit`
-tracks, not viewport breakpoints. This keeps two model-group columns available
-inside a wide content pane even when Retina scaling leaves the CSS viewport
-below a global breakpoint, while narrow content naturally collapses to one
-column without horizontal overflow. Full-width amount groups are composed
-outside the ring-group grid so their spanning rows cannot keep unused
-`auto-fit` tracks open. Ring-group tracks retain enough width for two readable
-meters; when that width is unavailable, groups stack before metric text is
-truncated.
+Overview uses one shared `UsageCard` shell for every metric and loading
+skeleton: border, background, radius, padding and minimum height are identical.
+Only the inner visualization varies with value/period semantics. Rings have
+the same shell whether or not balance metrics are present. Groups keep their
+scope order, with account groups spanning the container and other groups
+wrapping from a 25rem flex basis. Individual metric cards share each row from
+a 12rem basis; available container width determines wrapping, with no Agent
+identity or viewport breakpoint branches. Balance content no longer owns a
+second card shell. The renderer layout changes no data or persistence contract.
+
+2026-10-17 follow-up: shared card composition implemented; scoped ESLint passed.
+Desktop typecheck is blocked by TS2353 (`servername` in `ClientRequestArgs`)
+in `agent-provider-connectivity.ts:260` and `agent-provider-model-test.ts:360`,
+outside the changed quota components. `git diff --check` passed.
+Automated tests and GUI verification were not run for this layout follow-up.
 
 ### Loading, stale and failure states
 

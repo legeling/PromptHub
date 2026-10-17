@@ -4041,3 +4041,44 @@ clientWidth`, the table wrapper owned horizontal overflow, and the inspected
   the new main-process code requires loading the new build. Tests removed their
   temporary databases/native roots; no service or port was retained. No user
   credentials/settings were edited, and no commit or push was performed.
+
+
+### Pet store proxy and timeout recovery (2026-10-17)
+
+- The appearance IPC composition now supplies the existing network-policy fetch
+  to the Pet store. Catalogs, manifests, previews and sprites use the current
+  system/manual/direct proxy setting; official URL, byte and timeout guards stay
+  in place. The former captured global fetch could bypass the system proxy.
+- Catalog timeout errors retain their underlying cause and expose a stable code
+  translated in all seven locales. Explicit refresh can recover after failure.
+- Focused verification: 25 tests passed across agent-appearance-ipc,
+  agent-pet-store-service, agent-pet-workspace and network-proxy. Coverage includes
+  IPC through the real store and network router with a mocked Electron Session,
+  timeout cancellation, failure recovery and the localized retry interaction.
+  Affected-file ESLint passed. Public catalog probes from PowerShell and Node
+  both returned HTTP 200 with 344 records; the reported transient timeout was not
+  reproduced. No live Electron/PAC or GUI acceptance was performed.
+- Desktop test typecheck remains blocked by unrelated errors in
+  ai-test-workbench.test.tsx (removed promptTestHistoryCreate API) and
+  ai-content-workflows.test.ts (unsupported responseFormat option).
+
+
+### Website-only Pet browsing (2026-10-17)
+
+- Confirmed requirement: catalog browsing uses the official website instead of
+  GitHub. The catalog now reads https://codexpet.top/pets.json; preview fallback
+  uses the website thumbnail instead of downloading a repository spritesheet.
+  Website failures never trigger a GitHub request while browsing. Explicit
+  installation retains the existing raw repository package path.
+- The existing proxy policy, catalog normalization, 2 MiB catalog/preview limits,
+  redirect rejection, cache ownership and Codex-owned install transaction remain
+  unchanged. Published URL/command fields are not followed or executed.
+- Verification: 22 tests passed in agent-pet-store-service.test.ts,
+  agent-appearance-ipc.test.ts and agent-pet-workspace.test.tsx. Tests exercise
+  list/filter/paging/cache, preview/thumbnail recovery, failure without a GitHub
+  fallback, explicit retry and package staging. Affected-file ESLint and diff
+  whitespace checks passed. The live website catalog returned HTTP 200, 344
+  entries and 1,021,047 bytes via PowerShell; direct Node probes intermittently
+  timed out, so no universal speed or connectivity improvement is claimed.
+- GUI acceptance was not run; the application must load the updated main process.
+  Existing preview cache files and installed Pets need no migration.

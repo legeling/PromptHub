@@ -15,7 +15,7 @@
 
 - MCP 的已支持 Agent 主预设从注册表取得路径，Desktop 与 CLI 均传入
   SQLite 的 `builtinAgentOverrides`；显式根和 MCP 相对路径覆盖优先。
-  Claude Desktop、VS Code 与 Pi 共享目标保持独立，不随 Agent 主根迁移。
+  Claude Desktop、VS Code 保持独立，不随 Agent 主根迁移；Pi 共享兼容目标仅保留 `~/.agents/mcp/mcp.json`，不随 Agent 主根迁移。
   注册表仅声明用于发现的路径不会因此新增为可写预设。
 - 会话根不等于所有平台的资产根：Gemini、Augment、Cherry Studio、Qoder
   与已有直接根适配器使用所选根；Antigravity、Hermes、Reasonix、Qwen、
@@ -427,7 +427,7 @@ Antigravity CLI 的安装发现与版本诊断复用平台注册表中的 `agy` 
 | GitHub Copilot                        | `COPILOT_HOME` or `~/.copilot`; repository instructions remain project-scoped                                                        | `.github/copilot-instructions.md`; `.github/instructions/*.instructions.md`; `AGENTS.md` anywhere in repo; root `CLAUDE.md` or `GEMINI.md` alternative                                                        | Platform-owned `<root>/session-store.db` and `session-state/`; PromptHub provides a bounded read-only metadata/visible-turn adapter with `copilot --resume=<id>`, while schema, retention and runtime state remain Copilot-owned                                                                                               | Copilot / VS Code Agent Plugins via `plugin.json`; component paths include agents, skills, commands, hooks, MCP servers, and LSP servers                                                                                                                          | Repository settings can enable / disable custom instructions; Copilot CLI / VS Code settings manage plugin marketplaces and plugin locations                                                                              | Official docs + verified local store (partial)                  |
 | WorkBuddy                             | `~/.workbuddy` for user MCP config; project `.workbuddy/` for project MCP config                                                     | WorkBuddy assistant / expert / skill surfaces documented; no public single-file global rule path confirmed in current pass                                                                                    | Memory is documented as a product feature; public local memory/session paths were not confirmed in current pass                                                                                                                                                                                                                | Skill Marketplace documented; custom WorkBuddy Skills typically include `skill.yml`, implementation files, and `README`; local installed-skill directory not confirmed in current pass                                                                            | `~/.workbuddy/mcp.json`, project `.workbuddy/mcp.json`; MCP market and WeCom bot example documented                                                                                                                       | Officially documented (partial)                                 |
 | Amp                                   | `~/.config/agents`                                                                                                                   | login-gated agents manual exists                                                                                                                                                                              | not confirmed                                                                                                                                                                                                                                                                                                                  | not confirmed                                                                                                                                                                                                                                                     | not confirmed                                                                                                                                                                                                             | Evidence limited                                                |
-| Cherry Studio                         | macOS `~/Library/Application Support/CherryStudio`; Windows `%APPDATA%\CherryStudio`; Linux `~/.config/CherryStudio`                 | no stable global rule file modeled in current pass                                                                                                                                                            | Current Agent sessions are read from `Data/cherrystudio.sqlite` (`agent_session` / `agent_session_message`) with visible `data.parts` text only; verified older `Data/agents.db` (`sessions` / `session_messages`) remains a read-only fallback; normal chats, memory, credentials and other runtime state remain Cherry-owned | Canonical Skill files under `Data/Skills`; current catalog in `Data/cherrystudio.sqlite` (`skills` / `agent_skills`); compatible older databases may use `Data/agent.db`, `Data/agents.db`, or root `cherrystudio.sqlite` and legacy skill tables                 | current public path registry and Skill service define the database/Skill boundary; macOS launch allowlist covers system and user Applications directories; no single native Plugin package contract is modeled            | Official current source + verified legacy Agent DB (partial)    |
+| Cherry Studio                         | macOS `~/Library/Application Support/CherryStudio`; Windows `%APPDATA%\CherryStudio`; Linux `~/.config/CherryStudio`                 | no stable global rule file modeled in current pass                                                                                                                                                            | Current Agent sessions are read from `Data/cherrystudio.sqlite` (`agent_session` / `agent_session_message`) with visible `data.parts` text only; verified older `Data/agents.db` (`sessions` / `session_messages`) remains a read-only fallback; normal chats, memory, credentials and other runtime state remain Cherry-owned | Canonical Skill files under `Data/Skills`; current catalog in `Data/cherrystudio.sqlite` (`agent_global_skill` / `agent_skill`); current 2.1.6 contract only, with runtime mirror under `Data/Agents/.claude/skills`; older databases are not distribution targets                 | current public path registry and Skill service define the database/Skill boundary; macOS launch allowlist covers system and user Applications directories; no single native Plugin package contract is modeled            | Official current source + verified legacy Agent DB (partial)    |
 | Doubao Work                           | macOS `~/Library/Application Support/Doubao/Default/.doubao/agent_mode/workspace`                                                    | no verified PromptHub-managed Rules surface                                                                                                                                                                   | Runtime state remains Doubao-owned; no session adapter is modeled                                                                                                                                                                                                                                                              | User Skills in `.user_skills/<name>/SKILL.md`; sibling `.skills` is product-owned and read-only to PromptHub                                                                                                                                                      | No Provider, MCP, Plugin, Config Files, Usage, or maintenance contract is modeled                                                                                                                                         | Verified local Doubao 2.27.10 Skill contract; other OS inferred |
 
 ### PromptHub-Inferred Inventory
@@ -1473,6 +1473,67 @@ Current support boundary:
   conservative application-data templates rather than locally verified paths.
 
 ## Agent Edit Contract
+
+- MCP offers one explicit shared compatibility target:
+  `~/.agents/mcp/mcp.json`, using the existing `pi-agents-nested` identity
+  and Pi-compatible JSON writer. It is available independently of Pi detection
+  or disabling and appears under advanced targets, never in default/select-all
+  Agent selection. Detail and batch use the same shared classification.
+  `~/.config/mcp/mcp.json` and `~/.agents/mcp.json` are not offered.
+  This is compatibility with clients such as
+  [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter/blob/main/docs/configuration.md),
+  not a cross-Agent MCP standard. Core owns the preset and home-relative path;
+  shared metadata owns its classification; renderer owns selection only.
+  Existing apply/conflict/rollback, status, sync and remove behavior is reused.
+  No schema, IPC or storage migration is required. Existing files and bindings
+  for other paths remain untouched, including on reload. Native Pi and project
+  targets remain supported.
+  Target-card/panel JSX and the ordered Electron acceptance callback retain
+  contiguous blocks over 50 lines for readable presentation and guaranteed
+  isolated-profile cleanup; selection policy remains separately tested.
+- Verification (2026-10-17):
+  `pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/components/mcp-shared-targets.test.tsx tests/unit/components/mcp-manager-detail-distribution.test.tsx tests/unit/main/mcp-oh-my-pi.test.ts`
+  passed 21 cases, including the single shared preset, availability with Pi
+  disabled, explicit detail/batch selection, and native Agent distribution.
+  `pnpm --filter @prompthub/desktop exec playwright test tests/e2e/mcp-shared-distribution.spec.ts --workers=1`
+  passed real UI selection, nested shared-file write, reload, installed status
+  and removal. The two unoffered shared paths remained byte-for-byte unchanged;
+  unrelated entries and metadata in the selected file survived removal.
+  APIs only prepared fixture data and read persisted results; distribution
+  operations were not mocked. Desktop build, test typecheck and scoped ESLint
+  passed. Native client loading and the full release harness were not exercised.
+
+- MCP and Plugin global Agent distribution targets use the Skill availability
+  rule: detected Agents or explicitly configured custom/built-in Agents, minus
+  `disabledPlatformIds`. An absent MCP config or Plugin directory does not hide
+  an otherwise available Agent. Undetected, unconfigured Agents are absent,
+  including unsupported Plugin targets previously shown as disabled cards.
+  Plugin compatibility is applied after availability; an available but
+  incompatible Agent remains disabled with its existing explanation.
+  Agent-specific MCP presets resolve availability through `platformId` so secondary presets
+  share their owning Agent's visibility. Explicit project targets retain their
+  existing project-scoped rules. Lists, detail panels, counts and batch pickers
+  share the filtered targets; hidden targets cannot enter select-all submissions.
+  Availability is session-only derived state refreshed with target inventory,
+  using the existing platform discovery APIs; no storage migration is required.
+
+  Verification (2026-10-17): 107 focused unit tests passed across MCP/Plugin
+  manager distribution, detail, library, store, sidebar counts, both resource
+  stores and platform visibility. Re-run with
+  `pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/components/mcp-manager-detail-distribution.test.tsx tests/unit/components/plugin-manager-distribution.test.tsx tests/unit/components/plugin-manager-detail.test.tsx tests/unit/components/plugin-manager-library.test.tsx tests/unit/components/plugin-manager-store.test.tsx tests/unit/components/sidebar-mcp-shell-tags.test.tsx tests/unit/stores/mcp.store.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/services/platform-visibility.test.ts`.
+  Component tests replace preload I/O; they verify rendered targets, selection,
+  request payloads, empty/configured cases and live disabled-setting counts.
+  Restoring the old manager selectors in a temporary copy makes all four new
+  manager regressions fail their visibility assertions (Vitest exit 1).
+  `pnpm --filter @prompthub/desktop exec playwright test tests/e2e/agent-distribution-visibility.spec.ts`
+  passed against a fresh desktop build, with isolated home/profile and real
+  detection/preload/IPC. It opens both details, selects Codex, checks absent
+  Qwen/Kiro targets and enabled submit buttons, and captures both panels; it
+  does not submit native installation. This linear E2E callback exceeds 50
+  lines to retain one shared isolated-app lifecycle and guaranteed cleanup.
+  Build and changed-file ESLint passed. Full source/test typechecks remain
+  blocked by unrelated Skill store catalog and Prompt test-history errors;
+  no release-readiness claim is made.
 
 - Plugins list, counts, detail targets, and distribution pickers derive from the
   same `disabledPlatformIds` settings selection, including canonical platform

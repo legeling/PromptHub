@@ -2,6 +2,81 @@
 
 ## Added Requirements
 
+跨 Skill / MCP / Plugin 的公共接口、分发状态、加载和界面合同见
+[公共资源架构](../../../../../knowledge/structure/resource-library-architecture.md)（待实施）。
+MCP 的服务配置、凭据、版本与目标投影仍遵循本规范，公共层不把配置合并替换为包复制。
+
+### My MCP JSON editing (2026-10-17)
+
+Basic personal MCP management takes priority over new gateway capabilities
+(confirmed 2026-10-17). Desktop forms must retain input after failed saves,
+prevent duplicate in-flight submissions, and submit only changed fields when
+editing. Structured argument arrays preserve positional empty strings, whitespace
+and embedded newlines through import, persistence and JSON editing. Key/value
+form values retain whitespace after `=`. These corrections reuse existing Core
+normalization, SQLite/version publication and IPC; no schema or file migration
+is needed. Existing corrupted arguments require correction from the original
+configuration because removed whitespace cannot be reconstructed. Verification
+for this correction is pending; earlier verification below has narrower scope.
+
+The Desktop Files tab presents one `mcp.json` configuration view in a file sidebar
+and reuses the Skill code editor with line numbers and JSON highlighting. Editing,
+formatting, saving and canceling happen there; Source / Content remains read-only
+with copying, matching the Skill tab separation (confirmed 2026-10-17). The file
+view derives from the current SQLite record; it does not introduce a physical
+workspace file or access Agent target files. It edits command, arguments,
+cwd, environment values/references, transport, URL and headers. The service key
+must remain the current name; unrelated/unsupported fields and multiple servers
+are rejected instead of silently dropped. Native options and library metadata
+outside this editable projection remain unchanged. JSON is strict, values retain
+Unicode/newlines, and malformed shapes, null bytes and invalid transport fields
+are rejected. Existing `[REDACTED]` values retain their same-key literals; new
+masked keys are rejected. Removing a key removes the corresponding value/reference.
+
+Shared pure utilities own the JSON contract; Desktop owns ephemeral editor state
+and uses the existing MCP store/update IPC. Core retains secret merging and
+transactional version publication; SQLite remains authoritative. No new IPC,
+schema, file layout or migration is introduced. Failed saves keep the draft;
+cancel resets it, tab switches retain it, and server changes reset it. A changed
+server snapshot blocks stale edits until reopened. Saving creates a version only
+for semantic changes and does not write distributed target files automatically.
+
+Verification covers parser refusals and real SQLite save/reopen/restore,
+secret/reference preservation and deletion, publication failure/retry, existing
+native metadata retention, plus actual Desktop JSON editing and cancel/validation.
+The editor JSX and linear lifecycle tests may exceed 50 lines to keep one
+accessible surface and its ordered state transitions together.
+
+Implemented by `packages/shared/utils/mcp-json-editor.ts` and Desktop
+`McpJsonEditor.tsx`. The Files-tab placement supersedes the original inline-source
+editor placement. Files-tab component and Desktop workflow checks passed after
+the placement correction. Storage and parsing contracts are unchanged.
+Verification on Windows (2026-10-17):
+
+- `pnpm --filter @prompthub/core test tests/mcp-json-editor.test.ts`: 20 passed;
+  real SQLite/filesystem, AES-GCM with a fixture key store, close/reopen, restore,
+  unchanged target bytes and injected publication rollback/retry. Initial no-op
+  save regression failed with version 2 instead of 1; preserving absent command/URL
+  as `undefined` fixed the spurious version. Invalid JSON never reaches mutation.
+- `pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/components/mcp-json-editor.test.tsx`:
+  2 passed; component-only failure retention and stale-snapshot handling substitute
+  the store update boundary. This is not persistence evidence.
+- `pnpm --filter @prompthub/desktop exec playwright test tests/e2e/mcp-json-edit.spec.ts --workers=1`:
+  1 passed using the Files-tab sidebar and real Skill code editor: read-only
+  Source, JSON language and line numbers, editing, formatting, validation, tab
+  retention, cancel, Ctrl+S, IPC/SQLite save and renderer reload. No business/store
+  mocks or MCP process execution. Light read-only and dark narrow-window editor
+  screenshots were inspected from isolated application fixtures. The initial
+  Files-tab check caught an absent translation key; using the existing Skill
+  Files label fixed it before the successful rerun.
+- Desktop build and scoped ESLint passed. Focused TypeScript program using
+  `apps/desktop/tsconfig.test.json` options and the MCP detail plus all three new
+  test files as roots passed with their imports and declaration files. Full
+  `typecheck:tests` encountered unrelated `prompt-test-history-layout.test.tsx`
+  `ByRoleOptions.exact` errors (lines 54/67); a broader source check also encountered
+  `agent-codex-account.ipc.ts:38` passing `unknown` as `string` in concurrent work.
+  Neither aggregate is claimed passing. Full release harness was not run.
+
 ### Native configuration round-trip
 
 Codex TOML imports use the existing TOML parser, including multiline arrays and nested tables.
@@ -222,6 +297,47 @@ not normal read/write fallback paths.
 - **And** execution and mutation paths that require the real credential still fail closed
 
 ## Non-Functional Requirements
+
+### 2026-10-14 MCP adoption design (#234)
+
+#### Market installation identity (2026-10-17)
+
+New market installations allocate the same opaque `mcp_*` local identity as
+manual creation. A remote template identity (including registry namespaces
+such as `modelcontextprotocol:io-github-upstash-context7`) belongs in `source.id`,
+never in the new local server id or historical directory name. Source identity
+and market fingerprints continue to drive update detection; updates retain the
+local id. Previously the template spread copied its id into the local draft,
+causing Windows `mkdir` failure when history was published.
+
+Ownership and layout remain unchanged: SQLite owns current records, version
+metadata and source identity; Core owns installation/publication and filesystem
+history. No migration, rekeying or new schema/IPC is required. Existing records,
+bindings and versions keep their identities. Publication failure must leave no
+installed record and allow a clean retry. Verify namespaced installation,
+source update, disk reopen, history restore, and rollback through real storage,
+plus the Desktop store install entrypoint. Implemented in the shared
+`installMcpTemplate` normalization boundary.
+
+Verification (Windows, 2026-10-17):
+
+- `pnpm --filter @prompthub/core test tests/mcp-market-installation.test.ts tests/mcp-market-reconciliation.test.ts`:
+  10 passed. New installation regressions use real disk SQLite/history and cover
+  namespaced, slash-bearing and Windows-reserved template ids, source updates,
+  reopen/restore, publication failure/retry, and preservation of existing bindings.
+  These assertions reject remote ids used as local ids; the old implementation
+  was not separately executed for red-test evidence.
+- `pnpm --filter @prompthub/desktop exec playwright test tests/e2e/mcp-market-return.spec.ts --workers=1`:
+  1 passed. Actual store click, install IPC and SQLite readback verify the local id
+  and retained namespaced source. Only catalog HTTP content is replaced with a
+  fixture; live registry/package execution and packaged release are not verified.
+- `pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/main/mcp-library-persistence-targets.test.ts -t 'installs remote MCP|tracks and applies upstream|requires review for legacy'`:
+  first run 2 passed / 1 failed during journal replacement (`EPERM`); unchanged
+  focused rerun 3 passed / 23 unselected. The intermittent rename failure remains
+  recorded separately from the fixed invalid-directory-name failure.
+- Desktop build and `typecheck:tests` passed (includes package tests). ESLint
+  passed for the changed shared helper, new Core regression and amended E2E.
+  Full release harness was not run.
 
 ### 2026-10-14 MCP adoption design (#234)
 

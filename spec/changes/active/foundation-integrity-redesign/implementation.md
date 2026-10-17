@@ -1416,3 +1416,26 @@ jobs. These external failures do not justify changing signing requirements.
 The full asset gate remains incomplete: Draft is retained with zero uploaded
 assets, stable stays at 0.5.9, and the original tag is unchanged. Further
 identical reruns are stopped until ticket-service connectivity recovers.
+
+### Windows historical snapshot path correction (2026-10-16)
+
+Native Desktop startup failed in `skill-payload-files-v1` because old Windows
+history contained backslash-separated relative paths. The current shared
+validator correctly requires slash-separated paths; the upgrade boundary had
+not converted that historical representation.
+
+Core's `migrateSkillPayloadFiles` now orders a separate
+`skill-snapshot-paths-v1` correction before the unchanged payload converter.
+Desktop, Core startup and legacy catalog adoption use this entrypoint. The
+ownership, backup, transaction, retry and downgrade contract is recorded in
+[Skills](../../../knowledge/behavior/skills.md#current-and-historical-payload-ownership-2026-10-16).
+The correction implementation is
+`packages/core/src/migrations/skill-payload-upgrade.ts`, SHA-256
+`a177d62b1ce4a74fcfb151d27d64a45cc8651b3bfca0cf21f99d68fb48a4331f`.
+
+Verification:
+
+- `pnpm --filter @prompthub/core test tests/skill-payload-upgrade.test.ts tests/skill-payload-files.test.ts tests/skill-file-snapshot.test.ts`: 50 tests passed. The 12 new cases exercise real temporary SQLite/files, normal Core startup and two reopens, exact text/binary history, unsafe and colliding paths, SQL transaction rollback and publication failure/retry. Only the existing OS keychain test boundary is substituted.
+- Core typecheck, Desktop `typecheck:tests` (including shared package tests), focused ESLint for all five changed/new TypeScript files, and `git diff --check` passed.
+- `pnpm electron:dev` rebuilt the main/preload processes and opened a responding native PromptHub window with the existing local profile. Read-only diagnostics compared all nine historical versions and 27 files against hashes captured before startup; version identities, content and file bytes matched, and SQL payload columns were retired.
+- Full release harness, remote providers and other operating systems were not exercised by this correction. Native startup is confirmed; broader interactive UI acceptance was not performed.

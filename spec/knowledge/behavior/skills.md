@@ -6,6 +6,9 @@
 
 ## Stable Requirements
 
+跨 Skill / MCP / Plugin 的公共管理接口、状态、加载和界面合同由
+[公共资源架构](../structure/resource-library-architecture.md) 定义；统一实现待收敛，本文继续定义 Skill 包及来源语义。
+
 ### skills.sh Directory Search
 
 - A non-empty search uses the official `/api/search?q=...&limit=...` endpoint,
@@ -143,6 +146,9 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - 来源检查失败时，PromptHub 应保留本地内容，返回 `source-unavailable`，并只保存净化后的 `source_last_error` 摘要，避免把 URL userinfo、token、query secret、堆栈换行等细节暴露到持久化错误字段。
 - `source-unavailable` 检查结果还必须携带来源 adapter kind、脱敏后的来源位置和脱敏失败原因；本地目录、托管副本、Git、ZIP、内容地址和商店来源必须按实际类型展示，不能把所有来源都文案化为 URL。
 - Git 可执行文件缺失且 HTTP archive 不适用时，安装/更新失败必须明确提示安装 Git 或配置 `PATH` 后重启 PromptHub；Git 与 HTTP archive 都失败时必须明确说明两条 transport 均失败，并引导检查 Git/PATH、网络/代理和来源权限。结构化失败只保存有界 reason 与脱敏摘要，不得向 renderer 暴露原始命令、凭据或本地路径。
+- 未配置 Token 时，GitHub 归档回退直接访问 `codeload.github.com`；配置 Token 时使用下述 API 认证下载。两者沿用应用网络代理与安全校验，不修改用户全局 Git 或代理设置。显式指定 Skill 子目录时，ZIP 只解压该目录的完整 package；仓库其他 Skill 不计入单包 500 文件上限。归档所有路径仍需拒绝穿越，仓库根必须唯一，选中包继续执行文件、大小、深度、重复路径和最终落盘校验。未指定子目录的来源保留既有完整解压与选择流程。
+- 商店安装前的远程 Git/ZIP 快照 IPC 返回成功值或稳定错误码；preload 保持原有成功 API，以不含诊断的标记跨 contextBridge 传递失败。renderer 将代理不可达、网络超时、容量、权限、磁盘空间、无效包等常见错误本地化；未知失败显示通用重试/日志提示。不得直接显示 Electron IPC 包装、克隆命令或本地临时路径。无持久化 schema 变更，预览失败不得写入 Skill，安装继续经现有审核、fingerprint 与事务流程。
+- GitHub Token 的唯一真源为现有 CoreSettingsStore。安装、更新、指纹与预览的包下载必须读取该设置；配置 Token 时，GitHub 归档通过 API zipball 端点认证，无 Token 时仍使用 codeload。Token 不传给 Git 命令、SSH、第三方主机或跨主机归档重定向，不修改全局 Git/SSH 配置。SSH 扫描与后续安装、更新必须保持用户提交的 clone URL；来源身份仍按既有 canonical repository 规则计算。已有 HTTPS 记录不得猜测迁移为 SSH。错误应区分 GitHub 认证/限流、仓库或分支不可访问、SSH 密钥/主机验证、网络代理与 Git 缺失，并指向设置中的 GitHub Access Token 或对应 SSH 配置；Token 不能修复断网，SSH 仍依赖 Git 与有效密钥。无 schema 或存储布局变更。
 - Cloud Store 的安装与更新必须先读取已发布 package，展示版本、文件/内容差异，等待用户明确确认后才写入本地；“检查更新”本身不得直接覆盖 Skill。
 - My Skills 详情页只能保留一个“检查来源更新”入口，不得在检查后把顶部按钮改成更新动作，也不得追加“覆盖本地修改”按钮。`update-available`、`local-modified`、`conflict` 和 `baseline-missing` 必须先打开本地版本与来源最新版本的差异对比；关闭或保留本地版本不得写入任何内容，只有用户明确选择来源版本后才能进入既有暂存、快照和回滚流程，需要覆盖授权的状态必须显式携带该授权。
 - package 来源的更新对比必须使用与 fingerprint 相同的完整有效文件清单，逐项展示新增、修改和删除，并允许用户查看每个变更文本文件的行级差异。二进制或超过安全预览上限的文本文件必须保留在清单中并显示大小/完整摘要比较语义，不得静默忽略或强制解码。raw `content-url` 只对比 `SKILL.md`，不得把本地辅助文件误报为来源删除。
@@ -167,6 +173,11 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - 本批回归覆盖单次创建/编辑、二进制和未知 YAML 保留、版本和陈旧编辑、改名失败与冲突、删除失败/重试、复制/链接替换失败及来源变化。核心 6 个相关测试文件共 54 项、桌面 8 个相关测试文件共 116 项通过；Desktop TypeScript、相关源码和新增测试 ESLint、文件大小门禁及 diff whitespace 检查通过。目标替换函数达到 100% 行/函数/分支；library command 为 100% 行/函数、95.60% 分支，Desktop CRUD 为 100% 行/函数、95.38% 分支。剩余未命中分支为正文/名称 nullish 防御、创建失败后 ID 回读，以及错误传播的 finally 路径；它们没有被计为完整覆盖，后续需补投影缺字段和组合故障夹具。128 文件、2 MiB 同级目标替换实测 96 ms，单次本机观察不代表所有文件系统。GUI、真实远程服务、跨平台、全量发布构建和中断进程后的分发恢复未执行。改名跨目标补偿和完整包准备函数按顺序集中处理，允许超过 50 行以保持快照、提交和恢复顺序可审查。
 
 ### 2.1.2 Functional acceptance
+
+- 来源 frontmatter 标签写入现有 SQLite `skills.original_tags`，与用户 `tags` 分离；更新必须支持空数组清除。详情页 repo sync 在内容和来源标签未变化时保持幂等，不更新 `updated_at`，避免重复同步触发文件暂存操作的并发冲突。已存在的错误标签在下次正常同步时校正，无 schema/layout 迁移；包并发变更保护和失败时原文件保留不变。
+- 文件编辑器保存、创建、改名、删除失败使用统一的本地化反馈；真正的包冲突显示重新打开建议并保留编辑草稿，入口文件结构限制显示明确提醒。IPC 包装、堆栈与内部路径仅留日志。`skill-repo-sync-crud.test.ts` 覆盖来源标签更新/清空、同步幂等、同步期间的文件编辑/删除及重开后的字节和元数据；组件用例检查失败草稿与删除重试。这些隔离测试不等同于原生窗口操作验收。
+- Skill 文件图片预览在内嵌和全屏模式都允许直接平移，缩小至 50% 或图片未溢出时也能拖动。图片舞台始终在视口中水平、垂直居中，放大缩小围绕中心展开，不锚定左上角；拖动偏移在缩放时保留。平移使用 renderer 临时坐标，不依赖滚动条；鼠标主键/触控指针捕获支持跨边界拖动，松开、取消或捕获丢失结束拖动，禁止浏览器原生图片拖放。方向键可平移，双击画布或全屏重置按钮恢复居中位置与缩放，换图重置位置。图片字节、文件与数据库不变，无迁移。`useResourceImagePan` 将同一手势的状态和短回调集中在一个 hook，函数允许超过 50 行以避免拆散捕获生命周期；当前仅静态检查，既有基于模拟 scrollLeft/scrollTop 的组件断言不再证明此平移行为，真实 GUI 与手势回归待验收。
+- 2026-10-17 验证：来源同步/文件显示 integration 3 项、文件编辑器/Toast/同步转换 unit 41 项、Core 包持久化 12 项通过；Desktop 源码与测试 TypeScript、相关 renderer/测试 ESLint、diff whitespace 检查通过。Core 首轮 11/12，一项在夹具创建阶段遇到 Windows 临时 journal 重命名 `EPERM`，单独复跑 12/12；该偶发文件系统失败未被改为忽略。未执行原生 GUI、全量发布 harness，也未更改包并发保护。
 
 - #227：`skill-first-launch.test.ts` 从全新 profile 执行 renderer migration IPC，返回前即可从真实 Skill preload 创建，并验证重复迁移、失败重试及关闭重开。
 - #228：`skill-scanned-import.test.ts` 验证 Copy/Link 完整嵌套文本/二进制、用户标签、来源基线、重开、外部文件和元数据编辑、提交失败后的入口恢复/重试及删除保全，并复用 Plugin 子 Skill renderer 组合用例。
@@ -200,7 +211,26 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 - Skill 版本历史属于稳定产品能力。
 - 版本快照、恢复、差异对比与平台分发属于 Skill 域内关键流程。
 
+### Export Feedback Contract
+
+- Skill 详情页与侧栏详情共享导出结果语义。桌面 `skill:saveExport` 接收 Skill ID 与 `skillmd | zip`，主进程读取已有导出数据、弹出保存对话框，使用目标目录的临时文件写入后重命名发布；写入失败保留已有目标，清理暂存。无数据库 schema 或持久布局变更。
+- IPC 返回 `saved`（含文件名）、`canceled` 或 `failed`；成功以实际文件发布完成为准。renderer 使用统一 Toast 显示本地化成功/失败，取消不提示成功，诊断留日志。执行期间同一详情入口不重复提交。
+- Web 继续浏览器下载，只显示“已开始下载”，不得宣称已确认落盘。Toast 是 renderer 反馈，不能仅凭导出内容生成成功就显示保存成功。
+- 验证：`skill-export-feedback.test.tsx` 8 项运行真实详情组件与 Toast，替换 preload I/O，覆盖两入口的 MD/ZIP 完成等待、取消和失败；`skill-export-save.test.ts` 3 项使用临时真实文件，仅替换系统对话框，覆盖字节落盘/覆盖、取消及写入失败。连同 `toast.test.tsx`、`skill-detail-utils.test.ts`、`skill-detail-view-timers.test.tsx`、`skill-installer-export.test.ts` 共 44 项通过；源码与测试 TypeScript、聚焦 ESLint 通过。未完成原生保存对话框的实机点击验收，也未对全应用所有业务 Toast 做穷尽验收。
+
 ### 3.1 Platform Distribution Feedback Contract
+
+- 平台未适配、版本/schema 不兼容、未初始化、安装方式不支持、权限不足、文件缺失、空间不足、目标占用或同名冲突属于可预期的操作结果，显示普通提醒和处理建议；不使用崩溃式红色错误展示。未知异常显示简短通用错误，诊断留在日志。详情、快捷管理和批量分发复用同一错误分类；批量操作按目标保留结果，单条源文件读取失败不能中断后续 Skill。Copy 回退原因同样使用本地化文案，不直接展示底层路径。
+- 操作完成后的状态刷新失败不得覆盖已返回的分发结果：保留成功/失败明细，单独提示重新打开页面刷新；快捷管理在状态未知时保持窗口并阻止继续提交。
+- 分发及撤回失败必须显示本地化的原因与可操作建议，不直接显示 Electron IPC 包装、堆栈、SQL 或本机绝对路径。主进程的 `installMd`、`installMdSymlink`、`uninstallMd` 返回结构化成功值或错误码；preload 保持现有成功返回值及失败 rejection 语义，renderer 统一映射错误文案。未知异常使用通用失败提示，诊断留在主进程日志。单个平台失败不得抹去其他平台的成功结果。
+- Cherry Studio 1.7.13 已支持 Agent 插件式 Skills（工作目录 `.claude/skills`），但该旧版机制不在当前自动分发契约内。数据库缺失时提示“当前版本或数据目录尚未适配自动分发”，schema 不支持时提示“当前版本暂未适配自动分发”，并引导在 Cherry Studio 的 Agent 插件设置中安装；不得据数据库缺失断言该版本不支持 Skills。检测到应用目录不代表其技能数据库可用于分发。此修复不增加第三方历史数据库写入路径，不替 Cherry Studio 迁移数据，也不修改其数据库或 Skill 文件布局。用户需通过 Cherry Studio 自身升级/初始化，或在 Agents 配置实际数据根目录。
+- Cherry Studio 当前适配以 upstream `dac9b72`（2.1.6）为准：只支持 Copy 分发，Symlink 在写入前返回本地化说明。原生启动扫描会删除库中的软链接，因此不得将其报告为已安装。目录、当前表结构、全局启用、完整包哈希及运行时镜像的契约见 `spec/changes/active/agent-management-workbench/platform-adapter-designs.md#des-agent-039-cherry-studio-current-data-and-skill-boundary`。
+
+- 详情页的待分发平台勾选属于当前 Skill ID 的临时 UI 状态；同一 Skill 的打开同步、元数据刷新及安装方式切换不得清空勾选。切换 Skill 或完成分发后的状态刷新可以重置选择。平台状态加载按稳定 Skill ID 触发，不依赖记录对象的引用变化。
+- My Skills 的分发计数、画廊平台图标和列表状态共用 `skillPlatformStatuses` 会话快照，由已有批量状态 IPC 读取实际目标目录后一次发布；`deployedSkillNames` 同步派生。图标使用内置资源，已确认安装的平台无需等待额外 Agent 检测。列表加载后立即请求状态，30 秒内复用完整结果；新增 Skill 不能复用缺项缓存，分发操作通过现有 force 刷新失效。失败保留上次结果，未知状态不得显示为“未分发”；退出重启重新校验，不持久化目标状态、不新增表或 IPC。
+- 2026-10-17 图标加载验证：6 个定向文件共 26 项通过（`skill-distribution-status`、`skill-store-state-projects`、`skill-distribution-loading`、`skill-gallery-card`、`skill-list-view-actions`、`skill-manager-large-dataset`）。新增组件回归使用真实 renderer store、替换 IPC，验证无需等待平台检测、扫描前不误报未分发、同次发布计数与图标，以及重新挂载复用结果；状态回归覆盖新增 Skill、缺失行、失败保留和恢复。状态输入校验调整后新增两文件 3 项复跑通过，源码 typecheck、定向 ESLint 和 diff 检查通过。扩展 i18n 检查出现两个 `initReactI18next` mock 缺失错误及一个 ZIP 导出断言失败，未作为本次图标验收；日志位于 OS 临时目录 `prompthub-skill-icons-20261017`。未运行原生 GUI，也未测量真实磁盘扫描耗时。
+
+  回归入口：`apps/desktop/tests/unit/components/skill-full-detail-platform-selection.test.tsx`，运行真实详情组件、平台 Hook 和 Zustand store，仅替换 preload I/O 与 Toast。两条用例覆盖打开同步期间的单选保留、再次取消、全选后的元数据刷新和切换 Skill 后清空。隔离加载旧 Hook 时两条用例均在选中状态断言失败；修复后通过。与 `skill-platform-panel.test.tsx`、`skill-quick-install.test.tsx` 合计 12 项通过，命令为 `pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/components/skill-full-detail-platform-selection.test.tsx tests/unit/components/skill-platform-panel.test.tsx tests/unit/components/skill-quick-install.test.tsx`。开发环境已热更新；当前原生窗口无法激活，未完成实机点击复验或实际平台分发。
 
 - 当用户选择符号链接方式分发 Skill 到平台目录时，PromptHub 必须明确区分“真实 symlink 成功”和“因权限/文件系统限制而回退为 copy 安装”。
 - 如果主进程回退为 copy 安装，渲染层必须收到结构化结果，并向用户显示包含受影响平台与原因的警告提示。
@@ -234,6 +264,29 @@ My Skills 批量入口必须明确包含安装与卸载；商店批量导入入�
 - 共享目标不得默认参与批量分发。用户同时选择共享目标和已知会发现
   `.agents/skills` 的平台原生目标时，界面必须提示重复发现风险；未完成运行时
   验证的平台继续使用其原生目录，不得被宣称为兼容。
+- 分发弹窗与详情侧栏共用平台选择与变更摘要：勾选表示应用后的安装状态，
+  已安装项取消勾选显示待卸载，所有全局目标变更通过底部“应用变更”执行。
+  弹窗双列、侧栏单列；“全选平台”只选择原生平台，保留用户单独设置的共享目标。
+  共享目录位于独立“高级目标”区，显示实验性、目录及兼容说明，不计入平台数量。
+  待安装／待卸载数量包括显式选定的共享目标；重复发现提示按应用后的状态计算。
+  共享目录未安装时默认关闭，已安装时如实显示，不因重开界面自动撤回。
+  状态加载失败时禁止提交；部分成功后按实际状态刷新，仅保留失败项供重试。
+  没有新增或卸载且存在已勾选目标时，主按钮显示可用的“重新分发”，明确显示
+  更新目标数量，并按当前 copy/symlink 方式重新发布当前完整包。重新分发失败
+  保留安装状态，不能把失败目标转成待卸载；再次点击会更新全部已勾选目标。
+  无目标时按钮禁用。弹窗底部操作栏位于滚动内容之外，侧栏操作栏按正常文档流
+  排列，不能以 sticky 覆盖共享目录说明或重复发现提示。
+  本次仅调整 renderer 交互和临时选择状态，沿用已有分发服务，无 schema 或路径迁移。
+  `SkillDistributionControls`、共享目标卡片及项目分发适配组件允许超过 50 行的
+  声明式 JSX，以保留完整的无障碍标签、状态文案和布局；选择与计数逻辑独立为
+  `skill-distribution-selection.ts`，不在两处界面复制。
+
+#### 分发界面验证（2026-10-17）
+
+- `pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/components/skill-distribution-controls.test.tsx tests/unit/components/skill-distribution-selection.test.ts tests/unit/components/skill-platform-panel.test.tsx tests/unit/components/skill-quick-install.test.tsx tests/unit/components/skill-full-detail-platform-selection.test.tsx tests/unit/components/skill-detail-project-distribution.test.tsx tests/unit/components/skill-full-detail-async-actions.test.tsx tests/unit/services/skill-locale-regression.test.ts`：67 项通过，覆盖勾选语义、重复提交、共享目录隔离、跨作用域选择保留、键盘焦点与文案。组件测试替换 preload I/O，不用于证明磁盘分发。
+- 本轮重新分发与弹窗底栏修正：5 个组件测试文件共 33 项通过，覆盖无变更时重新分发、未选择目标时禁用，以及底栏位于滚动内容之外的 DOM 结构；相关 ESLint 和 `pnpm --filter @prompthub/desktop typecheck:tests` 通过。
+- `pnpm --filter @prompthub/desktop exec vitest run --project integration tests/integration/skill-platform-management.test.tsx --minWorkers=1 --maxWorkers=1`：9 项通过。本轮补充已安装目标重新分发、写入失败后保留目标和重试；并修正原参数化测试仍只渲染弹窗的问题，侧栏用例改为实际渲染 `SkillPlatformPanel`。先前 6 项通过不构成侧栏安装／卸载的独立证据。测试经过真实 Hook、preload、IPC、SQLite 和临时文件系统；仅替换 Electron 运输、home、无关 UI 偏好及徽标刷新，复制失败在文件系统 I/O 边界注入。
+- 原生窗口与视觉验收由用户自行查看，本轮未运行 GUI；上述结果不代表真实 Agent 消费、跨平台或全量发布验收。
 
 ### 3.4 CLI Automation And Asset Topology Contract
 
@@ -243,9 +296,10 @@ My Skills 批量入口必须明确包含安装与卸载；商店批量导入入�
   identity、version、fingerprint 与 file count 等有界摘要，不返回正文或文件快照；`--full`
   显式恢复完整 payload，`--quiet` 只抑制成功 stdout，错误仍写 stderr。显式 `repo-read`
   与 export 命令继续返回调用者要求的内容。
-- Skill 详情必须把 upstream/local external source、当前可编辑 package 和已检测到的 Agent
-  分发目标分为三个拓扑阶段。外部直连目录不能标成 PromptHub 托管副本；copy target 必须
-  说明再次分发会覆盖，symlink target 必须说明编辑会沿链接生效。
+- Skill 详情“源码/内容”的资产拓扑只展示 upstream/local external source 与当前可编辑
+  package，宽屏两栏、窄屏纵向排列；外部直连目录不能标成 PromptHub 托管副本。
+  已分发目标及分发操作集中在预览的分发区域，不在源码页重复列出，避免目标数量撑高
+  拓扑区。预览分发区域继续说明 copy 覆盖与 symlink 随编辑生效的区别。
 
 ### 4. Translation Contract
 
@@ -371,3 +425,24 @@ choosing one by directory order. Exact original metadata, including source IDs,
 remains in the migration recovery bundles. Runtime source uniqueness is unchanged.
 The local native startup exposed this previously unresolved legacy-profile case;
 the prior 40-check result did not cover that actual profile.
+
+Windows history upgrades first run the named `skill-snapshot-paths-v1`
+correction through Core's `migrateSkillPayloadFiles` entrypoint, then the existing
+`skill-payload-files-v1` converter. The correction changes only legacy SQL
+snapshot separators from `\` to `/`; content, encoding, version identity and
+notes remain intact. Shared runtime path validation stays strict. Absolute,
+traversing, empty-component and colliding converted paths abort the correction.
+No schema or current filesystem layout changes are introduced.
+
+Before correction, a database safety point preserves the original SQL JSON.
+Path updates and their completion marker commit in one transaction, decoding
+one version at a time. SQL failure preserves the original rows. If subsequent
+file publication fails, the corrected SQL still holds all history for retry;
+the existing publication receipt restores files before reopening. Already
+migrated profiles are unchanged. Downgrade uses the pre-correction safety point
+and matching package files, never a marker reset on the upgraded database.
+Desktop initialization, Core initialization and legacy catalog adoption share
+this ordered entrypoint. Regression coverage lives in
+`packages/core/tests/skill-payload-upgrade.test.ts` and includes native Windows
+separators, mixed separators, binary bytes, normal startup/reopens, rejection,
+transaction rollback and publication retry.

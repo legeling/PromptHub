@@ -26,7 +26,8 @@ The global 80 px module rail remains visible. The transient Prompts secondary pa
 right settings/history panel are mutually exclusive: opening either closes the other without
 changing the ordinary Prompt sidebar preference.
 
-The shared TopBar stays above both the secondary panel and workbench. The workbench's
+The shared TopBar stays above both the secondary panel and workbench, with Prompt search
+and Prompt creation hidden in the workbench. Sidebar and theme controls remain available. The workbench's
 own header contains batch actions only, not a duplicate sidebar toggle. Opening the
 secondary panel closes the settings/history panel; closing the sidebar does not reopen
 that panel. Current authority: `FR-IGW-016` supersedes the older single-header mock.
@@ -115,10 +116,11 @@ is supplementary; icons and text communicate every non-success state.
   are absent from the default canvas chrome.
 - One selection: the lightbox shows a large preview and direct image actions; provenance
   remains associated with the selected output and batch without occupying a third column.
-- Multiple selection: the contextual action bar shows aggregate count and applicable bulk
+- Multiple selection: the same fixed-height bottom action bar shows aggregate count and applicable bulk
   actions, not misleading single-output provenance.
-- Bottom contextual bar exposes favorite, set as reference, download, export selected
-  and clear selection. Delete is visually separated and always confirms scope.
+- The persistent bottom bar exposes icon-only favorite, Add to Prompt, copy image,
+  download and clear selection actions. Copy requires exactly one target. Clearing
+  selection preserves the focused preview and does not resize the canvas.
 - “调整后生成” creates a child draft/batch; it never mutates historical provenance.
 
 ## Filtering And Performance
@@ -172,3 +174,13 @@ is supplementary; icons and text communicate every non-success state.
 9. Exercise `1440x900`, `1100x700` and `800x600` without overlap, clipped controls or
    horizontal page scrolling.
 10. Exercise keyboard-only selection, detail, retry, favorite, export and delete flows.
+
+11. Open a generated image, zoom with buttons and wheel, pan, reset and switch images.
+    At 400% zoom in compact and fullscreen windows, keep the image centered and the
+    close button and action toolbar visible. Click Close or press Escape to return
+    focus to the workbench; reopening starts at 100%. Image-load failure remains dismissible.
+
+12. Generate four images against a controllable provider: all four requests must be
+    in flight before any response. Complete a later slot first and inspect it while
+    the other slots remain running. Copy from its viewer and paste the original
+    image pixels (including JPEG-to-PNG conversion), not its Prompt or preview crop.

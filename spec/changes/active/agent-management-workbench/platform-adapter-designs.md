@@ -73,28 +73,51 @@ directory remains an explicit built-in Agent root override; this batch does
 not parse `boot-config.json`, private settings, or runtime databases to infer
 it.
 
-The existing Skill adapter already supports current `skills` / `agent_skills`
-and compatible legacy `agent_global_skill` / `agent_skill` schemas. Database
-selection becomes:
+The 2026-10-16 source audit supersedes the earlier table-name inference above:
+upstream `dac9b72c7fd0982a9acacf46d8bda155f806d1c4` (`package.json` 2.1.6)
+uses `Data/cherrystudio.sqlite`, `agent_global_skill`, and `agent_skill`.
+`skills` / `agent_skills` are not its current schema. Per FR-AGENT-138, the
+adapter targets this one current database and validates its required columns;
+missing/older/incompatible databases fail before changing files. PromptHub does
+not create, migrate, or fall back to another Cherry database.
 
-1. `Data/cherrystudio.sqlite`
-2. `Data/agent.db`
-3. `Data/agents.db`
-4. root `cherrystudio.sqlite`
+The Cherry-owned catalog contains UUID identity, metadata including `version`,
+`directory-sha256:` full-directory content hash, and global `is_enabled=1` for
+new local installs. Updates preserve identity, source provenance, global enablement,
+and per-agent selections. Builtins and packages from other sources cannot be
+overwritten through local distribution. Current native `reconcileLibraryToDb`
+explicitly unlinks symlinks in the library; only Copy distribution is supported.
+Symlink requests fail before opening the database or changing package files,
+with localized guidance to select Copy; the platform row also shows this limit.
+The native runtime projection is
+`Data/Agents/.claude/skills/<folder>`: Windows uses a copy, POSIX uses a link
+to `Data/Skills/<folder>`. This native projection is distinct from the library
+package's Copy distribution. Uninstall removes this projection and
+the library package with catalog/join changes in one SQLite transaction; it no
+longer guesses per-agent workspace paths from historical `accessible_paths`.
 
-Only existing files are opened. No database is created as a side effect of
-probing, no schema migration runs, and an unsupported schema fails closed. The
-current path is first so an obsolete compatible database cannot receive a
-write while Cherry Studio reads the v2 database. Selection is bounded by four
-constant-time existence checks and one schema probe; Skill package processing
-retains its existing bounded behavior.
+File publication stages the complete library and mirror before replacing either;
+prior entries remain available until the database transaction commits. Synchronous
+publication/SQL failures restore both prior entries. There is no third-party schema
+or PromptHub layout migration. Each target has at most one hidden staging and
+one prior entry; leftovers block another operation instead of accumulating or
+being overwritten. Crash interruption requires recovery of retained entries;
+cross-process locking and automatic crash recovery for external publication remain
+an unverified follow-up, not a claimed guarantee. Read-only status checks require
+the catalog plus a real library directory and readable library/mirror entrypoints.
+
+Source evidence: `src/main/core/paths/pathRegistry.ts`,
+`src/main/data/db/schemas/{agentGlobalSkill,agentSkill}.ts`,
+`src/main/data/services/AgentGlobalSkillService.ts`, and
+`src/main/ai/skills/{SkillService,SkillInstaller}.ts` in the pinned upstream checkout.
+Verification scope: static type/lint/build checks only unless separately requested;
+native Cherry integration, regression execution and crash recovery remain unverified.
 
 Provider, MCP, agent/session, credential, memory, IndexedDB, Local Storage,
 cache, and runtime state remain Cherry-owned. The Plugin target stays
 `composite` and disabled because the current Skills system is not evidence of
-a single native Plugin package. Hardening the existing database-backed Skill
-write into a cross-filesystem transaction remains a separate Skills-owner
-follow-up and is not falsely claimed here.
+a single native Plugin package. Crash recovery and native integration acceptance
+remain separate from the synchronous compensation implemented in this adapter.
 
 ## `DES-AGENT-040`: Windsurf Public Transcript Adapter
 

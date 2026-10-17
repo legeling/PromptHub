@@ -116,6 +116,13 @@
 
 ## Follow-ups
 
+### 2026-10-17 mirror selection verification
+
+- Network settings now exposes the shared built-in mirror catalog with automatic selection. Both update IPC paths consume the stored selection; explicit mirrors fail visibly without switching to another mirror.
+- `pnpm --dir apps/desktop exec vitest run tests/unit/components/network-settings.test.tsx tests/unit/components/update-dialog.test.tsx tests/unit/main/updater.test.ts`: 41 passed. Component interactions cover selection and reopen; updater tests replace Electron/updater transport and verify endpoint selection and failure behavior.
+- `pnpm --dir packages/core exec vitest run tests/settings-sqlite.test.ts`: 8 passed, including real SQLite close/reopen retention of mirror selection and existing rollback coverage.
+- Desktop `typecheck:tests`, affected source ESLint and diff whitespace checks passed. GUI acceptance was not performed at the user's request; public mirror availability and real updater downloads were not exercised.
+
 - Confirm whether current `v0.5.5` prerelease should be treated as a one-off historical exception before switching to semver prerelease tags for the next preview cycle.
 - Run release-related verification against an actual prerelease tag once the workflow changes land, since this round only validated runtime logic and targeted tests.
 - Future preview lines should still prefer forward-moving prerelease versions such as `0.5.6-beta.1`; `0.5.5-beta.1` remains a one-off backfill exception.

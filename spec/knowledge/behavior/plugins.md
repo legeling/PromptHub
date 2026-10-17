@@ -52,6 +52,40 @@ Official references:
 
 ### 4. Distribution Contract
 
+- Shared global Plugin distribution is an explicit advanced target `shared-agents`
+  at `~/.agents/plugins/<normalized-plugin-name>/`. It preserves the complete
+  original package in copy or symlink mode without manifest conversion, native
+  registration, code execution, or automatic child-asset import. It remains
+  available independently of Agent detection and is excluded from select-all.
+  The UI describes placement in a shared directory, not universal Agent activation.
+- Core owns this target, its home-relative resolver, safe package publication,
+  ownership checks and removal; Desktop/CLI use the same resolver and existing
+  distribute/remove APIs. `PluginTargetStatus` adds `shared`. No DB migration or
+  new IPC channel is needed; existing `distributedTargetIds` records the target.
+  Copy targets contain `.prompthub-shared-plugin.json` with the owning Plugin id;
+  symlink ownership requires its destination to match the managed source.
+  Unowned/colliding directories and symlinked parent directories are rejected.
+  Copies are staged beside the destination, published by rename, and the old
+  package is restored if publication fails. A metadata failure leaves a complete
+  owned package that explicit retry can reconcile, never a success status.
+  Removal keeps the managed source and unrelated shared packages. Older versions
+  preserve the unknown target id but cannot manage it; remove the target before
+  downgrading when needed. Existing multi-target partial-success semantics remain.
+  Filesystem/SQLite failure-retry tests cover complete copy/symlink packages,
+  unowned directory conflicts, symlinked parent rejection, staging/publication
+  failures, and explicit retry after metadata persistence failure.
+  Abrupt process termination can leave staging/backup siblings for recovery;
+  ordinary write failures restore the previous package. The UI card JSX and
+  ordered Electron lifecycle remain contiguous blocks over 50 lines; selection
+  and filesystem ownership policies are separately tested small functions.
+- Verification (2026-10-17): seven real filesystem/SQLite shared-distribution
+  tests passed. The combined MCP/Plugin focused suite passed 85 tests, with
+  Desktop build, test typecheck, and scoped lint passing. The isolated Electron
+  `plugin-shared-distribution.spec.ts` workflow passed explicit selection,
+  complete-package copy, reload with installed status, and removal retaining
+  the library package. Native Electron screenshots verified both advanced
+  target panels. Native Agent loading and release acceptance were not exercised.
+
 - Native target compatibility is derived from current managed-package manifests when reading My Plugins, including packages imported before a target was supported. This refresh reads the finite marker set and referenced manifest paths, without rescanning the whole package tree or rewriting version history. Import/distribution still validate the package boundary.
 - Direct Agent inventory includes a distributed symlink only when its path matches the existing target resolver, its real destination matches the recorded My Plugins package, and its binding includes that target. Inventory retains the Agent-side path; removal unlinks the distribution without removing the source package. Unknown links outside the Agent root are not imported into inventory.
 
@@ -76,7 +110,7 @@ Official references:
 - Windsurf / Devin、Cherry Studio 当前应建模为 composite target 或 lower-priority target，因为它们没有确认的单一 Agent 插件包格式，需要把 PromptHub Plugin 拆到多个目标资产面。
 - Amp 和其他证据不足的平台应保持 pending/disabled，直到官方文档或源码能证明单一插件包机制。
 - UI 必须明确区分 `Native`、`Adapter`、`RuntimeOnly`、`Composite`，不能把适配后的效果伪装成目标 Agent 原生支持 Codex 插件。
-- 第一版只启用 `Native` 和满足 bundle 语义的 `Adapter`；`RuntimeOnly`、`Composite`、`Pending` 目标可见但置灰，并明确显示“不支持 PromptHub 插件整合包”，等后续设计 wrapper/composite installer 或有新证据后再重新评估。
+- 第一版只启用 `Native` 和满足 bundle 语义的 `Adapter`；目标先按 [Agent 可见性规则](../reference/agent-platforms.md#agent-edit-contract) 筛选，与 Skill 一致。当前可用 Agent 中的 `RuntimeOnly`、`Composite`、`Pending` 目标可见但置灰，并明确显示“不支持 PromptHub 插件整合包”，等后续设计 wrapper/composite installer 或有新证据后再重新评估。
 - 分发到 Adapter 目标时，PromptHub 必须复制 Plugin package 并生成目标 Agent 的原生 package marker，例如 `.claude-plugin/plugin.json`、`.cursor-plugin/plugin.json`、`gemini-extension.json`、`POWER.md` 或 `plugin.json`；不得只把 Codex `.codex-plugin` 原包软链到非 Codex Agent。
 - 当用户对 Adapter 目标选择 symlink 模式时，PromptHub 应落成生成后的 copy package 并在结果中报告实际 copy 写入，因为 marker 转换不能通过原包软链接真实表达。
 - Antigravity 是独立的原生格式目标（#226），只分发已包含合法根级 `plugin.json` 的包。没有该 manifest 时在目标选择器禁用，并在 Core 写入前拒绝；不生成包含 Codex/Gemini 字段的伪 Antigravity manifest。
@@ -92,7 +126,26 @@ Official references:
 - Existing Skill boundary: `spec/knowledge/behavior/skills.md`
 - Existing MCP boundary: `spec/changes/archive/2026/07/2026-07-06-mcp-management/`
 
-### 7. Current Desktop MVP Boundary
+### 7. Storage Ownership
+
+当前存储权威遵循 [Foundation 数据归属](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants)。
+2026-10-17 源码核对：`PluginLibraryStorage` 已委托 `PluginStorage` 与 `PluginDB`，
+普通读写使用 SQLite 元数据和版本记录；实际包位于 runtime-path 所属的
+`data/plugin-files/<encoded-plugin-id>/current/`，历史包位于同级 `versions/<version>/`。
+SQLite 与文件提交复用 `publishSqliteEntries`，不能由 renderer 或普通读取重新发布旧 JSON 真源。
+
+`plugin-sqlite-v1` 在升级边界读取旧 metadata、canonical bundles 和设备 projection，保全包、版本及设备绑定，
+通过既有恢复机制统一提交并退役旧输入。冲突或校验失败保留数据并报错；已完成迁移后再次出现旧来源要求显式恢复，
+不能当成正常读取时自动覆盖 SQLite 的输入。降级恢复继续使用完整、对应版本的数据根备份。
+这一段纠正此前 JSON／canonical 为当前权威的描述；不表示本次新增迁移或完成全量历史升级验收。
+
+三类资源的公共接口与实施范围见 [公共资源架构](../structure/resource-library-architecture.md)（待实施）。
+Plugin 包身份、子资产和原生目标要求仍由本规范定义。
+
+#### Historical storage stages (superseded)
+
+以下保留旧 JSON → canonical 阶段的迁移证据与恢复约束，仅用于辨认历史输入；
+不能用作当前普通读写或另一次迁移的授权，当前所有权以上文及 Foundation 为准。
 
 - Before canonical file authority is published, Desktop stores installed Plugin library metadata in `<userData>/data/plugins/library.json`. Under canonical file authority, each Plugin is stored as a resource bundle below `<userData>/data/plugins/<encoded-plugin-id>/`; the directory name is produced only by `encodeCanonicalResourceDirectory`. Reader, writer and checkpoint use that same encoding. Exact superseded `library.json`, `market-cache.json`, and `versions.json` regular files may coexist briefly as compatibility remnants but are not authoritative. If no Plugin bundles exist, the service migrates a populated superseded library through the canonical journaled writer and deletes old library/version metadata only after verification. Existing bundles always win over stale metadata. Same-name directories, symlinks, and undeclared root files remain invalid. If only the legacy `<userData>/config/plugin-library.json` exists before canonical publication, desktop migrates it into the data path on first read and keeps the legacy file as a compatibility backup.
 - Existing raw-ID directories from the beta canonical writer are upgraded by `plugin-resource-paths-v1` before catalog reconciliation, under its existing maintenance boundary. The migration validates every bundle and directory identity before publication, rejects an occupied encoded destination, and publishes verified copies, raw-directory removal and the version marker as one journaled change. Full package/history bytes are preserved. Moved bundles have verified backups under `recovery/plugin-resource-paths-v1/<encoded-id>/<content-hash>/`; the marker lives under `data/operations/migrations/`. Repeated startup is a no-op. A graph manifest that explicitly declares a raw Plugin path requires repair and is not silently rewritten.
@@ -100,6 +153,8 @@ Official references:
 - Canonical Plugin target and local-source projections are device-local metadata scoped to the active PromptHub storage root. Their identity is derived from the stable storage-root identity, not from the optional self-hosted sync identity, so Plugin reads and migration work before sync setup and remain stable across synchronization configuration changes. A local import stores complete package bytes inside `data/plugins/<encoded-plugin-id>/files`; its bounded absolute upstream locator lives only in `config/devices/plugin-projections.json`, survives restart on that device, and never enters the portable resource or version snapshot.
 - Under canonical authority, installed local, marketplace, and Git-backed package files are published under `<userData>/data/plugins/<encoded-plugin-id>/files`; temporary materialization stays under cache and is removed after publication. Legacy metadata mode may retain its earlier managed-package layout until canonical migration.
 - During historical metadata adoption, an identical portable record may retain a removed pre-adoption package path. The verified current record for that same identity remains authoritative, including a metadata-only bundle with no declared package bytes; the stale path is not reopened or recreated. Available current packages and history remain intact, and original metadata is preserved in migration recovery. Differing portable metadata, differing extant package bytes and missing packages without a verified current owner remain explicit errors. This conversion stays in the migration boundary and does not claim missing package files were recovered.
+### 8. Current Desktop MVP Boundary
+
 - Plugin Store includes OpenAI `openai-curated` and PromptHub `prompthub-official` built-in marketplace sources.
 - Plugin Store defaults to PromptHub's built-in `prompthub-official` Official Store and keeps `openai-curated` available as the Codex Official Store, while keeping an all-sources filter.
 - Marketplace preview lazily reads the selected package manifest, shows inventory/classification/policy/source links, and does not execute plugin code.
