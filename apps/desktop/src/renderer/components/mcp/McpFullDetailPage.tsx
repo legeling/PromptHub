@@ -16,6 +16,7 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   GlobeIcon,
+  FolderOpenIcon,
   Loader2Icon,
   PencilIcon,
   RefreshCwIcon,
@@ -38,18 +39,16 @@ import {
   getMcpEnvReferences,
   MCP_REDACTED_VALUE,
   inferMcpEnvRequirements,
-  toMcpServerEntry,
 } from "@prompthub/shared/utils/mcp-config";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { McpVersionHistoryModal } from "./McpVersionHistoryModal";
-import {
-  DETAIL_PAGE_CONTENT_CLASS,
-  DETAIL_PAGE_PREVIEW_GRID_CLASS,
-} from "../layout/detailPageLayout";
+import { DETAIL_PAGE_CONTENT_CLASS } from "../layout/detailPageLayout";
 import { Textarea } from "../ui";
 import { McpServerForm } from "./McpServerForm";
+import { McpJsonEditor } from "./McpJsonEditor";
+import { buildMcpEditableJson } from "@prompthub/shared/utils/mcp-json-editor";
 
-type McpDetailTab = "preview" | "code";
+type McpDetailTab = "preview" | "code" | "files";
 
 interface McpFullDetailPageProps {
   distributedTargetCount: number;
@@ -199,20 +198,6 @@ function getSourceSummary(
   };
 }
 
-function buildMcpConfigContent(server: McpServerConfig): string {
-  return JSON.stringify(
-    {
-      mcpServers: {
-        [server.name]: toMcpServerEntry(server, "custom-json", {
-          redactValues: true,
-        }),
-      },
-    },
-    null,
-    2,
-  );
-}
-
 function MetadataCell({ label, value }: { label: string; value?: string }) {
   if (!value) {
     return null;
@@ -296,6 +281,7 @@ export function McpFullDetailPage({
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [isImportingEnv, setIsImportingEnv] = useState(false);
   const [isSavingEnv, setIsSavingEnv] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [isCheckingTargetSync, setIsCheckingTargetSync] = useState(false);
   const [isSyncingTargets, setIsSyncingTargets] = useState(false);
   const [envDraft, setEnvDraft] = useState<Record<string, string>>({});
@@ -305,7 +291,7 @@ export function McpFullDetailPage({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState(server.notes ?? "");
   const sourceSummary = useMemo(() => getSourceSummary(server, t), [server, t]);
-  const configContent = useMemo(() => buildMcpConfigContent(server), [server]);
+  const configContent = useMemo(() => buildMcpEditableJson(server), [server]);
   const runtimeDetails = useMemo(() => getRuntimeDetails(server), [server]);
   const referencedEnvNames = useMemo(() => {
     const values = [
@@ -438,9 +424,12 @@ export function McpFullDetailPage({
       ),
     };
     setIsSavingEnv(true);
+    setSaveError(false);
     try {
       await onSave(server.id, { env: nextEnv });
       await onCheckServer(server.id);
+    } catch {
+      setSaveError(true);
     } finally {
       setIsSavingEnv(false);
     }
@@ -448,9 +437,12 @@ export function McpFullDetailPage({
 
   const handleSaveNotes = async () => {
     setIsSavingNotes(true);
+    setSaveError(false);
     try {
       await onSave(server.id, { notes: draftNotes });
       setIsEditingNotes(false);
+    } catch {
+      setSaveError(true);
     } finally {
       setIsSavingNotes(false);
     }
@@ -559,6 +551,11 @@ export function McpFullDetailPage({
         </div>
       </div>
 
+      {saveError && (
+        <p role="alert" className="px-6 py-2 text-sm text-destructive">
+          {t("mcp.saveFailed")}
+        </p>
+      )}
       <div className="flex items-center px-6 gap-6 border-b border-border bg-accent/20">
         {[
           {
@@ -570,6 +567,11 @@ export function McpFullDetailPage({
             icon: <CodeIcon className="w-4 h-4" aria-hidden="true" />,
             label: t("common.content", "Source / Content"),
             value: "code" as const,
+          },
+          {
+            icon: <FolderOpenIcon className="w-4 h-4" aria-hidden="true" />,
+            label: t("skill.files"),
+            value: "files" as const,
           },
         ].map((tab) => (
           <button
@@ -593,15 +595,21 @@ export function McpFullDetailPage({
         ))}
       </div>
 
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div
+        className={
+          activeTab === "files"
+            ? "hidden"
+            : "flex-1 flex flex-col overflow-y-auto"
+        }
+      >
         <div className={DETAIL_PAGE_CONTENT_CLASS}>
           {activeTab === "preview" ? (
             <div
               data-testid="mcp-detail-preview-layout"
               data-layout="split-sidebar"
-              className={DETAIL_PAGE_PREVIEW_GRID_CLASS}
+              className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]"
             >
-              <div className="flex min-h-0 flex-col space-y-6">
+              <div className="flex min-h-0 min-w-0 flex-col space-y-6">
                 <section className="shrink-0 space-y-4">
                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                     {t("mcp.detail", "MCP Detail")}
@@ -805,14 +813,14 @@ export function McpFullDetailPage({
 
                 {envRequirements.length > 0 ? (
                   <section className="shrink-0 space-y-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                         {t(
                           "mcp.requiredVariables",
                           "Required environment variables",
                         )}
                       </h3>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => envInputRef.current?.click()}
@@ -850,7 +858,7 @@ export function McpFullDetailPage({
                         />
                       </div>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-3">
                       {envRequirements.map((requirement) => {
                         const value = envDraft[requirement.name] ?? "";
                         const missing =
@@ -862,17 +870,17 @@ export function McpFullDetailPage({
                         return (
                           <div
                             key={requirement.name}
-                            className="rounded-xl border border-border app-wallpaper-surface px-3 py-2"
+                            className="min-w-0 rounded-xl border border-border app-wallpaper-surface px-3 py-2"
                           >
-                            <div className="mb-2 flex items-center justify-between gap-2">
+                            <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
                               <label
                                 htmlFor={`mcp-env-${server.id}-${requirement.name}`}
-                                className="font-mono text-xs font-semibold"
+                                className="min-w-0 flex-1 break-all font-mono text-xs font-semibold leading-5"
                               >
                                 {requirement.name}
                               </label>
                               <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${
                                   missing
                                     ? "bg-destructive/10 text-destructive"
                                     : invalid
@@ -1113,38 +1121,35 @@ export function McpFullDetailPage({
                   </div>
                 </div>
               </section>
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
-                    {t("common.content", "Source / Content")}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => void handleCopy(configContent, "raw")}
-                    className="p-1 px-3 bg-accent/50 hover:bg-accent rounded-lg text-xs flex items-center gap-1.5 transition-colors"
-                  >
-                    {copyStatus.raw ? (
-                      <CheckIcon
-                        className="w-3.5 h-3.5 text-green-500"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <CopyIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                    )}
-                    {copyStatus.raw
-                      ? t("skill.copied", "Copied")
-                      : t("skill.copyMd", "Copy")}
-                  </button>
-                </div>
-                <div className="app-wallpaper-panel border border-border rounded-2xl overflow-hidden">
-                  <pre className="p-5 text-xs font-mono text-foreground/80 overflow-x-auto whitespace-pre-wrap break-words max-h-[68vh] overflow-y-auto">
-                    {configContent}
-                  </pre>
-                </div>
-              </section>
             </div>
           )}
+          <section hidden={activeTab !== "code"} className="mt-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                {t("common.content")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => void handleCopy(configContent, "raw")}
+                className="flex items-center gap-1.5 rounded-lg bg-accent/50 px-3 py-2 text-xs hover:bg-accent"
+              >
+                <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                {copyStatus.raw ? t("skill.copied") : t("mcp.copyJson")}
+              </button>
+            </div>
+            <pre className="max-h-[68vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-border p-5 font-mono text-xs text-foreground/80 app-wallpaper-panel">
+              {configContent}
+            </pre>
+          </section>
         </div>
+      </div>
+
+      <div
+        className={
+          activeTab === "files" ? "min-h-0 flex-1 overflow-hidden" : "hidden"
+        }
+      >
+        <McpJsonEditor key={server.id} server={server} />
       </div>
 
       {isHistoryOpen && (

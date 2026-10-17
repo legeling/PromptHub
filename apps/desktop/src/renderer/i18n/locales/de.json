@@ -4201,7 +4201,28 @@
     },
     "saveEnvValues": "Save env",
     "savingEnvValues": "Saving...",
-    "envValue": "env value"
+    "envValue": "env value",
+    "editJson": "JSON bearbeiten",
+    "saveFailed": "MCP konnte nicht gespeichert werden. Ihre Eingaben bleiben erhalten. Beheben Sie den Fehler und versuchen Sie es erneut.",
+    "saveJson": "JSON speichern",
+    "formatJson": "JSON formatieren",
+    "copyJson": "JSON kopieren",
+    "jsonConfigLabel": "MCP-JSON-Konfiguration",
+    "jsonEditHint": "Nur diesen Server bearbeiten. [REDACTED] behält vorhandene Werte bei; ersetzen ändert sie, das Löschen des Schlüssels entfernt sie. Speichern aktualisiert Meine MCP; verteilte Ziele separat synchronisieren.",
+    "jsonSaved": "JSON gespeichert. Verteilte Ziele synchronisieren, um Änderungen anzuwenden.",
+    "jsonErrors": {
+      "syntax": "Ungültiges JSON. Anführungszeichen, Kommas und Klammern prüfen.",
+      "shape": "Ein mcpServers-Objekt verwenden.",
+      "singleServer": "Nur den aktuellen Server aufnehmen und seinen Namen beibehalten.",
+      "fields": "Nicht unterstützte oder mit diesem Transport inkompatible Felder.",
+      "values": "Argumente müssen ein String-Array sein; Umgebungs- und Headerwerte müssen Strings ohne Nullzeichen sein.",
+      "redacted": "Ein neuer Schlüssel darf nicht [REDACTED] verwenden. Den tatsächlichen Wert eingeben.",
+      "required": "Einen nicht leeren Befehl oder eine URL für den Transport angeben.",
+      "transport": "Unterstützte Transporte: stdio, http, streamable-http und sse.",
+      "save": "JSON konnte nicht gespeichert werden. Der Entwurf bleibt erhalten. Erneut versuchen.",
+      "copy": "JSON konnte nicht kopiert werden. Erneut versuchen.",
+      "stale": "Der Server wurde während der Bearbeitung geändert. Abbrechen und den Editor erneut öffnen."
+    }
   },
   "plugin": {
     "title": "Plugins",

@@ -4201,7 +4201,28 @@
     },
     "saveEnvValues": "Save env",
     "savingEnvValues": "Saving...",
-    "envValue": "env value"
+    "envValue": "env value",
+    "editJson": "Editar JSON",
+    "saveFailed": "No se pudo guardar el MCP. Se conserva lo introducido; corrige el error e inténtalo de nuevo.",
+    "saveJson": "Guardar JSON",
+    "formatJson": "Formatear JSON",
+    "copyJson": "Copiar JSON",
+    "jsonConfigLabel": "Configuración JSON de MCP",
+    "jsonEditHint": "Edite solo este servidor. [REDACTED] conserva el valor existente; reemplácelo para cambiarlo o elimine la clave para quitarlo. Guarde en Mis MCP y sincronice los destinos distribuidos por separado.",
+    "jsonSaved": "JSON guardado. Sincronice los destinos distribuidos para aplicar los cambios.",
+    "jsonErrors": {
+      "syntax": "JSON no válido. Revise comillas, comas y corchetes.",
+      "shape": "Use un solo objeto mcpServers.",
+      "singleServer": "Incluya solo el servidor actual y mantenga su nombre.",
+      "fields": "Campos no compatibles o incompatibles con este transporte.",
+      "values": "Los argumentos deben ser una lista de cadenas; las variables y cabeceras deben ser cadenas sin caracteres nulos.",
+      "redacted": "Una clave nueva no puede usar [REDACTED]. Introduzca su valor real.",
+      "required": "Introduzca un comando o URL no vacío para este transporte.",
+      "transport": "Transportes compatibles: stdio, http, streamable-http y sse.",
+      "save": "No se pudo guardar el JSON. Se conserva el borrador. Inténtelo de nuevo.",
+      "copy": "No se pudo copiar el JSON. Inténtelo de nuevo.",
+      "stale": "El servidor cambió durante la edición. Cancele y vuelva a abrir el editor."
+    }
   },
   "plugin": {
     "title": "Plugins",

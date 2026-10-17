@@ -4202,7 +4202,28 @@
     },
     "saveEnvValues": "Save env",
     "savingEnvValues": "Saving...",
-    "envValue": "env value"
+    "envValue": "env value",
+    "editJson": "Modifier le JSON",
+    "saveFailed": "Impossible d’enregistrer le MCP. Votre saisie est conservée ; corrigez l’erreur et réessayez.",
+    "saveJson": "Enregistrer le JSON",
+    "formatJson": "Formater le JSON",
+    "copyJson": "Copier le JSON",
+    "jsonConfigLabel": "Configuration JSON MCP",
+    "jsonEditHint": "Modifiez uniquement ce serveur. [REDACTED] conserve la valeur existante ; remplacez-la pour la modifier ou supprimez la clé pour la retirer. Les cibles distribuées doivent être synchronisées séparément.",
+    "jsonSaved": "JSON enregistré. Synchronisez les cibles distribuées pour appliquer les modifications.",
+    "jsonErrors": {
+      "syntax": "JSON invalide. Vérifiez les guillemets, virgules et accolades.",
+      "shape": "Utilisez un seul objet mcpServers.",
+      "singleServer": "Incluez uniquement le serveur actuel sans changer son nom.",
+      "fields": "Champs non pris en charge ou incompatibles avec ce transport.",
+      "values": "Les arguments doivent être un tableau de chaînes ; les valeurs d’environnement et d’en-têtes doivent être des chaînes sans caractère nul.",
+      "redacted": "Une nouvelle clé ne peut pas utiliser [REDACTED]. Saisissez sa valeur réelle.",
+      "required": "Indiquez une commande ou une URL non vide pour ce transport.",
+      "transport": "Transports pris en charge : stdio, http, streamable-http et sse.",
+      "save": "Impossible d’enregistrer le JSON. Le brouillon est conservé. Réessayez.",
+      "copy": "Impossible de copier le JSON. Réessayez.",
+      "stale": "Le serveur a changé pendant la modification. Annulez et rouvrez l’éditeur."
+    }
   },
   "plugin": {
     "title": "Plugins",

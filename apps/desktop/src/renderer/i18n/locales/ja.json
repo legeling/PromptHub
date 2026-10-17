@@ -4201,7 +4201,28 @@
     },
     "saveEnvValues": "Save env",
     "savingEnvValues": "Saving...",
-    "envValue": "env value"
+    "envValue": "env value",
+    "editJson": "JSON を編集",
+    "saveFailed": "MCP を保存できませんでした。入力は保持されています。エラーを修正して再試行してください。",
+    "saveJson": "JSON を保存",
+    "formatJson": "JSON を整形",
+    "copyJson": "JSON をコピー",
+    "jsonConfigLabel": "MCP JSON 設定",
+    "jsonEditHint": "現在のサービスのみ編集します。[REDACTED] は元の値を保持します。値の変更は置き換え、削除はキーを削除してください。保存後、配布済みの対象は別途同期してください。",
+    "jsonSaved": "JSON を保存しました。配布済みの対象を同期して変更を適用してください。",
+    "jsonErrors": {
+      "syntax": "JSON が無効です。引用符、カンマ、括弧を確認してください。",
+      "shape": "mcpServers オブジェクトを 1 つ使用してください。",
+      "singleServer": "現在のサービスのみ含め、名前は変更しないでください。",
+      "fields": "未対応のフィールド、または転送方式と互換性のないフィールドがあります。",
+      "values": "引数は文字列配列、環境変数とヘッダーは null 文字を含まない文字列にしてください。",
+      "redacted": "新しいキーに [REDACTED] は使用できません。実際の値を入力してください。",
+      "required": "選択した転送方式のコマンドまたは URL を入力してください。",
+      "transport": "対応する転送方式：stdio、http、streamable-http、sse。",
+      "save": "JSON を保存できませんでした。下書きは保持されています。再試行してください。",
+      "copy": "JSON をコピーできませんでした。再試行してください。",
+      "stale": "編集中にサービスが変更されました。キャンセルしてエディターを開き直してください。"
+    }
   },
   "plugin": {
     "title": "プラグイン",

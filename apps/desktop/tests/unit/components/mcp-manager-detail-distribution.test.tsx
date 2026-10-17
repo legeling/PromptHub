@@ -16,6 +16,7 @@ import type { McpTargetPreset } from "@prompthub/core";
 import type { McpServerConfig } from "@prompthub/shared/types/mcp";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 
 const showToast = vi.fn();
 
@@ -246,6 +247,10 @@ function installMcpMocks(options: McpMockOptions = {}) {
   ];
   return installWindowMocks({
     api: {
+      skill: {
+        getSupportedPlatforms: vi.fn().mockResolvedValue(SKILL_PLATFORMS),
+        detectPlatforms: vi.fn().mockResolvedValue(["codex", "claude"]),
+      },
       mcp: {
         getLibrary: vi.fn().mockResolvedValue({
           kind: "prompthub-mcp-library",
@@ -449,6 +454,49 @@ describe("McpManager", () => {
     return screen.findByTestId("mcp-full-detail-page");
   }
 
+  it("shows only available Agents in detail and submits only visible targets", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks();
+    vi.mocked(api.skill.detectPlatforms).mockResolvedValue(["codex"]);
+    await renderWithI18n(<McpManager />, { language: "en" });
+    const detail = await openFilesystemDetail(user);
+    expect(
+      await within(detail).findByRole("button", { name: "Codex CLI" }),
+    ).toBeEnabled();
+    expect(within(detail).queryByText("Claude Code")).not.toBeInTheDocument();
+    await user.click(
+      within(detail).getByRole("button", { name: "Select all" }),
+    );
+    await user.click(
+      within(detail).getByRole("button", { name: "Apply to 1 platform(s)" }),
+    );
+    await waitFor(() => expect(api.mcp.apply).toHaveBeenCalledTimes(1));
+    expect(api.mcp.apply).toHaveBeenCalledWith({
+      target: "codex",
+      scope: "global",
+      path: codexTarget.path,
+      serverIds: [filesystemServer.id],
+    });
+  });
+
+  it("keeps explicitly configured Agents available without detecting their directories", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks();
+    vi.mocked(api.skill.detectPlatforms).mockResolvedValue([]);
+    vi.mocked(api.skill.getSupportedPlatforms).mockResolvedValue(
+      SKILL_PLATFORMS.map((platform) => ({
+        ...platform,
+        isConfigured: platform.id === "claude",
+      })),
+    );
+    await renderWithI18n(<McpManager />, { language: "en" });
+    const detail = await openFilesystemDetail(user);
+    expect(
+      await within(detail).findByRole("button", { name: "Claude Code" }),
+    ).toBeEnabled();
+    expect(within(detail).queryByText("Codex CLI")).not.toBeInTheDocument();
+  });
+
   it("renders the selected MCP with the Skill-style full detail page", async () => {
     const user = userEvent.setup();
     const { api } = installMcpMocks();
@@ -465,7 +513,7 @@ describe("McpManager", () => {
       );
       expect(previewLayout).toHaveAttribute("data-layout", "split-sidebar");
       expect(previewLayout.className).toContain(
-        "md:grid-cols-[minmax(0,1fr)_22rem]",
+        "xl:grid-cols-[minmax(0,1fr)_24rem]",
       );
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(
@@ -919,7 +967,9 @@ describe("McpManager", () => {
 
     const confirmation = await screen.findByRole("alertdialog");
     expect(api.mcp.apply).toHaveBeenCalledTimes(1);
-    await user.click(within(confirmation).getByRole("button", { name: "Confirm" }));
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Confirm" }),
+    );
     await waitFor(() => {
       expect(confirmSpy).not.toHaveBeenCalled();
       expect(api.mcp.apply).toHaveBeenNthCalledWith(1, {

@@ -4201,7 +4201,28 @@
     },
     "saveEnvValues": "儲存環境變數",
     "savingEnvValues": "正在儲存...",
-    "envValue": "環境變數值"
+    "envValue": "環境變數值",
+    "editJson": "編輯 JSON",
+    "saveFailed": "MCP 儲存失敗，已保留輸入。請修正錯誤後重試。",
+    "saveJson": "儲存 JSON",
+    "formatJson": "格式化 JSON",
+    "copyJson": "複製 JSON",
+    "jsonConfigLabel": "MCP JSON 設定",
+    "jsonEditHint": "僅編輯目前服務。保留 [REDACTED] 會沿用原值；替換它可更新值，刪除鍵可移除該項。儲存僅更新「我的 MCP」，已分發目標需另行同步。",
+    "jsonSaved": "JSON 已儲存。請同步已分發目標以套用變更。",
+    "jsonErrors": {
+      "syntax": "JSON 格式錯誤，請檢查引號、逗號和括號。",
+      "shape": "請使用一個 mcpServers 物件。",
+      "singleServer": "只能包含目前服務，且服務名稱須保持不變。",
+      "fields": "包含不支援的欄位，或與目前傳輸方式不相容的欄位。",
+      "values": "參數須為字串陣列；環境變數和標頭須為字串，且不能包含空字元。",
+      "redacted": "新增的鍵不能使用 [REDACTED]，請填寫實際值。",
+      "required": "請為目前傳輸方式填寫非空的命令或 URL。",
+      "transport": "支援的傳輸方式：stdio、http、streamable-http 和 sse。",
+      "save": "JSON 儲存失敗，草稿已保留，請重試。",
+      "copy": "JSON 複製失敗，請重試。",
+      "stale": "編輯期間此服務已變更，請取消並重新開啟編輯器以載入最新設定。"
+    }
   },
   "plugin": {
     "title": "Plugins",

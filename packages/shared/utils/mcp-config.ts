@@ -359,7 +359,8 @@ export function sanitizeMcpServerName(value: string): string {
 
 export function parseMcpArgs(value: string | string[] | undefined): string[] {
   if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+    // Array entries are positional process arguments, including empty strings.
+    return [...value];
   }
   if (!value) {
     return [];
@@ -718,6 +719,8 @@ export function installMcpTemplate(
   return normalizeMcpServerDraft(
     {
       ...template,
+      // Registry identity is provenance, not a filesystem-safe local resource id.
+      id: createId("mcp"),
       source: {
         type: "market",
         id: template.id,

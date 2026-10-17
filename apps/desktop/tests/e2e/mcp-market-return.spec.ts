@@ -112,6 +112,10 @@ test("returns to the searched MCP catalog and scroll position after real install
     const library = await page.evaluate(() => window.api.mcp.getLibrary());
     expect(library.servers).toHaveLength(1);
     expect(library.servers[0].name).toBe("test-fixture-server-24");
+    expect(library.servers[0].id).toMatch(/^mcp_[a-z0-9]+$/);
+    expect(library.servers[0].source.id).toBe(
+      "modelcontextprotocol:test-fixture-server-24",
+    );
     await page.getByPlaceholder("Search MCP...").fill("library-only query");
     await registry.click();
     await expect.soft(search).toHaveValue("fixture");

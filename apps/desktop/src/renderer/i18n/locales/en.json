@@ -4241,7 +4241,28 @@
     },
     "saveEnvValues": "Save env",
     "savingEnvValues": "Saving...",
-    "envValue": "env value"
+    "envValue": "env value",
+    "editJson": "Edit JSON",
+    "saveFailed": "Could not save MCP. Your input is retained; correct the error and try again.",
+    "saveJson": "Save JSON",
+    "formatJson": "Format JSON",
+    "copyJson": "Copy JSON",
+    "jsonConfigLabel": "MCP JSON configuration",
+    "jsonEditHint": "Edit this server only. Keep [REDACTED] to retain an existing value; replace it to update, or delete the key to remove it. Saving updates My MCP; sync distributed targets separately.",
+    "jsonSaved": "JSON saved. Sync distributed targets to apply these changes.",
+    "jsonErrors": {
+      "syntax": "Invalid JSON. Check quotes, commas and brackets.",
+      "shape": "Use one mcpServers object.",
+      "singleServer": "Include only the current server and keep its name unchanged.",
+      "fields": "Unsupported fields or fields incompatible with this transport.",
+      "values": "Arguments must be a string array; environment and header values must be strings without null bytes.",
+      "redacted": "A new key cannot use [REDACTED]. Enter its actual value.",
+      "required": "Provide a non-empty command or URL for the selected transport.",
+      "transport": "Supported transports: stdio, http, streamable-http and sse.",
+      "save": "Could not save JSON. Your draft is retained; please try again.",
+      "copy": "Could not copy JSON. Please try again.",
+      "stale": "This server changed while editing. Cancel and reopen the editor to use the latest configuration."
+    }
   },
   "plugin": {
     "title": "Plugins",

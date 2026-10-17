@@ -4239,7 +4239,28 @@
     },
     "saveEnvValues": "保存环境变量",
     "savingEnvValues": "正在保存...",
-    "envValue": "环境变量值"
+    "envValue": "环境变量值",
+    "editJson": "编辑 JSON",
+    "saveFailed": "MCP 保存失败，已保留输入。请修正错误后重试。",
+    "saveJson": "保存 JSON",
+    "formatJson": "格式化 JSON",
+    "copyJson": "复制 JSON",
+    "jsonConfigLabel": "MCP JSON 配置",
+    "jsonEditHint": "仅编辑当前服务。保留 [REDACTED] 会沿用原值；替换它可更新值，删除键可移除该项。保存仅更新“我的 MCP”，已分发目标需另行同步。",
+    "jsonSaved": "JSON 已保存。请同步已分发目标以应用更改。",
+    "jsonErrors": {
+      "syntax": "JSON 格式错误，请检查引号、逗号和括号。",
+      "shape": "请使用一个 mcpServers 对象。",
+      "singleServer": "只能包含当前服务，且服务名称须保持不变。",
+      "fields": "包含不支持的字段，或与当前传输方式不兼容的字段。",
+      "values": "参数须为字符串数组；环境变量和请求头须为字符串，且不能包含空字符。",
+      "redacted": "新增的键不能使用 [REDACTED]，请填写实际值。",
+      "required": "请为当前传输方式填写非空的命令或 URL。",
+      "transport": "支持的传输方式：stdio、http、streamable-http 和 sse。",
+      "save": "JSON 保存失败，草稿已保留，请重试。",
+      "copy": "JSON 复制失败，请重试。",
+      "stale": "编辑期间该服务已发生更改，请取消并重新打开编辑器以加载最新配置。"
+    }
   },
   "plugin": {
     "title": "Plugins",
