@@ -1,5 +1,6 @@
-import { notifyTaskResult } from "./application-notifications";
+import { GenerationScheduler } from "@prompthub/core/generation-scheduler";
 import { classifyGenerationError } from "@prompthub/core/image-generation-workbench";
+import { notifyTaskResult } from "./application-notifications";
 import type {
   CreateGenerationBatchInput,
   GenerationBatchManifest,
@@ -11,7 +12,9 @@ import { generateImage, type ImageReferenceAttachment } from "./ai";
 type Listener = (batches: GenerationBatchManifest[]) => void;
 
 const listeners = new Set<Listener>();
-const cancelledBatches = new Set<string>();
+const scheduler = new GenerationScheduler();
+const activeRuns = new Map<string, { cancelled: boolean }>();
+const executions = new Map<string, Promise<void>>();
 let batches: GenerationBatchManifest[] = [];
 
 function publish(batch?: GenerationBatchManifest): void {
@@ -141,73 +144,116 @@ function buildProviderOptions(
   };
 }
 
+interface BatchExecution {
+  initial: GenerationBatchManifest;
+  config: AIModelConfig;
+  references: ImageReferenceAttachment[];
+  isActive: () => boolean;
+}
+
+async function executeSlot(
+  context: BatchExecution,
+  index: number,
+): Promise<void> {
+  const { initial, config, references, isActive } = context;
+  if (!isActive()) return;
+  let updated: GenerationBatchManifest;
+  try {
+    updated = await window.api.generation.markSlotRunning(initial.id, index);
+    if (!isActive()) return;
+    publish(updated);
+    const response = await generateImage(
+      config,
+      initial.resolvedPrompt,
+      buildProviderOptions(initial, config, references),
+    );
+    if (!isActive()) return;
+    const image = response.data[0];
+    if (!image) throw new Error("Provider returned no image data");
+    const target = {
+      batchId: initial.id,
+      slotIndex: index,
+      ...(image.revised_prompt ? { revisedPrompt: image.revised_prompt } : {}),
+    };
+    if (image.b64_json) {
+      updated = await window.api.generation.commitOutput({
+        ...target,
+        base64: image.b64_json,
+      });
+    } else if (image.url) {
+      updated = await window.api.generation.commitRemoteOutput({
+        ...target,
+        url: image.url,
+      });
+    } else {
+      throw new Error("Provider returned no image data");
+    }
+  } catch (error) {
+    if (!isActive()) return;
+    updated = await window.api.generation.failSlot({
+      batchId: initial.id,
+      slotIndex: index,
+      error: classifyGenerationError(error),
+    });
+  }
+  if (isActive()) publish(updated);
+}
+
 async function executeBatch(
   initial: GenerationBatchManifest,
   config: AIModelConfig,
   referenceImages: ImageReferenceAttachment[],
 ): Promise<void> {
-  let batch = initial;
+  const run = { cancelled: false };
+  activeRuns.set(initial.id, run);
+  const isActive = () => activeRuns.get(initial.id) === run && !run.cancelled;
+  const endpoint =
+    config.apiUrl?.trim().replace(/\/+$/, "") || config.provider || "default";
   try {
-    for (const slot of initial.slots.filter(
-      (item) => item.status === "pending",
-    )) {
-      if (cancelledBatches.has(initial.id)) break;
-      try {
-        batch = await window.api.generation.markSlotRunning(
-          initial.id,
-          slot.index,
-        );
-        if (cancelledBatches.has(initial.id)) break;
-        publish(batch);
-        const response = await generateImage(
-          config,
-          initial.resolvedPrompt,
-          buildProviderOptions(initial, config, referenceImages),
-        );
-        if (cancelledBatches.has(initial.id)) break;
-        const first = response.data[0];
-        if (!first) throw new Error("Provider returned no image data");
-        if (first.b64_json) {
-          batch = await window.api.generation.commitOutput({
-            batchId: initial.id,
-            slotIndex: slot.index,
-            base64: first.b64_json,
-            ...(first.revised_prompt
-              ? { revisedPrompt: first.revised_prompt }
-              : {}),
-          });
-        } else if (first.url) {
-          batch = await window.api.generation.commitRemoteOutput({
-            batchId: initial.id,
-            slotIndex: slot.index,
-            url: first.url,
-            ...(first.revised_prompt
-              ? { revisedPrompt: first.revised_prompt }
-              : {}),
-          });
-        } else {
-          throw new Error("Provider returned no image data");
-        }
-      } catch (error) {
-        if (cancelledBatches.has(initial.id)) break;
-        batch = await window.api.generation.failSlot({
-          batchId: initial.id,
-          slotIndex: slot.index,
-          error: classifyGenerationError(error),
-        });
-      }
-      publish(batch);
-    }
-    if (!cancelledBatches.has(initial.id)) {
-      const failed = batch.slots.filter((slot) => slot.status === "failed").length;
-      notifyTaskResult("generation", failed === 0 ? "success" : failed === batch.slots.length ? "error" : "attention");
+    const context = { initial, config, references: referenceImages, isActive };
+    const results = await Promise.allSettled(
+      initial.slots
+        .filter((slot) => slot.status === "pending")
+        .map((slot) =>
+          scheduler.schedule(endpoint, initial.id, () =>
+            executeSlot(context, slot.index),
+          ),
+        ),
+    );
+    const rejected = results.find((result) => result.status === "rejected");
+    if (rejected?.status === "rejected") throw rejected.reason;
+    if (isActive()) {
+      const batch = batches.find((item) => item.id === initial.id) ?? initial;
+      const failed = batch.slots.filter(
+        (slot) => slot.status === "failed",
+      ).length;
+      notifyTaskResult(
+        "generation",
+        failed === 0
+          ? "success"
+          : failed === batch.slots.length
+            ? "error"
+            : "attention",
+      );
     }
   } catch (error) {
     console.error("Generation batch could not finish:", error);
-    if (!cancelledBatches.has(initial.id)) notifyTaskResult("generation", "error");
+    if (isActive()) notifyTaskResult("generation", "error");
   } finally {
-    cancelledBatches.delete(initial.id);
+    if (activeRuns.get(initial.id) === run) activeRuns.delete(initial.id);
   }
+}
+
+function launchBatch(
+  batch: GenerationBatchManifest,
+  config: AIModelConfig,
+  references: ImageReferenceAttachment[],
+): void {
+  const execution = executeBatch(batch, config, references);
+  executions.set(batch.id, execution);
+  void execution.finally(() => {
+    if (executions.get(batch.id) === execution) executions.delete(batch.id);
+  });
 }
 
 export async function loadGenerationBatches(): Promise<
@@ -231,12 +277,13 @@ export async function startGenerationBatch(
   const references = await loadReferenceAttachments(input.referenceImages);
   const batch = await window.api.generation.create(input);
   publish(batch);
-  void executeBatch(batch, config, references);
+  launchBatch(batch, config, references);
   return batch;
 }
 
 export async function cancelGenerationBatch(batchId: string): Promise<void> {
-  cancelledBatches.add(batchId);
+  const run = activeRuns.get(batchId);
+  if (run) run.cancelled = true;
   publish(await window.api.generation.cancel(batchId));
 }
 
@@ -259,10 +306,10 @@ export async function retryGenerationBatch(
   config: AIModelConfig,
 ): Promise<GenerationBatchManifest> {
   const references = await loadReferenceAttachments(batch.referenceImages);
-  cancelledBatches.delete(batch.id);
+  await executions.get(batch.id);
   const retried = await window.api.generation.retryFailed(batch.id);
   publish(retried);
-  void executeBatch(retried, config, references);
+  launchBatch(retried, config, references);
   return retried;
 }
 

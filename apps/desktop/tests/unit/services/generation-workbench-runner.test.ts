@@ -112,6 +112,113 @@ describe("generation workbench runner", () => {
     expect(window.api.generation.commitOutput).not.toHaveBeenCalled();
     expect(publishNotificationMock).not.toHaveBeenCalled();
   });
+  it("starts four requests together and saves out-of-order results before slower images", async () => {
+    let current = batch([
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+    ]);
+    vi.mocked(window.api.generation.create).mockResolvedValue(current);
+    vi.mocked(window.api.generation.markSlotRunning).mockImplementation(
+      async (_id, index) => {
+        current = batch(
+          current.slots.map((slot) =>
+            slot.index === index ? "running" : slot.status,
+          ),
+        );
+        return current;
+      },
+    );
+    vi.mocked(window.api.generation.commitOutput).mockImplementation(
+      async ({ slotIndex }) => {
+        current = batch(
+          current.slots.map((slot) =>
+            slot.index === slotIndex ? "succeeded" : slot.status,
+          ),
+        );
+        return current;
+      },
+    );
+    const finish: Array<
+      (value: { data: Array<{ b64_json: string }> }) => void
+    > = [];
+    generateImage.mockImplementation(
+      () => new Promise((resolve) => finish.push(resolve)),
+    );
+    const { startGenerationBatch } =
+      await import("../../../src/renderer/services/generation-workbench-runner");
+    await startGenerationBatch(
+      { prompt: "Poster", model: current.model, targetCount: 5 },
+      {
+        id: "model-1",
+        type: "image",
+        provider: "openai",
+        model: "gpt-image-1",
+        apiProtocol: "openai",
+        apiKey: "key",
+        apiUrl: "https://concurrent.invalid/v1",
+      },
+    );
+    await vi.waitFor(() => expect(finish).toHaveLength(4));
+    finish[3]({ data: [{ b64_json: "Zm91cg==" }] });
+    await vi.waitFor(() =>
+      expect(window.api.generation.commitOutput).toHaveBeenCalledWith(
+        expect.objectContaining({ slotIndex: 3 }),
+      ),
+    );
+    await vi.waitFor(() => expect(finish).toHaveLength(5));
+    expect(current.slots[0].status).toBe("running");
+    expect(current.slots[3].status).toBe("succeeded");
+    expect(publishNotificationMock).not.toHaveBeenCalled();
+    finish.forEach((resolve) => resolve({ data: [{ b64_json: "aW1hZ2U=" }] }));
+    await vi.waitFor(() =>
+      expect(current.slots.every((slot) => slot.status === "succeeded")).toBe(
+        true,
+      ),
+    );
+    await vi.waitFor(() =>
+      expect(publishNotificationMock).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it("cancels all in-flight results and never starts queued images", async () => {
+    vi.mocked(window.api.generation.create).mockResolvedValue(
+      batch(Array(6).fill("pending")),
+    );
+    vi.mocked(window.api.generation.cancel).mockResolvedValue(
+      batch(Array(6).fill("cancelled")),
+    );
+    const finish: Array<
+      (value: { data: Array<{ b64_json: string }> }) => void
+    > = [];
+    generateImage.mockImplementation(
+      () => new Promise((resolve) => finish.push(resolve)),
+    );
+    const { startGenerationBatch, cancelGenerationBatch } =
+      await import("../../../src/renderer/services/generation-workbench-runner");
+    const started = await startGenerationBatch(
+      { prompt: "Poster", model: batch([]).model, targetCount: 6 },
+      {
+        id: "model-1",
+        type: "image",
+        provider: "openai",
+        model: "gpt-image-1",
+        apiProtocol: "openai",
+        apiKey: "key",
+        apiUrl: "https://cancel.invalid/v1",
+      },
+    );
+    await vi.waitFor(() => expect(finish).toHaveLength(4));
+    await cancelGenerationBatch(started.id);
+    finish.forEach((resolve) => resolve({ data: [{ b64_json: "aW1hZ2U=" }] }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(generateImage).toHaveBeenCalledTimes(4);
+    expect(window.api.generation.commitOutput).not.toHaveBeenCalled();
+    expect(publishNotificationMock).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     publishNotificationMock.mockResolvedValue({

@@ -24,6 +24,11 @@ const runner = vi.hoisted(() => ({
   listeners: [] as Array<(batches: unknown[]) => void>,
 }));
 
+const copyImage = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock("../../../src/renderer/services/generation-image-clipboard", () => ({
+  copyGenerationImage: copyImage,
+}));
+
 const clipboard = vi.hoisted(() => ({
   writeText: vi.fn().mockResolvedValue(undefined),
 }));
@@ -44,8 +49,9 @@ vi.mock("../../../src/renderer/services/generation-workbench-runner", () => ({
   },
 }));
 
+const toast = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
-  useToast: () => ({ showToast: vi.fn() }),
+  useToast: () => ({ showToast: toast }),
 }));
 
 Object.defineProperty(navigator, "clipboard", {
@@ -153,6 +159,28 @@ describe("ImageGenerationWorkbench", () => {
     });
   });
 
+  it("uses themed selectors and submits the chosen ratio and quality", async () => {
+    await renderWithI18n(<ImageGenerationWorkbench />);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Model" }));
+    fireEvent.click(screen.getByRole("option", { name: "gpt-image-1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ratio" }));
+    fireEvent.click(screen.getByRole("option", { name: "16:9" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quality" }));
+    fireEvent.click(screen.getByRole("option", { name: "High" }));
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    await waitFor(() => expect(runner.start).toHaveBeenCalled());
+    expect(runner.start.mock.calls[0][0]).toMatchObject({
+      aspectRatio: "16:9",
+      quality: "hd",
+    });
+  });
+
   it("prefills an image Prompt and submits a bounded local batch", async () => {
     await renderWithI18n(<ImageGenerationWorkbench />);
 
@@ -162,9 +190,10 @@ describe("ImageGenerationWorkbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Decrease count" }));
     expect(screen.getByLabelText("Image count")).toHaveValue(1);
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "image-prompt-1" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
     expect(screen.getByRole("textbox")).toHaveValue(
       "Minimal white concrete house",
     );
@@ -204,9 +233,10 @@ describe("ImageGenerationWorkbench", () => {
     });
     await renderWithI18n(<ImageGenerationWorkbench />);
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "image-prompt-1" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Reference images" }));
     expect(screen.getAllByText("0 reference(s)")).toHaveLength(2);
     fireEvent.click(
@@ -326,9 +356,10 @@ describe("ImageGenerationWorkbench", () => {
     });
     await renderWithI18n(<ImageGenerationWorkbench />);
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "image-prompt-1" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
 
     await waitFor(() => expect(runner.start).toHaveBeenCalled());
@@ -503,6 +534,7 @@ describe("ImageGenerationWorkbench", () => {
     useSettingsStore.setState({ aiModels: [] });
 
     await renderWithI18n(<ImageGenerationWorkbench />);
+    expect(screen.getByRole("button", { name: "Model" })).toBeDisabled();
 
     expect(
       screen.getByText("Please configure an image model in settings first"),
@@ -525,9 +557,10 @@ describe("ImageGenerationWorkbench", () => {
     });
     await renderWithI18n(<ImageGenerationWorkbench />);
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "image-prompt-1" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
     expect(
       screen.queryByRole("button", { name: "Advanced" }),
     ).not.toBeInTheDocument();
@@ -727,21 +760,21 @@ describe("ImageGenerationWorkbench", () => {
     await renderWithI18n(<ImageGenerationWorkbench />);
 
     const model = screen.getByLabelText("Model");
-    fireEvent.change(model, { target: { value: "" } });
-    fireEvent.change(model, { target: { value: "image-model-1" } });
+    fireEvent.click(model);
+    fireEvent.click(
+      screen.getByRole("option", { name: "gemini-2.5-flash-image" }),
+    );
 
-    expect(screen.getByLabelText("Ratio")).toHaveValue("1:1");
-    expect(screen.getByLabelText("Quality")).toHaveValue("standard");
+    expect(screen.getByLabelText("Ratio")).toHaveTextContent("1:1");
+    expect(screen.getByLabelText("Quality")).toHaveTextContent("Standard");
     expect(screen.getByText("Image count")).toBeInTheDocument();
     expect(screen.getByLabelText("Image count").closest("footer")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Ratio"), {
-      target: { value: "4:5" },
-    });
-    expect(screen.getByLabelText("Ratio")).toHaveValue("4:5");
-    fireEvent.change(screen.getByLabelText("Quality"), {
-      target: { value: "hd" },
-    });
-    expect(screen.getByLabelText("Quality")).toHaveValue("hd");
+    fireEvent.click(screen.getByLabelText("Ratio"));
+    fireEvent.click(screen.getByRole("option", { name: "4:5" }));
+    expect(screen.getByLabelText("Ratio")).toHaveTextContent("4:5");
+    fireEvent.click(screen.getByLabelText("Quality"));
+    fireEvent.click(screen.getByRole("option", { name: "High" }));
+    expect(screen.getByLabelText("Quality")).toHaveTextContent("High");
 
     const referenceImages = screen.getByRole("button", {
       name: "Reference images",
@@ -844,9 +877,10 @@ describe("ImageGenerationWorkbench", () => {
       screen.getByRole("tab", { name: "Generation settings" }),
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "image-prompt-1" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
     await waitFor(() => expect(runner.start).toHaveBeenCalled());
 
@@ -1067,7 +1101,9 @@ describe("ImageGenerationWorkbench", () => {
     expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(false);
     expect(screen.getByTestId("generation-config-panel")).toBeVisible();
     expect(screen.getByRole("button", { name: "Edit image" })).toBeVisible();
-    expect(screen.getByLabelText("Model")).toHaveValue(imageModel.id);
+    expect(screen.getByLabelText("Model")).toHaveTextContent(
+      "studio-image-model",
+    );
     expect(screen.getByRole("textbox")).toHaveValue(
       "Minimal white concrete house",
     );
@@ -1099,7 +1135,7 @@ describe("ImageGenerationWorkbench", () => {
     ]);
 
     const failed = screen.getByTestId("generation-output-state-0");
-    expect(failed).toHaveClass("min-h-28", "border-border");
+    expect(failed).toHaveClass("border-border");
     expect(failed).not.toHaveClass("aspect-[4/5]", "bg-destructive/[0.035]");
   });
 
@@ -1157,6 +1193,16 @@ describe("ImageGenerationWorkbench", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Architecture poster" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog.parentElement).toBe(document.body);
+    const zoomIn = within(dialog).getByRole("button", { name: "Zoom in" });
+    const reset = within(dialog).getByRole("button", { name: "Reset zoom" });
+    fireEvent.click(zoomIn);
+    expect(reset).toHaveTextContent("125%");
+    fireEvent.wheel(within(dialog).getByRole("img"), { deltaY: -100 });
+    expect(reset).toHaveTextContent("150%");
+    fireEvent.click(reset);
+    expect(reset).toHaveTextContent("100%");
+    fireEvent.click(zoomIn);
     // Newest-first ordering places slot 2 before slot 1 in the visible sequence.
     expect(within(dialog).getByText("2 / 2")).toBeInTheDocument();
     expect(
@@ -1165,6 +1211,9 @@ describe("ImageGenerationWorkbench", () => {
 
     fireEvent.keyDown(document, { key: "ArrowRight" });
     expect(within(dialog).getByText("1 / 2")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Reset zoom" }),
+    ).toHaveTextContent("100%");
     expect(
       within(dialog).getByRole("img", { name: "Generated image 2" }),
     ).toHaveAttribute("src", expect.stringContaining("output-2.png"));
@@ -1179,7 +1228,65 @@ describe("ImageGenerationWorkbench", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("runs favorite, copy-prompt, download, and attach actions from the lightbox", async () => {
+  it("keeps preview focus contained and closes on Escape even after image failure", async () => {
+    await renderWithI18n(<ImageGenerationWorkbench />);
+    emitBatches([makeBatch()]);
+    const trigger = screen.getByRole("button", { name: "Generated image 1" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Architecture poster" });
+    const close = within(dialog).getByRole("button", { name: "Close viewer" });
+    expect(close).toHaveFocus();
+    const buttons = within(dialog).getAllByRole("button");
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(buttons[buttons.length - 1]).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+    expect(close).toHaveFocus();
+    fireEvent.error(within(dialog).getByRole("img"));
+    expect(within(dialog).getByText("Image load failed")).toBeInTheDocument();
+    const backgroundKey = vi.fn();
+    document.addEventListener("keydown", backgroundKey);
+    try {
+      fireEvent.keyDown(close, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+      expect(backgroundKey).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener("keydown", backgroundKey);
+    }
+    fireEvent.click(trigger);
+    expect(
+      screen.getByRole("button", { name: "Reset zoom" }),
+    ).toHaveTextContent("100%");
+    fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps the viewer open and reports a failed image copy", async () => {
+    copyImage.mockRejectedValueOnce(new Error("Clipboard denied"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await renderWithI18n(<ImageGenerationWorkbench />);
+      emitBatches([makeBatch()]);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Generated image 1" }),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Copy image",
+        }),
+      );
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith("Copy failed", "error"),
+      );
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(clipboard.writeText).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("runs favorite, copy-image, download, and attach actions from the lightbox", async () => {
     const updatePrompt = vi.fn().mockResolvedValue(undefined);
     usePromptStore.setState({ updatePrompt });
     const anchorClick = vi
@@ -1196,14 +1303,11 @@ describe("ImageGenerationWorkbench", () => {
       expect(runner.favorite).toHaveBeenCalledWith("batch-1", "output-1", true),
     );
 
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: "Copy Prompt" }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy image" }));
     await waitFor(() =>
-      expect(clipboard.writeText).toHaveBeenCalledWith(
-        "Minimal white concrete house",
-      ),
+      expect(copyImage).toHaveBeenCalledWith("batch-1", "output-1"),
     );
+    expect(clipboard.writeText).not.toHaveBeenCalled();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Download" }));
     expect(anchorClick).toHaveBeenCalledTimes(1);
@@ -1259,6 +1363,43 @@ describe("ImageGenerationWorkbench", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select image 1" }));
     expect(screen.getByText("1 selected")).toBeInTheDocument();
+  });
+
+  it("keeps the action bar visible and retains the current preview after clearing selection", async () => {
+    await renderWithI18n(<ImageGenerationWorkbench />);
+    const toolbar = screen.getByRole("toolbar", { name: "Image actions" });
+    expect(
+      within(toolbar).getByRole("button", { name: "Favorite" }),
+    ).toBeDisabled();
+    emitBatches([makeBatch()]);
+    expect(within(toolbar).getByText("Current image")).toBeInTheDocument();
+    fireEvent.click(
+      within(toolbar).getByRole("button", { name: "Copy image" }),
+    );
+    await waitFor(() =>
+      expect(copyImage).toHaveBeenCalledWith("batch-1", "output-1"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Generated image 2" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select image 1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select image 2" }));
+    expect(within(toolbar).getByText("2 selected")).toBeInTheDocument();
+    expect(
+      within(toolbar).getByRole("button", { name: "Copy image" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      within(toolbar).getByRole("button", { name: "Clear Selection" }),
+    );
+    expect(screen.getByTestId("generation-primary-preview")).toHaveAttribute(
+      "aria-label",
+      "Generated image 2",
+    );
+    expect(screen.getByRole("toolbar", { name: "Image actions" })).toBe(
+      toolbar,
+    );
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Favorite" }));
+    await waitFor(() =>
+      expect(runner.favorite).toHaveBeenCalledWith("batch-1", "output-2", true),
+    );
   });
 
   it("favorites every selected output from the bottom action bar", async () => {
@@ -1369,9 +1510,10 @@ describe("ImageGenerationWorkbench", () => {
   it("shows a submission error without collapsing the composer", async () => {
     runner.start.mockRejectedValueOnce(new Error("provider unavailable"));
     await renderWithI18n(<ImageGenerationWorkbench />);
-    fireEvent.change(screen.getAllByRole("combobox")[0], {
-      target: { value: "image-prompt-1" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Source Prompt" }));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Architecture poster" }),
+    );
 
     const generate = screen.getByRole("button", { name: "Generate" });
     await waitFor(() => expect(generate).toBeEnabled());

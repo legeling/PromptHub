@@ -1276,7 +1276,7 @@ describe("TopBar", () => {
     expect(useUIStore.getState().isSidebarCollapsed).toBe(true);
   });
 
-  it("keeps Prompt search and the same sidebar control mounted across graph and generation views", async () => {
+  it("hides Prompt search and creation in generation while preserving sidebar controls and the query on return", async () => {
     useUIStore.setState({
       appModule: "prompt",
       viewMode: "prompt",
@@ -1294,25 +1294,28 @@ describe("TopBar", () => {
 
     const toggle = screen.getByRole("button", { name: "Collapse" });
     const search = screen.getByRole("textbox");
+    fireEvent.change(search, { target: { value: "poster" } });
     act(() => usePromptStore.getState().setViewMode("generation"));
     expect(screen.getByRole("button", { name: "Expand" })).toBe(toggle);
-    expect(screen.getByRole("textbox")).toBe(search);
-    expect(search).toBeVisible();
-    expect(screen.getByRole("button", { name: "New" })).toBeVisible();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "New" })).toBeNull();
+    act(() => window.dispatchEvent(new Event("shortcut:newPrompt")));
+    act(() => window.dispatchEvent(new Event("shortcut:search")));
+    expect(
+      screen.queryByRole("button", { name: "Mock create prompt" }),
+    ).toBeNull();
     fireEvent.click(toggle);
     expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(true);
     expect(screen.getByRole("button", { name: "Collapse" })).toBe(toggle);
     fireEvent.click(toggle);
     expect(useUIStore.getState().isSidebarCollapsed).toBe(false);
     expect(useUIStore.getState().isWorkbenchSidebarExpanded).toBe(false);
-    fireEvent.change(search, { target: { value: "poster" } });
     expect(usePromptStore.getState().searchQuery).toBe("poster");
-    act(() => window.dispatchEvent(new Event("shortcut:search")));
-    expect(search).toHaveFocus();
-    fireEvent.keyDown(search, { key: "Escape" });
-    expect(search).toHaveValue("");
     act(() => usePromptStore.getState().setViewMode("graph"));
     expect(screen.getByRole("button", { name: "Collapse" })).toBe(toggle);
-    expect(screen.getByRole("textbox")).toBe(search);
+    expect(screen.getByRole("textbox")).toHaveValue("poster");
+    expect(screen.getByRole("button", { name: "New" })).toBeVisible();
+    act(() => window.dispatchEvent(new Event("shortcut:search")));
+    expect(screen.getByRole("textbox")).toHaveFocus();
   });
 });

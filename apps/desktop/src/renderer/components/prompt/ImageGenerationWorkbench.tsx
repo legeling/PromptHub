@@ -1,8 +1,8 @@
+import { ImageGenerationActionBar } from "./ImageGenerationActionBar";
+import { copyGenerationImage } from "../../services/generation-image-clipboard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
-  CopyIcon,
-  DownloadIcon,
   HardDriveIcon,
   HistoryIcon,
   ImageIcon,
@@ -10,7 +10,6 @@ import {
   PlusIcon,
   StarIcon,
   XCircleIcon,
-  XIcon,
 } from "lucide-react";
 import { resolveGenerationPrompt } from "@prompthub/core/image-generation-workbench";
 import { MEDIA_SAVE_MAX_BYTES } from "@prompthub/shared/constants/media-limits";
@@ -169,7 +168,7 @@ function OutputTile({
   return (
     <div
       data-testid={`generation-output-state-${slotIndex}`}
-      className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-md border px-3 py-4 ${density === "list" ? "h-24" : ""} ${stateClass}`}
+      className={`flex min-w-0 flex-col items-center justify-center gap-2 rounded-md border px-3 py-4 ${density === "list" ? "h-24" : "aspect-square w-full"} ${stateClass}`}
     >
       {failed ? (
         <XCircleIcon className="h-7 w-7" aria-hidden="true" />
@@ -229,7 +228,6 @@ export function ImageGenerationWorkbench() {
   const [selectedOutputKeys, setSelectedOutputKeys] = useState<Set<string>>(
     () => new Set(),
   );
-  const [primaryOutputKey, setPrimaryOutputKey] = useState<string | null>(null);
   const [lightboxKey, setLightboxKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -392,9 +390,20 @@ export function ImageGenerationWorkbench() {
       ),
     [batches, selectedOutputKeys],
   );
-  const primaryOutput =
-    selectedOutputs.find((item) => item.key === primaryOutputKey) ??
-    selectedOutputs[0];
+  const focusedEntry =
+    galleryFilter === "current"
+      ? galleryOutputs.find(
+          (entry) =>
+            entry.batch.id === selectedBatch?.id &&
+            entry.output.id === focusedOutputId,
+        )
+      : undefined;
+  const actionOutputs =
+    selectedOutputs.length > 0
+      ? selectedOutputs
+      : focusedEntry
+        ? [focusedEntry]
+        : [];
   const lightboxIndex = lightboxKey
     ? galleryOutputs.findIndex(
         (entry) => `${entry.batch.id}:${entry.output.id}` === lightboxKey,
@@ -427,7 +436,6 @@ export function ImageGenerationWorkbench() {
     setCount(DEFAULT_GENERATION_COUNT);
     setReferences([]);
     setSelectedOutputKeys(new Set());
-    setPrimaryOutputKey(null);
     setSubmitError("");
   };
 
@@ -599,6 +607,16 @@ export function ImageGenerationWorkbench() {
     showToast(t("generation.attachedToPrompt"), "success");
   };
 
+  const copyOutputImage = async ({ batch, output }: GalleryOutputEntry) => {
+    try {
+      await copyGenerationImage(batch.id, output.id);
+      showToast(t("generation.imageCopied"), "success");
+    } catch (error) {
+      console.error("Failed to copy generated image:", error);
+      showToast(t("prompt.copyFailed"), "error");
+    }
+  };
+
   const copyExecutionPrompt = async (batch: GenerationBatchManifest) => {
     await navigator.clipboard.writeText(batch.resolvedPrompt);
     showToast(t("generation.promptCopied"), "success");
@@ -618,15 +636,10 @@ export function ImageGenerationWorkbench() {
     if (next.has(key)) next.delete(key);
     else next.add(key);
     setSelectedOutputKeys(next);
-    setPrimaryOutputKey(
-      next.has(key) ? key : ([...next][next.size - 1] ?? null),
-    );
   };
 
   const clearSelection = () => {
     setSelectedOutputKeys(new Set());
-    setPrimaryOutputKey(null);
-    setFocusedOutputId(null);
   };
 
   const openLightbox = (selection: SelectedOutput) => {
@@ -647,7 +660,6 @@ export function ImageGenerationWorkbench() {
     setSelectedBatchId(id);
     setGalleryFilter("current");
     setSelectedOutputKeys(new Set());
-    setPrimaryOutputKey(null);
   };
 
   const openInspector = (tab: GenerationInspectorTab) => {
@@ -886,75 +898,29 @@ export function ImageGenerationWorkbench() {
             )}
           </div>
 
-          {selectedOutputs.length > 0 && (
-            <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-card/95 px-5 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.04)]">
-              <span className="text-sm">
-                {t("generation.selectedCount", {
-                  count: selectedOutputs.length,
-                })}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => void toggleFavorites(selectedOutputs)}
-                  aria-pressed={selectedOutputs.every(
-                    (item) => item.output.favorite,
-                  )}
-                  className="flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm"
-                >
-                  <StarIcon
-                    className={`h-4 w-4 ${selectedOutputs.every((item) => item.output.favorite) ? "fill-current text-amber-500" : ""}`}
-                  />
-                  {t("generation.favorite")}
-                </button>
-                {selectedOutputs.some(
-                  (item) =>
-                    item.batch.sourcePromptId &&
-                    prompts.some(
-                      (promptItem) =>
-                        promptItem.id === item.batch.sourcePromptId,
-                    ),
-                ) && (
-                  <button
-                    type="button"
-                    onClick={() => void attachOutputs(selectedOutputs)}
-                    className="flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm"
-                  >
-                    <ImageIcon className="h-4 w-4" />
-                    {t("prompt.addToPrompt")}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() =>
-                    primaryOutput &&
-                    void copyExecutionPrompt(primaryOutput.batch)
-                  }
-                  className="flex h-9 w-9 items-center justify-center rounded-md border border-border"
-                  title={t("generation.copyPrompt")}
-                  aria-label={t("generation.copyPrompt")}
-                >
-                  <CopyIcon className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => downloadOutputs(selectedOutputs)}
-                  className="flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm"
-                >
-                  <DownloadIcon className="h-4 w-4" />
-                  {t("generation.download")}
-                </button>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className="flex h-9 w-9 items-center justify-center text-muted-foreground"
-                  aria-label={t("common.close")}
-                >
-                  <XIcon className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          <ImageGenerationActionBar
+            selectedCount={selectedOutputs.length}
+            targetCount={actionOutputs.length}
+            allFavorite={
+              actionOutputs.length > 0 &&
+              actionOutputs.every((entry) => entry.output.favorite)
+            }
+            canAttach={actionOutputs.some(
+              (entry) =>
+                entry.batch.sourcePromptId &&
+                prompts.some(
+                  (prompt) => prompt.id === entry.batch.sourcePromptId,
+                ),
+            )}
+            onFavorite={() => void toggleFavorites(actionOutputs)}
+            onAttach={() => void attachOutputs(actionOutputs)}
+            onCopy={() => {
+              if (actionOutputs.length === 1)
+                void copyOutputImage(actionOutputs[0]);
+            }}
+            onDownload={() => downloadOutputs(actionOutputs)}
+            onClear={clearSelection}
+          />
         </main>
 
         {!inspectorOpen && (
@@ -1010,7 +976,7 @@ export function ImageGenerationWorkbench() {
           onNext={() => stepLightbox(1)}
           onToggleFavorite={() => void toggleFavorites([lightboxEntry])}
           onDownload={() => downloadOutputs([lightboxEntry])}
-          onCopyPrompt={() => void copyExecutionPrompt(lightboxEntry.batch)}
+          onCopyImage={() => void copyOutputImage(lightboxEntry)}
           onAttach={() => void attachOutputs([lightboxEntry])}
         />
       )}

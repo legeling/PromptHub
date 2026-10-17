@@ -1,4 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
+import { ImagePreviewViewport } from "../ui/ImagePreviewViewport";
+import { useGenerationLightboxControls } from "./useGenerationLightboxControls";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -26,12 +29,34 @@ interface ImageGenerationLightboxProps {
   onNext: () => void;
   onToggleFavorite: () => void;
   onDownload: () => void;
-  onCopyPrompt: () => void;
+  onCopyImage: () => void;
   onAttach: () => void;
 }
 
 const actionButtonClass =
   "flex h-9 w-9 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white";
+
+function GenerationPreview({
+  batch,
+  output,
+}: Pick<ImageGenerationLightboxProps, "batch" | "output">): ReactElement {
+  const { t } = useTranslation();
+  const [failed, setFailed] = useState(false);
+  if (failed)
+    return (
+      <p role="status" className="m-auto text-white/80">
+        {t("common.imageLoadFailed")}
+      </p>
+    );
+  return (
+    <ImagePreviewViewport
+      imageSrc={`${batch.id}/${output.fileName}`}
+      resolveSource={resolveLocalGenerationImageSrc}
+      alt={t("generation.outputAlt", { index: output.slotIndex + 1 })}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export function ImageGenerationLightbox({
   batch,
@@ -44,50 +69,29 @@ export function ImageGenerationLightbox({
   onNext,
   onToggleFavorite,
   onDownload,
-  onCopyPrompt,
+  onCopyImage,
   onAttach,
-}: ImageGenerationLightboxProps) {
+}: ImageGenerationLightboxProps): ReactElement {
   const { t } = useTranslation();
-  const contentRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useGenerationLightboxControls(onClose, onPrevious, onNext);
 
-  useEffect(() => {
-    contentRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      } else if (event.key === "ArrowLeft") {
-        onPrevious();
-      } else if (event.key === "ArrowRight") {
-        onNext();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, onPrevious, onNext]);
-
-  return (
+  return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={batch.title}
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-[10000] overflow-hidden"
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/90"
         onClick={onClose}
         aria-hidden="true"
         tabIndex={-1}
       />
-      <div
-        ref={contentRef}
-        tabIndex={-1}
-        className="relative z-10 flex h-full flex-col items-center justify-center gap-3 px-8 py-6 outline-none"
-      >
-        <div className="flex w-full max-w-4xl items-center justify-between gap-4 text-white">
+      <div className="pointer-events-none relative z-10 flex h-full min-h-0 flex-col items-center gap-3 px-4 py-4 outline-none sm:px-8">
+        <div className="pointer-events-auto flex w-full shrink-0 items-center justify-between gap-4 text-white">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{batch.title}</div>
             <div className="text-xs text-white/70">{`${position} / ${total}`}</div>
@@ -96,17 +100,20 @@ export function ImageGenerationLightbox({
             type="button"
             onClick={onClose}
             aria-label={t("generation.closeLightbox")}
+            title={t("generation.closeLightbox")}
             className={actionButtonClass}
           >
             <XIcon className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <img
-          src={resolveLocalGenerationImageSrc(`${batch.id}/${output.fileName}`)}
-          alt={t("generation.outputAlt", { index: output.slotIndex + 1 })}
-          className="max-h-[80vh] min-h-0 max-w-full rounded-md object-contain"
-        />
-        <div className="flex items-center gap-1.5 rounded-md border border-white/15 bg-black/40 px-2 py-1.5">
+        <div className="pointer-events-auto relative flex min-h-0 w-full flex-1 pb-16">
+          <GenerationPreview
+            key={`${batch.id}/${output.id}`}
+            batch={batch}
+            output={output}
+          />
+        </div>
+        <div className="pointer-events-auto flex shrink-0 items-center gap-1.5 rounded-md border border-white/15 bg-black/40 px-2 py-1.5">
           <button
             type="button"
             onClick={onPrevious}
@@ -146,8 +153,9 @@ export function ImageGenerationLightbox({
           </button>
           <button
             type="button"
-            onClick={onCopyPrompt}
-            aria-label={t("generation.copyPrompt")}
+            onClick={onCopyImage}
+            aria-label={t("generation.copyImage")}
+            title={t("generation.copyImage")}
             className={actionButtonClass}
           >
             <CopyIcon className="h-4 w-4" aria-hidden="true" />
@@ -164,6 +172,7 @@ export function ImageGenerationLightbox({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

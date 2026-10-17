@@ -17,6 +17,7 @@ import type {
 import { useTranslation } from "react-i18next";
 import type { AIModelConfig } from "../../stores/settings.store";
 import { ImageGenerationReferencePicker } from "./ImageGenerationReferencePicker";
+import { Select } from "../ui/Select";
 
 export interface ImageGenerationComposerProps {
   prompts: PromptSummary[];
@@ -61,7 +62,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 const controlClass =
-  "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-primary/60 focus:ring-2 focus:ring-primary/10";
+  "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm outline-none transition-colors focus:border-primary/60 focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate";
 
 function ComposerHeader({ onClose }: { onClose?: () => void }) {
   const { t } = useTranslation();
@@ -107,35 +108,36 @@ function SourceAndModelFields(
     <>
       <div>
         <FieldLabel>{t("generation.sourcePrompt")}</FieldLabel>
-        <select
-          aria-label={t("generation.sourcePrompt")}
+        <Select
+          ariaLabel={t("generation.sourcePrompt")}
           value={props.selectedPromptId}
-          onChange={(event) => props.onSelectPrompt(event.target.value)}
-          className={controlClass}
-        >
-          <option value="">{t("generation.adhocPrompt")}</option>
-          {props.prompts.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.title}
-            </option>
-          ))}
-        </select>
+          onChange={props.onSelectPrompt}
+          triggerClassName={controlClass}
+          presentation="form"
+          options={[
+            { value: "", label: t("generation.adhocPrompt") },
+            ...props.prompts.map((item) => ({
+              value: item.id,
+              label: item.title,
+            })),
+          ]}
+        />
       </div>
       <div>
         <FieldLabel>{t("generation.model")}</FieldLabel>
-        <select
-          aria-label={t("generation.model")}
+        <Select
+          ariaLabel={t("generation.model")}
           value={props.modelId}
-          onChange={(event) => props.onModelChange(event.target.value)}
-          className={controlClass}
-        >
-          <option value="">{t("generation.selectModel")}</option>
-          {props.models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name || model.model}
-            </option>
-          ))}
-        </select>
+          onChange={props.onModelChange}
+          triggerClassName={controlClass}
+          presentation="form"
+          placeholder={t("generation.selectModel")}
+          disabled={props.models.length === 0}
+          options={props.models.map((model) => ({
+            value: model.id,
+            label: model.name || model.model,
+          }))}
+        />
       </div>
     </>
   );
@@ -229,30 +231,34 @@ function BasicParameterFields(
     <div className="grid grid-cols-3 gap-2">
       <div className="min-w-0">
         <FieldLabel>{t("generation.ratio")}</FieldLabel>
-        <select
-          aria-label={t("generation.ratio")}
+        <Select
+          ariaLabel={t("generation.ratio")}
           value={props.ratio}
-          onChange={(event) => props.onRatioChange(event.target.value)}
-          className={`${controlClass} px-2`}
-        >
-          {props.supportedRatios.map((ratio) => (
-            <option key={ratio}>{ratio}</option>
-          ))}
-        </select>
+          onChange={props.onRatioChange}
+          triggerClassName={controlClass}
+          presentation="form"
+          options={props.supportedRatios.map((ratio) => ({
+            value: ratio,
+            label: ratio,
+          }))}
+        />
       </div>
       <div className="min-w-0">
         <FieldLabel>{t("generation.quality")}</FieldLabel>
-        <select
-          aria-label={t("generation.quality")}
+        <Select
+          ariaLabel={t("generation.quality")}
           value={props.quality}
-          onChange={(event) =>
-            props.onQualityChange(event.target.value as "standard" | "hd")
-          }
-          className={`${controlClass} px-2`}
-        >
-          <option value="standard">{t("generation.standard")}</option>
-          <option value="hd">{t("generation.high")}</option>
-        </select>
+          onChange={(value) => {
+            if (value === "standard" || value === "hd")
+              props.onQualityChange(value);
+          }}
+          triggerClassName={controlClass}
+          presentation="form"
+          options={[
+            { value: "standard", label: t("generation.standard") },
+            { value: "hd", label: t("generation.high") },
+          ]}
+        />
       </div>
       <CountField {...props} />
     </div>

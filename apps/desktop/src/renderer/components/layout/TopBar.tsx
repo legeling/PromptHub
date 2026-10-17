@@ -187,9 +187,11 @@ export function TopBar({
     }
     setSidebarCollapsed(!isSidebarCollapsed);
   };
-  const showTopBarSearch = !isSkillStoreCatalogView && !isAgentsView;
+  const showTopBarSearch =
+    !isSkillStoreCatalogView && !isAgentsView && !isGenerationWorkbench;
   const showCreateButton =
-    isPromptView || isSkillView || isMcpView || isPluginView;
+    !isGenerationWorkbench &&
+    (isPromptView || isSkillView || isMcpView || isPluginView);
   const selectedPromptForCreate = useMemo(() => {
     if (!isPromptView || !selectedPromptId) {
       return null;
@@ -500,6 +502,7 @@ export function TopBar({
 
   // Listen for shortcut events
   useEffect(() => {
+    if (isGenerationWorkbench) return;
     const handleNewPrompt = () => {
       setIsCreateModalOpen(true);
     };
@@ -517,7 +520,7 @@ export function TopBar({
       window.removeEventListener("shortcut:newPrompt", handleNewPrompt);
       window.removeEventListener("shortcut:search", handleSearch);
     };
-  }, []);
+  }, [isGenerationWorkbench]);
 
   useEffect(() => {
     const handleQuickAddPrompt = (event: Event) => {
