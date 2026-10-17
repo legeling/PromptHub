@@ -56,7 +56,6 @@ import { isWebRuntime } from "./runtime";
 import { useBackupImportController } from "./hooks/useBackupImportController";
 import { waitForPersistHydration } from "./utils/persist-hydration";
 import { createLocalDataRefreshController } from "./services/local-data-refresh";
-import { migrateRendererPersistence } from "./services/renderer-persistence";
 
 // Lazy load heavy components for better initial load performance
 // 懒加载大型组件以提升初始加载性能
@@ -1077,6 +1076,8 @@ function App() {
       if (disposed) {
         return;
       }
+      const { migrateRendererPersistence } =
+        await import("./services/renderer-persistence");
       await migrateRendererPersistence();
       if (disposed) {
         return;
