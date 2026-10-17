@@ -283,12 +283,6 @@ describe("Skill platform management through renderer and real storage", () => {
       path.join(runtime.platformRoot("claude"), "keep.txt"),
       "External file",
     );
-    // A file occupying the skills directory fails on every OS, unlike POSIX chmod on Windows.
-    const blockedDirectory = path.join(
-      runtime.platformRoot("claude"),
-      "skills",
-    );
-    fs.writeFileSync(blockedDirectory, "External blocking file");
     const onClose = vi.fn();
     await renderWithI18n(<SkillQuickInstall skill={skill} onClose={onClose} />);
     const codex = await screen.findByRole(
@@ -297,6 +291,9 @@ describe("Skill platform management through renderer and real storage", () => {
       storageWaitOptions,
     );
     await waitFor(() => expect(codex).toHaveAttribute("aria-pressed", "true"));
+    // Fail the copy after discovery. A file occupying skills/ instead raises
+    // ENOTDIR during Linux status reads, before the install action is reachable.
+    copyFault.targetRoot = runtime.platformRoot("claude");
     fireEvent.click(codex);
     fireEvent.click(screen.getByRole("button", { name: /Claude Code/ }));
     fireEvent.click(
@@ -328,10 +325,12 @@ describe("Skill platform management through renderer and real storage", () => {
         name: "Apply changes",
       }),
     ).toBeEnabled();
-    expect(fs.readFileSync(blockedDirectory, "utf8")).toBe(
-      "External blocking file",
-    );
-    fs.unlinkSync(blockedDirectory);
+    expect(copyFault.targetRoot).toBeNull();
+    expect(
+      fs.existsSync(
+        path.join(runtime.platformRoot("claude"), "skills", skill.name),
+      ),
+    ).toBe(false);
     fireEvent.click(
       screen.getByRole("button", {
         name: "Apply changes",
