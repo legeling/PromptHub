@@ -1,3 +1,4 @@
+import { ToolbarSearchFrame } from "../ui/ToolbarSearchFrame";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -77,11 +78,7 @@ export function TopBarRulesSearch({ searchInputRef }: TopBarRulesSearchProps) {
   }, [ruleSearchResults, rulesSearchQuery, selectRule]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (
-      event.key === "Tab" &&
-      rulesSearchQuery &&
-      searchResultCount > 0
-    ) {
+    if (event.key === "Tab" && rulesSearchQuery && searchResultCount > 0) {
       event.preventDefault();
       navigateResult(event.shiftKey ? "prev" : "next");
       return;
@@ -104,25 +101,21 @@ export function TopBarRulesSearch({ searchInputRef }: TopBarRulesSearchProps) {
   };
 
   return (
-    <div className="w-full max-w-lg relative flex items-center">
-      <div className="app-wallpaper-search absolute inset-0 rounded-lg border pointer-events-none" />
+    <ToolbarSearchFrame>
       <SearchIcon
         aria-hidden="true"
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-20 transition-colors duration-quick group-focus-within/search:text-primary"
       />
       <input
         ref={searchInputRef}
         type="text"
-        aria-label={t(
-          "rules.searchPlaceholder",
-          "Search rule files...",
-        )}
+        aria-label={t("rules.searchPlaceholder", "Search rule files...")}
         placeholder={t("rules.searchPlaceholder", "Search rule files...")}
         value={rulesSearchQuery}
         onChange={(event) => setRulesSearchQuery(event.target.value)}
         onKeyDown={handleKeyDown}
         readOnly={false}
-        className="relative z-10 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+        className="relative z-10 min-w-0 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       />
       {rulesSearchQuery ? (
@@ -179,6 +172,6 @@ export function TopBarRulesSearch({ searchInputRef }: TopBarRulesSearchProps) {
           </button>
         </div>
       ) : null}
-    </div>
+    </ToolbarSearchFrame>
   );
 }

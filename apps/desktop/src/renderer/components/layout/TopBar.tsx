@@ -1,3 +1,4 @@
+import { ToolbarSearchFrame } from "../ui/ToolbarSearchFrame";
 import {
   SearchIcon,
   PanelLeftIcon,
@@ -700,19 +701,20 @@ export function TopBar({
         </div>
 
         {/* 搜索框 - 居中，带清除按钮、结果计数和导航 */}
-        <div className="flex-1 flex justify-center px-3">
+        <div className="min-w-0 flex-1 flex justify-center px-3">
           {isRulesView ? (
             <Suspense
               fallback={
-                <div className="h-9 w-full max-w-lg rounded-lg border border-transparent app-wallpaper-search" />
+                <ToolbarSearchFrame>
+                  <div className="h-9 w-full" />
+                </ToolbarSearchFrame>
               }
             >
               <TopBarRulesSearch searchInputRef={searchInputRef} />
             </Suspense>
           ) : showTopBarSearch ? (
-            <div className="w-full max-w-lg relative flex items-center">
-              <div className="app-wallpaper-search absolute inset-0 rounded-lg border pointer-events-none" />
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+            <ToolbarSearchFrame>
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-20 transition-colors duration-quick group-focus-within/search:text-primary" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -743,7 +745,7 @@ export function TopBar({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 readOnly={false}
-                className="relative z-10 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                className="relative z-10 min-w-0 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               />
               {/* 右侧控件：结果计数 + 导航按钮 + 清除按钮 */}
@@ -812,7 +814,7 @@ export function TopBar({
                   </button>
                 </div>
               )}
-            </div>
+            </ToolbarSearchFrame>
           ) : null}
         </div>
 
