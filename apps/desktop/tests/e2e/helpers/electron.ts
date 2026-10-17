@@ -93,7 +93,11 @@ export async function launchPromptHub(
   const mainEntry = getMainEntry();
   const seedPath = seedFileName ? getSeedPath(seedFileName) : undefined;
   const env = getElectronLaunchEnvironment(userDataDir, options.env);
-  fs.mkdirSync(env.HOME, { recursive: true });
+  // Electron resolves these native paths during Windows startup, before the
+  // app can create its userData directory. Keep every path inside the fixture.
+  for (const directory of [env.HOME, env.APPDATA, env.LOCALAPPDATA]) {
+    fs.mkdirSync(directory, { recursive: true });
+  }
 
   const app = await electron.launch({
     args: getElectronLaunchArgs(
