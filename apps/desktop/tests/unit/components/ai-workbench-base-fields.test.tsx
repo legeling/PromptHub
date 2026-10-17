@@ -282,11 +282,11 @@ describe("BaseFields", () => {
       expect(screen.queryByLabelText(hiddenLabel)).not.toBeInTheDocument();
     }
 
-    for (const checkbox of screen.getAllByRole("checkbox")) {
-      expect(checkbox).toHaveClass("sr-only");
-    }
-
     expect(setModelForm).not.toHaveBeenCalled();
+    const switches = screen.getAllByRole("switch");
+    expect(switches).toHaveLength(3);
+    fireEvent.click(screen.getByRole("switch", { name: "Vision input" }));
+    expect(setModelForm).toHaveBeenCalledOnce();
   });
 
   it("keeps provider-recommended protocol when switching away from custom", async () => {

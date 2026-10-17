@@ -233,8 +233,8 @@ describe("skill i18n smoke", () => {
 
     useToastMock.mockReturnValue({ showToast: vi.fn() });
     useSkillPlatformMock.mockReturnValue({
-      availablePlatforms: [],
-      batchInstall: vi.fn().mockResolvedValue({
+      availablePlatforms: [{ id: "claude", name: "Claude Code" }],
+      applyPlatformChanges: vi.fn().mockResolvedValue({
         successCount: 0,
         totalCount: 0,
         failures: [],
@@ -316,7 +316,7 @@ describe("skill i18n smoke", () => {
     expect(screen.getByText("Files")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Platform Integration")).toBeInTheDocument();
+      expect(screen.getByText("Distribution")).toBeInTheDocument();
     });
     const previewLayout = screen.getByTestId("skill-detail-preview-layout");
     expect(previewLayout.className).toContain(
@@ -547,7 +547,7 @@ describe("skill i18n smoke", () => {
     });
     useSkillPlatformMock.mockReturnValue({
       availablePlatforms: [{ id: "claude", name: "Claude Code" }],
-      batchInstall: vi.fn().mockResolvedValue({
+      applyPlatformChanges: vi.fn().mockResolvedValue({
         successCount: 0,
         totalCount: 0,
         failures: [],
@@ -907,7 +907,7 @@ describe("skill i18n smoke", () => {
     useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
     useSkillPlatformMock.mockReturnValue({
       availablePlatforms: [{ id: "claude", name: "Claude Code" }],
-      batchInstall: vi.fn().mockResolvedValue({
+      applyPlatformChanges: vi.fn().mockResolvedValue({
         successCount: 1,
         totalCount: 1,
         failures: [],
@@ -916,7 +916,8 @@ describe("skill i18n smoke", () => {
             platformId: "claude",
             requestedMode: "symlink",
             effectiveMode: "copy",
-            reason: "EPERM: operation not permitted",
+            reason:
+              "Current permissions or filesystem do not support symbolic links.",
           },
         ],
       }),
@@ -935,11 +936,11 @@ describe("skill i18n smoke", () => {
       render(<SkillFullDetailPage />);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Install All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
 
     await waitFor(() => {
       expect(showToast).toHaveBeenCalledWith(
-        "Symlink was not available for some platforms. PromptHub used copy install instead.\nClaude Code: switched to copy install (EPERM: operation not permitted)",
+        "Symlink was not available for some platforms. PromptHub used copy install instead.\nClaude Code: switched to copy install (Current permissions or filesystem do not support symbolic links.)",
         "warning",
       );
     });

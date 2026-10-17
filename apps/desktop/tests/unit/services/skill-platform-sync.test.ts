@@ -3,11 +3,13 @@ import {
   syncSkillsToPlatforms,
   unsyncSkillsFromPlatforms,
 } from "../../../src/renderer/services/skill-platform-sync";
+import i18n from "../../../src/renderer/i18n";
 import { createSkillFixture } from "../../fixtures/skills";
 import { installWindowMocks } from "../../helpers/window";
 
 describe("syncSkillsToPlatforms", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
     installWindowMocks({
       api: {
         skill: {
@@ -53,11 +55,11 @@ describe("syncSkillsToPlatforms", () => {
     const installMdSymlink = vi
       .fn()
       .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error("permission denied"));
-    (window as any).api.skill.installMdSymlink = installMdSymlink;
+      .mockRejectedValueOnce(new Error("SKILL_PLATFORM:permission-denied"));
+    window.api.skill.installMdSymlink = installMdSymlink;
 
     const result = await syncSkillsToPlatforms(
-      [{ id: "skill-1", name: "alpha" }] as any,
+      [createSkillFixture({ id: "skill-1", name: "alpha" })],
       ["claude", "cursor"],
       "symlink",
     );
@@ -68,7 +70,9 @@ describe("syncSkillsToPlatforms", () => {
       {
         skillId: "skill-1",
         platformId: "cursor",
-        reason: "permission denied",
+        reason:
+          "Cannot access the target directory. Check its write permissions and try again.",
+        severity: "warning",
       },
     ]);
     expect(result.fallbacks).toEqual([]);
@@ -86,10 +90,10 @@ describe("syncSkillsToPlatforms", () => {
         requestedMode: "symlink",
         effectiveMode: "symlink",
       });
-    (window as any).api.skill.installMdSymlink = installMdSymlink;
+    window.api.skill.installMdSymlink = installMdSymlink;
 
     const result = await syncSkillsToPlatforms(
-      [{ id: "skill-1", name: "alpha" }] as any,
+      [createSkillFixture({ id: "skill-1", name: "alpha" })],
       ["claude", "cursor"],
       "symlink",
     );
@@ -102,14 +106,44 @@ describe("syncSkillsToPlatforms", () => {
         platformId: "claude",
         requestedMode: "symlink",
         effectiveMode: "copy",
-        reason: "EPERM: operation not permitted",
+        reason:
+          "Current permissions or filesystem do not support symbolic links.",
       },
     ]);
   });
 
+  it("keeps unknown native diagnostics out of user-facing failures", async () => {
+    window.api.skill.installMd = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          "Error invoking remote method: SQL failure at /private/auth.json",
+        ),
+      );
+    const result = await syncSkillsToPlatforms(
+      [createSkillFixture({ id: "skill-1", name: "alpha" })],
+      ["claude"],
+      "copy",
+    );
+    expect(result).toEqual({
+      successCount: 0,
+      totalCount: 1,
+      fallbacks: [],
+      failures: [
+        {
+          skillId: "skill-1",
+          platformId: "claude",
+          severity: "error",
+          reason:
+            "The platform operation failed. Check the platform configuration and try again; see logs for details.",
+        },
+      ],
+    });
+  });
+
   it("uninstalls all selected skills from selected platforms", async () => {
     const result = await unsyncSkillsFromPlatforms(
-      [{ id: "skill-1", name: "alpha" }] as any,
+      [createSkillFixture({ id: "skill-1", name: "alpha" })],
       ["claude", "cursor"],
     );
 

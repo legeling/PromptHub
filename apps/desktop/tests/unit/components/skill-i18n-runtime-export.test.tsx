@@ -79,7 +79,8 @@ const useSettingsStoreMock = vi.fn();
 const useToastMock = vi.fn();
 const useSkillPlatformMock = vi.fn();
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: translate,
     i18n: { language: "en" },
@@ -286,7 +287,40 @@ describe("skill i18n smoke", () => {
       .__PROMPTHUB_WEB__;
   });
 
-  it("exports a full local repo zip from the detail panel", async () => {
+  it("saves a full repo ZIP through the native dialog and reports completion", async () => {
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    useSkillStoreMock.mockImplementation(
+      bindStoreSelector(
+        createSkillStoreState({
+          selectedSkillId: baseSkill.id,
+        }),
+      ),
+    );
+    useSettingsStoreMock.mockImplementation(
+      bindStoreSelector(createSettingsState()),
+    );
+    window.api.skill.saveExport = vi.fn().mockResolvedValue({
+      status: "saved",
+      filePath: "/downloads/write.zip",
+      fileName: "write.zip",
+    });
+    await act(async () => {
+      render(<SkillFullDetailPage />);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "ZIP" }));
+    await waitFor(() => {
+      expect(window.api.skill.saveExport).toHaveBeenCalledWith(
+        baseSkill.id,
+        "zip",
+      );
+      expect(showToast).toHaveBeenCalledWith("Exported write.zip", "success");
+    });
+    expect(window.api.skill.exportZip).not.toHaveBeenCalled();
+  });
+
+  it("downloads a full local repo zip from the web detail panel", async () => {
+    window.__PROMPTHUB_WEB__ = true;
     const skillStoreState = createSkillStoreState({
       selectedSkillId: baseSkill.id,
       syncSkillFromRepo: vi.fn().mockResolvedValue(baseSkill),

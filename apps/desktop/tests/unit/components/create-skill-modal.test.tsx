@@ -891,7 +891,7 @@ describe("CreateSkillModal GitHub import", () => {
     await waitFor(() => {
       expect(
         view.getByText(
-          "仓库不存在，或仓库地址无效，请检查 GitHub 仓库地址后重试。",
+          "仓库、文件或分支不存在，或当前凭据无权访问。请核对地址、分支及 Token／SSH 权限。",
         ),
       ).toBeTruthy();
     });
@@ -1124,7 +1124,7 @@ describe("CreateSkillModal GitHub import", () => {
     ).toHaveValue("");
   });
 
-  it("shows SSH guidance when GitHub HTTPS scan hits API rate limit", async () => {
+  it("shows Token and SSH guidance when GitHub HTTPS scan hits API rate limit", async () => {
     const fetchRemoteContent = vi
       .fn()
       .mockRejectedValue(new Error("GitHub API rate limit reached"));
@@ -1161,7 +1161,7 @@ describe("CreateSkillModal GitHub import", () => {
     await waitFor(() => {
       expect(
         view.getByText(
-          "GitHub API rate limit reached. Try again in a few minutes, or switch this repository URL to SSH to avoid the anonymous API limit.",
+          "GitHub API rate limit reached. Add a GitHub Access Token in Settings or wait for the limit to reset. Custom repositories can also use SSH with a configured key.",
         ),
       ).toBeTruthy();
     });

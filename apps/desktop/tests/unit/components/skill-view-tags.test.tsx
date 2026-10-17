@@ -5,10 +5,13 @@ import { SkillGalleryCard } from "../../../src/renderer/components/skill/SkillGa
 import { SkillListView } from "../../../src/renderer/components/skill/SkillListView";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { useSkillStore } from "../../../src/renderer/stores/skill.store";
+import { createSkillFixture } from "../../fixtures/skills";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 
 beforeEach(() => {
   useSettingsStore.setState({ skillTagFilterIncludeFrontmatter: false });
+  useSkillStore.setState({ skills: [], skillPlatformStatuses: {} });
 });
 
 vi.mock("../../../src/renderer/components/ui/PlatformIcon", () => ({
@@ -97,10 +100,12 @@ describe("skill view tags", () => {
     render(
       <SkillGalleryCard
         animationDelayMs={0}
-        distributedPlatforms={[
-          { id: "codex", name: "Codex CLI" },
-          { id: "claude", name: "Claude Code" },
-        ] as any}
+        distributedPlatforms={
+          [
+            { id: "codex", name: "Codex CLI" },
+            { id: "claude", name: "Claude Code" },
+          ] as any
+        }
         isSelected={false}
         isSelectionMode={false}
         onDelete={vi.fn()}
@@ -402,7 +407,6 @@ describe("skill view tags", () => {
     expect(screen.queryByText("review")).not.toBeInTheDocument();
   });
 
-
   it("shows the blue update badge in list view rows", async () => {
     installWindowMocks({
       api: {
@@ -505,14 +509,14 @@ describe("skill view tags", () => {
         },
       },
     });
-    const rowSkill = {
-      ...baseSkill,
+    const rowSkill = createSkillFixture({
       id: "skill-status-refresh",
       name: "Status Refresh",
-    };
+    });
+    useSkillStore.setState({ skills: [rowSkill] });
 
-    const view = await renderWithI18n(
-      <SkillListView skills={[rowSkill as any]} onQuickInstall={vi.fn()} />,
+    await renderWithI18n(
+      <SkillListView skills={[rowSkill]} onQuickInstall={vi.fn()} />,
       { language: "en" },
     );
 
@@ -523,12 +527,7 @@ describe("skill view tags", () => {
     });
 
     await act(async () => {
-      view.rerender(
-        <SkillListView
-          skills={[{ ...rowSkill } as any]}
-          onQuickInstall={vi.fn()}
-        />,
-      );
+      await useSkillStore.getState().loadDeployedStatus({ force: true });
     });
 
     await waitFor(() => {

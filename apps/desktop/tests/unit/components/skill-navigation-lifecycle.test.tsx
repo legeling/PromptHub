@@ -90,11 +90,12 @@ describe("Skill module navigation while reads are pending", () => {
       pendingPluginChildDeploySkillIds: [],
       remoteStoreEntries: {},
       deployedSkillNames: new Set(),
+      skillPlatformStatuses: {},
     });
     Reflect.deleteProperty(window, "__PROMPTHUB_SKILL_EDITOR_DIRTY");
   });
 
-  it("leaves Skills before library and platform reads finish, then ignores late completion", async () => {
+  it("leaves Skills before the library read finishes without starting late platform scans", async () => {
     const libraryRead = deferred<Skill[]>();
     const platformRead = deferred<Record<string, Record<string, boolean>>>();
     installSkillReadMocks(libraryRead.promise, platformRead.promise);
@@ -105,10 +106,10 @@ describe("Skill module navigation while reads are pending", () => {
     expect(
       screen.getAllByRole("button", { name: /^View Details:/ }),
     ).toHaveLength(libraryPageSize);
+    expect(window.api.skill.getMdInstallStatusBatch).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(window.api.skill.getMdInstallStatusBatch).toHaveBeenCalled(),
+      expect(window.api.skill.getAll).toHaveBeenCalledTimes(1),
     );
-    expect(window.api.skill.getAll).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Prompts" }));
     expect(screen.getByRole("button", { name: "Prompts" })).toHaveClass(
@@ -122,6 +123,7 @@ describe("Skill module navigation while reads are pending", () => {
     });
     expect(useUIStore.getState().appModule).toBe("prompt");
     expect(useSkillStore.getState().skills).toHaveLength(librarySkillCount);
+    expect(window.api.skill.getMdInstallStatusBatch).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { name: "My Skills" })).toBeNull();
   });
 
@@ -129,6 +131,9 @@ describe("Skill module navigation while reads are pending", () => {
     const platformRead = deferred<Record<string, Record<string, boolean>>>();
     installSkillReadMocks(Promise.resolve(skills), platformRead.promise);
     await renderWorkspace();
+    await waitFor(() =>
+      expect(window.api.skill.getMdInstallStatusBatch).toHaveBeenCalledTimes(1),
+    );
     const navigationRoundCount = 3;
     for (let round = 0; round < navigationRoundCount; round += 1) {
       expect(

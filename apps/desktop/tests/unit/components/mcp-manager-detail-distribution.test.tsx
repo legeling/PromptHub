@@ -524,7 +524,7 @@ describe("McpManager", () => {
       ).toBeInTheDocument();
       expect(
         within(detailPage).queryByRole("button", { name: "Files" }),
-      ).not.toBeInTheDocument();
+      ).toBeInTheDocument();
       expect(
         within(detailPage).getByText("Platform Integration"),
       ).toBeInTheDocument();
@@ -923,7 +923,11 @@ describe("McpManager", () => {
       within(notesCard).getByLabelText("Personal Notes"),
       "Use with local workspace MCP config only.",
     );
-    await user.click(within(detailPage).getByRole("button", { name: "Save" }));
+    const notesSection = notesCard.closest("section");
+    if (!notesSection) throw new Error("Missing MCP notes section");
+    await user.click(
+      within(notesSection).getByRole("button", { name: "Save" }),
+    );
 
     await waitFor(() => {
       expect(api.mcp.updateServer).toHaveBeenCalledWith(

@@ -122,7 +122,8 @@ describe("cli-installer", () => {
             stderr: string,
           ) => void,
         ) => {
-          if (args[0] === "--version") return callback(null, "9.15.0", "");
+          if (["pnpm", "npm"].includes(command) && args[0] === "--version")
+            return callback(null, "9.15.0", "");
           if (args[0] === "add" || args[0] === "install") {
             expect(command).toBe(method);
             expect(args[2]).toBe(

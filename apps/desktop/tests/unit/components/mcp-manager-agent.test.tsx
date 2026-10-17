@@ -1,3 +1,4 @@
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import {
   act,
   fireEvent,
@@ -245,6 +246,10 @@ function installMcpMocks(options: McpMockOptions = {}) {
   ];
   return installWindowMocks({
     api: {
+      skill: {
+        getSupportedPlatforms: vi.fn().mockResolvedValue(SKILL_PLATFORMS),
+        detectPlatforms: vi.fn().mockResolvedValue(["codex", "claude"]),
+      },
       mcp: {
         getLibrary: vi.fn().mockResolvedValue({
           kind: "prompthub-mcp-library",

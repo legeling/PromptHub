@@ -743,13 +743,11 @@ describe("SkillFileEditor", () => {
           listLocalFiles: vi
             .fn()
             .mockResolvedValue([{ path: "LICENSE.txt", isDirectory: false }]),
-          readLocalFile: vi
-            .fn()
-            .mockResolvedValue({
-              path: "LICENSE.txt",
-              content: "Original",
-              isDirectory: false,
-            }),
+          readLocalFile: vi.fn().mockResolvedValue({
+            path: "LICENSE.txt",
+            content: "Original",
+            isDirectory: false,
+          }),
           writeLocalFile: vi
             .fn()
             .mockRejectedValue(
@@ -787,13 +785,11 @@ describe("SkillFileEditor", () => {
           listLocalFiles: vi
             .fn()
             .mockResolvedValue([{ path: "LICENSE.txt", isDirectory: false }]),
-          readLocalFile: vi
-            .fn()
-            .mockResolvedValue({
-              path: "LICENSE.txt",
-              content: "Original",
-              isDirectory: false,
-            }),
+          readLocalFile: vi.fn().mockResolvedValue({
+            path: "LICENSE.txt",
+            content: "Original",
+            isDirectory: false,
+          }),
           deleteLocalFile: vi
             .fn()
             .mockRejectedValue(
@@ -1356,6 +1352,10 @@ describe("SkillFileEditor", () => {
     expect(previewStage).toHaveStyle({ width: "150%", height: "150%" });
 
     const previewViewportElement = previewViewport as HTMLElement;
+    // JSDOM has no pointer capture; replace only that browser primitive.
+    previewViewportElement.setPointerCapture = vi.fn();
+    previewViewportElement.hasPointerCapture = vi.fn(() => true);
+    previewViewportElement.releasePointerCapture = vi.fn();
     previewViewportElement.scrollLeft = 20;
     previewViewportElement.scrollTop = 10;
 
@@ -1377,12 +1377,16 @@ describe("SkillFileEditor", () => {
       clientX: 60,
       clientY: 80,
     });
-    expect(previewViewportElement.scrollLeft).toBe(60);
-    expect(previewViewportElement.scrollTop).toBe(30);
+    expect(previewStage).toHaveStyle({ translate: "-40px -20px" });
+    expect(previewViewportElement.scrollLeft).toBe(20);
+    expect(previewViewportElement.scrollTop).toBe(10);
     expect(zoomControls?.parentElement).toBe(previewRoot);
     expect(zoomControls?.parentElement).not.toBe(previewViewport);
 
     fireEvent.pointerUp(previewViewportElement, { pointerId: 1 });
+    expect(previewViewportElement.releasePointerCapture).toHaveBeenCalledWith(
+      1,
+    );
     expect(previewViewportElement).not.toHaveClass(
       "skill-file-editor__resource-image-viewport--panning",
     );

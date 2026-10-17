@@ -1,3 +1,4 @@
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import {
   act,
   fireEvent,
@@ -193,6 +194,7 @@ function resetMcpStore() {
     loadingMarketSourceId: null,
     marketError: null,
     targetPresets: [],
+    deployablePlatformIds: [],
     targetStatus: [],
     healthChecks: [],
     selectedServerId: null,
@@ -245,6 +247,10 @@ function installMcpMocks(options: McpMockOptions = {}) {
   ];
   return installWindowMocks({
     api: {
+      skill: {
+        getSupportedPlatforms: vi.fn().mockResolvedValue(SKILL_PLATFORMS),
+        detectPlatforms: vi.fn().mockResolvedValue(["codex", "claude", "kilo"]),
+      },
       mcp: {
         getLibrary: vi.fn().mockResolvedValue({
           kind: "prompthub-mcp-library",
@@ -709,9 +715,11 @@ describe("McpManager", () => {
       within(detailPage).queryByRole("button", { name: "Select all" }),
     ).not.toBeInTheDocument();
 
-    const selectButtons = within(detailPage).getAllByTitle("Click to select");
-    expect(selectButtons[0]).toBeDisabled();
-    await user.click(selectButtons[0]);
+    const selectButton = within(detailPage).getByRole("button", {
+      name: "Codex CLI",
+    });
+    expect(selectButton).toBeDisabled();
+    await user.click(selectButton);
     expect(api.mcp.apply).not.toHaveBeenCalled();
   });
 
