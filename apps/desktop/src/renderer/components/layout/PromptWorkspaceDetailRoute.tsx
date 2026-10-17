@@ -11,7 +11,6 @@ function getDetailAiProps(
   | "aiResponse"
   | "aiResponseModelLabel"
   | "aiThinking"
-  | "hasCompareModels"
   | "isAiResponseImage"
   | "isTestingAI"
 > {
@@ -24,7 +23,6 @@ function getDetailAiProps(
       ? ai.defaultImageModel?.model || ai.aiModel
       : ai.aiModel,
     aiThinking: ai.aiThinking,
-    hasCompareModels: ai.compareModels.length > 0,
     isAiResponseImage: ai.isAiResponseImage,
     isTestingAI: ai.isTestingAI,
   };

@@ -1,4 +1,24 @@
 {
+  "testHistory": {
+    "title": "测试历史",
+    "back": "返回历史列表",
+    "refresh": "刷新",
+    "loadError": "历史记录操作失败，请重试。",
+    "loading": "正在加载历史记录…",
+    "empty": "此 Prompt 暂无测试记录。",
+    "results": "成功 {{succeeded}} / {{total}}",
+    "more": "加载更多",
+    "input": "测试时的输入",
+    "attachments": "附件名称",
+    "success": "成功",
+    "failed": "失败",
+    "thinking": "思考内容",
+    "copied": "已复制",
+    "copy": "复制响应",
+    "deleteConfirm": "删除这条测试记录？",
+    "delete": "删除记录",
+    "saveError": "测试结果未能保存到历史记录。"
+  },
   "app": {
     "name": "PromptHub",
     "description": "本地版的 Prompt 管理器，带版本控制",
@@ -51,6 +71,7 @@
     "searchMcp": "搜索 MCP..."
   },
   "prompt": {
+    "variableCacheSaveError": "无法记住变量值，仍可继续本次测试。",
     "detailActions": {
       "copy": "复制",
       "test": "测试",
@@ -161,6 +182,7 @@
     "jsonSchemaHint": "定义输出的 JSON 结构，AI 将严格遵循此格式返回",
     "testing": "测试中...",
     "selectModelsHint": "选择多个模型对比响应效果",
+    "multiSelect": "多选",
     "clearSelection": "清除选择",
     "selectAtLeast2": "请至少选择 2 个模型进行对比",
     "comparing": "对比中...",
@@ -4764,5 +4786,13 @@
     "placeholder": "搜索设置",
     "results": "设置搜索结果",
     "empty": "没有匹配的设置"
+  },
+  "testWorkbench": {
+    "durationSeconds": "{{seconds}} 秒",
+    "current": "当前测试",
+    "results": "对比结果",
+    "compareEmpty": "选择至少两个模型，然后开始对比测试。",
+    "singleEmpty": "开始测试后，响应将显示在这里。",
+    "emptyResponse": "暂无响应"
   }
 }

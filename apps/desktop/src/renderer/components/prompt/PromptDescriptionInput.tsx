@@ -127,7 +127,7 @@ export function PromptDescriptionInput({
           window.setTimeout(() => setMentionQuery(null), 120);
         }}
         placeholder={placeholder}
-        className="h-9 w-full rounded-xl border border-border/70 bg-card px-3 text-sm text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+        className="h-9 w-full rounded-none border border-border/70 bg-card px-4 text-sm text-foreground outline-none appearance-none placeholder:text-muted-foreground/50 focus:border-primary/40 focus:ring-2 focus:ring-inset focus:ring-primary/20"
       />
       {isOpen && (
         <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg">

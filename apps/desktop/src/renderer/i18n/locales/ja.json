@@ -1,4 +1,24 @@
 {
+  "testHistory": {
+    "title": "テスト履歴",
+    "back": "履歴に戻る",
+    "refresh": "更新",
+    "loadError": "履歴の操作に失敗しました。もう一度お試しください。",
+    "loading": "履歴を読み込み中…",
+    "empty": "この Prompt のテスト履歴はまだありません。",
+    "results": "{{total}} 件中 {{succeeded}} 件成功",
+    "more": "さらに読み込む",
+    "input": "テスト時の入力",
+    "attachments": "添付ファイル名",
+    "success": "成功",
+    "failed": "失敗",
+    "thinking": "思考内容",
+    "copied": "コピー済み",
+    "copy": "応答をコピー",
+    "deleteConfirm": "このテスト履歴を削除しますか？",
+    "delete": "履歴を削除",
+    "saveError": "テスト結果を履歴に保存できませんでした。"
+  },
   "app": {
     "name": "PromptHub",
     "description": "ローカル版 Prompt マネージャー、バージョン管理付き",
@@ -50,6 +70,7 @@
     "searchMcp": "MCP を検索..."
   },
   "prompt": {
+    "variableCacheSaveError": "変数の値を保存できませんでした。このテストは引き続き実行できます。",
     "detailActions": {
       "copy": "コピー",
       "test": "テスト",
@@ -160,6 +181,7 @@
     "jsonSchemaHint": "出力される JSON 構造を定義します。AI は厳密にこの形式に従って応答します",
     "testing": "テスト中...",
     "selectModelsHint": "複数のモデルを選択して応答効果を比較",
+    "multiSelect": "複数選択",
     "clearSelection": "選択をクリア",
     "selectAtLeast2": "比較するには少なくとも2つのモデルを選択してください",
     "comparing": "比較中...",
@@ -4726,5 +4748,13 @@
     "placeholder": "設定を検索",
     "results": "設定の検索結果",
     "empty": "一致する設定がありません"
+  },
+  "testWorkbench": {
+    "durationSeconds": "{{seconds}} 秒",
+    "current": "現在のテスト",
+    "results": "比較結果",
+    "compareEmpty": "モデルを2つ以上選択して比較を開始してください。",
+    "singleEmpty": "テストを開始すると、ここに応答が表示されます。",
+    "emptyResponse": "応答なし"
   }
 }

@@ -1,4 +1,4 @@
-import { SparklesIcon } from "lucide-react";
+import { BotIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface PromptQuickRewriteTriggerProps {
@@ -20,7 +20,7 @@ export function PromptQuickRewriteTrigger({
       title={t("prompt.quickRewriteOpen")}
       className={className}
     >
-      <SparklesIcon aria-hidden="true" className="w-4 h-4" />
+      <BotIcon aria-hidden="true" className="w-4 h-4" />
     </button>
   );
 }

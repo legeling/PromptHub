@@ -1,3 +1,4 @@
+import { usePromptStore } from "../../stores/prompt.store";
 import { useMemo, type CSSProperties } from "react";
 import { ColumnResizer } from "../ui/ColumnResizer";
 import { PromptListHeader } from "../prompt/PromptListHeader";
@@ -49,20 +50,31 @@ function PromptWorkspaceVirtualizedList() {
 function PromptWorkspaceBatchBar() {
   const { actions, derived, stores } = usePromptWorkspaceContext();
   const selectedIds = stores.promptData.selectedIds;
+  const exitBatchSelection = usePromptStore(
+    (state) => state.exitBatchSelection,
+  );
   const scopeIds = useMemo(
     () => derived.sortedPrompts.map((prompt) => prompt.id),
     [derived.sortedPrompts],
   );
-  if (!stores.promptData.isBatchSelectionActive || selectedIds.length === 0) return null;
+  if (!stores.promptData.isBatchSelectionActive) return null;
   return (
     <div className="flex-shrink-0">
       <PromptBatchActionBar
         layout="card"
         selectedIds={selectedIds}
         totalCount={derived.sortedPrompts.length}
-        onSelectAll={() => stores.promptActions.setSelectedIds(Array.from(selectAllPromptIds(selectedIds, scopeIds)))}
-        onInvertSelection={() => stores.promptActions.setSelectedIds(Array.from(invertPromptSelection(selectedIds, scopeIds)))}
-        onClear={() => stores.promptActions.setSelectedIds([])}
+        onSelectAll={() =>
+          stores.promptActions.setSelectedIds(
+            Array.from(selectAllPromptIds(selectedIds, scopeIds)),
+          )
+        }
+        onInvertSelection={() =>
+          stores.promptActions.setSelectedIds(
+            Array.from(invertPromptSelection(selectedIds, scopeIds)),
+          )
+        }
+        onClear={exitBatchSelection}
         onFavorite={actions.handleBatchFavorite}
         onMove={actions.handleBatchMove}
         onDelete={actions.handleBatchDelete}

@@ -15,6 +15,8 @@ import {
   XIcon,
 } from "lucide-react";
 import { usePromptDetail } from "../../hooks/usePromptDetail";
+import { usePromptStore } from "../../stores/prompt.store";
+import { Checkbox } from "../ui/Checkbox";
 import { parsePromptVariables } from "./prompt-modal-utils";
 
 interface KanbanCardProps {
@@ -74,13 +76,28 @@ function CardPinActions(props: KanbanCardProps) {
 
 function CardHeader(props: KanbanCardProps) {
   const { t } = useTranslation();
+  const active = usePromptStore((state) => state.isBatchSelectionActive);
+  const selected = usePromptStore((state) =>
+    state.selectedIds.includes(props.prompt.id),
+  );
+  const toggle = usePromptStore((state) => state.toggleBatchSelection);
   return (
     <div className="app-wallpaper-surface flex shrink-0 items-center justify-between gap-2 border-b border-border/50 px-3 py-2">
+      {active && (
+        <Checkbox
+          className="shrink-0"
+          checked={selected}
+          onChange={() => toggle(props.prompt.id)}
+          ariaLabel={t("prompt.selectPromptRow", {
+            title: props.prompt.title,
+          })}
+        />
+      )}
       <h3 className="min-w-0 flex-1 text-sm font-semibold">
         <button
           type="button"
           className="block w-full truncate text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          onClick={props.onViewDetail}
+          onClick={active ? () => toggle(props.prompt.id) : props.onViewDetail}
           title={props.prompt.title}
           aria-label={`${t("prompt.viewDetail")}: ${props.prompt.title}`}
         >
@@ -151,7 +168,9 @@ function PreviewField({
   isExpanded: boolean;
 }) {
   return (
-    <div className={`flex flex-col gap-1 ${isExpanded ? "shrink-0" : "min-h-0 flex-1"}`}>
+    <div
+      className={`flex flex-col gap-1 ${isExpanded ? "shrink-0" : "min-h-0 flex-1"}`}
+    >
       <div className="flex shrink-0 items-center gap-1 text-[10px] font-medium text-muted-foreground">
         {isSystem && <SparklesIcon aria-hidden="true" className="h-3 w-3" />}
         {label}
@@ -292,9 +311,24 @@ function CardFooter(props: KanbanCardProps) {
       onClick: props.onToggleFavorite,
       favorite: props.prompt.isFavorite,
     },
-    { id: "copy", icon: CopyIcon, label: t("prompt.copy"), onClick: props.onCopy },
-    { id: "edit", icon: EditIcon, label: t("prompt.edit"), onClick: props.onEdit },
-    { id: "test", icon: PlayIcon, label: t("prompt.aiTest"), onClick: props.onAiTest },
+    {
+      id: "copy",
+      icon: CopyIcon,
+      label: t("prompt.copy"),
+      onClick: props.onCopy,
+    },
+    {
+      id: "edit",
+      icon: EditIcon,
+      label: t("prompt.edit"),
+      onClick: props.onEdit,
+    },
+    {
+      id: "test",
+      icon: PlayIcon,
+      label: t("prompt.aiTest"),
+      onClick: props.onAiTest,
+    },
   ];
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/50 bg-muted/20 px-3 py-2">

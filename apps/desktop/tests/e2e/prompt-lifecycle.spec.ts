@@ -90,6 +90,42 @@ async function readPromptContent(
   );
 }
 
+async function checkCreationTimeAfterFavorites(
+  page: Page,
+  id: string,
+): Promise<string> {
+  await page.getByText(title, { exact: true }).first().click();
+  const saved = await page.evaluate(
+    async (promptId) =>
+      (await window.api.prompt.getAll()).find((item) => item.id === promptId),
+    id,
+  );
+  if (!saved) throw new Error("Created prompt missing before favorite check");
+  const timestamp = page.locator("time[datetime]");
+  await expect(timestamp).toHaveAttribute("datetime", saved.createdAt);
+  const visibleTime = await timestamp.innerText();
+  for (const { action, isFavorite } of [
+    { action: "Add to Favorites", isFavorite: true },
+    { action: "Remove from Favorites", isFavorite: false },
+  ]) {
+    await page.getByRole("button", { name: action, exact: true }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async (promptId) =>
+            (await window.api.prompt.getAll()).find(
+              (item) => item.id === promptId,
+            )?.isFavorite,
+          id,
+        ),
+      )
+      .toBe(isFavorite);
+    await expect(timestamp).toHaveAttribute("datetime", saved.createdAt);
+    await expect(timestamp).toHaveText(visibleTime);
+  }
+  return saved.createdAt;
+}
+
 test("creates a folder and prompt, edits, restores history, reopens, and confirms deletion through the UI", async () => {
   test.setTimeout(120_000);
   let launched = await launchPromptHub(null);
@@ -102,7 +138,12 @@ test("creates a folder and prompt, edits, restores history, reopens, and confirm
       autoCheckUpdate: false,
     });
     const id = await createPromptInFolder(launched.page);
+    const createdAt = await checkCreationTimeAfterFavorites(launched.page, id);
     await editAndRestore(launched.page, id);
+    await expect(launched.page.locator("time[datetime]")).toHaveAttribute(
+      "datetime",
+      createdAt,
+    );
     await launched.page
       .getByRole("button", { name: "Toggle theme", exact: true })
       .click();
@@ -122,6 +163,10 @@ test("creates a folder and prompt, edits, restores history, reopens, and confirm
       .getByRole("button", { name: "Lifecycle folder", exact: true })
       .click();
     await launched.page.getByText(title, { exact: true }).first().click();
+    await expect(launched.page.locator("time[datetime]")).toHaveAttribute(
+      "datetime",
+      createdAt,
+    );
     await expect(
       launched.page.getByRole("button", {
         name: "Double-click to edit user prompt",

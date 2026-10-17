@@ -1,4 +1,24 @@
 {
+  "testHistory": {
+    "title": "Historique des tests",
+    "back": "Retour à l’historique",
+    "refresh": "Actualiser",
+    "loadError": "L’opération a échoué. Veuillez réessayer.",
+    "loading": "Chargement de l’historique…",
+    "empty": "Aucun test enregistré pour ce Prompt.",
+    "results": "{{succeeded}} / {{total}} réussis",
+    "more": "Charger plus",
+    "input": "Entrée du test",
+    "attachments": "Noms des pièces jointes",
+    "success": "Réussi",
+    "failed": "Échec",
+    "thinking": "Raisonnement",
+    "copied": "Copié",
+    "copy": "Copier la réponse",
+    "deleteConfirm": "Supprimer ce test de l’historique ?",
+    "delete": "Supprimer ce test",
+    "saveError": "Le résultat du test n’a pas pu être enregistré dans l’historique."
+  },
   "app": {
     "name": "PromptHub",
     "description": "Gestionnaire de Prompts local avec contrôle de version",
@@ -50,6 +70,7 @@
     "searchMcp": "Rechercher MCP..."
   },
   "prompt": {
+    "variableCacheSaveError": "Impossible de mémoriser les variables. Vous pouvez toujours lancer ce test.",
     "detailActions": {
       "copy": "Copier",
       "test": "Tester",
@@ -160,6 +181,7 @@
     "jsonSchemaHint": "Définit la structure JSON de sortie, l'IA suivra strictement ce format",
     "testing": "Test en cours...",
     "selectModelsHint": "Sélectionnez plusieurs modèles pour comparer les réponses",
+    "multiSelect": "Sélection multiple",
     "clearSelection": "Effacer la sélection",
     "selectAtLeast2": "Sélectionnez au moins 2 modèles pour comparer",
     "comparing": "Comparaison...",
@@ -4727,5 +4749,13 @@
     "placeholder": "Rechercher des paramètres",
     "results": "Résultats des paramètres",
     "empty": "Aucun paramètre correspondant"
+  },
+  "testWorkbench": {
+    "durationSeconds": "{{seconds}} s",
+    "current": "Test actuel",
+    "results": "Résultats de comparaison",
+    "compareEmpty": "Sélectionnez au moins deux modèles, puis lancez la comparaison.",
+    "singleEmpty": "Lancez un test pour afficher la réponse ici.",
+    "emptyResponse": "Aucune réponse"
   }
 }

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FormEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -217,8 +217,30 @@ describe("QuickAddModal", () => {
     expect(clearTimeoutSpy).toHaveBeenCalledWith(expect.anything());
   });
 
+  it("creates an AI generated prompt and closes under StrictMode", async () => {
+    const onCreate = vi.fn().mockResolvedValue({ id: "created-prompt" });
+    const onClose = vi.fn();
+    chatCompletionMock.mockResolvedValue({ content: JSON.stringify({
+      title: "Generated draft", userPrompt: "Write a weekly plan.",
+      systemPrompt: "Be concise.", promptType: "text", tags: ["planning"],
+    }) });
+    await renderWithI18n(
+      <ToastProvider>
+        <QuickAddModal isOpen onClose={onClose} onCreate={onCreate} initialMode="generate" />
+      </ToastProvider>,
+      { language: "en", reactStrictMode: true },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe the Prompt you want" }), {
+      target: { value: "Create a weekly planning prompt." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate & Create" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Generated draft", userPrompt: "Write a weekly plan.", systemPrompt: "Be concise.",
+    }));
+  });
+
   it("ignores stale generated prompt drafts after close and reopen", async () => {
-    const user = userEvent.setup();
     const generatedDraft = createDeferredChatResult();
     const handleCreate = vi.fn().mockResolvedValue({
       id: "created-prompt",
@@ -235,14 +257,13 @@ describe("QuickAddModal", () => {
           initialMode="generate"
         />
       </ToastProvider>,
-      { language: "en" },
+      { language: "en", reactStrictMode: true },
     );
 
-    await user.type(
-      screen.getByRole("textbox", { name: "Describe the Prompt you want" }),
-      "Generate a stale prompt draft.",
-    );
-    await user.click(screen.getByRole("button", { name: "Generate & Create" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe the Prompt you want" }), {
+      target: { value: "Generate a stale prompt draft." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate & Create" }));
 
     expect(chatCompletionMock).toHaveBeenCalledTimes(1);
 
@@ -269,18 +290,20 @@ describe("QuickAddModal", () => {
       </ToastProvider>,
     );
 
-    generatedDraft.resolve({
-      content: JSON.stringify({
-        title: "Stale generated prompt",
-        promptType: "text",
-        userPrompt: "This stale prompt should not be created.",
-        systemPrompt: "",
-        description: "Generated after close.",
-        suggestedFolder: null,
-        tags: ["stale"],
-      }),
+    await act(async () => {
+      generatedDraft.resolve({
+        content: JSON.stringify({
+          title: "Stale generated prompt",
+          promptType: "text",
+          userPrompt: "This stale prompt should not be created.",
+          systemPrompt: "",
+          description: "Generated after close.",
+          suggestedFolder: null,
+          tags: ["stale"],
+        }),
+      });
+      await generatedDraft.promise;
     });
-    await Promise.resolve();
 
     expect(handleCreate).not.toHaveBeenCalled();
   });

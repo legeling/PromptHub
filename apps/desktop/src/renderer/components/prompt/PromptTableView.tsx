@@ -438,7 +438,8 @@ export function PromptTableView({
 
   // Whether there are selected items
   // 是否有选中项
-  const hasSelection = selection.selectedIdList.length > 0;
+  const hasSelection = selection.active;
+  const visibleColumns = getVisibleColumns().filter(column => column.id !== 'checkbox' || selection.active);
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -469,7 +470,7 @@ export function PromptTableView({
           <table className="w-full table-fixed text-sm min-w-[860px]">
             <thead className="sticky top-0 z-20">
               <tr className="bg-muted border-b border-border text-xs">
-                {getVisibleColumns().map((column) => {
+                {visibleColumns.map((column) => {
                   // Render different content based on column id
                   // 根据列 ID 渲染不同内容
                   if (column.id === 'checkbox') {
@@ -612,7 +613,7 @@ export function PromptTableView({
                             <PromptTableThumbnail prompt={prompt} />
                             <button
                               type="button"
-                              onClick={() => onViewDetail(prompt)}
+                              onClick={() => selection.active ? selection.toggle(prompt.id) : onViewDetail(prompt)}
                               className="min-w-0 font-medium text-foreground hover:text-primary truncate text-left block"
                               title={prompt.title}
                             >
@@ -855,7 +856,7 @@ export function PromptTableView({
                         : ''
                     }`}
                   >
-                    {getVisibleColumns().map(renderCell)}
+                    {visibleColumns.map(renderCell)}
                   </tr>
                 );
               })}

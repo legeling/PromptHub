@@ -1,9 +1,11 @@
 import type { ReactNode, RefObject } from "react";
+import { PromptDetailRow } from "./PromptDetailRow";
 import { handleMarkdownListKeyDown } from "../ui/Textarea";
 
 interface PromptContentFieldProps {
   /** Field label, e.g. "System Prompt". */
   label: string;
+  labelIcon?: ReactNode;
   /** Show the EN badge beside the label. */
   showEnglishBadge: boolean;
   /** Whether the detail view is in inline-edit mode. */
@@ -29,6 +31,7 @@ interface PromptContentFieldProps {
 
 export function PromptContentField({
   label,
+  labelIcon,
   showEnglishBadge,
   isEditing,
   value,
@@ -43,18 +46,20 @@ export function PromptContentField({
   headerAction,
 }: PromptContentFieldProps) {
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+    <PromptDetailRow
+      icon={labelIcon}
+      label={
+        <>
           {label}
           {showEnglishBadge && (
-            <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">
+            <span className="ml-1 rounded bg-primary/10 px-1 text-[10px] text-primary">
               EN
             </span>
           )}
-        </span>
-        {headerAction}
-      </div>
+        </>
+      }
+      action={headerAction}
+    >
       {isEditing ? (
         <textarea
           ref={textareaRef}
@@ -93,11 +98,11 @@ export function PromptContentField({
               onStartEdit();
             }
           }}
-          className="cursor-text rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="min-w-0 cursor-text rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         >
           {renderedContent}
         </div>
       )}
-    </div>
+    </PromptDetailRow>
   );
 }

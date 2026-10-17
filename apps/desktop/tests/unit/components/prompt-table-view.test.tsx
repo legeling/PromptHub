@@ -8,20 +8,7 @@ import { renderWithI18n } from "../../helpers/i18n";
 // Table rows read content columns from the prompt detail cache; tests populate
 // it with full prompt content before rendering.
 // 表格行从详情缓存读取内容列，测试在渲染前填充完整内容。
-const mockDetailCache = vi.hoisted(() => ({} as Record<string, Prompt>));
-
-vi.mock("../../../src/renderer/stores/prompt.store", () => ({
-  usePromptStore: <T,>(
-    selector: (state: {
-      promptDetailCache: typeof mockDetailCache;
-      getPromptDetail: () => Promise<Prompt | null>;
-    }) => T,
-  ) =>
-    selector({
-      promptDetailCache: mockDetailCache,
-      getPromptDetail: () => Promise.resolve(null),
-    }),
-}));
+import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 
 const prompt: Prompt = {
   id: "prompt-table-1",
@@ -76,9 +63,13 @@ function renderTableView({
 } = {}) {
   // Populate the detail cache so content columns render from the cache.
   // 填充详情缓存，内容列从缓存渲染。
-  for (const item of prompts) {
-    mockDetailCache[item.id] = item;
-  }
+  usePromptStore.setState({
+    promptDetailCache: Object.fromEntries(
+      prompts.map((item) => [item.id, item]),
+    ),
+    selectedIds: [],
+    isBatchSelectionActive: false,
+  });
   return renderWithI18n(
     <PromptTableView
       prompts={prompts}
@@ -117,9 +108,9 @@ async function clickCopyButton() {
 }
 
 describe("PromptTableView", () => {
-  beforeEach(() => localStorage.removeItem('prompthub-table-config'));
+  beforeEach(() => localStorage.removeItem("prompthub-table-config"));
   afterEach(() => {
-    localStorage.removeItem('prompthub-table-config');
+    localStorage.removeItem("prompthub-table-config");
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -160,14 +151,21 @@ describe("PromptTableView", () => {
     await clickCopyButton();
 
     expect(clearTimeoutSpy).toHaveBeenCalledWith(firstCopyTimer);
-    expect(setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 2000)).toHaveLength(2);
+    expect(
+      setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 2000),
+    ).toHaveLength(2);
   });
 
   it("exposes accessible names and checked state for row selection controls", async () => {
     await renderTableView();
 
-    const selectAll = screen.getByRole("checkbox", { name: "Select all prompts" });
-    const selectRow = screen.getByRole("checkbox", { name: "Select Release notes" });
+    act(() => usePromptStore.getState().enterBatchSelection());
+    const selectAll = screen.getByRole("checkbox", {
+      name: "Select all prompts",
+    });
+    const selectRow = screen.getByRole("checkbox", {
+      name: "Select Release notes",
+    });
 
     expect(selectAll).toHaveAttribute("aria-checked", "false");
     expect(selectRow).toHaveAttribute("aria-checked", "false");
@@ -181,10 +179,17 @@ describe("PromptTableView", () => {
   it("exposes accessible names for pagination controls", async () => {
     await renderTableView();
 
-    expect(screen.getByRole("combobox", { name: "Per page" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
+    expect(
+      screen.getByRole("combobox", { name: "Per page" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Previous page" }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("exposes accessible names for icon-only row actions", async () => {
@@ -198,15 +203,16 @@ describe("PromptTableView", () => {
       "aria-label",
       "AI Test",
     );
-    expect(screen.getByRole("button", { name: "Version History" })).toHaveAttribute(
+    expect(
+      screen.getByRole("button", { name: "Version History" }),
+    ).toHaveAttribute("aria-label", "Version History");
+    expect(
+      screen.getByRole("button", { name: "Add to Favorites" }),
+    ).toHaveAttribute("aria-label", "Add to Favorites");
+    expect(screen.getByRole("button", { name: "Edit" })).toHaveAttribute(
       "aria-label",
-      "Version History",
+      "Edit",
     );
-    expect(screen.getByRole("button", { name: "Add to Favorites" })).toHaveAttribute(
-      "aria-label",
-      "Add to Favorites",
-    );
-    expect(screen.getByRole("button", { name: "Edit" })).toHaveAttribute("aria-label", "Edit");
     expect(screen.getByRole("button", { name: "Delete" })).toHaveAttribute(
       "aria-label",
       "Delete",
@@ -292,10 +298,16 @@ describe("PromptTableView", () => {
 
     await renderTableView({ prompts: [parent, child] });
 
-    expect(screen.getByRole("button", { name: parent.title })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: child.title })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: parent.title }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: child.title }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Parent")).toBeInTheDocument();
-    expect(screen.getByText(parent.title, { selector: "span" })).toBeInTheDocument();
+    expect(
+      screen.getByText(parent.title, { selector: "span" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Children 1")).toBeInTheDocument();
   });
 
@@ -311,21 +323,31 @@ describe("PromptTableView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse Prompt 1" }));
 
-    expect(screen.getByRole("button", { name: parent.title })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: child.title })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: parent.title }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: child.title }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Expand Prompt 1" }));
 
-    expect(screen.getByRole("button", { name: child.title })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: child.title }),
+    ).toBeInTheDocument();
   });
 
   it("clamps the active page when the prompt list shrinks", async () => {
-    const prompts = Array.from({ length: 11 }, (_, index) => createPrompt(index + 1));
+    const prompts = Array.from({ length: 11 }, (_, index) =>
+      createPrompt(index + 1),
+    );
     const { rerender } = await renderTableView({ prompts });
 
     fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
 
-    expect(screen.getByRole("button", { name: "Prompt 11" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Prompt 11" }),
+    ).toBeInTheDocument();
 
     rerender(
       <PromptTableView
@@ -342,14 +364,20 @@ describe("PromptTableView", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Prompt 1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.getByRole("button", { name: "Prompt 1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("removes selected ids that no longer exist after a prompt refresh", async () => {
     const prompts = [createPrompt(1), createPrompt(2)];
     const { rerender } = await renderTableView({ prompts });
 
+    act(() => usePromptStore.getState().enterBatchSelection());
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 2" }));
 
     expect(screen.getByText("1 of 2 selected")).toBeInTheDocument();
@@ -370,7 +398,9 @@ describe("PromptTableView", () => {
     );
 
     expect(screen.queryByText("1 of 2 selected")).not.toBeInTheDocument();
-    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("toolbar", { name: "Batch actions" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens the batch tag dialog for the current selection (v0.6.2 restored entry)", async () => {
@@ -393,48 +423,63 @@ describe("PromptTableView", () => {
       { language: "en" },
     );
 
+    act(() => usePromptStore.getState().enterBatchSelection());
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 2" }));
     expect(screen.getByText("1 of 2 selected")).toBeInTheDocument();
     const toolbar = screen.getByRole("toolbar", { name: "Batch actions" });
-    expect(toolbar.parentElement).toContainElement(screen.getByRole("button", { name: "Column Settings" }));
+    expect(toolbar.parentElement).toContainElement(
+      screen.getByRole("button", { name: "Column Settings" }),
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Tags/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
     expect(onBatchTags).toHaveBeenCalledWith(["prompt-table-2"]);
   });
 
   it("selects the current page even when another page has the same selected count", async () => {
-    const prompts = Array.from({ length: 11 }, (_, index) => createPrompt(index + 1));
+    const prompts = Array.from({ length: 11 }, (_, index) =>
+      createPrompt(index + 1),
+    );
     await renderTableView({ prompts });
 
+    act(() => usePromptStore.getState().enterBatchSelection());
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
 
-    const selectAll = screen.getByRole("checkbox", { name: "Select all prompts" });
+    const selectAll = screen.getByRole("checkbox", {
+      name: "Select all prompts",
+    });
     expect(selectAll).toHaveAttribute("aria-checked", "false");
 
     fireEvent.click(selectAll);
 
     expect(screen.getByText("2 of 11 selected")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Select Prompt 11" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(
+      screen.getByRole("checkbox", { name: "Select Prompt 11" }),
+    ).toHaveAttribute("aria-checked", "true");
   });
 
   it("selects and inverts only the current page while retaining other page selections", async () => {
-    const prompts = Array.from({ length: 11 }, (_, index) => createPrompt(index + 1));
+    const prompts = Array.from({ length: 11 }, (_, index) =>
+      createPrompt(index + 1),
+    );
     await renderTableView({ prompts });
+    act(() => usePromptStore.getState().enterBatchSelection());
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
     fireEvent.click(screen.getByRole("button", { name: "Select All" }));
     expect(screen.getByText("2 of 11 selected")).toBeVisible();
-    expect(screen.getByRole("checkbox", { name: "Select Prompt 11" })).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Select Prompt 11" }),
+    ).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
     expect(screen.getByText("1 of 11 selected")).toBeVisible();
-    expect(screen.getByRole("checkbox", { name: "Select Prompt 11" })).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("checkbox", { name: "Select Prompt 11" }),
+    ).toHaveAttribute("aria-checked", "false");
     fireEvent.click(screen.getByRole("button", { name: "Page 1" }));
-    expect(screen.getByRole("checkbox", { name: "Select Prompt 1" })).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Select Prompt 1" }),
+    ).toHaveAttribute("aria-checked", "true");
   });
 
   it("normalizes default-value variables in the variables column count", async () => {
@@ -449,28 +494,53 @@ describe("PromptTableView", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Column Settings' }));
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Variables' }));
+    fireEvent.click(screen.getByRole("button", { name: "Column Settings" }));
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Variables" }),
+    );
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.queryByText("3")).not.toBeInTheDocument();
   });
 
-  it('keeps AI responses optional and opens image thumbnails without selecting a row', async () => {
-    await renderTableView({ prompts: [{ ...prompt, promptType: 'image', images: ['data:image/png;base64,aGVsbG8='] }] });
-    expect(screen.queryByRole('columnheader', { name: 'AI Response' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Select Release notes' })).toHaveAttribute('aria-checked', 'false');
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Column Settings' }));
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'AI Response' }));
-    expect(screen.getByRole('columnheader', { name: 'AI Response' })).toBeInTheDocument();
+  it("keeps AI responses optional and opens image thumbnails without selecting a row", async () => {
+    await renderTableView({
+      prompts: [
+        {
+          ...prompt,
+          promptType: "image",
+          images: ["data:image/png;base64,aGVsbG8="],
+        },
+      ],
+    });
+    expect(
+      screen.queryByRole("columnheader", { name: "AI Response" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    act(() => usePromptStore.getState().enterBatchSelection());
+    expect(
+      screen.getByRole("checkbox", { name: "Select Release notes" }),
+    ).toHaveAttribute("aria-checked", "false");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Column Settings" }));
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "AI Response" }),
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "AI Response" }),
+    ).toBeInTheDocument();
   });
 
-  it('does not offer an empty preview for an image prompt without images', async () => {
-    await renderTableView({ prompts: [{ ...prompt, promptType: 'image', images: [] }] });
-    expect(screen.queryByRole('button', { name: 'Preview' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: prompt.title })).toBeInTheDocument();
+  it("does not offer an empty preview for an image prompt without images", async () => {
+    await renderTableView({
+      prompts: [{ ...prompt, promptType: "image", images: [] }],
+    });
+    expect(
+      screen.queryByRole("button", { name: "Preview" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: prompt.title }),
+    ).toBeInTheDocument();
   });
 });

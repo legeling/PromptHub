@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type {
   Prompt,
   PromptSummary,
@@ -30,26 +30,22 @@ export type SortBy =
 export type SortOrder = "desc" | "asc";
 // View mode
 // 视图模式
-export type ViewMode =
-  | "card"
-  | "list"
-  | "gallery"
-  | "kanban"
-  | "graph"
-  | "generation";
-const VIEW_MODES: readonly ViewMode[] = [
-  "card",
-  "list",
-  "gallery",
-  "kanban",
-  "graph",
-  "generation",
-];
+export type ListViewMode = "card" | "list" | "gallery" | "kanban";
+export type ViewMode = ListViewMode | "graph" | "generation";
 export type GalleryImageSize = "small" | "medium" | "large";
 export type KanbanColumns = 2 | 3 | 4;
 
 function isViewMode(value: unknown): value is ViewMode {
-  return typeof value === "string" && VIEW_MODES.includes(value as ViewMode);
+  return isListViewMode(value) || value === "graph" || value === "generation";
+}
+
+function isListViewMode(value: unknown): value is ListViewMode {
+  return (
+    value === "card" ||
+    value === "list" ||
+    value === "gallery" ||
+    value === "kanban"
+  );
 }
 
 const PROMPT_DETAIL_CACHE_LIMIT = 100;
@@ -222,6 +218,9 @@ interface PromptState {
   // View mode
   // 视图模式
   viewMode: ViewMode;
+  lastListViewMode: ListViewMode;
+  /** Session-only fence against hydration replacing a newer navigation choice. */
+  viewModeRevision: number;
   galleryImageSize: GalleryImageSize;
   kanbanColumns: KanbanColumns;
 
@@ -255,6 +254,8 @@ interface PromptState {
   selectPrompt: (id: string | null) => void;
   setSelectedIds: (ids: string[]) => void;
   toggleBatchSelection: (id: string) => void;
+  enterBatchSelection: () => void;
+  exitBatchSelection: () => void;
   setSearchQuery: (query: string) => void;
   toggleFilterTag: (tag: string) => void;
   setFilterTags: (tags: string[]) => void;
@@ -268,6 +269,7 @@ interface PromptState {
   setSortBy: (sortBy: SortBy) => void;
   setSortOrder: (sortOrder: SortOrder) => void;
   setViewMode: (viewMode: ViewMode) => void;
+  returnToListView: () => void;
   setGalleryImageSize: (size: GalleryImageSize) => void;
   setKanbanColumns: (columns: KanbanColumns) => void;
   incrementUsageCount: (id: string) => Promise<void>;
@@ -292,6 +294,8 @@ export const usePromptStore = create<PromptState>()(
       sortBy: "updatedAt" as SortBy,
       sortOrder: "desc" as SortOrder,
       viewMode: "card" as ViewMode,
+      lastListViewMode: "card",
+      viewModeRevision: 0,
       galleryImageSize: "medium" as GalleryImageSize,
       kanbanColumns: 3 as KanbanColumns,
 
@@ -321,7 +325,8 @@ export const usePromptStore = create<PromptState>()(
               promptDetailCache: {},
               selectedIds,
               isBatchSelectionActive:
-                state.isBatchSelectionActive && selectedIds.length > 0,
+                state.isBatchSelectionActive &&
+                (selectedIds.length > 0 || state.selectedIds.length === 0),
               selectedId:
                 state.selectedId && promptIds.has(state.selectedId)
                   ? state.selectedId
@@ -621,7 +626,8 @@ export const usePromptStore = create<PromptState>()(
             selectedId: state.selectedId === id ? null : state.selectedId,
             selectedIds,
             isBatchSelectionActive:
-              state.isBatchSelectionActive && selectedIds.length > 0,
+              state.isBatchSelectionActive &&
+              (selectedIds.length > 0 || state.selectedIds.length === 0),
             lastSelectedId:
               state.lastSelectedId === id ? null : state.lastSelectedId,
           };
@@ -635,7 +641,9 @@ export const usePromptStore = create<PromptState>()(
           selectedIds: id ? [id] : [],
           isBatchSelectionActive: false,
           lastSelectedId: id ?? state.lastSelectedId,
-          selectionRevision: id ? state.selectionRevision + 1 : state.selectionRevision,
+          selectionRevision: id
+            ? state.selectionRevision + 1
+            : state.selectionRevision,
         })),
 
       setSelectedIds: (ids) =>
@@ -654,7 +662,8 @@ export const usePromptStore = create<PromptState>()(
                 : state.lastSelectedId;
           return {
             selectedIds: ids,
-            isBatchSelectionActive: ids.length > 0,
+            isBatchSelectionActive:
+              state.isBatchSelectionActive || ids.length > 0,
             // If only one is selected, update selectedId for compatibility
             // 如果只选中一个，更新 selectedId 以保持兼容性
             selectedId: nextSelectedId,
@@ -666,9 +675,16 @@ export const usePromptStore = create<PromptState>()(
           };
         }),
 
+      enterBatchSelection: () =>
+        set({ selectedIds: [], isBatchSelectionActive: true }),
+      exitBatchSelection: () =>
+        set({ selectedIds: [], isBatchSelectionActive: false }),
+
       toggleBatchSelection: (id) => {
         const state = get();
-        const selectedIds = state.isBatchSelectionActive ? state.selectedIds : [];
+        const selectedIds = state.isBatchSelectionActive
+          ? state.selectedIds
+          : [];
         state.setSelectedIds(
           selectedIds.includes(id)
             ? selectedIds.filter((selectedId) => selectedId !== id)
@@ -750,7 +766,25 @@ export const usePromptStore = create<PromptState>()(
       setSort: (sortBy, sortOrder) => set({ sortBy, sortOrder }),
       setSortBy: (sortBy) => set({ sortBy }),
       setSortOrder: (sortOrder) => set({ sortOrder }),
-      setViewMode: (viewMode) => set({ viewMode }),
+      setViewMode: (viewMode) =>
+        set((state) => ({
+          viewMode,
+          ...(viewMode !== state.viewMode
+            ? { selectedIds: [], isBatchSelectionActive: false }
+            : {}),
+          lastListViewMode: isListViewMode(viewMode)
+            ? viewMode
+            : state.lastListViewMode,
+          viewModeRevision: state.viewModeRevision + 1,
+        })),
+      returnToListView: () => {
+        const state = get();
+        if (isListViewMode(state.viewMode)) return;
+        set({
+          viewMode: state.lastListViewMode,
+          viewModeRevision: state.viewModeRevision + 1,
+        });
+      },
       setGalleryImageSize: (size) => set({ galleryImageSize: size }),
       setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
 
@@ -782,23 +816,53 @@ export const usePromptStore = create<PromptState>()(
     }),
     {
       name: "prompt-store",
+      storage: createJSONStorage(() => ({
+        getItem: (name) => localStorage.getItem(name),
+        removeItem: (name) => localStorage.removeItem(name),
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch (error) {
+            console.error("Failed to persist Prompt view preferences:", error);
+          }
+        },
+      })),
+      onRehydrateStorage: () => (_state, error) => {
+        if (error)
+          console.error("Failed to restore Prompt view preferences:", error);
+      },
       partialize: (state) => ({
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
         viewMode: state.viewMode,
+        lastListViewMode: state.lastListViewMode,
         galleryImageSize: state.galleryImageSize,
         kanbanColumns: state.kanbanColumns,
         promptTypeFilter: state.promptTypeFilter,
         lastSelectedId: state.lastSelectedId,
       }),
       merge: (persisted, current) => {
+        // Zustand supplies unknown persisted state; layout fields are validated below.
         const persistedState = persisted as Partial<PromptState> | undefined;
+        const lastListViewMode = isListViewMode(persistedState?.viewMode)
+          ? persistedState.viewMode
+          : isListViewMode(persistedState?.lastListViewMode)
+            ? persistedState.lastListViewMode
+            : "card";
         return {
           ...current,
           ...persistedState,
-          viewMode: isViewMode(persistedState?.viewMode)
-            ? persistedState.viewMode
-            : "card",
+          viewMode:
+            current.viewModeRevision > 0
+              ? current.viewMode
+              : isViewMode(persistedState?.viewMode)
+                ? persistedState.viewMode
+                : lastListViewMode,
+          lastListViewMode:
+            current.viewModeRevision > 0
+              ? current.lastListViewMode
+              : lastListViewMode,
+          viewModeRevision: current.viewModeRevision,
         };
       },
     },

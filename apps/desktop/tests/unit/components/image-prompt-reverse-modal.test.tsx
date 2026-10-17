@@ -211,7 +211,7 @@ describe("ImagePromptReverseModal", () => {
       <ToastProvider>
         <ImagePromptReverseModal isOpen onClose={onClose} onCreate={onCreate} />
       </ToastProvider>,
-      { language: "zh" },
+      { language: "zh", reactStrictMode: true },
     );
 
     expect(

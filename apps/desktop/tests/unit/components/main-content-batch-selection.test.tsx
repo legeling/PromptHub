@@ -91,8 +91,19 @@ describe("Prompt card browsing and batch selection", () => {
       screen.getByRole("heading", { name: "Alpha", level: 2 }),
     ).toBeVisible();
     expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("enters empty multi-select without checking the open detail", async () => {
+    await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
+    expect(
+      screen.getByRole("button", { name: "0 of 3 selected" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Batch actions" })).toBeNull();
     expect(selection("Alpha")).not.toBeChecked();
-    expect(screen.getAllByRole("checkbox")).toHaveLength(prompts.length);
+    expect(usePromptStore.getState().selectedIds).toEqual([]);
   });
 
   it("restores the last detail without entering batch selection", async () => {
@@ -101,59 +112,80 @@ describe("Prompt card browsing and batch selection", () => {
 
     expect(usePromptStore.getState().selectedId).toBe("beta");
     expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
-    expect(selection("Beta")).not.toBeChecked();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
   it("selects one or more rows with checkboxes and clears the batch bar", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
-    expect(screen.getByRole("button", { name: "1 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "1 of 3 selected" }),
+    ).toBeVisible();
     expect(selection("Alpha")).toBeChecked();
 
     fireEvent.click(selection("Beta"));
-    expect(screen.getByRole("button", { name: "2 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "2 of 3 selected" }),
+    ).toBeVisible();
     expect(usePromptStore.getState().selectedIds).toEqual(["alpha", "beta"]);
     expect(selection("Beta")).toBeChecked();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear Selection" }));
     expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
-    for (const checkbox of screen.getAllByRole("checkbox"))
-      expect(checkbox).not.toBeChecked();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
   it("adds a clicked card to the active batch without replacing earlier selections", async () => {
     await openWorkspace();
     fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Beta"));
     expect(usePromptStore.getState().selectedIds).toEqual(["beta"]);
     expect(selection("Alpha")).not.toBeChecked();
-    expect(screen.getByRole("button", { name: "1 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "1 of 3 selected" }),
+    ).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Gamma" }));
     expect(usePromptStore.getState().selectedIds).toEqual(["beta", "gamma"]);
-    expect(screen.getByRole("button", { name: "2 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "2 of 3 selected" }),
+    ).toBeVisible();
     expect(selection("Beta")).toBeChecked();
     expect(selection("Gamma")).toBeChecked();
-    expect(screen.getByRole("heading", { name: "Beta", level: 2 })).toBeVisible();
-    expect(screen.queryByRole("heading", { name: "Gamma", level: 2 })).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Beta", level: 2 }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Gamma", level: 2 }),
+    ).toBeNull();
   });
 
-  it("toggles selected cards and restores browsing after the final item is unchecked", async () => {
+  it("keeps empty selection mode until explicitly cancelled", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
     fireEvent.click(selection("Beta"));
     fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
     expect(usePromptStore.getState().selectedIds).toEqual(["beta"]);
-    expect(screen.getByRole("button", { name: "1 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "1 of 3 selected" }),
+    ).toBeVisible();
     expect(selection("Alpha")).not.toBeChecked();
     expect(selection("Beta")).toBeChecked();
 
     fireEvent.click(screen.getByRole("button", { name: "Beta" }));
-    expect(usePromptStore.getState().isBatchSelectionActive).toBe(false);
-    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
+    expect(usePromptStore.getState().isBatchSelectionActive).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "0 of 3 selected" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Clear Selection" }));
     fireEvent.click(screen.getByRole("button", { name: "Gamma" }));
-    expect(screen.getByRole("heading", { name: "Gamma", level: 2 })).toBeVisible();
-    expect(selection("Gamma")).not.toBeChecked();
+    expect(
+      screen.getByRole("heading", { name: "Gamma", level: 2 }),
+    ).toBeVisible();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
   it.each(["metaKey", "ctrlKey", "shiftKey"])(
@@ -165,13 +197,20 @@ describe("Prompt card browsing and batch selection", () => {
         [modifier]: true,
       });
       fireEvent.click(screen.getByRole("button", { name: "Gamma" }));
-      expect(usePromptStore.getState().selectedIds).toEqual(["alpha", "beta", "gamma"]);
-      expect(screen.getByRole("button", { name: "3 of 3 selected" })).toBeVisible();
+      expect(usePromptStore.getState().selectedIds).toEqual([
+        "alpha",
+        "beta",
+        "gamma",
+      ]);
+      expect(
+        screen.getByRole("button", { name: "3 of 3 selected" }),
+      ).toBeVisible();
     },
   );
 
   it("uses Enter and Space to toggle cards while retaining the rest of the batch", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
     const beta = screen.getByRole("button", { name: "Beta" });
     fireEvent.keyDown(beta, { key: "Enter" });
@@ -180,20 +219,28 @@ describe("Prompt card browsing and batch selection", () => {
     fireEvent.keyDown(beta, { key: " " });
     expect(usePromptStore.getState().selectedIds).toEqual(["alpha"]);
     expect(selection("Alpha")).toBeChecked();
-    expect(screen.getByRole("button", { name: "1 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "1 of 3 selected" }),
+    ).toBeVisible();
   });
 
   it("retains the batch when Shift-clicking an already selected card", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
     fireEvent.click(selection("Beta"));
-    fireEvent.click(screen.getByRole("button", { name: "Beta" }), { shiftKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "Beta" }), {
+      shiftKey: true,
+    });
     expect(usePromptStore.getState().selectedIds).toEqual(["alpha", "beta"]);
-    expect(screen.getByRole("button", { name: "2 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "2 of 3 selected" }),
+    ).toBeVisible();
   });
 
   it("selects every filtered card and inverts a partial selection", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
     fireEvent.click(screen.getByRole("button", { name: /of \d+ selected/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Invert Selection" }));
@@ -203,29 +250,40 @@ describe("Prompt card browsing and batch selection", () => {
     expect(selection("Gamma")).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: /of \d+ selected/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Select All" }));
-    expect(screen.getByRole("button", { name: "3 of 3 selected" })).toBeVisible();
-    for (const checkbox of screen.getAllByRole("checkbox")) expect(checkbox).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "3 of 3 selected" }),
+    ).toBeVisible();
+    for (const checkbox of screen.getAllByRole("checkbox"))
+      expect(checkbox).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: /of \d+ selected/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Select All" }));
-    expect(screen.getByRole("button", { name: "3 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "3 of 3 selected" }),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /of \d+ selected/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Invert Selection" }));
-    expect(usePromptStore.getState().isBatchSelectionActive).toBe(false);
-    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
-    for (const checkbox of screen.getAllByRole("checkbox")) expect(checkbox).not.toBeChecked();
+    expect(usePromptStore.getState().isBatchSelectionActive).toBe(true);
+    expect(
+      screen.getByRole("toolbar", { name: "Batch actions" }),
+    ).toBeVisible();
+    for (const checkbox of screen.getAllByRole("checkbox"))
+      expect(checkbox).not.toBeChecked();
   });
 
   it("does not select cards excluded by the current search", async () => {
     usePromptStore.setState({ searchQuery: "Beta" });
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Beta"));
     fireEvent.click(screen.getByRole("button", { name: /of \d+ selected/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Select All" }));
     expect(usePromptStore.getState().selectedIds).toEqual(["beta"]);
-    expect(screen.getByRole("button", { name: "1 of 1 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "1 of 1 selected" }),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /of \d+ selected/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Invert Selection" }));
-    expect(usePromptStore.getState().isBatchSelectionActive).toBe(false);
+    expect(usePromptStore.getState().isBatchSelectionActive).toBe(true);
   });
 
   it("keeps modifier-key selection and shows its matching checkboxes", async () => {
@@ -234,40 +292,53 @@ describe("Prompt card browsing and batch selection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Beta" }), {
       metaKey: true,
     });
-    expect(screen.getByRole("button", { name: "2 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "2 of 3 selected" }),
+    ).toBeVisible();
     expect(selection("Alpha")).toBeChecked();
     expect(selection("Beta")).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Gamma" }), {
       shiftKey: true,
     });
-    expect(screen.getByRole("button", { name: "3 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "3 of 3 selected" }),
+    ).toBeVisible();
   });
 
   it("does not restore a detail and erase the remaining multi-selection", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
     fireEvent.click(selection("Beta"));
     fireEvent.click(selection("Gamma"));
     fireEvent.click(selection("Alpha"));
     expect(usePromptStore.getState().selectedIds).toEqual(["beta", "gamma"]);
-    expect(screen.getByRole("button", { name: "2 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "2 of 3 selected" }),
+    ).toBeVisible();
     expect(selection("Alpha")).not.toBeChecked();
   });
 
   it("toggles a focused checkbox with Space without also opening its row", async () => {
     const user = userEvent.setup();
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     selection("Alpha").focus();
     await user.keyboard(" ");
     expect(selection("Alpha")).toBeChecked();
-    expect(screen.getByRole("button", { name: "1 of 3 selected" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "1 of 3 selected" }),
+    ).toBeVisible();
     await user.keyboard(" ");
     expect(selection("Alpha")).not.toBeChecked();
-    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "0 of 3 selected" }),
+    ).toBeVisible();
   });
 
   it("leaves batch selection when its records disappear after a list refresh", async () => {
     await openWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
     fireEvent.click(selection("Alpha"));
     await act(async () => {
       await usePromptStore.getState().fetchPrompts();

@@ -1,5 +1,5 @@
-import type { FormEvent } from "react";
-import { fireEvent, screen } from "@testing-library/react";
+import { StrictMode, type FormEvent } from "react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CreatePromptModal } from "../../../src/renderer/components/prompt/CreatePromptModal";
 import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
@@ -62,6 +62,44 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("CreatePromptModal", () => {
+  it("previews a selected reference image and includes it when creating in StrictMode", async () => {
+    resetStores();
+    window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/reference.png"]);
+    window.electron.saveImage = vi.fn().mockResolvedValue(["managed-reference.png"]);
+    const onCreate = vi.fn();
+    await renderWithI18n(
+      <StrictMode>
+        <ToastProvider>
+          <CreatePromptModal isOpen onClose={vi.fn()} onCreate={onCreate} />
+        </ToastProvider>
+      </StrictMode>,
+      { language: "en" },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /Title/ }), {
+      target: { value: "Reference image prompt" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /User Prompt/ }), {
+      target: { value: "Use this reference image." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload/Paste/URL" }));
+    await waitFor(() => expect(screen.getByAltText("preview-0")).toHaveAttribute(
+      "src", "local-image://managed-reference.png",
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Preview reference image 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(screen.getByRole("button", { name: "Reset zoom" })).toHaveTextContent("125%");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Zoom in" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Preview" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "New Prompt" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Reference image prompt",
+      userPrompt: "Use this reference image.",
+      images: ["managed-reference.png"],
+    }));
+  });
+
   it("creates a system-only prompt and visibly rejects whitespace-only content (#225)", async () => {
     resetStores();
     const onCreate = vi.fn();
@@ -76,7 +114,6 @@ describe("CreatePromptModal", () => {
     });
     const create = screen.getByRole("button", { name: "Create" });
     expect(create).toBeDisabled();
-    expect(screen.getByText("Fill in at least one system or user prompt.")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
     const system = screen.getByRole("textbox", { name: "System Prompt (Optional)" });
     fireEvent.change(system, { target: { value: " \n\t " } });

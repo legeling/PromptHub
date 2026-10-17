@@ -1,4 +1,5 @@
 import { migrateGenerationMetadata } from "./generation-schema";
+import { migratePromptTestHistory } from "./prompt-test-history";
 import { migrateRuleOwnership } from "./rule-schema";
 import Database from "./adapter";
 import path from "path";
@@ -1058,6 +1059,7 @@ export function initDatabase(
       runMigrations();
       migrateRuleOwnership(db!);
       migrateGenerationMetadata(db!);
+      migratePromptTestHistory(db!);
       db!.exec(SCHEMA_INDEXES);
       hooks?.beforeMigrationCommit?.();
       recordCurrentDatabaseMigration(db!, Date.now() - migrationStartedAt);

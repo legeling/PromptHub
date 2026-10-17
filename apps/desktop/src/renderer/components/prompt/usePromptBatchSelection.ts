@@ -1,28 +1,17 @@
-/**
- * Shared multi-selection state for prompt views (table / gallery).
- * 提示词视图（表格 / 画廊）共享的多选状态。
- *
- * Behavior mirrors the historical PromptTableView selection semantics:
- * - selection is pruned when underlying prompts disappear;
- * - "select all" only toggles the current action scope (page rows for the
- *   table, visible cards for the gallery);
- * - deletion retains selection until removed records are pruned, so cancellation
- *   and failures keep the remaining action scope visible.
- */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { usePromptStore } from "../../stores/prompt.store";
 import {
   invertPromptSelection,
   selectAllPromptIds,
 } from "./prompt-batch-selection-utils";
 
 interface UsePromptBatchSelectionParams {
-  /** All ids the view can currently hold; stale selections are pruned against it. */
   allIdSet: ReadonlySet<string>;
-  /** Ids affected by the "select all" toggle (page scope). */
   scopeIds: readonly string[];
 }
 
 interface PromptBatchSelection {
+  active: boolean;
   selectedIds: ReadonlySet<string>;
   selectedIdList: string[];
   allScopeSelected: boolean;
@@ -33,80 +22,53 @@ interface PromptBatchSelection {
   clear: () => void;
 }
 
+/** All Prompt layouts share transient mode and selection; scope controls only all/invert. */
 export function usePromptBatchSelection({
   allIdSet,
   scopeIds,
 }: UsePromptBatchSelectionParams): PromptBatchSelection {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set<string>(),
-  );
-
+  const active = usePromptStore((state) => state.isBatchSelectionActive);
+  const ids = usePromptStore((state) => state.selectedIds);
+  const setIds = usePromptStore((state) => state.setSelectedIds);
+  const clear = usePromptStore((state) => state.exitBatchSelection);
+  const toggle = usePromptStore((state) => state.toggleBatchSelection);
+  const selectedIdList = useMemo(() => (active ? ids : []), [active, ids]);
+  const selectedIds = useMemo(() => new Set(selectedIdList), [selectedIdList]);
   useEffect(() => {
-    setSelectedIds((current) => {
-      const kept = Array.from(current).filter((id) => allIdSet.has(id));
-      return kept.length === current.size ? current : new Set(kept);
-    });
-  }, [allIdSet]);
-
-  const toggle = useCallback((id: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const scopeKey = useMemo(() => scopeIds.join("\u001f"), [scopeIds]);
-
+    if (!active) return;
+    const kept = ids.filter((id) => allIdSet.has(id));
+    if (kept.length === ids.length) return;
+    if (kept.length === 0) clear();
+    else setIds(kept);
+  }, [active, ids, allIdSet, clear, setIds]);
+  const scopeSet = useMemo(() => new Set(scopeIds), [scopeIds]);
   const allScopeSelected =
     scopeIds.length > 0 && scopeIds.every((id) => selectedIds.has(id));
-
   const toggleSelectAllScope = useCallback(() => {
-    const scope = scopeKey === "" ? [] : scopeKey.split("\u001f");
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      const everythingSelected =
-        scope.length > 0 && scope.every((id) => current.has(id));
-      scope.forEach((id) => {
-        if (everythingSelected) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-      });
-      return next;
-    });
-  }, [scopeKey]);
-
-  const clear = useCallback(() => {
-    setSelectedIds(new Set<string>());
-  }, []);
-
-  const selectAllScope = useCallback(() => {
-    setSelectedIds((current) => selectAllPromptIds(current, scopeIds));
-  }, [scopeIds]);
-
-  const invertScopeSelection = useCallback(() => {
-    setSelectedIds((current) => invertPromptSelection(current, scopeIds));
-  }, [scopeIds]);
-
-  const selectedIdList = useMemo(
-    () => Array.from(selectedIds),
-    [selectedIds],
-  );
-
+    setIds(
+      allScopeSelected
+        ? selectedIdList.filter((id) => !scopeSet.has(id))
+        : Array.from(selectAllPromptIds(selectedIds, scopeIds)),
+    );
+  }, [
+    allScopeSelected,
+    selectedIdList,
+    selectedIds,
+    scopeIds,
+    scopeSet,
+    setIds,
+  ]);
   return {
+    active,
     selectedIds,
     selectedIdList,
     allScopeSelected,
     toggle,
-    toggleSelectAllScope,
-    selectAllScope,
-    invertScopeSelection,
     clear,
+    toggleSelectAllScope,
+    selectAllScope: () =>
+      setIds(Array.from(selectAllPromptIds(selectedIds, scopeIds))),
+    invertScopeSelection: () =>
+      setIds(Array.from(invertPromptSelection(selectedIds, scopeIds))),
   };
 }

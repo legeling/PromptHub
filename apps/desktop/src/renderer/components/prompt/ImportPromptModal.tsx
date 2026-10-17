@@ -37,6 +37,7 @@ export function ImportPromptModal({
   const modalSessionRef = useRef(0);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       isOpenRef.current = false;

@@ -207,7 +207,7 @@ export function PromptGalleryView({
 
     return (
         <>
-            {canBatch && (
+            {canBatch && selection.active && (
                 <PromptBatchActionBar
                     layout="gallery"
                     selectedIds={selection.selectedIdList}
@@ -267,7 +267,7 @@ export function PromptGalleryView({
                                         <GalleryCard
                                             prompt={prompt}
                                             onSelect={() => {
-                                                if (canBatch && selection.selectedIds.size > 0) {
+                                                if (canBatch && selection.active) {
                                                     selection.toggle(prompt.id);
                                                 } else {
                                                     onViewDetail(prompt);
@@ -281,7 +281,7 @@ export function PromptGalleryView({
                                             highlightTerms={highlightTerms}
                                             videoLabel={videoLabel}
                                             titleClassName={titleClassName}
-                                            selectable={canBatch}
+                                            selectable={canBatch && selection.active}
                                             selected={selection.selectedIds.has(prompt.id)}
                                             onToggleSelect={() => selection.toggle(prompt.id)}
                                         />

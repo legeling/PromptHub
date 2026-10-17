@@ -11,7 +11,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
-import { resolveLocalImageSrc } from '../../utils/media-url';
+import { PromptReferenceImages } from './PromptReferenceImages';
 import { copyTextToClipboard } from './prompt-copy-utils';
 import { resolvePromptMarkdownHref } from './prompt-markdown-url';
 
@@ -53,6 +53,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>(editorMarkdownPreview ? 'preview' : 'edit');
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -311,25 +312,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground">{t('prompt.referenceImages')}</label>
             <div className="flex flex-wrap gap-3">
-              {images.map((img, index) => (
-                <div key={index} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
-                  <img
-                    src={resolveLocalImageSrc(img)}
-                    alt={`preview-${index}`}
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(index)}
-                    aria-label={t("prompt.removeReferenceImage", {
-                      index: index + 1,
-                    })}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <XIcon className="w-3 h-3" aria-hidden="true" />
-                  </button>
-                </div>
-              ))}
+              <PromptReferenceImages images={images} onRemove={handleRemoveImage} />
               <button
                 type="button"
                 onClick={handleSelectImage}

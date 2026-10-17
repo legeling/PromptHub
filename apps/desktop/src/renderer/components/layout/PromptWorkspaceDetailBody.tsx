@@ -26,12 +26,14 @@ function SelectedPromptDetail() {
       key={prompt.id}
       className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-3 duration-base"
     >
-      <div className="flex-1 overflow-y-auto">
-        <div className="w-full px-8 py-4">
+      <div className="flex-1 overflow-y-auto [container-type:inline-size]">
+        <div className="w-full px-5 py-4 [@container(min-width:640px)]:px-6">
           <PromptDetailHeader />
           <PromptDetailMetadataPanels />
-          <PromptDetailSupplement />
-          <PromptDetailFields />
+          <div className="border-t border-border/70 [container-type:inline-size]">
+            <PromptDetailSupplement />
+            <PromptDetailFields />
+          </div>
         </div>
       </div>
       <PromptDetailActionBar />
@@ -42,7 +44,7 @@ function SelectedPromptDetail() {
 export function PromptWorkspaceDetailBody() {
   const { selectedPrompt } = usePromptWorkspaceDetailContext();
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 min-w-0 flex flex-col overflow-hidden app-wallpaper-panel">
       {selectedPrompt ? <SelectedPromptDetail /> : <EmptyPromptDetail />}
     </div>
   );

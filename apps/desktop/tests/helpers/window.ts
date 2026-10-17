@@ -94,6 +94,12 @@ function createWindowApiDefaults() {
     maximize: vi.fn(),
     close: vi.fn(),
     prompt: {
+      testHistory: {
+        add: vi.fn().mockResolvedValue({ ok: true, data: {} }),
+        list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+        get: vi.fn().mockResolvedValue({ ok: true, data: null }),
+        delete: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+      },
       create: vi.fn(),
       get: vi.fn(),
       getAll: vi.fn(),

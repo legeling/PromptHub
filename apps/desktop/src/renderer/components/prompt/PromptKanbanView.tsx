@@ -15,6 +15,8 @@ import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { Reveal } from '../ui/motion';
 import { KanbanCard } from './PromptKanbanCard';
+import { PromptBatchActionBar } from './PromptBatchActionBar';
+import { usePromptBatchSelection } from './usePromptBatchSelection';
 
 interface PromptKanbanViewProps {
   prompts: PromptSummary[];
@@ -28,6 +30,10 @@ interface PromptKanbanViewProps {
   onVersionHistory: (prompt: PromptSummary) => void;
   onViewDetail: (prompt: PromptSummary) => void;
   onContextMenu: (e: React.MouseEvent, prompt: PromptSummary) => void;
+  onBatchFavorite?: (ids: string[], favorite: boolean) => void;
+  onBatchMove?: (ids: string[], folderId: string | undefined) => void;
+  onBatchDelete?: (ids: string[]) => void;
+  onBatchTags?: (ids: string[]) => void;
 }
 
 interface PinnedCard {
@@ -47,11 +53,18 @@ export function PromptKanbanView({
   onVersionHistory,
   onViewDetail,
   onContextMenu,
+  onBatchFavorite,
+  onBatchMove,
+  onBatchDelete,
+  onBatchTags,
 }: PromptKanbanViewProps) {
   const { t } = useTranslation();
   const pinnedSectionId = useId();
   const folders = useFolderStore(state => state.folders);
   const kanbanColumns = usePromptStore(state => state.kanbanColumns);
+  const scopeIds = useMemo(() => prompts.map(prompt => prompt.id), [prompts]);
+  const allIdSet = useMemo(() => new Set(scopeIds), [scopeIds]);
+  const selection = usePromptBatchSelection({ allIdSet, scopeIds });
   const uncategorizedLabel = t('folder.uncategorized', '未分类');
 
   // State for pinned cards
@@ -149,6 +162,20 @@ export function PromptKanbanView({
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      {selection.active && (onBatchFavorite || onBatchMove || onBatchDelete || onBatchTags) && (
+        <PromptBatchActionBar
+          layout="gallery"
+          selectedIds={selection.selectedIdList}
+          totalCount={prompts.length}
+          onSelectAll={selection.selectAllScope}
+          onInvertSelection={selection.invertScopeSelection}
+          onClear={selection.clear}
+          onFavorite={(ids, favorite) => onBatchFavorite?.(ids, favorite)}
+          onMove={(ids, folderId) => onBatchMove?.(ids, folderId)}
+          onDelete={(ids) => onBatchDelete?.(ids)}
+          onTag={onBatchTags}
+        />
+      )}
       {/* Pinned Cards Section */}
       {pinnedPrompts.length > 0 && (
         <div className="flex-shrink-0 border-b border-border bg-muted/20">

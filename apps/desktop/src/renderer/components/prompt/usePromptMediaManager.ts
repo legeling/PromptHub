@@ -111,6 +111,9 @@ export function usePromptMediaManager({
   const isOpenRef = useRef(isOpen);
 
   useEffect(() => {
+    // StrictMode replays setup after cleanup; async media results must remain
+    // eligible while the component is mounted again.
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       isOpenRef.current = false;

@@ -6,6 +6,10 @@ export const IPC_CHANNELS = {
   NOTIFICATION_PUBLISH: "notification:publish",
   NOTIFICATION_FEEDBACK: "notification:feedback",
   // Prompt
+  PROMPT_TEST_HISTORY_ADD: "prompt:testHistory:add",
+  PROMPT_TEST_HISTORY_LIST: "prompt:testHistory:list",
+  PROMPT_TEST_HISTORY_GET: "prompt:testHistory:get",
+  PROMPT_TEST_HISTORY_DELETE: "prompt:testHistory:delete",
   PROMPT_CREATE: "prompt:create",
   PROMPT_GET: "prompt:get",
   PROMPT_GET_ALL: "prompt:getAll",

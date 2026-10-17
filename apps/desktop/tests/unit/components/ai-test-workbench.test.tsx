@@ -6,17 +6,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AiTestModal } from "../../../src/renderer/components/prompt/AiTestModal";
 import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
-import { renderWithI18n } from "../../helpers/i18n";
+import { renderWithI18n as renderTestI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { savePromptVariableCache } from "../../../src/renderer/services/prompt-variable-cache";
 import type { Prompt } from "@prompthub/shared/types";
 
-const publishNotificationMock = vi.fn().mockResolvedValue({ success: true, delivery: "inApp" });
+async function renderWithI18n(
+  ...args: Parameters<typeof renderTestI18n>
+): Promise<Awaited<ReturnType<typeof renderTestI18n>>> {
+  let result: Awaited<ReturnType<typeof renderTestI18n>>;
+  await act(async () => {
+    result = await renderTestI18n(...args);
+  });
+  return result!;
+}
+
+const publishNotificationMock = vi
+  .fn()
+  .mockResolvedValue({ success: true, delivery: "inApp" });
 const chatCompletionMock = vi.fn();
 const multiModelCompareMock = vi.fn();
 const generateImageMock = vi.fn();
 
 vi.mock("../../../src/renderer/services/ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../src/renderer/services/ai")>();
+  const actual =
+    await importOriginal<typeof import("../../../src/renderer/services/ai")>();
   return {
     ...actual,
     chatCompletion: (...args: unknown[]) => chatCompletionMock(...args),
@@ -77,12 +91,237 @@ function expectRenderedButtonsNonSubmit() {
 }
 
 describe("AiTestModal workbench", () => {
+  it("remembers edited variables on reopen, shares modes, and isolates prompts", async () => {
+    savePromptVariableCache("remember-a", { feature: "Previous value" });
+    const view = (id: string, isOpen = true) => (
+      <ToastProvider>
+        <AiTestModal
+          isOpen={isOpen}
+          onClose={vi.fn()}
+          prompt={{
+            ...prompt,
+            id,
+            userPrompt: "Describe {{feature:Default value}}",
+          }}
+        />
+      </ToastProvider>
+    );
+    const { rerender } = await renderWithI18n(view("remember-a"), {
+      language: "en",
+    });
+    expect(screen.getByRole("textbox", { name: "{{feature}}" })).toHaveValue(
+      "Previous value",
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "{{feature}}" }), {
+      target: { value: "Edited $& value" },
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Multi-Model Compare" }));
+    expect(screen.getByRole("textbox", { name: "{{feature}}" })).toHaveValue(
+      "Edited $& value",
+    );
+    rerender(view("remember-a", false));
+    rerender(view("remember-a"));
+    expect(screen.getByRole("textbox", { name: "{{feature}}" })).toHaveValue(
+      "Edited $& value",
+    );
+    rerender(view("remember-b"));
+    expect(screen.getByRole("textbox", { name: "{{feature}}" })).toHaveValue(
+      "Default value",
+    );
+    rerender(view("remember-a"));
+    expect(screen.getByRole("textbox", { name: "{{feature}}" })).toHaveValue(
+      "Edited $& value",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "AI Test" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI Test" }));
+    await waitFor(() =>
+      expect(chatCompletionMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([
+          { role: "user", content: "Describe Edited $& value" },
+        ]),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it("keeps variable input usable and reports a cache write failure", async () => {
+    await renderWithI18n(
+      <ToastProvider>
+        <AiTestModal isOpen onClose={vi.fn()} prompt={prompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+    vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+      throw new Error("Storage unavailable");
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "{{feature}}" }), {
+      target: { value: "Unsaved input" },
+    });
+    expect(screen.getByRole("textbox", { name: "{{feature}}" })).toHaveValue(
+      "Unsaved input",
+    );
+    expect(
+      screen.getByText(
+        "Could not remember variable values. You can still run this test.",
+      ),
+    ).toBeInTheDocument();
+  });
+  it.each(["JSON Mode", "JSON Schema"])(
+    "uses %s for comparison and saves its history snapshot",
+    async (format) => {
+      await renderWithI18n(
+        <ToastProvider>
+          <AiTestModal
+            isOpen
+            onClose={vi.fn()}
+            prompt={prompt}
+            initialMode="compare"
+          />
+        </ToastProvider>,
+        { language: "en" },
+      );
+      fireEvent.click(screen.getByRole("button", { name: format }));
+      const schema =
+        '{"type":"object","properties":{"answer":{"type":"string"}}}';
+      if (format === "JSON Schema") {
+        fireEvent.change(screen.getByLabelText("Schema Name"), {
+          target: { value: "answer" },
+        });
+        fireEvent.change(screen.getByLabelText("Schema Definition"), {
+          target: { value: schema },
+        });
+      }
+      fireEvent.click(screen.getByRole("button", { name: "gpt-4o-mini" }));
+      fireEvent.click(screen.getByRole("button", { name: "claude-sonnet" }));
+      fireEvent.click(screen.getByRole("button", { name: "Run Comparison" }));
+      await waitFor(() => expect(multiModelCompareMock).toHaveBeenCalled());
+      const responseFormat =
+        format === "JSON Mode"
+          ? { type: "json_object" }
+          : {
+              type: "json_schema",
+              jsonSchema: {
+                name: "answer",
+                strict: true,
+                schema: JSON.parse(schema),
+              },
+            };
+      expect(multiModelCompareMock.mock.calls[0][2]).toMatchObject({
+        stream: true,
+        responseFormat,
+      });
+      await waitFor(() =>
+        expect(window.api.prompt.testHistory.add).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mode: "compare",
+            outputFormat:
+              format === "JSON Mode"
+                ? "json_object"
+                : `json_schema: answer\n${schema}`,
+          }),
+        ),
+      );
+    },
+  );
+  it("keeps current results while browsing the independent history tab", async () => {
+    const run = {
+      id: "run-1",
+      promptId: prompt.id,
+      promptVersion: 1,
+      createdAt: Date.parse("2026-10-17T06:32:00Z"),
+      mode: "single" as const,
+      systemPrompt: "Saved system",
+      userPrompt: "Saved input",
+      outputFormat: "text",
+      attachmentNames: [],
+      results: [
+        {
+          model: "saved-model",
+          provider: "openai",
+          success: true,
+          response: "Saved response",
+          thinkingContent: "",
+          error: "",
+          latency: 25,
+        },
+      ],
+    };
+    vi.mocked(window.api.prompt.testHistory.list).mockResolvedValue({
+      ok: true,
+      data: [
+        {
+          id: run.id,
+          createdAt: run.createdAt,
+          mode: "single",
+          models: ["saved-model"],
+          resultCount: 1,
+          successCount: 1,
+        },
+      ],
+    });
+    vi.mocked(window.api.prompt.testHistory.get).mockResolvedValue({
+      ok: true,
+      data: run,
+    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AiTestModal isOpen onClose={vi.fn()} prompt={prompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "AI Test" }).at(-1)!);
+    await waitFor(() =>
+      expect(screen.getByText("analysis done")).toBeVisible(),
+    );
+    expect(
+      screen.queryByRole("navigation", { name: "Test history" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Test history" }));
+    fireEvent.click(await screen.findByRole("button", { name: /saved-model/ }));
+    expect(await screen.findByText("Saved response")).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Test history" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "AI Test" }));
+    expect(screen.getByText("analysis done")).toBeVisible();
+    expect(chatCompletionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the successful response visible when history storage fails", async () => {
+    vi.mocked(window.api.prompt.testHistory.add).mockResolvedValue({
+      ok: false,
+      error: "Storage unavailable",
+    });
+    await renderWithI18n(
+      <ToastProvider>
+        <AiTestModal isOpen onClose={vi.fn()} prompt={prompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "AI Test" }).at(-1)!);
+    await waitFor(() =>
+      expect(screen.getByText("analysis done")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText("Test result could not be saved to history."),
+    ).toBeInTheDocument();
+    expect(window.api.prompt.testHistory.add).toHaveBeenCalledTimes(1);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    publishNotificationMock.mockResolvedValue({ success: true, delivery: "inApp" });
+    publishNotificationMock.mockResolvedValue({
+      success: true,
+      delivery: "inApp",
+    });
     installWindowMocks({
       electron: {
-        applicationNotifications: { publish: publishNotificationMock, onFeedback: vi.fn(() => () => undefined) },
+        applicationNotifications: {
+          publish: publishNotificationMock,
+          onFeedback: vi.fn(() => () => undefined),
+        },
         readImageBase64: vi.fn().mockResolvedValue("c2F2ZWQtcmVmZXJlbmNl"),
       },
     });
@@ -194,13 +433,21 @@ describe("AiTestModal workbench", () => {
     );
 
     expect(screen.getByText("Screenshot Analyzer")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Multi-Model Compare" })).toHaveClass("bg-primary");
+    expect(
+      screen.getByRole("tab", { name: "Multi-Model Compare" }),
+    ).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Test Attachments")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add Images" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Test Image" })).not.toBeInTheDocument();
-    expect(screen.getByText("{{feature}}")) .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add Images" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Test Image" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("{{feature}}")).toBeInTheDocument();
     expect(document.querySelector("aside")).toHaveClass("animate-in");
-    expect(document.querySelector("aside")).toHaveClass("slide-in-from-right-8");
+    expect(document.querySelector("aside")).toHaveClass(
+      "slide-in-from-right-8",
+    );
   });
 
   it("keeps AI test actions non-submit with decorative icons hidden", async () => {
@@ -225,9 +472,10 @@ describe("AiTestModal workbench", () => {
 
     expectRenderedButtonsNonSubmit();
 
-    await user.click(screen.getByRole("button", { name: "Multi-Model Compare" }));
-    expect(screen.getByRole("button", { name: "Multi-Model Compare" }))
-      .toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("tab", { name: "Multi-Model Compare" }));
+    expect(
+      screen.getByRole("tab", { name: "Multi-Model Compare" }),
+    ).toHaveAttribute("aria-selected", "true");
     expectRenderedButtonsNonSubmit();
 
     unmount();
@@ -265,9 +513,12 @@ describe("AiTestModal workbench", () => {
       }),
     ).toHaveAttribute("aria-pressed", "false");
 
-    await user.click(screen.getAllByRole("button", { name: "Test Image" }).at(-1)!);
-    expect(await screen.findByRole("img", { name: "Generated 1" }))
-      .toBeInTheDocument();
+    await user.click(
+      screen.getAllByRole("button", { name: "Test Image" }).at(-1)!,
+    );
+    expect(
+      await screen.findByRole("img", { name: "Generated 1" }),
+    ).toBeInTheDocument();
     expectRenderedButtonsNonSubmit();
 
     expect(onSubmit).not.toHaveBeenCalled();
@@ -293,7 +544,7 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "AI Test" })[1]);
+    await user.click(screen.getAllByRole("button", { name: "AI Test" })[0]);
 
     await waitFor(() => {
       expect(screen.getByText("bad")).toBeInTheDocument();
@@ -324,10 +575,18 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    expect(screen.getAllByRole("button", { name: "Test Image" })).toHaveLength(2);
-    expect(screen.queryByRole("button", { name: "Multi-Model Compare" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Test Image" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Test Image" })).toBeVisible();
+    expect(
+      screen.queryByRole("tab", { name: "Multi-Model Compare" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Reference Images")).toBeInTheDocument();
-    expect(screen.getByText("Select existing reference images")).toBeInTheDocument();
+    expect(
+      screen.getByText("Select existing reference images"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Selected")).toBeInTheDocument();
   });
 
@@ -373,10 +632,17 @@ describe("AiTestModal workbench", () => {
       { language: "zh" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "测试生图" }).at(-1)!);
+    await user.click(
+      screen.getAllByRole("button", { name: "测试生图" }).at(-1)!,
+    );
 
-    const generatedImage = await screen.findByRole("img", { name: "Generated 1" });
-    expect(generatedImage).toHaveAttribute("src", "https://example.com/generated.png");
+    const generatedImage = await screen.findByRole("img", {
+      name: "Generated 1",
+    });
+    expect(generatedImage).toHaveAttribute(
+      "src",
+      "https://example.com/generated.png",
+    );
   });
 
   it("filters unsafe generated image URLs before rendering", async () => {
@@ -400,11 +666,18 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "Test Image" }).at(-1)!);
+    await user.click(
+      screen.getAllByRole("button", { name: "Test Image" }).at(-1)!,
+    );
 
-    expect(await screen.findByText("The image generation endpoint returned no image"))
-      .toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: "Generated 1" })).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "The image generation endpoint returned no image",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: "Generated 1" }),
+    ).not.toBeInTheDocument();
   });
 
   it("downloads safe generated image URLs before adding them to the prompt", async () => {
@@ -429,13 +702,18 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "Test Image" }).at(-1)!);
-    expect(await screen.findByRole("img", { name: "Generated 1" }))
-      .toBeInTheDocument();
+    await user.click(
+      screen.getAllByRole("button", { name: "Test Image" }).at(-1)!,
+    );
+    expect(
+      await screen.findByRole("img", { name: "Generated 1" }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add to Prompt" }));
 
-    expect(downloadImage).toHaveBeenCalledWith("https://example.com/generated.png");
+    expect(downloadImage).toHaveBeenCalledWith(
+      "https://example.com/generated.png",
+    );
     expect(onAddImage).toHaveBeenCalledWith("generated-local.png");
   });
 
@@ -473,9 +751,12 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "Test Image" }).at(-1)!);
-    expect(await screen.findByRole("img", { name: "Generated 1" }))
-      .toBeInTheDocument();
+    await user.click(
+      screen.getAllByRole("button", { name: "Test Image" }).at(-1)!,
+    );
+    expect(
+      await screen.findByRole("img", { name: "Generated 1" }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Download" }));
 
@@ -485,7 +766,9 @@ describe("AiTestModal workbench", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://example.com/generated.png");
     expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:ai-generated-image");
-    expect(document.querySelectorAll("a[download='generated-image-1.png']")).toHaveLength(0);
+    expect(
+      document.querySelectorAll("a[download='generated-image-1.png']"),
+    ).toHaveLength(0);
   });
 
   it("keeps image generation failure details visible in the image test panel", async () => {
@@ -507,7 +790,9 @@ describe("AiTestModal workbench", () => {
       { language: "zh" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "测试生图" }).at(-1)!);
+    await user.click(
+      screen.getAllByRole("button", { name: "测试生图" }).at(-1)!,
+    );
 
     expect(await screen.findByText("生图失败")).toBeInTheDocument();
     expect(screen.getByText("Failed to fetch")).toBeInTheDocument();
@@ -531,14 +816,21 @@ describe("AiTestModal workbench", () => {
       expect(screen.getByText("diagram.png")).toBeInTheDocument();
     });
 
-    await user.click(screen.getAllByRole("button", { name: "AI Test" })[1]);
+    await user.click(screen.getAllByRole("button", { name: "AI Test" })[0]);
 
     await waitFor(() => {
       expect(chatCompletionMock).toHaveBeenCalledTimes(1);
     });
 
-    await waitFor(() => expect(publishNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ category: "promptTest", outcome: "success" })));
-    const messages = chatCompletionMock.mock.calls[0][1] as Array<{ role: string; content: unknown }>;
+    await waitFor(() =>
+      expect(publishNotificationMock).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "promptTest", outcome: "success" }),
+      ),
+    );
+    const messages = chatCompletionMock.mock.calls[0][1] as Array<{
+      role: string;
+      content: unknown;
+    }>;
     const userMessage = messages.find((message) => message.role === "user");
 
     expect(Array.isArray(userMessage?.content)).toBe(true);
@@ -548,7 +840,9 @@ describe("AiTestModal workbench", () => {
         expect.objectContaining({
           type: "image_url",
           image_url: expect.objectContaining({
-            url: expect.stringContaining("data:image/png;base64,ZmFrZS1pbWFnZQ=="),
+            url: expect.stringContaining(
+              "data:image/png;base64,ZmFrZS1pbWFnZQ==",
+            ),
           }),
         }),
       ]),
@@ -574,14 +868,21 @@ describe("AiTestModal workbench", () => {
     );
 
     expect(screen.getByText("{{feature}}")).toBeInTheDocument();
-    expect(screen.getByText("Describe checkout flow in detail.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Describe checkout flow in detail."),
+    ).toBeInTheDocument();
 
     await user.clear(screen.getByDisplayValue("checkout flow"));
-    await user.type(screen.getByPlaceholderText("Enter value"), "settings panel");
+    await user.type(
+      screen.getByPlaceholderText("Enter value"),
+      "settings panel",
+    );
 
-    expect(screen.getByText("Describe settings panel in detail.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Describe settings panel in detail."),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getAllByRole("button", { name: "AI Test" })[1]);
+    await user.click(screen.getAllByRole("button", { name: "AI Test" })[0]);
 
     await waitFor(() => {
       expect(chatCompletionMock).toHaveBeenCalledTimes(1);
@@ -618,7 +919,7 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "AI Test" })[1]);
+    await user.click(screen.getAllByRole("button", { name: "AI Test" })[0]);
 
     await waitFor(() => {
       expect(chatCompletionMock).toHaveBeenCalledTimes(1);
@@ -653,7 +954,20 @@ describe("AiTestModal workbench", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByText("stale single-model answer")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("stale single-model answer"),
+    ).not.toBeInTheDocument();
+    expect(window.api.prompt.testHistory.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptId: prompt.id,
+        results: [
+          expect.objectContaining({
+            response: "stale single-model answer",
+            success: true,
+          }),
+        ],
+      }),
+    );
     expect(handleSaveResponse).not.toHaveBeenCalled();
     expect(publishNotificationMock).not.toHaveBeenCalled();
   });
@@ -669,7 +983,7 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "AI Test" })[1]);
+    await user.click(screen.getAllByRole("button", { name: "AI Test" })[0]);
     await waitFor(() => {
       expect(screen.getByText("analysis done")).toBeInTheDocument();
     });
@@ -694,7 +1008,9 @@ describe("AiTestModal workbench", () => {
 
   it("does not schedule copy feedback when closed before clipboard write finishes", async () => {
     const clipboardWrite = createDeferred<void>();
-    vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(clipboardWrite.promise);
+    vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(
+      clipboardWrite.promise,
+    );
     const user = userEvent.setup();
 
     const { rerender } = await renderWithI18n(
@@ -704,7 +1020,7 @@ describe("AiTestModal workbench", () => {
       { language: "en" },
     );
 
-    await user.click(screen.getAllByRole("button", { name: "AI Test" })[1]);
+    await user.click(screen.getAllByRole("button", { name: "AI Test" })[0]);
     await waitFor(() => {
       expect(screen.getByText("analysis done")).toBeInTheDocument();
     });
@@ -725,17 +1041,22 @@ describe("AiTestModal workbench", () => {
       await Promise.resolve();
     });
 
-    expect(setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 2000)).toHaveLength(0);
+    expect(
+      setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 2000),
+    ).toHaveLength(0);
   });
 
-  it(
-    "passes uploaded chat attachments to compare mode for text prompts",
-    async () => {
+  it("passes uploaded chat attachments to compare mode for text prompts", async () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
       <ToastProvider>
-        <AiTestModal isOpen onClose={vi.fn()} prompt={prompt} initialMode="compare" />
+        <AiTestModal
+          isOpen
+          onClose={vi.fn()}
+          prompt={prompt}
+          initialMode="compare"
+        />
       </ToastProvider>,
       { language: "en" },
     );
@@ -756,7 +1077,10 @@ describe("AiTestModal workbench", () => {
       expect(multiModelCompareMock).toHaveBeenCalledTimes(1);
     });
 
-    const messages = multiModelCompareMock.mock.calls[0][1] as Array<{ role: string; content: unknown }>;
+    const messages = multiModelCompareMock.mock.calls[0][1] as Array<{
+      role: string;
+      content: unknown;
+    }>;
     const userMessage = messages.find((message) => message.role === "user");
 
     expect(Array.isArray(userMessage?.content)).toBe(true);
@@ -766,14 +1090,14 @@ describe("AiTestModal workbench", () => {
         expect.objectContaining({
           type: "image_url",
           image_url: expect.objectContaining({
-            url: expect.stringContaining("data:image/png;base64,ZmFrZS1pbWFnZQ=="),
+            url: expect.stringContaining(
+              "data:image/png;base64,ZmFrZS1pbWFnZQ==",
+            ),
           }),
         }),
       ]),
     );
-    },
-    30000,
-  );
+  }, 30000);
 
   it("ignores stale compare results after close and reopen", async () => {
     const compareResponse = createDeferred<{
@@ -793,7 +1117,12 @@ describe("AiTestModal workbench", () => {
 
     const { rerender } = await renderWithI18n(
       <ToastProvider>
-        <AiTestModal isOpen onClose={vi.fn()} prompt={prompt} initialMode="compare" />
+        <AiTestModal
+          isOpen
+          onClose={vi.fn()}
+          prompt={prompt}
+          initialMode="compare"
+        />
       </ToastProvider>,
       { language: "en" },
     );
@@ -808,12 +1137,22 @@ describe("AiTestModal workbench", () => {
 
     rerender(
       <ToastProvider>
-        <AiTestModal isOpen={false} onClose={vi.fn()} prompt={prompt} initialMode="compare" />
+        <AiTestModal
+          isOpen={false}
+          onClose={vi.fn()}
+          prompt={prompt}
+          initialMode="compare"
+        />
       </ToastProvider>,
     );
     rerender(
       <ToastProvider>
-        <AiTestModal isOpen onClose={vi.fn()} prompt={prompt} initialMode="compare" />
+        <AiTestModal
+          isOpen
+          onClose={vi.fn()}
+          prompt={prompt}
+          initialMode="compare"
+        />
       </ToastProvider>,
     );
 
@@ -837,6 +1176,18 @@ describe("AiTestModal workbench", () => {
     });
 
     expect(screen.queryByText("stale compare answer")).not.toBeInTheDocument();
+    expect(window.api.prompt.testHistory.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptId: prompt.id,
+        mode: "compare",
+        results: [
+          expect.objectContaining({
+            response: "stale compare answer",
+            success: true,
+          }),
+        ],
+      }),
+    );
   });
 
   it("ignores stale generated images after close and reopen", async () => {
@@ -859,7 +1210,9 @@ describe("AiTestModal workbench", () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole("button", { name: "测试生图" }).at(-1)!);
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "测试生图" }).at(-1)!,
+      );
       await Promise.resolve();
     });
     expect(generateImageMock).toHaveBeenCalledTimes(1);
@@ -882,6 +1235,8 @@ describe("AiTestModal workbench", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByRole("img", { name: "Generated 1" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: "Generated 1" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -90,6 +90,7 @@ describe("ImportPromptModal", () => {
           tags: ["t1"],
         }}
       />,
+      { reactStrictMode: true },
     );
 
     const importButton = screen.getByRole("button", { name: /import/i });

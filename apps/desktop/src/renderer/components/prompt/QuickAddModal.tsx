@@ -118,6 +118,7 @@ export function QuickAddModal({
   }, [hasUnsavedChanges, onClose]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       isOpenRef.current = false;

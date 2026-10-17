@@ -152,10 +152,14 @@ export function PromptDetailMetadata({
           className="min-w-[12rem] max-w-[22rem]"
           triggerClassName="flex h-7 w-full cursor-pointer items-center justify-between gap-2 rounded-full border border-border bg-card px-3 text-left text-xs font-medium text-foreground shadow-sm transition-all duration-quick hover:bg-accent/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
-        <span className="flex items-center gap-1">
-          <ClockIcon className="w-3.5 h-3.5" />
-          {new Date(prompt.updatedAt).toLocaleString()}
-        </span>
+        <time
+          className="flex items-center gap-1"
+          dateTime={prompt.createdAt}
+          title={t("prompt.createdAt")}
+        >
+          <ClockIcon aria-hidden="true" className="w-3.5 h-3.5" />
+          {new Date(prompt.createdAt).toLocaleString()}
+        </time>
         <span className="px-2 py-0.5 rounded-md bg-accent text-accent-foreground text-xs font-medium">
           v{prompt.version}
         </span>

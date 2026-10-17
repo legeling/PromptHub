@@ -1,7 +1,11 @@
 import { Suspense, lazy } from "react";
 import { Spinner } from "../ui/Spinner";
 import { PromptListHeader } from "../prompt/PromptListHeader";
-import type { Prompt, PromptSummary, PromptRelation } from "@prompthub/shared/types";
+import type {
+  Prompt,
+  PromptSummary,
+  PromptRelation,
+} from "@prompthub/shared/types";
 import type { ViewMode } from "../../stores/prompt.store";
 
 const PromptTableView = lazy(() =>
@@ -121,7 +125,10 @@ export function PromptViewContainers({
 
   if (viewMode === "list") {
     return (
-      <div className="absolute inset-0 flex flex-col">
+      <div
+        data-testid="prompt-table-view"
+        className="absolute inset-0 flex flex-col"
+      >
         <PromptListHeader count={sortedPrompts.length} />
         <div className="flex-1 overflow-hidden">
           <Suspense fallback={loadingFallback}>
@@ -156,7 +163,10 @@ export function PromptViewContainers({
 
   if (viewMode === "gallery") {
     return (
-      <div className="absolute inset-0 flex flex-col">
+      <div
+        data-testid="prompt-gallery-view"
+        className="absolute inset-0 flex flex-col"
+      >
         <PromptListHeader count={sortedPrompts.length} />
         <Suspense fallback={loadingFallback}>
           <PromptGalleryView
@@ -182,10 +192,17 @@ export function PromptViewContainers({
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col">
+    <div
+      data-testid="prompt-kanban-view"
+      className="absolute inset-0 flex flex-col"
+    >
       <PromptListHeader count={sortedPrompts.length} />
       <Suspense fallback={loadingFallback}>
         <PromptKanbanView
+          onBatchFavorite={tableActions.onBatchFavorite}
+          onBatchMove={tableActions.onBatchMove}
+          onBatchDelete={tableActions.onBatchDelete}
+          onBatchTags={tableActions.onBatchTags}
           prompts={visiblePrompts}
           highlightTerms={highlightTerms}
           onSelect={cardActions.onSelect}

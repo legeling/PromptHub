@@ -1,4 +1,24 @@
 {
+  "testHistory": {
+    "title": "Historial de pruebas",
+    "back": "Volver al historial",
+    "refresh": "Actualizar",
+    "loadError": "La operación del historial falló. Inténtalo de nuevo.",
+    "loading": "Cargando historial…",
+    "empty": "Este Prompt aún no tiene pruebas guardadas.",
+    "results": "{{succeeded}} / {{total}} correctas",
+    "more": "Cargar más",
+    "input": "Entrada de la prueba",
+    "attachments": "Nombres de adjuntos",
+    "success": "Correcto",
+    "failed": "Fallido",
+    "thinking": "Razonamiento",
+    "copied": "Copiado",
+    "copy": "Copiar respuesta",
+    "deleteConfirm": "¿Eliminar esta prueba del historial?",
+    "delete": "Eliminar registro",
+    "saveError": "No se pudo guardar el resultado en el historial."
+  },
   "app": {
     "name": "PromptHub",
     "description": "Gestor de Prompts local con control de versiones",
@@ -50,6 +70,7 @@
     "searchMcp": "Buscar MCP..."
   },
   "prompt": {
+    "variableCacheSaveError": "No se pudieron recordar las variables. Puedes continuar con esta prueba.",
     "detailActions": {
       "copy": "Copiar",
       "test": "Probar",
@@ -160,6 +181,7 @@
     "jsonSchemaHint": "Define la estructura JSON de salida, la IA seguirá estrictamente este formato",
     "testing": "Probando...",
     "selectModelsHint": "Selecciona múltiples modelos para comparar respuestas",
+    "multiSelect": "Selección múltiple",
     "clearSelection": "Limpiar selección",
     "selectAtLeast2": "Selecciona al menos 2 modelos para comparar",
     "comparing": "Comparando...",
@@ -4726,5 +4748,13 @@
     "placeholder": "Buscar ajustes",
     "results": "Resultados de ajustes",
     "empty": "No hay ajustes coincidentes"
+  },
+  "testWorkbench": {
+    "durationSeconds": "{{seconds}} s",
+    "current": "Prueba actual",
+    "results": "Resultados de comparación",
+    "compareEmpty": "Selecciona al menos dos modelos e inicia la comparación.",
+    "singleEmpty": "Inicia una prueba para ver la respuesta aquí.",
+    "emptyResponse": "Sin respuesta"
   }
 }

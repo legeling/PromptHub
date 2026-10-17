@@ -281,25 +281,31 @@ export function PromptEditorField({
         </button>
       </div>
       <div
-        className="flex rounded-xl border border-border overflow-hidden"
-        style={{ minHeight }}
+        data-testid="prompt-split-editor"
+        className={`flex max-h-[60vh] rounded-xl border border-border overflow-hidden ${minHeight === 280 ? "h-[280px]" : "h-[200px]"}`}
       >
-        <div className="w-1/2 border-r border-border flex flex-col">
+        <div className="w-1/2 min-w-0 min-h-0 border-r border-border flex flex-col">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground shrink-0">
+            {t("prompt.edit")}
+          </div>
           <Textarea
             id={id}
             placeholder={placeholder}
             value={value}
             onChange={onChange}
             className="flex-1 rounded-none border-0"
-            style={{ minHeight }}
+            embedded
             enableMarkdownList
           />
         </div>
-        <div className="w-1/2 flex flex-col bg-muted/30">
+        <div className="w-1/2 min-w-0 min-h-0 flex flex-col bg-muted/30">
           <div className="px-3 py-1.5 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground shrink-0">
             {t("prompt.preview", "预览")}
           </div>
-          <div className="flex-1 overflow-auto p-4">
+          <div
+            data-testid="prompt-editor-preview"
+            className="min-h-0 flex-1 overflow-auto p-4 [overflow-wrap:anywhere]"
+          >
             <div className="prose prose-sm max-w-none markdown-content">
               {value ? (
                 renderPreview(value)

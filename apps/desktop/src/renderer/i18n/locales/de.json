@@ -1,4 +1,24 @@
 {
+  "testHistory": {
+    "title": "Testverlauf",
+    "back": "Zurück zum Verlauf",
+    "refresh": "Aktualisieren",
+    "loadError": "Die Verlaufsaktion ist fehlgeschlagen. Bitte erneut versuchen.",
+    "loading": "Verlauf wird geladen…",
+    "empty": "Für diesen Prompt sind noch keine Tests gespeichert.",
+    "results": "{{succeeded}} / {{total}} erfolgreich",
+    "more": "Mehr laden",
+    "input": "Testeingabe",
+    "attachments": "Anhangnamen",
+    "success": "Erfolgreich",
+    "failed": "Fehlgeschlagen",
+    "thinking": "Denkprozess",
+    "copied": "Kopiert",
+    "copy": "Antwort kopieren",
+    "deleteConfirm": "Diesen Testeintrag löschen?",
+    "delete": "Eintrag löschen",
+    "saveError": "Das Testergebnis konnte nicht im Verlauf gespeichert werden."
+  },
   "app": {
     "name": "PromptHub",
     "description": "Lokaler Prompt-Manager mit Versionskontrolle",
@@ -50,6 +70,7 @@
     "searchMcp": "MCP suchen..."
   },
   "prompt": {
+    "variableCacheSaveError": "Variablenwerte konnten nicht gespeichert werden. Dieser Test kann weiterhin ausgeführt werden.",
     "detailActions": {
       "copy": "Kopieren",
       "test": "Testen",
@@ -160,6 +181,7 @@
     "jsonSchemaHint": "Definiert die JSON-Struktur für die Ausgabe; die KI wird sich strikt an dieses Format halten",
     "testing": "Testen...",
     "selectModelsHint": "Wählen Sie mehrere Modelle zum Vergleichen der Antworten",
+    "multiSelect": "Mehrfachauswahl",
     "clearSelection": "Auswahl löschen",
     "selectAtLeast2": "Wählen Sie mindestens 2 Modelle zum Vergleichen",
     "comparing": "Vergleichen...",
@@ -4726,5 +4748,13 @@
     "placeholder": "Einstellungen suchen",
     "results": "Suchergebnisse für Einstellungen",
     "empty": "Keine passenden Einstellungen"
+  },
+  "testWorkbench": {
+    "durationSeconds": "{{seconds}} s",
+    "current": "Aktueller Test",
+    "results": "Vergleichsergebnisse",
+    "compareEmpty": "Wählen Sie mindestens zwei Modelle und starten Sie den Vergleich.",
+    "singleEmpty": "Starten Sie einen Test, um hier die Antwort zu sehen.",
+    "emptyResponse": "Keine Antwort"
   }
 }

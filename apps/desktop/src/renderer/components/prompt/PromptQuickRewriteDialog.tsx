@@ -74,6 +74,7 @@ export function PromptQuickRewriteDialog({
   const isOpenRef = useRef(isOpen);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       isOpenRef.current = false;
@@ -201,7 +202,7 @@ export function PromptQuickRewriteDialog({
       const updatedPrompt = await promptDb.updatePrompt(prompt.id, rewriteDraft);
       await updatePrompt(prompt.id, rewriteDraft);
 
-      showToast(t("toast.saved"), "success");
+      showToast(t("toast.saved"), "success", useSettingsStore.getState().showSaveNotification);
       onClose();
 
       if (action === "edit") {

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronDownIcon, LayoutGridIcon, ListIcon, ImageIcon, Columns3Icon as KanbanIcon } from 'lucide-react';
 import { usePromptStore, SortBy, SortOrder, ViewMode } from '../../stores/prompt.store';
+import { PromptSelectionToggle } from './PromptSelectionToggle';
 
 interface SortOption {
   label: string;
@@ -103,16 +104,19 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
   };
 
   return (
-    <div className="prompt-list-header flex items-center justify-between gap-2 px-3 py-2 border-b border-border app-wallpaper-toolbar sticky top-0 z-20">
+    <div className="prompt-list-header flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-border app-wallpaper-toolbar sticky top-0 z-20">
       {/* Left side: Prompt count */}
       {/* 左侧：Prompt 数量 */}
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {t('prompt.promptCount', { count })}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {t('prompt.promptCount', { count })}
+        </span>
+        <PromptSelectionToggle count={count} />
+      </div>
 
       {/* Right side: Sort + View toggle */}
       {/* 右侧：排序 + 视图切换 */}
-      <div className="flex items-center gap-1">
+      <div className="ml-auto flex flex-wrap items-center gap-1">
         {/* Sort dropdown */}
         {/* 排序下拉 */}
         <div className="relative">

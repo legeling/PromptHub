@@ -35,7 +35,8 @@ import {
 } from "./prompt-modal-utils";
 import { usePromptMediaManager } from "./usePromptMediaManager";
 import { usePromptNativeFullscreen } from "./usePromptNativeFullscreen";
-import { resolveLocalImageSrc, resolveLocalVideoSrc } from "../../utils/media-url";
+import { resolveLocalVideoSrc } from "../../utils/media-url";
+import { PromptReferenceImages } from "./PromptReferenceImages";
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -388,28 +389,7 @@ export function CreatePromptModal({
             })}
           </p>
       <div className="flex flex-wrap gap-3">
-        {images.map((img, index) => (
-          <div
-            key={`img-${index}`}
-            className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border"
-          >
-            <img
-              src={resolveLocalImageSrc(img)}
-              alt={`preview-${index}`}
-              className="w-full h-full object-cover"
-            />
-            <button
-              type="button"
-              aria-label={t("prompt.removeReferenceImage", {
-                index: index + 1,
-              })}
-              onClick={() => handleRemoveImage(index)}
-              className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <XIcon className="w-3 h-3" aria-hidden="true" />
-            </button>
-          </div>
-        ))}
+        <PromptReferenceImages images={images} onRemove={handleRemoveImage} />
         {videos.map((video, index) => (
           <div
             key={`vid-${index}`}
@@ -954,11 +934,6 @@ export function CreatePromptModal({
 
           {/* User Prompt */}
           <div className="space-y-2">
-            {!hasPromptContent(formState) && (
-              <p role="status" className="text-sm text-destructive">
-                {t("prompt.contentRequired")}
-              </p>
-            )}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <label

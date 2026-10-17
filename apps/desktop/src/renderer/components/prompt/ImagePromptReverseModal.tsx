@@ -172,6 +172,7 @@ export function ImagePromptReverseModal({
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       isOpenRef.current = false;

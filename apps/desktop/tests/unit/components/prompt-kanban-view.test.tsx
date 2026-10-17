@@ -13,25 +13,7 @@ vi.mock("../../../src/renderer/stores/folder.store", () => ({
 // Tests populate this cache with full prompt content before rendering, since
 // the kanban card reads content from the detail cache (not the summary list).
 // 测试在渲染前把完整内容填入详情缓存，看板卡片从缓存读取内容。
-const mockDetailCache = vi.hoisted(() =>
-  ({} as Record<
-    string,
-    { systemPrompt?: string | null; userPrompt?: string }
-  >),
-);
-
-vi.mock("../../../src/renderer/stores/prompt.store", () => ({
-  usePromptStore: <T,>(
-    selector: (state: {
-      kanbanColumns: 3;
-      promptDetailCache: typeof mockDetailCache;
-    }) => T,
-  ) =>
-    selector({
-      kanbanColumns: 3,
-      promptDetailCache: mockDetailCache,
-    }),
-}));
+import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 
 const prompt: Prompt = {
   id: "kanban-prompt-1",
@@ -56,10 +38,12 @@ async function renderKanbanView(override: Partial<Prompt> = {}) {
   const merged = { ...prompt, ...override };
   // Populate the detail cache so the card renders content from the cache.
   // 填充详情缓存，卡片从缓存渲染内容。
-  mockDetailCache[merged.id] = {
-    systemPrompt: merged.systemPrompt,
-    userPrompt: merged.userPrompt,
-  };
+  usePromptStore.setState({
+    kanbanColumns: 3,
+    promptDetailCache: { [merged.id]: merged },
+    selectedIds: [],
+    isBatchSelectionActive: false,
+  });
   const result = await renderWithI18n(
     <PromptKanbanView
       prompts={[merged]}
@@ -104,16 +88,21 @@ describe("PromptKanbanView", () => {
   it("exposes explicit accessible names for icon-only card actions", async () => {
     await renderKanbanView();
 
-    expect(screen.getByRole("button", { name: "Pin" })).toHaveAttribute("aria-label", "Pin");
-    expect(screen.getByRole("button", { name: "Add to Favorites" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Pin" })).toHaveAttribute(
       "aria-label",
-      "Add to Favorites",
+      "Pin",
     );
+    expect(
+      screen.getByRole("button", { name: "Add to Favorites" }),
+    ).toHaveAttribute("aria-label", "Add to Favorites");
     expect(screen.getByRole("button", { name: "Copy Prompt" })).toHaveAttribute(
       "aria-label",
       "Copy Prompt",
     );
-    expect(screen.getByRole("button", { name: "Edit" })).toHaveAttribute("aria-label", "Edit");
+    expect(screen.getByRole("button", { name: "Edit" })).toHaveAttribute(
+      "aria-label",
+      "Edit",
+    );
     expect(screen.getByRole("button", { name: "AI Test" })).toHaveAttribute(
       "aria-label",
       "AI Test",
@@ -174,9 +163,14 @@ describe("PromptKanbanView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pin" }));
 
-    const pinnedSectionToggle = screen.getByRole("button", { name: /Pinned Prompts/ });
+    const pinnedSectionToggle = screen.getByRole("button", {
+      name: /Pinned Prompts/,
+    });
     expect(pinnedSectionToggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: "Unpin" })).toHaveAttribute("aria-label", "Unpin");
+    expect(screen.getByRole("button", { name: "Unpin" })).toHaveAttribute(
+      "aria-label",
+      "Unpin",
+    );
 
     fireEvent.click(pinnedSectionToggle);
 
@@ -197,10 +191,9 @@ describe("PromptKanbanView", () => {
 
     fireEvent.click(expandAllButton);
 
-    expect(screen.getByRole("button", { name: "Collapse All" })).toHaveAttribute(
-      "aria-label",
-      "Collapse All",
-    );
+    expect(
+      screen.getByRole("button", { name: "Collapse All" }),
+    ).toHaveAttribute("aria-label", "Collapse All");
   });
 
   it("normalizes default-value variables in card badges", async () => {
@@ -211,7 +204,9 @@ describe("PromptKanbanView", () => {
 
     expect(screen.getByText("{{role}}")).toBeInTheDocument();
     expect(screen.getByText("{{topic}}")).toBeInTheDocument();
-    expect(screen.queryByText("{{topic:release notes}}")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("{{topic:release notes}}"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("{{ role : planner }}")).not.toBeInTheDocument();
   });
 });

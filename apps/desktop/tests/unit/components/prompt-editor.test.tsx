@@ -54,6 +54,20 @@ describe("PromptEditor", () => {
     vi.useRealTimers();
   });
 
+  it("adds a selected reference image and saves it under StrictMode", async () => {
+    window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/reference.png"]);
+    window.electron.saveImage = vi.fn().mockResolvedValue(["selected.png"]);
+    const onSave = vi.fn();
+    await renderWithI18n(
+      <PromptEditor prompt={prompt} onSave={onSave} onCancel={vi.fn()} />,
+      { language: "en", reactStrictMode: true },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Upload/Paste/URL" }));
+    await waitFor(() => expect(screen.getByAltText("preview-1")).toHaveAttribute("src", "local-image://selected.png"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ images: ["cover.png", "selected.png"] }));
+  });
+
   it("gives reference image remove buttons accessible names", async () => {
     await renderWithI18n(
       <PromptEditor prompt={prompt} onSave={vi.fn()} onCancel={vi.fn()} />,

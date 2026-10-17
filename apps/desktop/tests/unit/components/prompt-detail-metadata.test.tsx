@@ -4,7 +4,7 @@ import { createInstance } from "i18next";
 import type { Prompt } from "@prompthub/shared/types";
 
 import { PromptDetailMetadata } from "../../../src/renderer/components/prompt/PromptDetailMetadata";
-import { renderWithI18n } from "../../helpers/i18n";
+import { createTestI18n, renderWithI18n } from "../../helpers/i18n";
 
 const prompt: Prompt = {
   id: "prompt-1",
@@ -28,6 +28,42 @@ const prompt: Prompt = {
 };
 
 describe("PromptDetailMetadata", () => {
+  it("keeps creation time when favorite, content, and folder metadata change", async () => {
+    const i18n = await createTestI18n();
+    const props = {
+      parentPrompt: null,
+      childPrompts: [],
+      folderOptions: [],
+      t: i18n.t,
+      onMoveToFolder: vi.fn(),
+      onSelectPrompt: vi.fn(),
+    };
+    const { rerender } = await renderWithI18n(
+      <PromptDetailMetadata {...props} prompt={prompt} />,
+    );
+    const createdText = new Date(prompt.createdAt).toLocaleString();
+    expect(screen.getByTitle("Created")).toHaveTextContent(createdText);
+
+    for (const patch of [
+      { isFavorite: true },
+      { isFavorite: false },
+      { userPrompt: "Edited content", version: 2 },
+      { folderId: "folder-2", tags: ["edited"] },
+    ]) {
+      rerender(
+        <PromptDetailMetadata
+          {...props}
+          prompt={{ ...prompt, ...patch, updatedAt: "2026-10-17T04:24:28Z" }}
+        />,
+      );
+      expect(screen.getByTitle("Created")).toHaveTextContent(createdText);
+      expect(screen.getByTitle("Created")).toHaveAttribute(
+        "datetime",
+        prompt.createdAt,
+      );
+    }
+  });
+
   it("keeps the relationships action inside the relationship metadata row", async () => {
     const onToggleRelatedPrompts = vi.fn();
     const i18n = createInstance();

@@ -8,7 +8,7 @@ import { installWindowMocks } from "../../helpers/window";
 
 const usePromptStoreMock = vi.fn();
 const useFolderStoreMock = vi.fn();
-const useSettingsStoreMock = vi.fn();
+const settingsStoreMock = vi.fn();
 const useUIStoreMock = vi.fn();
 const useToastMock = vi.fn();
 
@@ -34,8 +34,14 @@ vi.mock("../../../src/renderer/stores/settings.store", async () => {
   );
   return {
     ...(actual as Record<string, unknown>),
-    useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
-      useSettingsStoreMock(selector),
+    useSettingsStore: Object.assign(
+      (selector: (state: Record<string, unknown>) => unknown) =>
+        settingsStoreMock(selector),
+      {
+        getState: () =>
+          settingsStoreMock((state: Record<string, unknown>) => state),
+      },
+    ),
   };
 });
 
@@ -162,7 +168,7 @@ describe("MainContent inline edit component contract", () => {
         folders: [],
       }),
     );
-    useSettingsStoreMock.mockImplementation((selector) =>
+    settingsStoreMock.mockImplementation((selector) =>
       selector(createSettingsState()),
     );
     useUIStoreMock.mockImplementation((selector) =>
@@ -213,34 +219,48 @@ describe("MainContent inline edit component contract", () => {
       });
     });
 
-    expect(showToast).toHaveBeenCalledWith("Saved successfully", "success");
+    expect(showToast).toHaveBeenCalledWith(
+      "Saved successfully",
+      "success",
+      undefined,
+    );
   });
 
   it("renames a system-only Prompt from inline editing (#225)", async () => {
     const promptState = createPromptState(createPrompt({ userPrompt: "" }));
     usePromptStoreMock.mockImplementation((selector) => selector(promptState));
     await renderWithI18n(<MainContent />, { language: "en" });
-    fireEvent.doubleClick(screen.getByRole("heading", { name: "Original Title", level: 2 }));
+    fireEvent.doubleClick(
+      screen.getByRole("heading", { name: "Original Title", level: 2 }),
+    );
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
       target: { value: "Renamed system-only" },
     });
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
-      title: "Renamed system-only",
-    }));
+    await waitFor(() =>
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        title: "Renamed system-only",
+      }),
+    );
   });
 
   it("rejects clearing both Prompt fields in inline editing (#225)", async () => {
     const promptState = createPromptState(createPrompt());
     usePromptStoreMock.mockImplementation((selector) => selector(promptState));
     await renderWithI18n(<MainContent />, { language: "en" });
-    fireEvent.doubleClick(screen.getByRole("heading", { name: "Original Title", level: 2 }));
+    fireEvent.doubleClick(
+      screen.getByRole("heading", { name: "Original Title", level: 2 }),
+    );
     for (const name of ["System Prompt", "User Prompt"]) {
-      fireEvent.change(screen.getByRole("textbox", { name }), { target: { value: " \n " } });
+      fireEvent.change(screen.getByRole("textbox", { name }), {
+        target: { value: " \n " },
+      });
     }
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(screen.getByText("Fill in at least one system or user prompt.")).toBeVisible();
+    expect(
+      screen.getByText("Fill in at least one system or user prompt."),
+    ).toBeVisible();
     expect(promptState.updatePrompt).not.toHaveBeenCalled();
   });
 
@@ -483,7 +503,7 @@ describe("MainContent inline edit component contract", () => {
     const promptState = createPromptState(createPrompt());
 
     usePromptStoreMock.mockImplementation((selector) => selector(promptState));
-    useSettingsStoreMock.mockImplementation((selector) =>
+    settingsStoreMock.mockImplementation((selector) =>
       selector(
         createSettingsState({
           aiModels: [
@@ -520,7 +540,7 @@ describe("MainContent inline edit component contract", () => {
     ).toContain("bg-card");
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }).className,
-    ).toContain("rounded-xl");
+    ).toContain("rounded-none");
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }).className,
     ).not.toContain("font-mono");
@@ -528,8 +548,8 @@ describe("MainContent inline edit component contract", () => {
       screen.getByRole("button", { name: "Show Plain Text" }),
     ).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: /Run Comparison/i }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: /Run Comparison/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps selected prompt detail actions from submitting surrounding forms", async () => {
@@ -542,7 +562,7 @@ describe("MainContent inline edit component contract", () => {
     const handleSubmit = vi.fn();
 
     usePromptStoreMock.mockImplementation((selector) => selector(promptState));
-    useSettingsStoreMock.mockImplementation((selector) =>
+    settingsStoreMock.mockImplementation((selector) =>
       selector(
         createSettingsState({
           aiModels: [
@@ -659,7 +679,11 @@ describe("MainContent inline edit component contract", () => {
       });
     });
 
-    expect(showToast).toHaveBeenCalledWith("Saved successfully", "success");
+    expect(showToast).toHaveBeenCalledWith(
+      "Saved successfully",
+      "success",
+      undefined,
+    );
   }, 15000);
 
   it("adds a tag to the selected prompt when a sidebar tag is dropped", async () => {
@@ -692,7 +716,11 @@ describe("MainContent inline edit component contract", () => {
       });
     });
 
-    expect(showToast).toHaveBeenCalledWith("Saved successfully", "success");
+    expect(showToast).toHaveBeenCalledWith(
+      "Saved successfully",
+      "success",
+      undefined,
+    );
   });
 
   it("keeps a stable bordered dropzone while a sidebar tag is dragged over the detail tags area", async () => {
@@ -716,8 +744,6 @@ describe("MainContent inline edit component contract", () => {
 
     expect(dropzone.className).toContain("border-transparent");
     expect(dropzone.className).not.toContain("px-1.5");
-    expect(dropzone.className).toContain("pr-1.5");
-    expect(dropzone.className).toContain("py-1.5");
 
     fireEvent.dragOver(dropzone, { dataTransfer });
 

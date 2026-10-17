@@ -104,7 +104,7 @@ describe("PromptQuickRewriteDialog", () => {
           onContinueEditing={vi.fn()}
         />
       </ToastProvider>,
-      { language: "en" },
+      { language: "en", reactStrictMode: true },
     );
 
     expect(screen.getByText("AI Quick Edit")).toBeInTheDocument();

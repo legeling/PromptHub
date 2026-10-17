@@ -1,4 +1,11 @@
-import { CheckIcon, EditIcon, Share2Icon, StarIcon } from "lucide-react";
+import {
+  CheckIcon,
+  EditIcon,
+  Share2Icon,
+  StarIcon,
+  PaletteIcon,
+  FileTextIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePromptStore } from "../../stores/prompt.store";
 import { PromptDescriptionInput } from "../prompt/PromptDescriptionInput";
@@ -24,13 +31,24 @@ function PromptDetailTitle() {
           }
           onKeyDown={detail.handleDetailInlineEditKeyDown}
           placeholder={t("prompt.titlePlaceholder")}
-          className="h-10 w-full rounded-xl border border-border/70 bg-card px-3 text-xl font-bold text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+          className="h-10 w-full rounded-none border border-border/70 bg-card px-4 text-xl font-bold text-foreground outline-none appearance-none placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-2 focus:ring-inset focus:ring-primary/20"
         />
       ) : (
         <h2
           onDoubleClick={() => detail.openDetailInlineEdit("title")}
-          className="text-xl font-bold text-foreground mb-1 cursor-text"
+          className="flex items-start gap-2 text-xl font-bold text-foreground mb-1 cursor-text [overflow-wrap:anywhere]"
         >
+          {prompt.promptType === "image" ? (
+            <PaletteIcon
+              aria-hidden="true"
+              className="mt-0.5 h-6 w-6 shrink-0 text-primary"
+            />
+          ) : (
+            <FileTextIcon
+              aria-hidden="true"
+              className="mt-0.5 h-6 w-6 shrink-0 text-muted-foreground"
+            />
+          )}
           {prompt.title}
         </h2>
       )}
@@ -40,7 +58,10 @@ function PromptDetailTitle() {
 
 function PromptDetailHeaderActions() {
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div
+      data-testid="prompt-detail-header-actions"
+      className="flex shrink-0 items-center gap-1"
+    >
       <PromptDetailFavoriteAction />
       <PromptDetailUtilityActions />
     </div>
@@ -62,11 +83,11 @@ function PromptDetailFavoriteAction() {
       aria-label={favoriteLabel}
       aria-pressed={prompt.isFavorite}
       title={favoriteLabel}
-      className={`p-2.5 rounded-xl transition-all duration-base ${prompt.isFavorite ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:bg-accent hover:text-foreground"} active:scale-press-in`}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all duration-base ${prompt.isFavorite ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:bg-accent hover:text-foreground"} active:scale-press-in`}
     >
       <StarIcon
         aria-hidden="true"
-        className={`w-5 h-5 ${prompt.isFavorite ? "fill-current" : ""}`}
+        className={`w-4 h-4 ${prompt.isFavorite ? "fill-current" : ""}`}
       />
     </button>
   );
@@ -80,19 +101,19 @@ function PromptDetailUtilityActions() {
     <>
       <PromptQuickRewriteTrigger
         onClick={() => detail.setQuickRewritePrompt(prompt)}
-        className="p-2.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-primary transition-all duration-base active:scale-press-in"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 text-muted-foreground hover:bg-accent hover:text-primary transition-all duration-base active:scale-press-in"
       />
       <button
         type="button"
         onClick={() => detail.handleSharePrompt(prompt)}
-        className={`p-2.5 rounded-xl transition-all duration-base ${detail.shared ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:bg-accent hover:text-foreground"} active:scale-press-in`}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all duration-base ${detail.shared ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:bg-accent hover:text-foreground"} active:scale-press-in`}
         aria-label={t("prompt.shareJSON", "分享为 JSON")}
         title={t("prompt.shareJSON", "分享为 JSON")}
       >
         {detail.shared ? (
-          <CheckIcon aria-hidden="true" className="w-5 h-5" />
+          <CheckIcon aria-hidden="true" className="w-4 h-4" />
         ) : (
-          <Share2Icon aria-hidden="true" className="w-5 h-5" />
+          <Share2Icon aria-hidden="true" className="w-4 h-4" />
         )}
       </button>
       {!detail.isDetailInlineEditing ? (
@@ -101,9 +122,9 @@ function PromptDetailUtilityActions() {
           onClick={() => detail.setEditingPrompt(prompt)}
           aria-label={t("prompt.editPrompt")}
           title={t("prompt.editPrompt")}
-          className="p-2.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-base active:scale-press-in"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-base active:scale-press-in"
         >
-          <EditIcon aria-hidden="true" className="w-5 h-5" />
+          <EditIcon aria-hidden="true" className="w-4 h-4" />
         </button>
       ) : null}
     </>

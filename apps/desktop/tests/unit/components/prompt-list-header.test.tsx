@@ -8,6 +8,7 @@ function resetStore() {
   // directly rather than poking internals.
   const store = usePromptStore.getState();
   store.setViewMode("card");
+  store.exitBatchSelection();
   store.setSort("updatedAt", "desc");
   store.setGalleryImageSize("medium");
   store.setKanbanColumns(3);
@@ -26,6 +27,21 @@ describe("PromptListHeader", () => {
     render(<PromptListHeader count={42} />);
     // The count is interpolated through i18n; assert the number appears.
     expect(screen.getByText(/42/)).toBeInTheDocument();
+  });
+
+  it("disables multi-select for an empty collection", () => {
+    render(<PromptListHeader count={0} />);
+    expect(screen.getByRole("button", { name: "Multi-select" })).toBeDisabled();
+  });
+
+  it("retains a cancellation entry if an empty selection loses all rows", () => {
+    const { rerender } = render(<PromptListHeader count={1} />);
+    fireEvent.click(screen.getByRole("button", { name: "Multi-select" }));
+    expect(usePromptStore.getState().isBatchSelectionActive).toBe(true);
+    rerender(<PromptListHeader count={0} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(usePromptStore.getState().isBatchSelectionActive).toBe(false);
+    expect(screen.getByRole("button", { name: "Multi-select" })).toBeDisabled();
   });
 
   it("does not attach outside-click listeners while the sort menu is closed", () => {
@@ -69,13 +85,14 @@ describe("PromptListHeader", () => {
     const triggerButton = screen.getByRole("button", { name: "Sort: Newest" });
     fireEvent.click(triggerButton);
     expect(screen.getByRole("menu")).toBeInTheDocument();
-    expect(screen.getByRole("menuitemradio", { name: "Newest" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(
+      screen.getByRole("menuitemradio", { name: "Newest" }),
+    ).toHaveAttribute("aria-checked", "true");
 
     // The "title asc" option should now be visible.
-    const titleAscOption = screen.getByRole("menuitemradio", { name: "Title A-Z" });
+    const titleAscOption = screen.getByRole("menuitemradio", {
+      name: "Title A-Z",
+    });
     fireEvent.click(titleAscOption);
 
     expect(usePromptStore.getState().sortBy).toBe("title");
@@ -128,18 +145,15 @@ describe("PromptListHeader", () => {
     expect(galleryToggle).toHaveAttribute("aria-pressed", "true");
 
     // S / M / L size buttons appear when in gallery mode.
-    expect(screen.getByRole("button", { name: "Small thumbnails" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-    expect(screen.getByRole("button", { name: "Medium thumbnails" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "Large thumbnails" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    expect(
+      screen.getByRole("button", { name: "Small thumbnails" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getByRole("button", { name: "Medium thumbnails" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: "Large thumbnails" }),
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("switches view mode to kanban and reveals the column picker", () => {

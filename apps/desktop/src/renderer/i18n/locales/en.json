@@ -1,4 +1,24 @@
 {
+  "testHistory": {
+    "title": "Test history",
+    "back": "Back to history",
+    "refresh": "Refresh",
+    "loadError": "Could not complete this history action. Please try again.",
+    "loading": "Loading history…",
+    "empty": "No tests recorded for this Prompt yet.",
+    "results": "{{succeeded}} / {{total}} succeeded",
+    "more": "Load more",
+    "input": "Test input",
+    "attachments": "Attachment names",
+    "success": "Succeeded",
+    "failed": "Failed",
+    "thinking": "Thinking output",
+    "copied": "Copied",
+    "copy": "Copy response",
+    "deleteConfirm": "Delete this test record?",
+    "delete": "Delete record",
+    "saveError": "Test result could not be saved to history."
+  },
   "app": {
     "name": "PromptHub",
     "description": "Local Prompt Manager with Version Control",
@@ -51,6 +71,7 @@
     "searchMcp": "Search MCP..."
   },
   "prompt": {
+    "variableCacheSaveError": "Could not remember variable values. You can still run this test.",
     "detailActions": {
       "copy": "Copy",
       "test": "Test",
@@ -161,6 +182,7 @@
     "jsonSchemaHint": "Define the JSON structure for output, AI will strictly follow this format",
     "testing": "Testing...",
     "selectModelsHint": "Select multiple models to compare responses",
+    "multiSelect": "Multi-select",
     "clearSelection": "Clear Selection",
     "selectAtLeast2": "Please select at least 2 models to compare",
     "comparing": "Comparing...",
@@ -4766,5 +4788,13 @@
     "placeholder": "Search settings",
     "results": "Settings search results",
     "empty": "No matching settings"
+  },
+  "testWorkbench": {
+    "durationSeconds": "{{seconds}} s",
+    "current": "Current test",
+    "results": "Comparison results",
+    "compareEmpty": "Select at least two models, then run a comparison.",
+    "singleEmpty": "Run a test to see the response here.",
+    "emptyResponse": "No response"
   }
 }

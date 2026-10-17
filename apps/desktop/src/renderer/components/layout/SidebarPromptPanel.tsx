@@ -447,7 +447,7 @@ function SidebarPromptTagPopover({
   if (!controller.isTagPopoverOpen) return null;
   const clear = () => {
     controller.clearFilterTags();
-    controller.setPromptViewMode("card");
+    controller.returnToPromptList();
     if (controller.currentPage !== "home") controller.onNavigate("home");
   };
   return (

@@ -43,6 +43,29 @@ const relation: PromptRelation = {
 };
 
 describe("PromptDetailModal", () => {
+  it("labels the original creation time even after the prompt was updated", async () => {
+    await renderWithI18n(
+      <ToastProvider>
+        <PromptDetailModal
+          isOpen
+          onClose={vi.fn()}
+          prompt={{
+            ...prompt,
+            isFavorite: true,
+            updatedAt: "2026-10-17T04:24:28Z",
+          }}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    expect(
+      screen.getByText(
+        `Created: ${new Date(prompt.createdAt).toLocaleString()}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();

@@ -1,4 +1,5 @@
 import { ipcRenderer } from "electron";
+import type { PromptTestHistoryReply, PromptTestRunInput, PromptTestRun, PromptTestRunSummary } from "@prompthub/shared/types/prompt-test-history";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
   CreateOutputFormatItemDTO,
@@ -20,6 +21,12 @@ import type {
 } from "@prompthub/shared/types";
 
 export const promptApi = {
+  testHistory: {
+    add: (input: PromptTestRunInput): Promise<PromptTestHistoryReply<PromptTestRun>> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_TEST_HISTORY_ADD, input),
+    list: (promptId: string, offset = 0): Promise<PromptTestHistoryReply<PromptTestRunSummary[]>> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_TEST_HISTORY_LIST, promptId, offset),
+    get: (promptId: string, id: string): Promise<PromptTestHistoryReply<PromptTestRun | null>> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_TEST_HISTORY_GET, promptId, id),
+    delete: (promptId: string, id: string): Promise<PromptTestHistoryReply<void>> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_TEST_HISTORY_DELETE, promptId, id),
+  },
   create: (data: CreatePromptDTO) =>
     ipcRenderer.invoke(IPC_CHANNELS.PROMPT_CREATE, data),
   get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_GET, id),

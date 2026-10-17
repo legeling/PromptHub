@@ -19,6 +19,7 @@ interface PromptBatchMenuProps {
   align?: "left" | "right";
   className?: string;
   onClose?: () => void;
+  disabled?: boolean;
 }
 
 function moveMenuFocus(event: KeyboardEvent<HTMLDivElement>): void {
@@ -83,9 +84,13 @@ export function PromptBatchMenu({
   align = "left",
   className = "",
   onClose,
+  disabled = false,
 }: PromptBatchMenuProps): ReactElement {
   const menu = usePromptBatchMenu(onClose);
   const id = useId();
+  useEffect(() => {
+    if (disabled) menu.dismiss();
+  }, [disabled, menu.dismiss]);
   return (
     <div
       ref={menu.containerRef}
@@ -101,13 +106,14 @@ export function PromptBatchMenu({
       <button
         ref={menu.triggerRef}
         type="button"
+        disabled={disabled}
         aria-label={label}
         title={label}
         aria-haspopup="menu"
         aria-expanded={menu.open}
         aria-controls={menu.open ? id : undefined}
         onClick={() => (menu.open ? menu.dismiss() : menu.setOpen(true))}
-        className="flex h-8 max-w-full items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="flex h-8 max-w-full items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         {trigger}
       </button>

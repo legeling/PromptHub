@@ -29,6 +29,7 @@ const basePrompt: Prompt = {
 
 describe("PromptGalleryView", () => {
   beforeEach(() => {
+    usePromptStore.setState({ isBatchSelectionActive: false, selectedIds: [] });
     useFolderStore.setState({
       folders: [
         {
@@ -127,9 +128,13 @@ describe("PromptGalleryView", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("heading", { name: basePrompt.title, level: 3 }));
+    fireEvent.click(
+      screen.getByRole("heading", { name: basePrompt.title, level: 3 }),
+    );
 
-    expect(onViewDetail).toHaveBeenCalledWith(expect.objectContaining({ id: "prompt-1" }));
+    expect(onViewDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "prompt-1" }),
+    );
   });
 
   it("lets keyboard users open a gallery card with Enter and Space", async () => {
@@ -192,7 +197,9 @@ describe("PromptGalleryView", () => {
       );
     });
 
-    const favoriteButton = screen.getByRole("button", { name: "Add to Favorites" });
+    const favoriteButton = screen.getByRole("button", {
+      name: "Add to Favorites",
+    });
 
     fireEvent.click(favoriteButton);
 
@@ -222,10 +229,9 @@ describe("PromptGalleryView", () => {
       );
     });
 
-    expect(screen.getByRole("button", { name: "Remove from Favorites" })).toHaveAttribute(
-      "aria-label",
-      "Remove from Favorites",
-    );
+    expect(
+      screen.getByRole("button", { name: "Remove from Favorites" }),
+    ).toHaveAttribute("aria-label", "Remove from Favorites");
   });
 
   it("preserves top and bottom gutters for the virtualized gallery scroller", async () => {
@@ -255,10 +261,10 @@ describe("PromptGalleryView", () => {
       );
     });
 
-    const firstCard = screen.getByRole("heading", { name: "Prompt 1", level: 3 })
+    const firstCard = screen
+      .getByRole("heading", { name: "Prompt 1", level: 3 })
       .closest("div[class*='app-wallpaper-panel']");
-    const spacer = firstCard
-      ?.closest("[data-index]")
+    const spacer = firstCard?.closest("[data-index]")
       ?.parentElement as HTMLElement | null;
 
     expect(spacer).not.toBeNull();
@@ -294,7 +300,8 @@ describe("PromptGalleryView", () => {
       );
     });
 
-    const firstRow = screen.getByRole("heading", { name: "Gap Prompt 1", level: 3 })
+    const firstRow = screen
+      .getByRole("heading", { name: "Gap Prompt 1", level: 3 })
       .closest("[data-index]") as HTMLElement | null;
 
     expect(firstRow).not.toBeNull();
@@ -334,27 +341,31 @@ describe("PromptGalleryView", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Alpha" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Beta" }));
+    act(() => usePromptStore.getState().enterBatchSelection());
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Batch Alpha" }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Batch Beta" }),
+    );
     expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Tags/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
     expect(onBatchTags).toHaveBeenCalledWith(["gb-1", "gb-2"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Batch Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Batch Delete" }));
     expect(onBatchDelete).toHaveBeenCalledWith(["gb-1", "gb-2"]);
     expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Deselect Batch Alpha" })).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Deselect Batch Alpha" }),
+    ).toHaveAttribute("aria-checked", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Batch Favorite" }));
+    fireEvent.click(screen.getByRole("button", { name: "Batch Favorite" }));
     expect(onBatchFavorite).toHaveBeenCalledWith(["gb-1", "gb-2"], true);
     expect(screen.queryByText("2 of 2 selected")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "Select Batch Alpha" }),
-    ).toHaveAttribute("aria-checked", "false");
+      screen.queryByRole("checkbox", { name: "Select Batch Alpha" }),
+    ).toBeNull();
   });
 
   it("toggles gallery cards instead of opening details while batch selection is active", async () => {
@@ -379,18 +390,31 @@ describe("PromptGalleryView", () => {
       />,
       { language: "en" },
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Alpha" }));
+    act(() => usePromptStore.getState().enterBatchSelection());
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Batch Alpha" }),
+    );
     const beta = screen.getByRole("button", { name: "Batch Beta" });
     fireEvent.click(beta);
     expect(screen.getByText("2 of 2 selected")).toBeVisible();
-    expect(screen.getByRole("checkbox", { name: "Deselect Batch Alpha" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("checkbox", { name: "Deselect Batch Beta" })).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Deselect Batch Alpha" }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Deselect Batch Beta" }),
+    ).toHaveAttribute("aria-checked", "true");
     expect(onViewDetail).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
-    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Alpha" }));
+    expect(
+      screen.getByRole("toolbar", { name: "Batch actions" }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Batch Alpha" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
-    expect(screen.getByRole("checkbox", { name: "Deselect Batch Beta" })).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Deselect Batch Beta" }),
+    ).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: "Select All" }));
     expect(screen.getByText("2 of 2 selected")).toBeVisible();
     fireEvent.keyDown(beta, { key: "Enter" });

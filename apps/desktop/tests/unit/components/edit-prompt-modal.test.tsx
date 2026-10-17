@@ -64,7 +64,7 @@ async function renderEditPromptModal() {
     <ToastProvider>
       <EditPromptModal isOpen onClose={vi.fn()} prompt={basePrompt} />
     </ToastProvider>,
-    { language: "en" },
+    { language: "en", reactStrictMode: true },
   );
 }
 
@@ -117,7 +117,6 @@ describe("EditPromptModal", () => {
       target: { value: " \n\t " },
     });
     expect(save).toBeDisabled();
-    expect(screen.getByText("Fill in at least one system or user prompt.")).toBeVisible();
     fireEvent.click(save);
     expect(updatePromptMock).toHaveBeenCalledTimes(1);
   });
@@ -180,6 +179,26 @@ describe("EditPromptModal", () => {
     const payload = updatePromptMock.mock.calls[0][1] as Record<string, unknown>;
     expect(payload.source).toBe("github.example/repo");
     expect(payload.notes).toBe("keep <this> — 🎯");
+  });
+
+  it("previews existing reference images without changing the edit draft", async () => {
+    resetStores();
+    const onClose = vi.fn();
+    await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={onClose} prompt={{ ...basePrompt, images: ["first.png", "second.png"] }} />
+      </ToastProvider>,
+      { language: "en", reactStrictMode: true },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Preview reference image 2" }));
+    expect(screen.getByText("Image 2 of 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    expect(screen.getByRole("button", { name: "Reset zoom" })).toHaveTextContent("75%");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Zoom out" }), { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "User Prompt" })).toHaveValue(basePrompt.userPrompt);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(updatePromptMock).toHaveBeenCalledWith(basePrompt.id, expect.objectContaining({ images: ["first.png", "second.png"] }));
   });
 
   it("renders reference media in the main flow with the real size hint (v0.6.3 #64)", async () => {

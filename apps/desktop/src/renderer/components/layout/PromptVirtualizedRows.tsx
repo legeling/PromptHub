@@ -96,7 +96,9 @@ function PromptVirtualizedCard({
         props.selectedPromptIdSet.has(prompt.id)
       }
       onToggleBatchSelection={
-        toggleBatchSelection ? () => toggleBatchSelection(prompt.id) : undefined
+        props.isBatchSelectionActive && toggleBatchSelection
+          ? () => toggleBatchSelection(prompt.id)
+          : undefined
       }
       isDragging={props.draggingId === prompt.id}
       isDropTarget={isDropTarget}

@@ -1,4 +1,5 @@
 import { GENERATION_SCHEMA } from "./generation-schema";
+import { PROMPT_TEST_HISTORY_SCHEMA } from "./prompt-test-history";
 import { PLUGIN_SCHEMA } from "./plugin";
 import { RULE_SCHEMA } from "./rule-schema";
 /**
@@ -213,6 +214,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
 );
 
 ${GENERATION_SCHEMA}
+${PROMPT_TEST_HISTORY_SCHEMA}
 
 CREATE TABLE IF NOT EXISTS agent_provider_profiles (
   id TEXT PRIMARY KEY,

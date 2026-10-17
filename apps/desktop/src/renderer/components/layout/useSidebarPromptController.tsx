@@ -35,6 +35,7 @@ function useSidebarPromptBindings() {
   const prompts = usePromptStore((state) => state.prompts);
   const promptViewMode = usePromptStore((state) => state.viewMode);
   const setPromptViewMode = usePromptStore((state) => state.setViewMode);
+  const returnToPromptList = usePromptStore((state) => state.returnToListView);
   const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
   const setPromptTypeFilter = usePromptStore(
     (state) => state.setPromptTypeFilter,
@@ -49,6 +50,7 @@ function useSidebarPromptBindings() {
     prompts,
     promptViewMode,
     setPromptViewMode,
+    returnToPromptList,
     promptTypeFilter,
     setPromptTypeFilter,
     filterTags,
@@ -133,7 +135,7 @@ function useSidebarPromptTagActions(
           prompt.filterTags.length === 1 && prompt.filterTags[0] === tag;
         usePromptStore.setState({ filterTags: clear ? [] : [tag] });
       } else prompt.toggleFilterTag(tag);
-      prompt.setPromptViewMode("card");
+      prompt.returnToPromptList();
       if (currentPage !== "home") onNavigate("home");
     },
     [currentPage, onNavigate, prompt, tagFilterMode],
@@ -157,12 +159,7 @@ function useSidebarPromptNavigation(
 ) {
   const openPromptTypeFilter = useCallback(
     (filter: "all" | "text" | "image") => {
-      if (
-        prompt.promptViewMode === "graph" ||
-        prompt.promptViewMode === "generation"
-      ) {
-        prompt.setPromptViewMode("card");
-      }
+      prompt.returnToPromptList();
       prompt.setPromptTypeFilter(filter);
       folders.selectFolder(null);
       if (currentPage !== "home") onNavigate("home");
@@ -171,7 +168,7 @@ function useSidebarPromptNavigation(
   );
   const openPromptFolder = useCallback(
     (folderId: string) => {
-      prompt.setPromptViewMode("card");
+      prompt.returnToPromptList();
       folders.selectFolder(folderId);
       if (currentPage !== "home") onNavigate("home");
     },

@@ -55,7 +55,6 @@ export interface PromptWorkspaceDetailPaneProps {
   handleSharePrompt: (prompt: Prompt) => Promise<void>;
   handleTagFilterClick: (tag: string) => void;
   handleVersionHistory: (prompt: Prompt) => void;
-  hasCompareModels: boolean;
   highlightTerms: string[];
   isAiResponseImage: boolean;
   isDetailInlineEditing: boolean;

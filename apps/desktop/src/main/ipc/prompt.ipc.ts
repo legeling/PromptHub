@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { registerPromptTestHistoryIPC } from "./prompt-test-history.ipc";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
 import { PromptDB } from "../database/prompt";
@@ -34,6 +35,7 @@ export function registerPromptIPC(
   rawDb: Database.Database,
 ): void {
   const relationDb = new PromptRelationDB(rawDb);
+  registerPromptTestHistoryIPC(rawDb);
   const outputFormatDb = new PromptOutputFormatDB(rawDb);
 
   const sortFoldersForInsert = (folders: Folder[]): Folder[] => {

@@ -1,4 +1,10 @@
-import { GitCompareIcon, GlobeIcon } from "lucide-react";
+import {
+  GlobeIcon,
+  Settings2Icon,
+  MessageSquareIcon,
+  CodeXmlIcon,
+  BookOpenIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PromptAiResponsePanel } from "../prompt/PromptAiResponsePanel";
 import { PromptContentField } from "../prompt/PromptContentField";
@@ -54,6 +60,9 @@ function PromptDetailSystemField() {
   return (
     <PromptContentField
       label={t("prompt.systemPromptLabel", "System Prompt")}
+      labelIcon={
+        <Settings2Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+      }
       showEnglishBadge={detail.showEnglish}
       isEditing={detail.isDetailInlineEditing}
       value={detail.detailInlineDraft.systemPrompt}
@@ -72,8 +81,8 @@ function PromptDetailSystemField() {
         "prompt.inlineEditSystemPromptAria",
         "Double-click to edit system prompt",
       )}
-      textareaClassName="w-full min-h-[120px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-      rows={4}
+      textareaClassName="w-full min-h-[80px] max-h-[70vh] resize-y [field-sizing:content] rounded-none border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-inset focus:ring-primary/20"
+      rows={3}
     />
   );
 }
@@ -88,6 +97,12 @@ function PromptDetailUserField() {
   return (
     <PromptContentField
       label={t("prompt.userPromptLabel", "User Prompt")}
+      labelIcon={
+        <MessageSquareIcon
+          aria-hidden="true"
+          className="h-3.5 w-3.5 shrink-0"
+        />
+      }
       showEnglishBadge={detail.showEnglish}
       isEditing={detail.isDetailInlineEditing}
       value={detail.detailInlineDraft.userPrompt}
@@ -102,52 +117,26 @@ function PromptDetailUserField() {
         "prompt.inlineEditUserPromptAria",
         "Double-click to edit user prompt",
       )}
-      textareaClassName="w-full min-h-[280px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+      textareaClassName="w-full min-h-[320px] max-h-[70vh] resize-y [field-sizing:content] rounded-none border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-inset focus:ring-primary/20"
       rows={12}
       headerAction={
         <button
           type="button"
           onClick={detail.toggleRenderMarkdown}
           disabled={detail.isDetailInlineEditing}
-          className="text-[12px] px-3 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 h-6 px-1 rounded text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          {detail.renderMarkdownEnabled ? (
+            <CodeXmlIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <BookOpenIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          )}
           {detail.renderMarkdownEnabled
             ? t("prompt.viewRaw", "Show Plain Text")
             : t("prompt.viewMarkdown", "Markdown")}
         </button>
       }
     />
-  );
-}
-
-function PromptDetailComparePanel() {
-  const { t } = useTranslation();
-  const detail = usePromptWorkspaceDetailContext();
-  const prompt = detail.selectedPrompt!;
-  if (prompt.promptType === "image" || !detail.hasCompareModels) return null;
-  return (
-    <div className="mb-4 p-4 rounded-xl app-wallpaper-panel border border-border">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <GitCompareIcon className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">
-            {t("settings.multiModelCompare")}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {t("prompt.selectModelsHint")}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => detail.handleAiTest(prompt, "compare")}
-          disabled={detail.isDetailInlineEditing}
-          className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
-          <GitCompareIcon aria-hidden="true" className="w-3 h-3" />
-          <span>{t("settings.runCompare")}</span>
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -186,7 +175,6 @@ export function PromptDetailFields() {
         </p>
       )}
       <PromptDetailUserField />
-      <PromptDetailComparePanel />
       <PromptDetailAiResponse />
     </>
   );

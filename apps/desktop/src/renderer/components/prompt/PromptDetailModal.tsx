@@ -15,6 +15,9 @@ import {
   BracesIcon,
   Share2Icon,
   GitBranchIcon,
+  StickyNoteIcon,
+  Settings2Icon,
+  MessageSquareIcon,
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { ImagePreviewModal } from "../ui/ImagePreviewModal";
@@ -177,7 +180,7 @@ export function PromptDetailModal({
         />
       ),
       p: (props: any) => (
-        <p className="mb-2 leading-relaxed text-foreground/90" {...props} />
+        <p className="mb-2 leading-relaxed text-foreground" {...props} />
       ),
       ul: (props: any) => (
         <ul className="list-disc pl-5 mb-2 space-y-1" {...props} />
@@ -230,7 +233,7 @@ export function PromptDetailModal({
       return <span className="text-muted-foreground text-sm">-</span>;
     }
     return (
-      <div className="p-4 rounded-lg bg-muted/30 border border-border text-sm leading-relaxed markdown-content space-y-2 break-words">
+      <div className="p-4 rounded-xl app-wallpaper-surface border border-border text-sm leading-relaxed markdown-content space-y-2 break-words">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={rehypePlugins}
@@ -243,7 +246,8 @@ export function PromptDetailModal({
   };
 
   if (!prompt) return null;
-  const relationshipPrompt = prompts.find((candidate) => candidate.id === prompt.id) ?? prompt;
+  const relationshipPrompt =
+    prompts.find((candidate) => candidate.id === prompt.id) ?? prompt;
   const promptSourceHref = resolvePromptMarkdownHref(prompt.source);
   const modalRelations = relations.filter(
     (relation) =>
@@ -456,7 +460,7 @@ export function PromptDetailModal({
           <div className="flex items-center gap-1">
             <ClockIcon aria-hidden="true" className="w-4 h-4" />
             <span>
-              {t("prompt.updatedAt")}: {formatDate(prompt.updatedAt)}
+              {t("prompt.createdAt")}: {formatDate(prompt.createdAt)}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -472,7 +476,7 @@ export function PromptDetailModal({
             <h4 className="text-sm font-medium text-muted-foreground mb-2">
               {t("prompt.description")}
             </h4>
-            <p className="text-sm bg-muted/30 rounded-lg p-3">
+            <p className="text-sm leading-relaxed app-wallpaper-surface border border-border rounded-xl p-4">
               {prompt.description}
             </p>
           </div>
@@ -485,7 +489,7 @@ export function PromptDetailModal({
               <GlobeIcon aria-hidden="true" className="w-3.5 h-3.5" />
               {t("prompt.source")}
             </h4>
-            <div className="text-sm bg-muted/30 rounded-lg p-3 break-all">
+            <div className="text-sm leading-relaxed app-wallpaper-surface border border-border rounded-xl p-4 break-all">
               {promptSourceHref ? (
                 <a
                   href={promptSourceHref}
@@ -496,7 +500,7 @@ export function PromptDetailModal({
                   <span className="truncate max-w-full">{prompt.source}</span>
                 </a>
               ) : (
-                <span className="text-foreground/90">{prompt.source}</span>
+                <span className="text-foreground">{prompt.source}</span>
               )}
             </div>
           </div>
@@ -505,10 +509,14 @@ export function PromptDetailModal({
         {/* 备注 / Notes */}
         {prompt.notes && (
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <StickyNoteIcon
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              />
               {t("prompt.notes")}
             </h4>
-            <div className="text-sm bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-3 text-foreground/80 italic">
+            <div className="text-sm leading-relaxed app-wallpaper-surface border border-border rounded-xl p-4 text-foreground whitespace-pre-wrap break-words">
               {prompt.notes}
             </div>
           </div>
@@ -630,7 +638,11 @@ export function PromptDetailModal({
         {(showEnglish ? prompt.systemPromptEn : prompt.systemPrompt) && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <Settings2Icon
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0"
+                />
                 {t("prompt.systemPrompt")}
                 {showEnglish && (
                   <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">
@@ -662,7 +674,11 @@ export function PromptDetailModal({
         {/* User Prompt */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <MessageSquareIcon
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              />
               {t("prompt.userPrompt")}
               {showEnglish && (
                 <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">
