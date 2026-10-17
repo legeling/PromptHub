@@ -122,6 +122,13 @@ Before any commit, split commit, history rewrite, or push operation:
 4. For every non-trivial commit, include a body with the relevant topic, change, or issue reference when one exists and the actual verification status. A Conventional Commit title by itself is not sufficient.
 5. Every issue-related commit must explicitly reference its issue. A complete, verified fix must include `Closes #<issue>`; incomplete or reference-only work uses `Refs #<issue>`. Follow `spec/rules/issue-management-rules.md`; automatic closure does not require publication and does not authorize a push.
 
+### 0.10 Development Artifact Hygiene
+
+- Do not scatter command logs, temporary scripts, scratch files, or caches in the repository root or source directories. Git ignore rules do not make these valid output locations.
+- Store ad hoc command output and scratch artifacts in a task-specific directory under the OS temporary directory (for example, `os.tmpdir()/prompthub-<task>-<unique-id>/`).
+- Use the owning tool's configured output directories for build artifacts, caches, coverage, and test reports. Reuse existing project conventions instead of inventing new output locations for each task.
+- Clean up disposable artifacts when work finishes. Preserve logs still needed for diagnosis in the task temporary directory, and report that location when handing them off. Do not remove another active task's artifacts or stop its processes.
+
 ## 1. Project Overview
 
 **PromptHub** is a local-first prompt and AI-skill management monorepo. It includes a cross-platform Electron desktop app, a standalone CLI, a self-hosted web app, and a Cloudflare Worker backend. It allows users to organize, version-control, sync, recover, and test prompts and reusable AI skill definitions.
