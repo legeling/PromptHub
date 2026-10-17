@@ -802,12 +802,12 @@ describe("AgentOverviewPanel", () => {
     const usageBanner = screen.getByRole("region", { name: "Usage" });
     expect(
       await within(usageBanner).findByRole("progressbar", {
-        name: "5-hour window: 58% remaining",
+        name: "5-hour balance: 58% remaining",
       }),
     ).toBeVisible();
     expect(
       within(usageBanner).getByRole("progressbar", {
-        name: "7-day window: 82% remaining",
+        name: "Weekly balance: 82% remaining",
       }),
     ).toBeVisible();
     expect(within(usageBanner).getByText("Claude Pro")).toBeVisible();

@@ -39,10 +39,10 @@ describe("AgentUsageMeter", () => {
       />,
     );
 
-    expect(screen.getByText("Monthly quota")).toBeVisible();
+    expect(screen.getByText("Monthly balance")).toBeVisible();
     expect(screen.getByText("750 / 1,000 credits remaining")).toBeVisible();
     const progress = screen.getByRole("progressbar", {
-      name: "Monthly quota: 75% remaining",
+      name: "Monthly balance: 75% remaining",
     });
     expect(progress).toHaveAttribute("aria-valuenow", "75");
     expect(progress).toHaveAttribute("data-usage-visual", "bar");
@@ -87,7 +87,7 @@ describe("AgentUsageMeter", () => {
 
       expect(
         screen.getByRole("progressbar", {
-          name: "5-hour window: 100% remaining",
+          name: "5-hour balance: 100% remaining",
         }),
       ).toHaveAttribute("data-usage-visual", "ring");
       expect(screen.getByText("Reset pending")).toBeVisible();
