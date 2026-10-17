@@ -403,7 +403,7 @@ describe("SettingsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses a left-aligned adaptive content shell on large displays", async () => {
+  it("centers the adaptive content shell within the settings pane on large displays", async () => {
     useSettingsStoreMock.mockReturnValue({
       syncProvider: "manual",
       webdavEnabled: false,
@@ -421,7 +421,7 @@ describe("SettingsPage", () => {
     const contentShell = screen.getByTestId("settings-content-shell");
 
     expect(contentShell).not.toHaveClass("max-w-4xl");
-    expect(contentShell).not.toHaveClass("mx-auto");
+    expect(contentShell).toHaveClass("mx-auto");
     expect(contentShell).toHaveClass("2xl:max-w-7xl");
     expect(contentShell).toHaveClass("w-full");
   });
