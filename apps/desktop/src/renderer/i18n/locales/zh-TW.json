@@ -260,9 +260,9 @@
     "enterTagHint": "輸入新標籤後按 Enter",
     "addTag": "新增",
     "referenceImages": "參考圖片",
+    "previewReferenceImage": "預覽參考圖片 {{index}}",
     "removeReferenceImage": "移除參考圖片 {{index}}",
     "removeReferenceVideo": "移除參考影片 {{index}}",
-    "previewReferenceImage": "預覽參考圖片 {{index}}",
     "previousImage": "上一張圖片",
     "nextImage": "下一張圖片",
     "imagePosition": "第 {{current}} 張，共 {{total}} 張",
@@ -2640,6 +2640,9 @@
     "mcpQuickstartDesc": "面向工具、 Skill 與整合的協議快速入門"
   },
   "common": {
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "resetZoom": "重設縮放",
     "storageInitializationFailed": "無法初始化本機資料",
     "storageInitializationFailedDescription": "資料遷移尚未完成，來源資料已保留。請處理錯誤後重新載入。",
     "install": "安裝",

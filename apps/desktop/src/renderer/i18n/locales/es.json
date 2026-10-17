@@ -261,9 +261,9 @@
     "addTag": "Añadir",
     "referenceImages": "Imágenes de referencia",
     "referenceUnsupported": "Este modelo no admite imágenes de referencia. Elige otro modelo o usa un Prompt temporal.",
+    "previewReferenceImage": "Previsualizar imagen de referencia {{index}}",
     "removeReferenceImage": "Quitar imagen de referencia {{index}}",
     "removeReferenceVideo": "Quitar video de referencia {{index}}",
-    "previewReferenceImage": "Previsualizar imagen de referencia {{index}}",
     "previousImage": "Imagen anterior",
     "nextImage": "Imagen siguiente",
     "imagePosition": "Imagen {{current}} de {{total}}",
@@ -2640,6 +2640,9 @@
     "mcpQuickstartDesc": "Inicio rápido del protocolo para tools, skills e integraciones"
   },
   "common": {
+    "zoomIn": "Ampliar",
+    "zoomOut": "Reducir",
+    "resetZoom": "Restablecer zoom",
     "storageInitializationFailed": "No se pudieron inicializar los datos locales",
     "storageInitializationFailedDescription": "La migración está incompleta. Los datos originales se conservan. Resuelve el error antes de recargar.",
     "install": "Instalar",

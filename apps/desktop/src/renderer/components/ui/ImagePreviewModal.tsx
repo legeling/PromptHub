@@ -7,7 +7,7 @@ import {
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { resolveLocalImageSrc } from "../../utils/media-url";
+import { ImagePreviewViewport } from "./ImagePreviewViewport";
 
 interface ImagePreviewModalProps {
   isOpen: boolean;
@@ -104,12 +104,17 @@ function useGalleryKeyboard({
   useEffect(() => {
     if (!enabled) return;
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!["Escape", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      // Capture preview shortcuts before the underlying editor's document
+      // listener can close or navigate its own modal.
+      event.preventDefault();
+      event.stopPropagation();
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowLeft") selectIndex(activeIndex - 1);
       if (event.key === "ArrowRight") selectIndex(activeIndex + 1);
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [activeIndex, enabled, onClose, selectIndex]);
 }
 
@@ -197,13 +202,7 @@ function PreviewContent({
     );
   }
   return (
-    <img
-      key={activeSrc}
-      src={resolveLocalImageSrc(activeSrc)}
-      alt={t("prompt.preview")}
-      className="max-h-[calc(100vh-7rem)] max-w-full rounded-lg object-contain shadow-2xl"
-      onError={onError}
-    />
+    <ImagePreviewViewport key={activeSrc} imageSrc={activeSrc} onError={onError} />
   );
 }
 
@@ -265,7 +264,7 @@ export function ImagePreviewModal({
           total={gallery.sources.length}
         />
       ) : null}
-      <div className="relative flex max-h-full max-w-full items-center justify-center outline-none">
+      <div className="flex h-full w-full min-h-0 min-w-0 items-center justify-center outline-none">
         <PreviewContent
           activeSrc={gallery.activeSrc}
           imageError={imageError}

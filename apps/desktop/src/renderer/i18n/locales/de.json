@@ -261,9 +261,9 @@
     "addTag": "Hinzufügen",
     "referenceImages": "Referenzbilder",
     "referenceUnsupported": "Dieses Modell unterstuetzt keine Referenzbilder. Waehlen Sie ein anderes Modell oder einen temporaeren Prompt.",
+    "previewReferenceImage": "Referenzbild {{index}} ansehen",
     "removeReferenceImage": "Referenzbild {{index}} entfernen",
     "removeReferenceVideo": "Referenzvideo {{index}} entfernen",
-    "previewReferenceImage": "Referenzbild {{index}} ansehen",
     "previousImage": "Vorheriges Bild",
     "nextImage": "Nächstes Bild",
     "imagePosition": "Bild {{current}} von {{total}}",
@@ -2640,6 +2640,9 @@
     "mcpQuickstartDesc": "Protokoll-Schnellstart für Tools, Skills und Integrationen"
   },
   "common": {
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "resetZoom": "Zoom zurücksetzen",
     "storageInitializationFailed": "Lokale Daten konnten nicht initialisiert werden",
     "storageInitializationFailedDescription": "Die Migration ist unvollständig. Die Quelldaten bleiben erhalten. Beheben Sie den Fehler vor dem Neuladen.",
     "install": "Installieren",

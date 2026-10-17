@@ -16,9 +16,10 @@ describe("ImagePreviewModal", () => {
     );
     const close = screen.getByRole('button', { name: 'Close' });
     expect(close).toHaveFocus();
-    fireEvent.keyDown(close, { key: 'Tab' });
-    expect(close).toHaveFocus();
+    const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
     fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(zoomIn).toHaveFocus();
+    fireEvent.keyDown(zoomIn, { key: 'Tab' });
     expect(close).toHaveFocus();
     unmount();
     expect(trigger).toHaveFocus();

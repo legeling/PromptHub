@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent,
-  type WheelEvent,
-} from "react";
+import { useEffect, type WheelEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   FileIcon,
@@ -20,6 +14,8 @@ import {
   MIN_RESOURCE_ZOOM,
   type FileEntry,
 } from "./skill-file-editor-utils";
+
+import { useResourceImagePan } from "./use-resource-image-pan";
 
 type ResourceImageMode = "inline" | "fullscreen";
 
@@ -79,7 +75,7 @@ function ImageZoomControls({
         className="skill-file-editor__editor-tab"
         type="button"
         onClick={isFullscreenMode ? onResetZoom : onOpenFullscreen}
-        disabled={isFullscreenMode ? imageZoom === 1 : !onOpenFullscreen}
+        disabled={!isFullscreenMode && !onOpenFullscreen}
         title={centerLabel}
         aria-label={centerLabel}
       >
@@ -127,46 +123,10 @@ function ImageResourceCanvas({
   fullscreenLabel,
   mode = "inline",
 }: ImageResourceCanvasProps) {
-  const panStateRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    scrollLeft: number;
-    scrollTop: number;
-  } | null>(null);
-  const [isPanningImage, setIsPanningImage] = useState(false);
-
-  const handleImagePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-
-    event.preventDefault();
-    panStateRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      scrollLeft: event.currentTarget.scrollLeft,
-      scrollTop: event.currentTarget.scrollTop,
-    };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setIsPanningImage(true);
-  };
-
-  const handleImagePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const panState = panStateRef.current;
-    if (!panState || panState.pointerId !== event.pointerId) return;
-
-    event.currentTarget.scrollLeft =
-      panState.scrollLeft - (event.clientX - panState.startX);
-    event.currentTarget.scrollTop =
-      panState.scrollTop - (event.clientY - panState.startY);
-  };
-
-  const stopImagePan = (event: PointerEvent<HTMLDivElement>) => {
-    if (panStateRef.current?.pointerId !== event.pointerId) return;
-
-    panStateRef.current = null;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    setIsPanningImage(false);
+  const pan = useResourceImagePan(file.content);
+  const resetView = () => {
+    pan.reset();
+    onResetZoom();
   };
 
   return (
@@ -175,17 +135,19 @@ function ImageResourceCanvas({
       onWheel={onImageWheelZoom}
     >
       <div
-        className={`skill-file-editor__resource-image-viewport${
-          isPanningImage
+        className={`skill-file-editor__resource-image-viewport !items-center !justify-center !overflow-hidden touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary${
+          pan.isPanning
             ? " skill-file-editor__resource-image-viewport--panning"
             : ""
         }`}
-        onPointerDown={handleImagePointerDown}
-        onPointerMove={handleImagePointerMove}
-        onPointerUp={stopImagePan}
-        onPointerCancel={stopImagePan}
+        {...pan.handlers}
+        tabIndex={0}
+        role="region"
+        aria-label={file.path}
+        onDoubleClick={resetView}
       >
         <div
+          ref={pan.stageRef}
           className="skill-file-editor__resource-image-stage"
           style={{
             width: `${imageZoom * 100}%`,
@@ -193,6 +155,7 @@ function ImageResourceCanvas({
           }}
         >
           <img
+            draggable={false}
             src={file.content}
             alt={file.path}
             className="skill-file-editor__resource-image"
@@ -204,7 +167,7 @@ function ImageResourceCanvas({
         mode={mode}
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
-        onResetZoom={onResetZoom}
+        onResetZoom={resetView}
         onOpenFullscreen={onOpenFullscreen}
         zoomOutLabel={zoomOutLabel}
         zoomInLabel={zoomInLabel}
@@ -284,6 +247,7 @@ export function ResourceImageFullscreenPreview({
         </button>
       </div>
       <ImageResourceCanvas
+        key={file.path}
         file={file}
         imageZoom={imageZoom}
         onImageWheelZoom={onImageWheelZoom}
@@ -340,6 +304,7 @@ export function ResourcePreview({
   if (file.previewKind === "image") {
     return (
       <ImageResourceCanvas
+        key={file.path}
         file={file}
         imageZoom={imageZoom}
         onImageWheelZoom={onImageWheelZoom}

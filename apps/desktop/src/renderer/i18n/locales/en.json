@@ -261,9 +261,9 @@
     "enterTagHint": "Enter new tag and press Enter",
     "addTag": "Add",
     "referenceImages": "Reference Images",
+    "previewReferenceImage": "Preview reference image {{index}}",
     "removeReferenceImage": "Remove reference image {{index}}",
     "removeReferenceVideo": "Remove reference video {{index}}",
-    "previewReferenceImage": "Preview reference image {{index}}",
     "previousImage": "Previous image",
     "nextImage": "Next image",
     "imagePosition": "Image {{current}} of {{total}}",
@@ -2650,6 +2650,9 @@
     "mcpQuickstartDesc": "Protocol quickstart for tools, skills, and integrations"
   },
   "common": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetZoom": "Reset zoom",
     "storageInitializationFailed": "Unable to initialize local data",
     "storageInitializationFailedDescription": "Data migration did not complete. Your source data has been preserved. Resolve the reported error before reloading.",
     "install": "Install",

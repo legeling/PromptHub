@@ -260,9 +260,9 @@
     "enterTagHint": "新しいタグを入力して Enter を押す",
     "addTag": "追加",
     "referenceImages": "参考画像",
+    "previewReferenceImage": "参考画像 {{index}} をプレビュー",
     "removeReferenceImage": "参考画像 {{index}} を削除",
     "removeReferenceVideo": "参考動画 {{index}} を削除",
-    "previewReferenceImage": "参考画像 {{index}} をプレビュー",
     "previousImage": "前の画像",
     "nextImage": "次の画像",
     "imagePosition": "{{total}} 枚中 {{current}} 枚目",
@@ -2640,6 +2640,9 @@
     "mcpQuickstartDesc": "ツール、スキル、統合向けのプロトコル入門"
   },
   "common": {
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "resetZoom": "ズームをリセット",
     "storageInitializationFailed": "ローカルデータを初期化できません",
     "storageInitializationFailedDescription": "データ移行が完了していません。元のデータは保持されています。エラーを解決してから再読み込みしてください。",
     "install": "インストール",
