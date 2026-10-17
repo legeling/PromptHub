@@ -16,6 +16,7 @@ import { isClaudeCloudProviderEnabled } from "@prompthub/shared/utils/claude-con
 import { parse as parseToml } from "smol-toml";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
+import { parseCodexUsage } from "./agent-usage-codex";
 
 import type {
   AgentUsageMetric,
@@ -85,10 +86,6 @@ interface UsageWindow {
   resetsAt: number | null;
 }
 
-interface CodexUsageWindow extends UsageWindow {
-  windowSeconds: number;
-}
-
 interface TokenCredentials {
   accessToken: string;
   expiresAt: number | null;
@@ -134,7 +131,6 @@ const COPILOT_HOSTS_RELATIVE_PATH = path.join(
   "github-copilot",
   "hosts.json",
 );
-const SEVEN_DAY_WINDOW_SECONDS = 86_400;
 const LEGACY_KEYCHAIN_SERVICE = "Claude Code-credentials";
 const KEYCHAIN_TIMEOUT_MS = 10_000;
 const KEYCHAIN_MAX_BUFFER = 64 * 1024;
@@ -268,41 +264,6 @@ function parseCodexAuth(raw: string): CodexCredentials | null {
         ? accountId.trim()
         : null,
   };
-}
-
-// The official Codex backend does not guarantee primary/secondary slot
-// semantics, so windows are classified by their length instead of their slot.
-function parseCodexWindow(value: unknown): CodexUsageWindow | null {
-  if (!isRecord(value)) return null;
-  const usedPercent = value.used_percent;
-  const windowSeconds = value.limit_window_seconds;
-  if (
-    typeof usedPercent !== "number" ||
-    !Number.isFinite(usedPercent) ||
-    typeof windowSeconds !== "number" ||
-    !Number.isFinite(windowSeconds)
-  ) {
-    return null;
-  }
-  const resetAt = value.reset_at;
-  return {
-    utilization: usedPercent,
-    resetsAt:
-      typeof resetAt === "number" && Number.isFinite(resetAt)
-        ? resetAt * 1000
-        : null,
-    windowSeconds,
-  };
-}
-
-function pickLargerWindow(
-  current: CodexUsageWindow | null,
-  candidate: CodexUsageWindow,
-): CodexUsageWindow {
-  if (!current || candidate.utilization >= current.utilization) {
-    return candidate;
-  }
-  return current;
 }
 
 function parseKimiCredentials(raw: string): TokenCredentials | null {
@@ -911,29 +872,7 @@ export function createAgentUsageService(
       return buildCodexQuota("unavailable", { errorCode: result.errorCode });
     }
 
-    const body = isRecord(result.body) ? result.body : {};
-    const rateLimit = isRecord(body.rate_limit) ? body.rate_limit : {};
-    let fiveHour: CodexUsageWindow | null = null;
-    let sevenDay: CodexUsageWindow | null = null;
-    for (const slot of ["primary_window", "secondary_window"] as const) {
-      const window = parseCodexWindow(rateLimit[slot]);
-      if (!window) continue;
-      if (window.windowSeconds <= SEVEN_DAY_WINDOW_SECONDS) {
-        fiveHour = pickLargerWindow(fiveHour, window);
-      } else {
-        sevenDay = pickLargerWindow(sevenDay, window);
-      }
-    }
-    return buildCodexQuota("ok", {
-      metrics: [
-        toWindowMetric("fiveHour", fiveHour),
-        toWindowMetric("sevenDay", sevenDay),
-      ].filter((metric): metric is AgentUsageMetric => metric !== null),
-      plan:
-        typeof body.plan_type === "string" && body.plan_type.trim()
-          ? body.plan_type.trim()
-          : null,
-    });
+    return buildCodexQuota("ok", parseCodexUsage(result.body));
   }
 
   async function readKimiCredentialsFile(

@@ -5,7 +5,7 @@ import {
   GaugeIcon,
   RefreshCwIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -14,7 +14,6 @@ import type {
 } from "@prompthub/shared/types";
 import {
   buildAgentUsagePresentation,
-  getAgentUsageVisual,
   type AgentUsagePresentationGroup,
 } from "./agent-usage-presentation";
 import {
@@ -24,22 +23,29 @@ import {
 } from "./AgentUsageMeter";
 import { useAgentUsage } from "./use-agent-usage";
 
+function UsageCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-24 min-w-0 flex-[1_1_12rem] flex-col justify-center rounded-xl border border-border bg-muted/20 px-4 py-3">
+      {children}
+    </div>
+  );
+}
+
 function UsageSkeleton() {
   return (
     <div
       data-testid="usage-skeleton"
       aria-hidden="true"
-      className="grid gap-5"
-      style={{
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(17rem, 100%), 1fr))",
-      }}
+      className="flex flex-wrap gap-3"
     >
       {[0, 1].map((index) => (
-        <div key={index} className="animate-pulse space-y-2">
-          <div className="h-3 w-28 rounded bg-muted" />
-          <div className="h-1.5 w-full rounded-full bg-muted" />
-          <div className="h-2.5 w-36 rounded bg-muted" />
-        </div>
+        <UsageCard key={index}>
+          <div className="animate-pulse space-y-2">
+            <div className="h-3 w-28 max-w-full rounded bg-muted" />
+            <div className="h-1.5 w-full rounded-full bg-muted" />
+            <div className="h-2.5 w-36 max-w-full rounded bg-muted" />
+          </div>
+        </UsageCard>
       ))}
     </div>
   );
@@ -48,41 +54,23 @@ function UsageSkeleton() {
 function UsageGroup({ group }: { group: AgentUsagePresentationGroup }) {
   const { t } = useTranslation();
   const label = resolveAgentUsageGroupLabel(group, t);
-  const ringMetrics = group.metrics.filter(
-    (metric) => getAgentUsageVisual(metric) === "ring",
-  );
-  const barMetrics = group.metrics.filter(
-    (metric) => getAgentUsageVisual(metric) === "bar",
-  );
   return (
-    <div data-usage-group={group.key} className="min-w-0 space-y-3">
+    <div
+      data-usage-group={group.key}
+      className={`min-w-0 space-y-3 ${group.scopeKind === "account" ? "basis-full" : "flex-[1_1_25rem]"}`}
+    >
       {label ? (
         <h3 className="truncate text-xs font-semibold text-foreground">
           {label}
         </h3>
       ) : null}
-      {ringMetrics.length > 0 ? (
-        <div
-          data-usage-rings
-          className="flex min-w-0 flex-wrap gap-x-4 gap-y-3"
-        >
-          {ringMetrics.map((metric, index) => (
-            <div
-              key={`${metric.id}:${index}`}
-              className="w-44 max-w-full shrink-0"
-            >
-              <AgentUsageMeter metric={metric} />
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {barMetrics.length > 0 ? (
-        <div className="space-y-3">
-          {barMetrics.map((metric, index) => (
-            <AgentUsageMeter key={`${metric.id}:${index}`} metric={metric} />
-          ))}
-        </div>
-      ) : null}
+      <div className="flex min-w-0 flex-wrap items-stretch gap-3">
+        {group.metrics.map((metric, index) => (
+          <UsageCard key={`${metric.id}:${index}`}>
+            <AgentUsageMeter metric={metric} />
+          </UsageCard>
+        ))}
+      </div>
     </div>
   );
 }
@@ -107,18 +95,14 @@ function QuotaContent({
   );
   const hiddenCount =
     presentation.hiddenModelCount + presentation.truncatedCount;
-  const fullWidthGroups = presentation.groups.filter((group) =>
-    group.metrics.some((metric) => getAgentUsageVisual(metric) === "bar"),
-  );
-  const ringGroups = presentation.groups.filter((group) =>
-    group.metrics.every((metric) => getAgentUsageVisual(metric) === "ring"),
-  );
 
   return (
     <div className="space-y-4">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          {quota?.plan ? <AgentUsagePlanBadge plan={quota.plan} /> : null}
+          {quota?.plan ? (
+            <AgentUsagePlanBadge plan={quota.plan} agentId={quota.agentId} />
+          ) : null}
           {!quota && isLoading ? (
             <span className="text-xs text-muted-foreground">
               {t("agents.usageTab.loading")}
@@ -153,27 +137,13 @@ function QuotaContent({
       {presentation.groups.length > 0 ? (
         <div
           data-testid="usage-groups"
-          className={`min-w-0 space-y-5 ${
+          className={`flex min-w-0 flex-wrap items-start gap-5 ${
             expanded ? "max-h-80 overflow-y-auto pr-1" : ""
           }`}
         >
-          {fullWidthGroups.map((group) => (
+          {presentation.groups.map((group) => (
             <UsageGroup key={group.key} group={group} />
           ))}
-          {ringGroups.length > 0 ? (
-            <div
-              data-testid="usage-ring-groups"
-              style={{
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(25rem, 100%), 1fr))",
-              }}
-              className="grid min-w-0 gap-x-8 gap-y-5"
-            >
-              {ringGroups.map((group) => (
-                <UsageGroup key={group.key} group={group} />
-              ))}
-            </div>
-          ) : null}
         </div>
       ) : null}
       {hiddenCount > 0 || expanded ? (
@@ -260,7 +230,10 @@ function CustomProviderState() {
 
 function AgentUsageBannerContent({ agent }: { agent: ManagedAgentSummary }) {
   const { t } = useTranslation();
-  const { quota, isLoading, hasError, refresh } = useAgentUsage(agent.id, agent.paths.root);
+  const { quota, isLoading, hasError, refresh } = useAgentUsage(
+    agent.id,
+    agent.paths.root,
+  );
   const hasCachedSuccess = quota?.status === "ok";
   const status = hasError && !hasCachedSuccess ? "unavailable" : quota?.status;
   const isCustomProviderActive =

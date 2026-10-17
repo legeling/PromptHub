@@ -1,0 +1,93 @@
+{
+  "en": {
+    "creditBalance": "Credit balance",
+    "availableResets": "Available usage resets",
+    "rollingWindowDuration": "{minutes}-minute balance",
+    "fiveHourWindow": "5-hour balance",
+    "sevenDayWindow": "Weekly balance",
+    "sevenDayOpusWindow": "Weekly Opus balance",
+    "weeklyWindow": "Weekly balance",
+    "rollingWindow": "Rolling balance",
+    "dailyWindow": "Daily balance",
+    "monthlyWindow": "Monthly balance",
+    "billingCycle": "Billing-cycle balance"
+  },
+  "zh": {
+    "creditBalance": "点数余额",
+    "availableResets": "可用重置次数",
+    "rollingWindowDuration": "{minutes} 分钟余额",
+    "fiveHourWindow": "5 小时余额",
+    "sevenDayWindow": "周余额",
+    "sevenDayOpusWindow": "Opus 周余额",
+    "weeklyWindow": "周余额",
+    "rollingWindow": "滚动余额",
+    "dailyWindow": "日余额",
+    "monthlyWindow": "月余额",
+    "billingCycle": "账期余额"
+  },
+  "zh-TW": {
+    "creditBalance": "點數餘額",
+    "availableResets": "可用重置次數",
+    "rollingWindowDuration": "{minutes} 分鐘餘額",
+    "fiveHourWindow": "5 小時餘額",
+    "sevenDayWindow": "週餘額",
+    "sevenDayOpusWindow": "Opus 週餘額",
+    "weeklyWindow": "週餘額",
+    "rollingWindow": "滾動餘額",
+    "dailyWindow": "日餘額",
+    "monthlyWindow": "月餘額",
+    "billingCycle": "帳期餘額"
+  },
+  "ja": {
+    "creditBalance": "クレジット残高",
+    "availableResets": "利用可能なリセット回数",
+    "rollingWindowDuration": "{minutes}分間の残量",
+    "fiveHourWindow": "5時間の残量",
+    "sevenDayWindow": "週間残量",
+    "sevenDayOpusWindow": "Opus 週間残量",
+    "weeklyWindow": "週間残量",
+    "rollingWindow": "ローリング期間の残量",
+    "dailyWindow": "日次残量",
+    "monthlyWindow": "月次残量",
+    "billingCycle": "請求期間の残量"
+  },
+  "fr": {
+    "creditBalance": "Solde de crédits",
+    "availableResets": "Réinitialisations disponibles",
+    "rollingWindowDuration": "Solde sur {minutes} minutes",
+    "fiveHourWindow": "Solde sur 5 heures",
+    "sevenDayWindow": "Solde hebdomadaire",
+    "sevenDayOpusWindow": "Solde hebdomadaire Opus",
+    "weeklyWindow": "Solde hebdomadaire",
+    "rollingWindow": "Solde glissant",
+    "dailyWindow": "Solde quotidien",
+    "monthlyWindow": "Solde mensuel",
+    "billingCycle": "Solde du cycle de facturation"
+  },
+  "de": {
+    "creditBalance": "Guthaben",
+    "availableResets": "Verfügbare Zurücksetzungen",
+    "rollingWindowDuration": "Restkontingent für {minutes} Minuten",
+    "fiveHourWindow": "5-Stunden-Restkontingent",
+    "sevenDayWindow": "Wöchentliches Restkontingent",
+    "sevenDayOpusWindow": "Wöchentliches Opus-Restkontingent",
+    "weeklyWindow": "Wöchentliches Restkontingent",
+    "rollingWindow": "Rollierendes Restkontingent",
+    "dailyWindow": "Tägliches Restkontingent",
+    "monthlyWindow": "Monatliches Restkontingent",
+    "billingCycle": "Restkontingent im Abrechnungszeitraum"
+  },
+  "es": {
+    "creditBalance": "Saldo de créditos",
+    "availableResets": "Restablecimientos disponibles",
+    "rollingWindowDuration": "Saldo de {minutes} minutos",
+    "fiveHourWindow": "Saldo de 5 horas",
+    "sevenDayWindow": "Saldo semanal",
+    "sevenDayOpusWindow": "Saldo semanal de Opus",
+    "weeklyWindow": "Saldo semanal",
+    "rollingWindow": "Saldo móvil",
+    "dailyWindow": "Saldo diario",
+    "monthlyWindow": "Saldo mensual",
+    "billingCycle": "Saldo del ciclo de facturación"
+  }
+}

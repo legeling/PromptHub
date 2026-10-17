@@ -20,8 +20,26 @@ const GROK_MEMBERSHIP_PLAN_NAMES: Readonly<Record<string, string>> = {
   SUPERGROKHEAVY: "SuperGrok Heavy",
 };
 
-export function formatAgentUsagePlan(plan: string): string {
+// Names match the provider's public tier labels; prices are not inferred from quota sizes.
+const CODEX_PLAN_NAMES: Readonly<Record<string, string>> = {
+  free: "Free",
+  go: "Go",
+  plus: "Plus",
+  prolite: "Pro $100",
+  pro: "Pro $200",
+  promax: "Pro $500",
+  team: "Team",
+  business: "Business",
+  enterprise: "Enterprise",
+  edu: "Edu",
+};
+
+export function formatAgentUsagePlan(plan: string, agentId?: string): string {
   const trimmed = plan.trim();
+  if (agentId === "codex") {
+    const codexPlan = CODEX_PLAN_NAMES[trimmed.toLowerCase()];
+    if (codexPlan) return codexPlan;
+  }
   const kimiPlan = KIMI_MEMBERSHIP_PLAN_NAMES[trimmed.toUpperCase()];
   if (kimiPlan) return kimiPlan;
   const grokPlan =

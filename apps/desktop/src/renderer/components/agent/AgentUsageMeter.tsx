@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { BadgeCheckIcon } from "lucide-react";
+import { BadgeCheckIcon, CoinsIcon, RotateCcwIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -37,6 +37,8 @@ const KNOWN_METRIC_LABEL_KEYS: Record<string, string> = {
   premium: "agents.usageTab.premiumRequests",
   chat: "agents.usageTab.chatRequests",
   promptCredits: "agents.usageTab.promptCredits",
+  creditBalance: "agents.usageTab.creditBalance",
+  availableResets: "agents.usageTab.availableResets",
 };
 
 export function resolveAgentUsageMetricLabel(
@@ -57,9 +59,14 @@ export function resolveAgentUsageMetricLabel(
   }
   if (
     metric.period.kind === "rolling" &&
-    metric.period.durationSeconds === 18_000
+    metric.period.durationSeconds !== null
   ) {
-    return t("agents.usageTab.fiveHourWindow");
+    const seconds = metric.period.durationSeconds;
+    if (seconds === 18_000) return t("agents.usageTab.fiveHourWindow");
+    if (seconds === 604_800) return t("agents.usageTab.sevenDayWindow");
+    return t("agents.usageTab.rollingWindowDuration", {
+      minutes: seconds / 60,
+    });
   }
   if (metric.period.kind === "provider-defined") {
     return t("agents.usageTab.providerQuota");
@@ -100,12 +107,14 @@ export function formatAgentUsageReset(
 
 export function AgentUsagePlanBadge({
   plan,
+  agentId,
   compact = false,
 }: {
   plan: string;
+  agentId?: string;
   compact?: boolean;
 }) {
-  const displayPlan = formatAgentUsagePlan(plan);
+  const displayPlan = formatAgentUsagePlan(plan, agentId);
   return (
     <span
       data-usage-plan
@@ -119,6 +128,31 @@ export function AgentUsagePlanBadge({
       <BadgeCheckIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{displayPlan}</span>
     </span>
+  );
+}
+
+function UsageBalanceValue({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: string;
+  unit: "credits" | "resets";
+}) {
+  const Icon = unit === "credits" ? CoinsIcon : RotateCcwIcon;
+  return (
+    <div data-usage-visual="stat" className="min-w-0">
+      <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon aria-hidden="true" className="h-4 w-4" />
+        </span>
+        <span className="text-xs font-medium">{label}</span>
+      </div>
+      <p className="break-words text-2xl font-semibold leading-tight tracking-tight text-foreground tabular-nums">
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -140,11 +174,13 @@ export function AgentUsageMeter({
     [i18n.language],
   );
   const valueText =
-    metric.value.kind === "unlimited"
-      ? t("agents.usageTab.unlimited")
-      : metric.value.kind === "unknown" || remaining === null
-        ? t("agents.usageTab.unknownValue")
-        : t("agents.usageTab.remainingPercent", { remaining });
+    metric.value.kind === "balance"
+      ? formatter.format(metric.value.remainingAmount)
+      : metric.value.kind === "unlimited"
+        ? t("agents.usageTab.unlimited")
+        : metric.value.kind === "unknown" || remaining === null
+          ? t("agents.usageTab.unknownValue")
+          : t("agents.usageTab.remainingPercent", { remaining });
   const amountText =
     metric.value.kind === "amount"
       ? t("agents.usageTab.quotaRemainingOf", {
@@ -153,6 +189,16 @@ export function AgentUsageMeter({
           unit: metric.value.unit,
         })
       : "";
+
+  if (metric.value.kind === "balance") {
+    return (
+      <UsageBalanceValue
+        label={label}
+        value={valueText}
+        unit={metric.value.unit}
+      />
+    );
+  }
 
   if (visual === "ring" && remaining !== null) {
     const sizeClass = compact ? "h-11 w-11" : "h-14 w-14";

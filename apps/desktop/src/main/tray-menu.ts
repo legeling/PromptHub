@@ -12,6 +12,7 @@ import {
 } from "@prompthub/shared/utils/agent-usage-presentation";
 import type { AgentProviderTrayGroup } from "./services/agent-provider-tray-service";
 import type { AgentUsageTrayEntry } from "./services/agent-usage-tray-projection";
+import usageMessages from "./locales/agent-usage.json";
 
 export const SUPPORTED_TRAY_MENU_LANGUAGES = [
   "en",
@@ -59,6 +60,9 @@ export interface TrayMenuLabels {
   usagePremiumRequests: string;
   usageChatRequests: string;
   usagePromptCredits: string;
+  usageCreditBalance: string;
+  usageAvailableResets: string;
+  usageRollingWindowDuration: string;
   usageDailyWindow: string;
   usageMonthlyWindow: string;
   usageBillingCycle: string;
@@ -81,6 +85,9 @@ export interface TrayMenuLabels {
 
 const LABELS: Record<Language, TrayMenuLabels> = {
   en: {
+    usageCreditBalance: usageMessages["en"].creditBalance,
+    usageAvailableResets: usageMessages["en"].availableResets,
+    usageRollingWindowDuration: usageMessages["en"].rollingWindowDuration,
     addAgentAsset: "Add Agent Asset",
     createPrompt: "New Prompt…",
     createOrImportSkill: "Create or Import Skill…",
@@ -108,17 +115,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "Reset pending",
     usageResetsInDaysHours: "Resets in {days}d {hours}h",
     usageResetsInHoursMinutes: "Resets in {hours}h {minutes}m",
-    usageFiveHourWindow: "5-hour window",
-    usageSevenDayWindow: "7-day window",
-    usageSevenDayOpusWindow: "7-day Opus window",
-    usageWeeklyWindow: "Weekly quota",
-    usageRollingWindow: "Rolling window",
+    usageFiveHourWindow: usageMessages["en"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["en"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["en"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["en"].weeklyWindow,
+    usageRollingWindow: usageMessages["en"].rollingWindow,
     usagePremiumRequests: "Premium requests",
     usageChatRequests: "Chat requests",
     usagePromptCredits: "Prompt credits",
-    usageDailyWindow: "Daily quota",
-    usageMonthlyWindow: "Monthly quota",
-    usageBillingCycle: "Billing cycle",
+    usageDailyWindow: usageMessages["en"].dailyWindow,
+    usageMonthlyWindow: usageMessages["en"].monthlyWindow,
+    usageBillingCycle: usageMessages["en"].billingCycle,
     usageProviderQuota: "Provider quota",
     confirmProviderSwitch: "Switch provider profile?",
     useProviderProfile: "Switch",
@@ -136,6 +143,9 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     quitPromptHub: "Quit PromptHub",
   },
   zh: {
+    usageCreditBalance: usageMessages["zh"].creditBalance,
+    usageAvailableResets: usageMessages["zh"].availableResets,
+    usageRollingWindowDuration: usageMessages["zh"].rollingWindowDuration,
     addAgentAsset: "添加 Agent 资产",
     createPrompt: "新建 Prompt…",
     createOrImportSkill: "新建或导入 Skill…",
@@ -163,17 +173,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "等待重置",
     usageResetsInDaysHours: "{days} 天 {hours} 小时后重置",
     usageResetsInHoursMinutes: "{hours} 小时 {minutes} 分钟后重置",
-    usageFiveHourWindow: "5 小时窗口",
-    usageSevenDayWindow: "7 天窗口",
-    usageSevenDayOpusWindow: "7 天 Opus 窗口",
-    usageWeeklyWindow: "周额度",
-    usageRollingWindow: "滚动窗口",
+    usageFiveHourWindow: usageMessages["zh"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["zh"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["zh"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["zh"].weeklyWindow,
+    usageRollingWindow: usageMessages["zh"].rollingWindow,
     usagePremiumRequests: "高级请求",
     usageChatRequests: "聊天请求",
     usagePromptCredits: "Prompt 点数",
-    usageDailyWindow: "日额度",
-    usageMonthlyWindow: "月额度",
-    usageBillingCycle: "账期额度",
+    usageDailyWindow: usageMessages["zh"].dailyWindow,
+    usageMonthlyWindow: usageMessages["zh"].monthlyWindow,
+    usageBillingCycle: usageMessages["zh"].billingCycle,
     usageProviderQuota: "Provider 额度",
     confirmProviderSwitch: "切换 Provider Profile？",
     useProviderProfile: "切换",
@@ -191,6 +201,9 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     quitPromptHub: "退出 PromptHub",
   },
   "zh-TW": {
+    usageCreditBalance: usageMessages["zh-TW"].creditBalance,
+    usageAvailableResets: usageMessages["zh-TW"].availableResets,
+    usageRollingWindowDuration: usageMessages["zh-TW"].rollingWindowDuration,
     addAgentAsset: "新增 Agent 資產",
     createPrompt: "新增 Prompt…",
     createOrImportSkill: "新增或匯入 Skill…",
@@ -218,17 +231,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "等待重設",
     usageResetsInDaysHours: "{days} 天 {hours} 小時後重設",
     usageResetsInHoursMinutes: "{hours} 小時 {minutes} 分鐘後重設",
-    usageFiveHourWindow: "5 小時視窗",
-    usageSevenDayWindow: "7 天視窗",
-    usageSevenDayOpusWindow: "7 天 Opus 視窗",
-    usageWeeklyWindow: "每週額度",
-    usageRollingWindow: "滾動視窗",
+    usageFiveHourWindow: usageMessages["zh-TW"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["zh-TW"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["zh-TW"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["zh-TW"].weeklyWindow,
+    usageRollingWindow: usageMessages["zh-TW"].rollingWindow,
     usagePremiumRequests: "進階要求",
     usageChatRequests: "聊天要求",
     usagePromptCredits: "Prompt 點數",
-    usageDailyWindow: "每日額度",
-    usageMonthlyWindow: "每月額度",
-    usageBillingCycle: "帳期額度",
+    usageDailyWindow: usageMessages["zh-TW"].dailyWindow,
+    usageMonthlyWindow: usageMessages["zh-TW"].monthlyWindow,
+    usageBillingCycle: usageMessages["zh-TW"].billingCycle,
     usageProviderQuota: "Provider 額度",
     confirmProviderSwitch: "切換 Provider Profile？",
     useProviderProfile: "切換",
@@ -246,6 +259,9 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     quitPromptHub: "結束 PromptHub",
   },
   ja: {
+    usageCreditBalance: usageMessages["ja"].creditBalance,
+    usageAvailableResets: usageMessages["ja"].availableResets,
+    usageRollingWindowDuration: usageMessages["ja"].rollingWindowDuration,
     addAgentAsset: "Agent アセットを追加",
     createPrompt: "新規 Prompt…",
     createOrImportSkill: "Skill を作成または読み込む…",
@@ -273,17 +289,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "リセット待ち",
     usageResetsInDaysHours: "{days}日 {hours}時間後にリセット",
     usageResetsInHoursMinutes: "{hours}時間 {minutes}分後にリセット",
-    usageFiveHourWindow: "5時間ウィンドウ",
-    usageSevenDayWindow: "7日間ウィンドウ",
-    usageSevenDayOpusWindow: "7日間 Opus ウィンドウ",
-    usageWeeklyWindow: "週間クォータ",
-    usageRollingWindow: "ローリングウィンドウ",
+    usageFiveHourWindow: usageMessages["ja"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["ja"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["ja"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["ja"].weeklyWindow,
+    usageRollingWindow: usageMessages["ja"].rollingWindow,
     usagePremiumRequests: "プレミアムリクエスト",
     usageChatRequests: "チャットリクエスト",
     usagePromptCredits: "Prompt クレジット",
-    usageDailyWindow: "日次クォータ",
-    usageMonthlyWindow: "月次クォータ",
-    usageBillingCycle: "請求サイクル",
+    usageDailyWindow: usageMessages["ja"].dailyWindow,
+    usageMonthlyWindow: usageMessages["ja"].monthlyWindow,
+    usageBillingCycle: usageMessages["ja"].billingCycle,
     usageProviderQuota: "プロバイダークォータ",
     confirmProviderSwitch: "Provider Profile を切り替えますか？",
     useProviderProfile: "切り替え",
@@ -301,6 +317,9 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     quitPromptHub: "PromptHub を終了",
   },
   fr: {
+    usageCreditBalance: usageMessages["fr"].creditBalance,
+    usageAvailableResets: usageMessages["fr"].availableResets,
+    usageRollingWindowDuration: usageMessages["fr"].rollingWindowDuration,
     addAgentAsset: "Ajouter un actif Agent",
     createPrompt: "Nouveau Prompt…",
     createOrImportSkill: "Créer ou importer un Skill…",
@@ -328,17 +347,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "Réinitialisation en attente",
     usageResetsInDaysHours: "Réinitialisation dans {days} j {hours} h",
     usageResetsInHoursMinutes: "Réinitialisation dans {hours} h {minutes} min",
-    usageFiveHourWindow: "Fenêtre de 5 heures",
-    usageSevenDayWindow: "Fenêtre de 7 jours",
-    usageSevenDayOpusWindow: "Fenêtre Opus de 7 jours",
-    usageWeeklyWindow: "Quota hebdomadaire",
-    usageRollingWindow: "Fenêtre glissante",
+    usageFiveHourWindow: usageMessages["fr"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["fr"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["fr"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["fr"].weeklyWindow,
+    usageRollingWindow: usageMessages["fr"].rollingWindow,
     usagePremiumRequests: "Requêtes premium",
     usageChatRequests: "Requêtes de chat",
     usagePromptCredits: "Crédits Prompt",
-    usageDailyWindow: "Quota quotidien",
-    usageMonthlyWindow: "Quota mensuel",
-    usageBillingCycle: "Cycle de facturation",
+    usageDailyWindow: usageMessages["fr"].dailyWindow,
+    usageMonthlyWindow: usageMessages["fr"].monthlyWindow,
+    usageBillingCycle: usageMessages["fr"].billingCycle,
     usageProviderQuota: "Quota du fournisseur",
     confirmProviderSwitch: "Changer de profil Provider ?",
     useProviderProfile: "Changer",
@@ -356,6 +375,9 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     quitPromptHub: "Quitter PromptHub",
   },
   de: {
+    usageCreditBalance: usageMessages["de"].creditBalance,
+    usageAvailableResets: usageMessages["de"].availableResets,
+    usageRollingWindowDuration: usageMessages["de"].rollingWindowDuration,
     addAgentAsset: "Agent-Asset hinzufügen",
     createPrompt: "Neuer Prompt…",
     createOrImportSkill: "Skill erstellen oder importieren…",
@@ -383,17 +405,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "Zurücksetzung ausstehend",
     usageResetsInDaysHours: "Zurücksetzung in {days} T {hours} Std.",
     usageResetsInHoursMinutes: "Zurücksetzung in {hours} Std. {minutes} Min.",
-    usageFiveHourWindow: "5-Stunden-Fenster",
-    usageSevenDayWindow: "7-Tage-Fenster",
-    usageSevenDayOpusWindow: "7-Tage-Opus-Fenster",
-    usageWeeklyWindow: "Wochenkontingent",
-    usageRollingWindow: "Rollierendes Fenster",
+    usageFiveHourWindow: usageMessages["de"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["de"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["de"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["de"].weeklyWindow,
+    usageRollingWindow: usageMessages["de"].rollingWindow,
     usagePremiumRequests: "Premium-Anfragen",
     usageChatRequests: "Chat-Anfragen",
     usagePromptCredits: "Prompt-Guthaben",
-    usageDailyWindow: "Tageskontingent",
-    usageMonthlyWindow: "Monatskontingent",
-    usageBillingCycle: "Abrechnungszeitraum",
+    usageDailyWindow: usageMessages["de"].dailyWindow,
+    usageMonthlyWindow: usageMessages["de"].monthlyWindow,
+    usageBillingCycle: usageMessages["de"].billingCycle,
     usageProviderQuota: "Anbieterkontingent",
     confirmProviderSwitch: "Provider-Profil wechseln?",
     useProviderProfile: "Wechseln",
@@ -411,6 +433,9 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     quitPromptHub: "PromptHub beenden",
   },
   es: {
+    usageCreditBalance: usageMessages["es"].creditBalance,
+    usageAvailableResets: usageMessages["es"].availableResets,
+    usageRollingWindowDuration: usageMessages["es"].rollingWindowDuration,
     addAgentAsset: "Añadir activo de Agent",
     createPrompt: "Nuevo Prompt…",
     createOrImportSkill: "Crear o importar Skill…",
@@ -438,17 +463,17 @@ const LABELS: Record<Language, TrayMenuLabels> = {
     usageResetDue: "Restablecimiento pendiente",
     usageResetsInDaysHours: "Se restablece en {days} d {hours} h",
     usageResetsInHoursMinutes: "Se restablece en {hours} h {minutes} min",
-    usageFiveHourWindow: "Ventana de 5 horas",
-    usageSevenDayWindow: "Ventana de 7 días",
-    usageSevenDayOpusWindow: "Ventana Opus de 7 días",
-    usageWeeklyWindow: "Cuota semanal",
-    usageRollingWindow: "Ventana móvil",
+    usageFiveHourWindow: usageMessages["es"].fiveHourWindow,
+    usageSevenDayWindow: usageMessages["es"].sevenDayWindow,
+    usageSevenDayOpusWindow: usageMessages["es"].sevenDayOpusWindow,
+    usageWeeklyWindow: usageMessages["es"].weeklyWindow,
+    usageRollingWindow: usageMessages["es"].rollingWindow,
     usagePremiumRequests: "Solicitudes premium",
     usageChatRequests: "Solicitudes de chat",
     usagePromptCredits: "Créditos de Prompt",
-    usageDailyWindow: "Cuota diaria",
-    usageMonthlyWindow: "Cuota mensual",
-    usageBillingCycle: "Ciclo de facturación",
+    usageDailyWindow: usageMessages["es"].dailyWindow,
+    usageMonthlyWindow: usageMessages["es"].monthlyWindow,
+    usageBillingCycle: usageMessages["es"].billingCycle,
     usageProviderQuota: "Cuota del proveedor",
     confirmProviderSwitch: "¿Cambiar el perfil de Provider?",
     useProviderProfile: "Cambiar",
@@ -520,6 +545,8 @@ const KNOWN_USAGE_METRIC_LABELS: Readonly<
   premium: "usagePremiumRequests",
   chat: "usageChatRequests",
   promptCredits: "usagePromptCredits",
+  creditBalance: "usageCreditBalance",
+  availableResets: "usageAvailableResets",
 };
 
 function resolveNativeMetricLabel(
@@ -544,9 +571,14 @@ function resolveNativeMetricLabel(
   }
   if (
     metric.period.kind === "rolling" &&
-    metric.period.durationSeconds === 18_000
+    metric.period.durationSeconds !== null
   ) {
-    return labels.usageFiveHourWindow;
+    const seconds = metric.period.durationSeconds;
+    if (seconds === 18_000) return labels.usageFiveHourWindow;
+    if (seconds === 604_800) return labels.usageSevenDayWindow;
+    return formatNativeTemplate(labels.usageRollingWindowDuration, {
+      minutes: seconds / 60,
+    });
   }
   if (metric.period.kind === "provider-defined") {
     return labels.usageProviderQuota;
@@ -578,6 +610,8 @@ function formatNativeMetricValue(
   labels: TrayMenuLabels,
 ): string {
   if (metric.value.kind === "unlimited") return labels.usageUnlimited;
+  if (metric.value.kind === "balance")
+    return metric.value.remainingAmount.toLocaleString();
   const remaining = getUsageMetricRemainingPercent(metric);
   if (remaining === null) return labels.usageUnknown;
   const percentage = formatNativeTemplate(labels.usageRemaining, { remaining });
@@ -617,7 +651,9 @@ function buildNativeUsageEntry(
   }
 
   const submenu: MenuItemConstructorOptions[] = [];
-  const plan = entry.quota.plan ? formatAgentUsagePlan(entry.quota.plan) : "";
+  const plan = entry.quota.plan
+    ? formatAgentUsagePlan(entry.quota.plan, entry.quota.agentId)
+    : "";
   if (plan) {
     submenu.push({
       label: sanitizeNativeMenuLabel(
@@ -637,7 +673,11 @@ function buildNativeUsageEntry(
     0,
     MAX_AGENT_USAGE_MENU_METRICS,
   )) {
-    const metricLabel = resolveNativeMetricLabel(metric, labels);
+    const periodLabel = resolveNativeMetricLabel(metric, labels);
+    const metricLabel =
+      metric.scope.kind === "model-group"
+        ? `${metric.scope.label} · ${periodLabel}`
+        : periodLabel;
     const value = formatNativeMetricValue(metric, labels);
     const reset = formatNativeUsageReset(metric.resetsAt, labels, now);
     submenu.push({

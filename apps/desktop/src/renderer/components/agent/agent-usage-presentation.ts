@@ -18,7 +18,7 @@ export const MAX_AGENT_USAGE_METRICS = 64;
 export const COLLAPSED_MODEL_METRICS = 4;
 
 export type AgentUsageTone = "normal" | "warning" | "critical";
-export type AgentUsageVisual = "bar" | "ring";
+export type AgentUsageVisual = "bar" | "ring" | "stat";
 
 export interface AgentUsagePresentationGroup {
   key: string;
@@ -47,6 +47,7 @@ export function getAgentUsageTone(remaining: number): AgentUsageTone {
 export function getAgentUsageVisual(
   metric: AgentUsageMetric,
 ): AgentUsageVisual {
+  if (metric.value.kind === "balance") return "stat";
   if (metric.value.kind !== "percentage" && metric.value.kind !== "amount") {
     return "bar";
   }
@@ -74,6 +75,12 @@ function periodWeight(metric: AgentUsageMetric): number {
 }
 
 function compareMetrics(left: AgentUsageMetric, right: AgentUsageMetric) {
+  if (left.value.kind === "balance" && right.value.kind === "balance") {
+    return (
+      left.value.unit.localeCompare(right.value.unit) ||
+      left.id.localeCompare(right.id)
+    );
+  }
   return (
     periodWeight(left) - periodWeight(right) ||
     left.label.localeCompare(right.label) ||
