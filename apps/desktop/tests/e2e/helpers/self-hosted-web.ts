@@ -3,6 +3,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import net from "net";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import { issueSolvedPromptHubCaptcha } from "../../../src/renderer/services/self-hosted-auth";
 import { getElectronLaunchEnvironment } from "./electron-launch-options";
 
@@ -68,10 +70,6 @@ async function waitForHealth(
   throw new Error(`Timed out waiting for self-hosted web health at ${baseUrl}`);
 }
 
-function getPnpmCommand(): string {
-  return process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-}
-
 async function bootstrapUser(
   baseUrl: string,
   username: string,
@@ -127,22 +125,29 @@ export async function startSelfHostedTestServer(): Promise<SelfHostedTestServer>
   const username = "owner";
   const password = "secretpass123";
   const jwtSecret = "prompthub-self-hosted-e2e-secret-123456";
-  const command = getPnpmCommand();
+  const tsxLoader = createRequire(path.join(webAppDir, "package.json")).resolve(
+    "tsx",
+  );
 
-  const child = spawn(command, ["exec", "tsx", "src/index.ts"], {
-    cwd: webAppDir,
-    detached: process.platform !== "win32",
-    env: {
-      ...getElectronLaunchEnvironment(dataDir),
-      PORT: String(port),
-      HOST: "127.0.0.1",
-      DATA_ROOT: dataDir,
-      JWT_SECRET: jwtSecret,
-      ALLOW_REGISTRATION: "false",
-      LOG_LEVEL: "error",
+  const child = spawn(
+    process.execPath,
+    ["--import", pathToFileURL(tsxLoader).href, "src/index.ts"],
+    {
+      cwd: webAppDir,
+      windowsHide: true,
+      detached: process.platform !== "win32",
+      env: {
+        ...getElectronLaunchEnvironment(dataDir),
+        PORT: String(port),
+        HOST: "127.0.0.1",
+        DATA_ROOT: dataDir,
+        JWT_SECRET: jwtSecret,
+        ALLOW_REGISTRATION: "false",
+        LOG_LEVEL: "error",
+      },
+      stdio: "pipe",
     },
-    stdio: "pipe",
-  });
+  );
 
   let stderr = "";
   const diagnosticOutputBytes = 32_768;

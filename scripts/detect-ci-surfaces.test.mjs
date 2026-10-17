@@ -108,6 +108,8 @@ test("quality gates provision the same history and credentials as release checks
     .split("  cli-verify:")[0];
   const desktop = workflow.split("  desktop-verify:")[1];
   assert.match(shared, /fetch-depth: 0/);
+  assert.match(shared, /dbus-run-session --/);
+  assert.match(shared, /gnome-keyring-daemon --unlock --components=secrets/);
   assert.match(desktop, /fetch-depth: 0/);
   assert.match(
     desktop,

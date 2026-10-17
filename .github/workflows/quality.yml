@@ -56,8 +56,19 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
 
+      - name: Install Linux credential service
+        run: |
+          if ! command -v gnome-keyring-daemon >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y gnome-keyring
+          fi
+
       - name: Verify shared, database, and core packages
-        run: node --experimental-strip-types scripts/verify-release.mts --profile quick --surface shared --surface database --surface core --exclude-layer governance
+        run: |
+          dbus-run-session -- bash -euo pipefail -c '
+            printf "\n" | gnome-keyring-daemon --unlock --components=secrets
+            node --experimental-strip-types scripts/verify-release.mts --profile quick --surface shared --surface database --surface core --exclude-layer governance
+          '
 
   cli-verify:
     needs: changes
