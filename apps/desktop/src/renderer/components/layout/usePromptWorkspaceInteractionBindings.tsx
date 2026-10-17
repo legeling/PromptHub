@@ -43,7 +43,7 @@ interface WorkspaceActionInputs {
   showToast: (
     message: string,
     type?: "success" | "error" | "info" | "warning",
-    sendSystemNotification?: boolean,
+    enabled?: boolean,
   ) => void;
   state: WorkspaceState;
   stores: StoreBindings;

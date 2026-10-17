@@ -1,3 +1,5 @@
+import { notifyTaskResult } from "../../../src/renderer/services/application-notifications";
+import { installWindowMocks } from "../../helpers/window";
 import {
   rendererTestDatabase,
   closeRendererTestDatabases,
@@ -129,6 +131,58 @@ describe("renderer persistence bridge", () => {
     expect(state.settings.language).toBe("de");
     expect(state.settings).not.toHaveProperty("backgroundImageFileName");
   });
+  it("saves a just-disabled category to SQLite before publishing the same-turn task result", async () => {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "ph-notification-policy-"),
+    );
+    roots.push(root);
+    const store = createRendererPersistenceStore({
+      database: rendererTestDatabase(root),
+      rootPath: root,
+      encryption: {
+        isEncryptionAvailable: () => false,
+        encryptString: (): Buffer => {
+          throw new Error("No fixture secrets");
+        },
+        decryptString: (): string => {
+          throw new Error("No fixture secrets");
+        },
+      },
+    });
+    const publish = vi.fn(async () => {
+      const state = await store.readHydratedState();
+      expect(state.settings.notificationPreferences).toMatchObject({
+        delivery: { promptTest: "off" },
+      });
+      return { success: true };
+    });
+    installWindowMocks({
+      electron: {
+        applicationNotifications: {
+          publish,
+          onFeedback: vi.fn(() => () => undefined),
+        },
+      },
+    });
+    const api = installApi("already-complete");
+    api.replaceSettings.mockImplementation(async (input) => {
+      await store.replaceSettings(input);
+      return true;
+    });
+    await migrateRendererPersistence();
+    const prefs = useSettingsStore.getState().notificationPreferences;
+    useSettingsStore
+      .getState()
+      .setNotificationPreferences({
+        ...prefs,
+        delivery: { ...prefs.delivery, promptTest: "off" },
+      });
+    notifyTaskResult("promptTest", "success");
+    await vi.waitFor(() =>
+      expect(publish).toHaveResolvedWith({ success: true }),
+    );
+  });
+
   it("waits for queued settings persistence before synchronization reads SQL", async () => {
     const api = installApi("already-complete");
     await migrateRendererPersistence();
