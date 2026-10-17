@@ -81,7 +81,18 @@ describe("Agent Codex account IPC", () => {
       new Error("secret-token at /private/auth.json"),
     );
     await expect(
-      handlers[IPC_CHANNELS.AGENT_CODEX_ACCOUNT_IMPORT](null, {}),
+      handlers[IPC_CHANNELS.AGENT_CODEX_ACCOUNT_IMPORT](null, {
+        label: "Work",
+      }),
     ).rejects.toThrow("AGENT_CODEX_ACCOUNT_OPERATION_FAILED");
+    expect(service.importAccount).toHaveBeenCalledWith({ label: "Work" });
+  });
+
+  it("rejects malformed imports before invoking the account service", async () => {
+    const { handlers, IPC_CHANNELS, service } = await setup();
+    await expect(
+      handlers[IPC_CHANNELS.AGENT_CODEX_ACCOUNT_IMPORT](null, {}),
+    ).rejects.toThrow("AGENT_CODEX_ACCOUNT_REQUEST_INVALID");
+    expect(service.importAccount).not.toHaveBeenCalled();
   });
 });
