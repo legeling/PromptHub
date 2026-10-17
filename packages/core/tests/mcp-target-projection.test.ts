@@ -37,7 +37,10 @@ describe("commitMcpTargetProjection", () => {
     expect(verify).toHaveBeenCalledOnce();
     expect(persist).toHaveBeenCalledOnce();
     expect(fs.readdirSync(path.dirname(targetPath))).toEqual(["mcp.json"]);
-    expect(fs.statSync(targetPath).mode & 0o777).toBe(0o600);
+    // Windows does not expose POSIX owner/group permission bits through stat.
+    if (process.platform !== "win32") {
+      expect(fs.statSync(targetPath).mode & 0o777).toBe(0o600);
+    }
   });
 
   it("verifies and persists an unchanged projection without replacing the file", () => {
@@ -64,6 +67,7 @@ describe("commitMcpTargetProjection", () => {
   it("restores an existing projection when verification fails", () => {
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, "original", { encoding: "utf8", mode: 0o640 });
+    const originalMode = fs.statSync(targetPath).mode & 0o777;
 
     expect(() =>
       commitMcpTargetProjection({
@@ -78,7 +82,7 @@ describe("commitMcpTargetProjection", () => {
     ).toThrow("verification failed");
 
     expect(fs.readFileSync(targetPath, "utf8")).toBe("original");
-    expect(fs.statSync(targetPath).mode & 0o777).toBe(0o640);
+    expect(fs.statSync(targetPath).mode & 0o777).toBe(originalMode);
     expect(fs.readdirSync(path.dirname(targetPath))).toEqual(["mcp.json"]);
   });
 

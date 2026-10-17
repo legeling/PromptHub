@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  cloneElement,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeftIcon,
@@ -23,14 +31,24 @@ import {
   type McpFormState,
 } from "./mcp-form-utils";
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactElement<{ id?: string }>;
+}) {
+  const id = useId();
   return (
-    <label className="block min-w-0 space-y-1.5 text-sm">
-      <span className="block truncate font-medium text-foreground">
+    <div className="block min-w-0 space-y-1.5 text-sm">
+      <label
+        htmlFor={id}
+        className="block truncate font-medium text-foreground"
+      >
         {label}
-      </span>
-      {children}
-    </label>
+      </label>
+      {cloneElement(children, { id })}
+    </div>
   );
 }
 

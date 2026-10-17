@@ -4,6 +4,39 @@ import {
   removeCodexMcpTomlServers,
 } from "@prompthub/shared/utils/mcp-config";
 import type { McpServerConfig } from "@prompthub/shared/types/mcp";
+it("preserves unselected managed servers and their native options on sequential distribution", () => {
+  const server: McpServerConfig = {
+    id: "one",
+    name: "context7",
+    displayName: "Context7",
+    transport: "streamable-http",
+    url: "https://mcp.context7.com/mcp",
+    enabled: true,
+    source: { type: "manual" },
+    createdAt: 0,
+    updatedAt: 0,
+  };
+  const sibling = { ...server, id: "two", name: "docs.local" };
+  let current = mergeCodexMcpToml('model = "fixture"\n', [server]);
+  current = current.replace(
+    "[mcp_servers.context7]",
+    "[mcp_servers.context7]\n# native setting\nstartup_timeout_sec = 45",
+  );
+  const original = current;
+  current = mergeCodexMcpToml(current, [sibling]);
+  current = mergeCodexMcpToml(current, [
+    { ...sibling, url: "https://example.test/mcp" },
+  ]);
+  expect(current).toContain(
+    "[mcp_servers.context7]\n# native setting\nstartup_timeout_sec = 45",
+  );
+  expect(current).toContain('url = "https://mcp.context7.com/mcp"');
+  expect(current.match(/\[mcp_servers\."docs.local"\]/g)).toHaveLength(1);
+  expect(current).toContain('url = "https://example.test/mcp"');
+  expect(removeCodexMcpTomlServers(current, [sibling.name]).trimEnd()).toBe(
+    original.trimEnd(),
+  );
+});
 it("removes complete managed blocks and preserves unrelated sections and trailing comments", () => {
   const server: McpServerConfig = {
     id: "fixture",

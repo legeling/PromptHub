@@ -22,6 +22,39 @@ const smitherySource: McpMarketSource = {
 };
 
 describe("mcp remote store", () => {
+  it("defaults Registry requirements to optional without injecting blank credentials", () => {
+    const result = parseOfficialMcpRegistryCatalog(
+      JSON.stringify({
+        servers: [
+          {
+            server: {
+              name: "io.github.upstash/context7",
+              packages: [
+                {
+                  registryType: "npm",
+                  identifier: "@upstash/context7-mcp",
+                  environmentVariables: [
+                    { name: "CONTEXT7_API_KEY", isSecret: true },
+                    { name: "OPTIONAL", isRequired: false },
+                    { name: "REQUIRED", isRequired: true },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      registrySource,
+    );
+    expect(result.templates[0].env).toEqual({ REQUIRED: "" });
+    expect(result.templates[0].requiredEnv).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "CONTEXT7_API_KEY", required: false }),
+        expect.objectContaining({ name: "OPTIONAL", required: false }),
+        expect.objectContaining({ name: "REQUIRED", required: true }),
+      ]),
+    );
+  });
   it("maps official registry packages and remotes into installable templates", () => {
     const result = parseOfficialMcpRegistryCatalog(
       JSON.stringify({
@@ -118,7 +151,7 @@ describe("mcp remote store", () => {
         displayName: "AgentDM",
         transport: "streamable-http",
         url: "https://api.agentdm.ai/mcp/v1/grid",
-        headers: { Authorization: "" },
+        headers: {},
       }),
     ]);
   });

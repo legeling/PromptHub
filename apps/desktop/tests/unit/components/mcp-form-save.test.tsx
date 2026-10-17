@@ -32,9 +32,7 @@ it("blocks repeated form submission, retains failed input and permits retry", as
   fireEvent.submit(form);
   fireEvent.submit(form);
   expect(onSave).toHaveBeenCalledTimes(1);
-  expect(
-    screen.getByRole("button", { name: "Save" }),
-  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   rejectSave(new Error("fixture failure"));
   await waitFor(() =>
     expect(screen.getByRole("alert")).toHaveTextContent("Could not save MCP"),
@@ -42,9 +40,7 @@ it("blocks repeated form submission, retains failed input and permits retry", as
   expect(screen.getByLabelText("Name", { exact: true })).toHaveValue(
     "personal",
   );
-  expect(
-    screen.getByRole("button", { name: "Save" }),
-  ).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   fireEvent.submit(form);
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
   await waitFor(() =>

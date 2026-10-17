@@ -37,6 +37,12 @@ test("creates a personal MCP, retains failed edits, retries, preserves arguments
     ).toBeVisible();
     await expect(form).toBeVisible();
     await expect(form.getByLabel("Display Name")).toHaveValue("Retained draft");
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0].showInactive();
+    });
+    await page.screenshot({
+      path: test.info().outputPath("mcp-save-retry.png"),
+    });
     expect(
       await page.evaluate(
         async (serverId) =>

@@ -18,6 +18,11 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
 const showToast = vi.fn();
+const notifyTaskResult = vi.fn();
+
+vi.mock("../../../src/renderer/services/application-notifications", () => ({
+  notifyTaskResult: (...args: unknown[]) => notifyTaskResult(...args),
+}));
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => ({ showToast }),
@@ -761,7 +766,11 @@ describe("McpManager", () => {
         path: claudeTarget.path,
         serverIds: ["mcp_filesystem", "mcp_fetch"],
       });
-      expect(showToast).toHaveBeenCalledWith("MCP applied", "success");
+      expect(notifyTaskResult).toHaveBeenCalledWith(
+        "resourceTask",
+        "success",
+        "mcp",
+      );
     });
   });
 
@@ -821,12 +830,12 @@ describe("McpManager", () => {
           platformId: "cursor",
         },
         {
-          id: "vscode",
-          target: "vscode",
+          id: "copilot",
+          target: "copilot",
           scope: "global",
-          label: "VS Code",
-          path: "/Users/test/Library/Application Support/Code/User/mcp.json",
-          platformId: "vscode",
+          label: "GitHub Copilot",
+          path: "/Users/test/.copilot/mcp-config.json",
+          platformId: "copilot",
         },
         {
           id: "cline",
@@ -873,8 +882,8 @@ describe("McpManager", () => {
           serverNames: ["filesystem"],
         },
         {
-          presetId: "vscode",
-          path: "/Users/test/Library/Application Support/Code/User/mcp.json",
+          presetId: "copilot",
+          path: "/Users/test/.copilot/mcp-config.json",
           exists: true,
           serverNames: ["filesystem"],
         },

@@ -226,10 +226,14 @@ function requirementsToEnv(
     return {};
   }
   return {
-    env: Object.fromEntries(valid.map((item) => [item.name, ""])),
+    env: Object.fromEntries(
+      valid
+        .filter((item) => item.isRequired === true)
+        .map((item) => [item.name, ""]),
+    ),
     requiredEnv: valid.map((item) => ({
       name: item.name,
-      required: item.isRequired !== false,
+      required: item.isRequired === true,
       description: item.description,
       source: "env",
     })),

@@ -8,6 +8,48 @@ MCP 的服务配置、凭据、版本与目标投影仍遵循本规范，公共�
 
 ### My MCP JSON editing (2026-10-17)
 
+Sequential Codex/TOML distribution patches selected services only. Existing
+managed siblings, including native options and comments, remain in the target;
+the library must not regenerate unselected siblings from stale records. Existing
+targets affected by the previous whole-block replacement require reapplying the
+missing services. SQLite bindings remain authoritative for ownership; no schema
+or layout migration is introduced. Registry `isRequired` defaults to false as
+specified by its schema. Optional credentials remain template metadata but are
+not injected as blank environment values or headers. Previously imported blank
+optional keys can be removed through the Files editor; user values are not
+automatically deleted.
+
+Expanded live acceptance (2026-10-17): `mcp-live-codex.spec.ts` imports three
+services through the Desktop UI, distributes each separately, and starts real
+Codex CLI 0.133.0 App Server against an isolated HOME/CODEX_HOME. Context7 4.4.2
+stdio and `https://mcp.context7.com/mcp` both return React documentation; official
+Filesystem 1.0.0 reads a Unicode/space-containing fixture path and rejects access
+outside its allowed directory. Removing local Context7 through the UI followed
+by a fresh Codex process preserves remote Context7 discovery and Filesystem calls.
+No user config, credentials, model turn or paid API key participates. The live
+test passed in two minutes after dependency preparation. Ordered lifecycle tests
+remain linear for observable entrypoint/result assertions.
+
+The test is opt-in with `PROMPTHUB_LIVE_MCP=1` and `PROMPTHUB_LIVE_CODEX` pointing
+to the native Codex executable. `PROMPTHUB_LIVE_NPM_CACHE` selects a disposable
+npm cache. Preflight published packages with `npx -y @upstash/context7-mcp@4.4.2
+--help` and `npm exec --yes --package=@modelcontextprotocol/server-filesystem@1.0.0
+-- node --version`, using the same `NPM_CONFIG_CACHE`. Cold downloads exceeded
+Codex's default startup window and left incomplete npm binaries in the initial
+run; a fresh cache completed successfully. The fixture imports canonical
+`startupTimeoutSec: 90` and verifies emitted `startup_timeout_sec = 90`.
+Cold-install success under arbitrary network conditions is not established.
+
+Additional checks: all 104 Core MCP tests (18 files), 47 Desktop config/Registry/
+Codex-sync tests, Desktop build, full `tsconfig.test.json` typecheck and scoped
+ESLint pass. The four existing Desktop basic-management, JSON editing and Agent
+lifecycle E2E cases also passed again together (2.4 minutes).
+One initial Core run hit Windows EPERM during publication-journal
+rename; the affected 21 tests and subsequent entire 104-test run passed without
+changing storage code. The transient failure is not a proven storage fix.
+The old simulated macOS preset test now normalizes host separators on Windows.
+These results do not establish packaged-build, OAuth, or all-Agent acceptance.
+
 Basic personal MCP management takes priority over new gateway capabilities
 (confirmed 2026-10-17). Desktop forms must retain input after failed saves,
 prevent duplicate in-flight submissions, and submit only changed fields when
@@ -16,8 +58,48 @@ and embedded newlines through import, persistence and JSON editing. Key/value
 form values retain whitespace after `=`. These corrections reuse existing Core
 normalization, SQLite/version publication and IPC; no schema or file migration
 is needed. Existing corrupted arguments require correction from the original
-configuration because removed whitespace cannot be reconstructed. Verification
-for this correction is pending; earlier verification below has narrower scope.
+configuration because removed whitespace cannot be reconstructed. Form labels
+are explicitly associated with inputs so existing multiline values do not become
+part of their accessible names. The edit dialog uses the form's inline close
+action, preventing the previous absolute close button from overlapping Save.
+
+Reference review: `samanhappy/mcphub` at `cc22b8b`, checked out under
+`E:/Develop/Public/mcphub`, provides useful patterns in
+`frontend/src/components/EditServerForm.tsx`, `frontend/src/utils/jsonImport.ts`
+and `src/utils/serverConfigPersistence.ts`: keep failed edits open, validate
+configuration before mutation, and retain structured argument values. PromptHub
+keeps its existing local library, SQLite authority and Agent distribution model;
+the reference gateway, routing and alternate persistence are outside this scope.
+
+Basic-management verification (2026-10-17): regression tests first reproduced
+duplicate-name failure closing the edit form and normalization dropping empty
+arguments and whitespace. The corrected desktop component suite passes 18 tests
+across the MCP library, form submission, form conversion and JSON editor. Its
+Agent inventory fixtures now declare detected platforms and its batch action
+asserts the current notification boundary; these remain component contracts,
+not distribution persistence evidence. Desktop build, scoped ESLint and a focused
+TypeScript program passed.
+
+- Core `mcp-json-editor.test.ts` and `mcp-version-history.test.ts`: 27 passed,
+  including exact argument create/import/edit/reopen, credentials and recovery.
+- Core `mcp-target-projection.test.ts`: 9 passed. Two previous Windows failures
+  assumed POSIX `0600`/`0640`; the creation-mode assertion now applies on POSIX,
+  and rollback compares the original actual mode on all platforms. Windows still
+  exercises publication, byte verification, persistence and rollback. This does
+  not establish Windows ACL restrictions.
+- Desktop Playwright `mcp-basic-management.spec.ts`, `mcp-json-edit.spec.ts` and
+  `agent-mcp-lifecycle.spec.ts`: 4 passed together (2.3 minutes). Actual UI/IPC
+  covers manual creation, duplicate-name failure/draft retention/retry, argument
+  preservation, JSON Files editing/validation/cancel, reload, process restart,
+  Agent target distribution/reconciliation/removal, deletion and HTTP import
+  credential isolation. No external MCP process or remote service is exercised.
+  The lifecycle fixture no longer writes an initialized-storage marker without a
+  database; it uses real first-run initialization. That invalid fixture previously
+  entered recovery before opening the window. A real-browser regression also
+  exposed existing textarea content contaminating implicit label matching.
+  The failure/retry screenshot was inspected: draft and error are visible and
+  Close and Save no longer overlap. These focused checks are not release-harness
+  or packaged-application acceptance.
 
 The Desktop Files tab presents one `mcp.json` configuration view in a file sidebar
 and reuses the Skill code editor with line numbers and JSON highlighting. Editing,

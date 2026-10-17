@@ -1351,17 +1351,37 @@ export function mergeMcpToml(
   target: "codex" | "custom-toml" | "grok",
   servers: McpServerConfig[],
 ): string {
+  const retained: string[] = [];
+  const names = servers.map((server) => server.name);
   const withoutManaged = existingContent
     .replace(
       new RegExp(
         `\\n?${escapeRegExp(MANAGED_BLOCK_START)}[\\s\\S]*?${escapeRegExp(MANAGED_BLOCK_END)}\\n?`,
         "g",
       ),
-      "\n",
+      (managed: string) => {
+        const lines = managed.split(/\r?\n/);
+        const firstServer = lines.findIndex((line) =>
+          parseCodexMcpTomlSection(line),
+        );
+        if (firstServer >= 0) {
+          const remaining = removeCodexMcpTomlServers(
+            lines
+              .slice(firstServer)
+              .filter((line) => line !== MANAGED_BLOCK_END)
+              .join("\n"),
+            names,
+          ).trim();
+          if (listMcpServerNamesInToml(remaining).length > 0)
+            retained.push(remaining);
+        }
+        return "\n";
+      },
     )
     .trimEnd();
   const block = [
     MANAGED_BLOCK_START,
+    ...retained,
     buildMcpToml(target, servers).trim(),
     MANAGED_BLOCK_END,
   ]

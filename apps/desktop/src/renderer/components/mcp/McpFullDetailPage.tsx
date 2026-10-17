@@ -1171,18 +1171,11 @@ export function McpFullDetailPage({
           }}
         >
           <div className="relative w-full max-w-3xl">
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              aria-label={t("common.close", "Close")}
-            >
-              <XIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
             <McpServerForm
               selectedServer={server}
               distributedTargetCount={distributedTargetCount}
               variant="modal"
+              onClose={() => setIsEditModalOpen(false)}
               onSave={handleEditSave}
               onDelete={onDelete}
             />

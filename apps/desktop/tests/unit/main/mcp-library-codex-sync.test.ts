@@ -434,7 +434,13 @@ describe("CoreMcpLibraryService", () => {
   });
 
   it("exposes platform-scoped global target presets", () => {
-    const presets = getMcpTargetPresets("/Users/test", "darwin", {});
+    // The simulated platform selects locations; path separators follow the test host.
+    const presets = getMcpTargetPresets("/Users/test", "darwin", {}).map(
+      (preset) => ({
+        ...preset,
+        path: preset.path.replace(/\\/g, "/"),
+      }),
+    );
     const byId = Object.fromEntries(
       presets.map((preset) => [preset.id, preset]),
     );

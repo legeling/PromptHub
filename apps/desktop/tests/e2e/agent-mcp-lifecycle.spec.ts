@@ -8,8 +8,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
 import { readPersistedMcp } from "./helpers/mcp-persistence";
 import {
   closePromptHub,
@@ -93,11 +91,6 @@ test("creates, reads, updates, distributes, reconciles, removes, restarts, and d
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-agent-mcp-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "b".repeat(64),
-    operationId: "agent-mcp-lifecycle-e2e",
-  });
   const homeDir = path.join(userDataDir, "home");
   const emptyBinDir = path.join(homeDir, "empty-bin");
   fs.mkdirSync(emptyBinDir, { recursive: true });
@@ -416,11 +409,6 @@ test("rejects malformed config and keeps HTTP credentials outside renderer and c
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-mcp-http-import-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "d".repeat(64),
-    operationId: "mcp-http-import-e2e",
-  });
   const homeDir = path.join(userDataDir, "home");
   const codexConfigPath = path.join(homeDir, ".codex", "config.toml");
   fs.mkdirSync(path.dirname(codexConfigPath), { recursive: true });
