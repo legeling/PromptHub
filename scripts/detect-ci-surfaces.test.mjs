@@ -104,7 +104,7 @@ test("draft version tags cannot publish the self-hosted image", () => {
     "utf8",
   );
   assert.doesNotMatch(workflow, /^  push:/m);
-  assert.match(workflow, /^  release:\n    types: \[published\]/m);
+  assert.match(workflow, /^  release:\r?\n    types: \[published\]/m);
   assert.match(workflow, /^  pull_request:/m);
   assert.match(workflow, /^  workflow_dispatch:/m);
 });

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import process from "node:process";
+import { resolveWindowsPnpm } from "./windows-pnpm.mts";
 
 import { redactDiagnostic } from "./report.mts";
 import type {
@@ -74,15 +75,18 @@ function terminateOwnedProcess(
 }
 
 function spawnCheck(check: VerificationCheck): ChildProcess {
-  const executable =
-    process.platform === "win32" && check.command.executable === "pnpm"
-      ? "pnpm.cmd"
-      : check.command.executable;
-  return spawn(executable, check.command.args, {
+  const windowsPnpm =
+    process.platform === "win32" && check.command.executable === "pnpm";
+  const executable = windowsPnpm ? process.execPath : check.command.executable;
+  const args = windowsPnpm
+    ? [resolveWindowsPnpm(process.env), ...check.command.args]
+    : check.command.args;
+  return spawn(executable, args, {
     cwd: check.command.cwd,
     env: { ...process.env, ...check.command.environment },
     detached: process.platform !== "win32",
     shell: false,
+    windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
 }

@@ -131,7 +131,7 @@ test("project topology and entry links resolve without embedded Skill test scrip
   );
   for (const match of topology.matchAll(/^\s+[\w.]+: (spec\/[^\n]+)$/gm)) {
     assert.ok(
-      fs.existsSync(path.join(root, match[1])),
+      fs.existsSync(path.join(root, match[1].trim())),
       `missing route: ${match[1]}`,
     );
   }

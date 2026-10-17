@@ -66,20 +66,33 @@ test("consumes real Git NUL-delimited filenames without whitespace splitting", (
     path.join(os.tmpdir(), "prompthub-threatcrush-git-"),
   );
   const names = ["a b.ts", "\u4e2d\u6587.ts", "a\nb.ts"];
-  const git = (args) => {
+  const git = (args, input) => {
     const result = spawnSync("git", args, {
       cwd: dir,
       timeout: processTimeoutMs,
       maxBuffer: maxOutputBytes,
+      input,
     });
     assert.equal(result.status, 0, result.stderr.toString());
     return result.stdout;
   };
   try {
     git(["init", "--quiet"]);
+    // Index entries support names that Windows cannot materialize on disk.
+    const blob = git(["hash-object", "-w", "--stdin"], "fixture\n")
+      .toString()
+      .trim();
     for (const name of names)
-      fs.writeFileSync(path.join(dir, name), "fixture\n");
-    git(["add", "--", ...names]);
+      git([
+        "-c",
+        "core.protectNTFS=false",
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        "100644",
+        blob,
+        name,
+      ]);
     const inventory = git(["diff", "--cached", "--name-only", "-z"]);
     const report = createThreatCrushReport(
       sarif(names.map((name) => finding(encodeURI(name)))),
