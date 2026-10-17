@@ -1,4 +1,11 @@
 import {
+  createStreamState,
+  processStreamTextChunk,
+  finalizeStreamState,
+  handleStreamResponse,
+  isUnsupportedStream,
+} from "./ai-chat-stream";
+import {
   buildChatEndpointFromBase,
   buildHeadersForProtocol,
   resolveAIProtocol,
@@ -32,6 +39,7 @@ import {
 } from "./ai-content-workflows";
 import {
   createResponseLike,
+  createFetchResponseLike,
   getAITransport,
   getErrorMessageFromResponse,
   getFormattedErrorMessageFromResponse,
@@ -64,24 +72,8 @@ export {
  * 大部分国内外服务商都兼容 OpenAI 格式
  */
 
-interface StreamState {
-  fullContent: string;
-  thinkingContent: string;
-  buffer: string;
-  chunkCount: number;
-}
-
 const AI_CONNECTION_TEST_MAX_TOKENS = 8;
 const AI_CONNECTION_TEST_PROMPT = "Reply with exactly: OK";
-
-function createStreamState(): StreamState {
-  return {
-    fullContent: "",
-    thinkingContent: "",
-    buffer: "",
-    chunkCount: 0,
-  };
-}
 
 function isGeminiApiHost(apiUrl: string): boolean {
   return apiUrl.includes("generativelanguage.googleapis.com");
@@ -92,87 +84,6 @@ function isGeminiOpenAICompatEndpoint(endpoint: string): boolean {
     endpoint.includes("generativelanguage.googleapis.com") &&
     endpoint.includes("/openai/")
   );
-}
-
-function yieldToEventLoop() {
-  return new Promise<void>((resolve) => {
-    if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => resolve());
-    } else {
-      setTimeout(resolve, 0);
-    }
-  });
-}
-
-async function processStreamTextChunk(
-  chunkText: string,
-  state: StreamState,
-  onStream?: (chunk: string) => void,
-  streamCallbacks?: StreamCallbacks,
-  options?: {
-    flush?: boolean;
-    yieldToUi?: boolean;
-  },
-): Promise<void> {
-  state.buffer += chunkText;
-  const lines = state.buffer.split("\n");
-  state.buffer = options?.flush ? "" : lines.pop() || "";
-  let deltasSinceYield = 0;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed === "data: [DONE]") continue;
-    if (!trimmed.startsWith("data: ")) continue;
-
-    try {
-      const json = JSON.parse(trimmed.slice(6));
-      const delta = json.choices?.[0]?.delta;
-
-      if (!delta) {
-        continue;
-      }
-
-      state.chunkCount++;
-      deltasSinceYield++;
-
-      if (delta.reasoning_content) {
-        state.thinkingContent += delta.reasoning_content;
-        streamCallbacks?.onThinking?.(delta.reasoning_content);
-      }
-
-      if (delta.content) {
-        state.fullContent += delta.content;
-        onStream?.(delta.content);
-        streamCallbacks?.onContent?.(delta.content);
-      }
-
-      if (options?.yieldToUi && deltasSinceYield >= 20) {
-        deltasSinceYield = 0;
-        await yieldToEventLoop();
-      }
-    } catch {
-      // 忽略解析错误 / Ignore parse errors
-    }
-  }
-
-  if (options?.yieldToUi) {
-    await yieldToEventLoop();
-  }
-}
-
-function finalizeStreamState(
-  state: StreamState,
-  streamCallbacks?: StreamCallbacks,
-): ChatCompletionResult {
-  streamCallbacks?.onComplete?.(
-    state.fullContent,
-    state.thinkingContent || undefined,
-  );
-
-  return {
-    content: state.fullContent,
-    thinkingContent: state.thinkingContent || undefined,
-  };
 }
 
 /**
@@ -373,6 +284,9 @@ export async function chatCompletion(
   }
 
   const transport = getAITransport();
+  // Keep the wire request and transport mode consistent even with custom parameters.
+  body.stream = mergedParams.stream;
+  let receivedStreamDelta = false;
 
   const sendRequest = async (): Promise<{
     streamResult?: ChatCompletionResult;
@@ -400,6 +314,7 @@ export async function chatCompletion(
               options?.onStream,
               options?.streamCallbacks,
             );
+            receivedStreamDelta ||= streamState.chunkCount > 0;
           },
           onError: (error) => {
             streamError = error;
@@ -407,12 +322,19 @@ export async function chatCompletion(
         },
       );
 
-      if (!response.ok) {
-        return { response: createResponseLike(response) };
-      }
-
       if (streamError) {
         throw new Error(streamError);
+      }
+      if (streamState.error) throw new Error(streamState.error);
+      if (!response.ok) {
+        if (receivedStreamDelta)
+          throw new Error(
+            await getErrorMessageFromResponse(createResponseLike(response)),
+          );
+        return { response: createResponseLike(response) };
+      }
+      if (response.body && !receivedStreamDelta) {
+        return { response: createResponseLike(response) };
       }
 
       await processStreamTextChunk(
@@ -458,6 +380,14 @@ export async function chatCompletion(
           body: requestBody,
           signal: controller.signal,
         });
+        if (
+          !response.ok ||
+          response.headers.get("content-type")?.includes("application/json")
+        ) {
+          return {
+            response: createFetchResponseLike(response, await response.text()),
+          };
+        }
         return {
           streamResult: await handleStreamResponse(
             response,
@@ -485,29 +415,37 @@ export async function chatCompletion(
     let requestResult = await sendRequest();
     let response = requestResult.response;
 
-    if (response && !response.ok) {
+    const retried = { stream: false, tokens: false, thinking: false };
+    while (response && !response.ok) {
       const errorMessage = await getErrorMessageFromResponse(response);
-
-      // Check for token parameter compatibility issues (Issue #21)
-      // 检查 Token 参数兼容性问题
-      const isTokenParamError =
-        errorMessage.includes("'max_tokens' is not supported") ||
-        errorMessage.includes("'max_completion_tokens' is not supported") ||
-        errorMessage.includes("Use 'max_completion_tokens' instead") ||
-        errorMessage.includes("Use 'max_tokens' instead");
-
-      // Check for enable_thinking compatibility issues (Issue #9)
-      // 检查 enable_thinking 参数兼容性问题 (Issue #9)
-      const isThinkingParamError =
-        errorMessage.includes("enable_thinking must be set to false") ||
-        errorMessage.includes("enable_thinking only support stream") ||
-        errorMessage.includes("parameter.enable_thinking");
-
-      if (isTokenParamError) {
-        console.warn(
-          `[AI Service] Token parameter mismatch detected: "${errorMessage}". Retrying with alternative parameter...`,
-        );
-
+      const parameterError = [400, 422].includes(response.status);
+      const tokenError =
+        parameterError &&
+        (errorMessage.includes("'max_tokens' is not supported") ||
+          errorMessage.includes("'max_completion_tokens' is not supported") ||
+          errorMessage.includes("Use 'max_completion_tokens' instead") ||
+          errorMessage.includes("Use 'max_tokens' instead"));
+      const thinkingError =
+        parameterError &&
+        (errorMessage.includes("enable_thinking must be set to false") ||
+          errorMessage.includes("enable_thinking only support stream") ||
+          errorMessage.includes("parameter.enable_thinking"));
+      if (
+        mergedParams.stream &&
+        !receivedStreamDelta &&
+        !retried.stream &&
+        isUnsupportedStream(response.status, errorMessage)
+      ) {
+        retried.stream = true;
+        mergedParams.stream = false;
+        body.stream = false;
+        if (isQwen) body.enable_thinking = false;
+        for (const name of Object.keys(headers)) {
+          if (name.toLowerCase() === "accept")
+            headers[name] = "application/json";
+        }
+      } else if (tokenError && !retried.tokens) {
+        retried.tokens = true;
         if (useMaxCompletionTokens) {
           delete body.max_completion_tokens;
           body.max_tokens = mergedParams.maxTokens;
@@ -515,28 +453,14 @@ export async function chatCompletion(
           delete body.max_tokens;
           body.max_completion_tokens = mergedParams.maxTokens;
         }
-
-        requestResult = await sendRequest();
-        response = requestResult.response;
-
-        if (response && !response.ok) {
-          throw new Error(await getErrorMessageFromResponse(response));
-        }
-      } else if (isThinkingParamError) {
-        console.warn(
-          `[AI Service] enable_thinking parameter error detected: "${errorMessage}". Retrying with enable_thinking=false...`,
-        );
-
+      } else if (thinkingError && !retried.thinking) {
+        retried.thinking = true;
         body.enable_thinking = false;
-        requestResult = await sendRequest();
-        response = requestResult.response;
-
-        if (response && !response.ok) {
-          throw new Error(await getErrorMessageFromResponse(response));
-        }
       } else {
         throw new Error(errorMessage);
       }
+      requestResult = await sendRequest();
+      response = requestResult.response;
     }
 
     if (requestResult.streamResult) {
@@ -567,54 +491,6 @@ export async function chatCompletion(
     throw new Error("网络请求失败，请检查网络连接");
     // Network request failed, please check network connection
   }
-}
-
-/**
- * 处理流式响应
- * Handle streaming response
- */
-async function handleStreamResponse(
-  response: Response,
-  onStream?: (chunk: string) => void,
-  streamCallbacks?: StreamCallbacks,
-): Promise<ChatCompletionResult> {
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("无法读取响应流");
-    // Cannot read response stream
-  }
-
-  const decoder = new TextDecoder();
-  const state = createStreamState();
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      await processStreamTextChunk(
-        decoder.decode(value, { stream: true }),
-        state,
-        onStream,
-        streamCallbacks,
-        { yieldToUi: true },
-      );
-    }
-
-    await processStreamTextChunk(
-      decoder.decode(),
-      state,
-      onStream,
-      streamCallbacks,
-      { flush: true, yieldToUi: true },
-    );
-  } finally {
-    reader.releaseLock();
-  }
-
-  return finalizeStreamState(state, streamCallbacks);
 }
 
 /**
@@ -1417,8 +1293,10 @@ export async function multiModelCompare(
   configs: AIConfig[],
   messages: ChatMessage[],
   options?: {
+    stream?: boolean;
     temperature?: number;
     maxTokens?: number;
+    responseFormat?: ChatCompletionOptions["responseFormat"];
     streamCallbacksMap?: Map<string, StreamCallbacks>; // Streaming callback for each model
     // 每个模型的流式回调
   },

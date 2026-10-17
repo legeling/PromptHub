@@ -291,17 +291,20 @@ async function compareSingleModel(
   config: AIConfig,
   messages: ChatMessage[],
   options?: {
+    stream?: boolean;
     temperature?: number;
     maxTokens?: number;
+    responseFormat?: ChatCompletionOptions["responseFormat"];
     streamCallbacksMap?: Map<string, StreamCallbacks>;
   },
 ): Promise<AITestResult> {
   const startedAt = Date.now();
   try {
     const result = await complete(config, messages, {
+      responseFormat: options?.responseFormat,
       temperature: options?.temperature,
       maxTokens: options?.maxTokens,
-      stream: config.chatParams?.stream ?? false,
+      stream: options?.stream ?? config.chatParams?.stream ?? false,
       enableThinking: config.chatParams?.enableThinking ?? false,
       streamCallbacks: options?.streamCallbacksMap?.get(
         config.id || config.model,
@@ -333,8 +336,10 @@ export async function multiModelCompareWithCompletion(
   configs: AIConfig[],
   messages: ChatMessage[],
   options?: {
+    stream?: boolean;
     temperature?: number;
     maxTokens?: number;
+    responseFormat?: ChatCompletionOptions["responseFormat"];
     streamCallbacksMap?: Map<string, StreamCallbacks>;
   },
 ): Promise<MultiModelCompareResult> {

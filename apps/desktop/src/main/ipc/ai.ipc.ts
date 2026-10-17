@@ -176,7 +176,11 @@ export function registerAIIPC(): void {
     ): Promise<AITransportResponse> => {
       try {
         return await performRequest(request, async (response) => {
-          if (!response.ok || !response.body) {
+          if (
+            !response.ok ||
+            !response.body ||
+            response.headers.get("content-type")?.includes("application/json")
+          ) {
             return await requestToResponse(response);
           }
 

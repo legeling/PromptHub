@@ -22,6 +22,29 @@ function createConfig(overrides: Partial<AIConfig> = {}): AIConfig {
 }
 
 describe("AI content workflows", () => {
+  it("forwards the selected structured output to every compared model", async () => {
+    const complete = vi
+      .fn<ChatCompletionExecutor>()
+      .mockResolvedValue({ content: "{}" });
+    const responseFormat = {
+      type: "json_schema" as const,
+      jsonSchema: {
+        name: "answer",
+        strict: true,
+        schema: { type: "object" },
+      },
+    };
+    await multiModelCompareWithCompletion(
+      complete,
+      [createConfig(), createConfig({ id: "model-2" })],
+      [{ role: "user", content: "Compare" }],
+      { stream: true, responseFormat },
+    );
+    expect(complete).toHaveBeenCalledTimes(2);
+    for (const call of complete.mock.calls) {
+      expect(call[2]).toMatchObject({ stream: true, responseFormat });
+    }
+  });
   it("keeps generation parameters when a custom system prompt is used", async () => {
     const complete = vi.fn<ChatCompletionExecutor>().mockResolvedValue({
       content: "generated skill",
@@ -105,10 +128,20 @@ describe("AI content workflows", () => {
   it.each([
     ["empty", "", "AI rewrite returned empty content"],
     ["invalid JSON", "not json", "AI rewrite did not return valid JSON"],
-    ["invalid field", '{"userPrompt":42}', "AI rewrite returned an invalid userPrompt field"],
-    ["no fields", '{"summary":"only summary"}', "AI rewrite did not return any editable fields"],
+    [
+      "invalid field",
+      '{"userPrompt":42}',
+      "AI rewrite returned an invalid userPrompt field",
+    ],
+    [
+      "no fields",
+      '{"summary":"only summary"}',
+      "AI rewrite did not return any editable fields",
+    ],
   ])("rejects %s rewrite responses", async (_name, content, message) => {
-    const complete = vi.fn<ChatCompletionExecutor>().mockResolvedValue({ content });
+    const complete = vi
+      .fn<ChatCompletionExecutor>()
+      .mockResolvedValue({ content });
     await expect(
       rewritePromptDraftWithCompletion(complete, createConfig(), {
         promptType: "text",
