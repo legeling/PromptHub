@@ -63,10 +63,38 @@ Vos données restent sur votre machine.
 
 ---
 
-| 模型服务合作伙伴                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Merci à APIMart de sponsoriser ce projet !**<br><br>[![APIMart — plateforme API à bas coût pour la génération d’images et de vidéos par IA](./imgs/sponsors/apimart-banner-en.png)](https://go.apimart.ai/gh-prompthub)<br><br>APIMart est une plateforme API à bas coût pour la génération d’images et de vidéos par IA — GPT-Image-2 dès **0,006 USD par image**, **160+ images par dollar**.<br><br>Une seule API asynchrone pour les images et les vidéos : soumettez une tâche, obtenez un ID, puis récupérez les résultats par interrogation périodique ou callback. Traitez des dizaines de milliers d’images par lots sans expiration du délai et changez de modèle sans modifier le code.<br><br>Paiement à l’usage, sans frais mensuels — [inscrivez-vous ici](https://go.apimart.ai/gh-prompthub) pour commencer.                                                                                                                             |
-| **PromptHub × infistar.cc 无限星河｜全模型 API · 高效管理与测试 AI 资产**<br><br>[![Infistar.cc 一站式全球大模型 API 服务平台](./imgs/sponsors/infistar-banner.png)](https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link)<br><br>感谢 Infistar.ai 无限星河 赞助并为 PromptHub 提供模型服务支持！<br><br>⚡ 稳定支持多模型测试：提供企业级高并发通道与多节点冗余，价格低至官方渠道 1 折，满足 Prompt 测试、AI生成、翻译润色及多模型并行对比等场景。<br><br>🧠 一个 API Key 接入主流模型：全面支持 ChatGPT、Claude、Gemini、Kimi、GLM、DeepSeek 等模型，兼容 OpenAI 标准接口，可在 PromptHub 中快速完成Provider与模型配置。<br><br>🛠️ 赋能Prompt与Skill工作流：适用于Prompt优化、Skill生成、图片Prompt反推及不同模型效果对比，帮助用户更高效地管理和复用AI编程资产。<br><br>🎁 PromptHub用户专属福利：通过 [专属推广链接](https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link) 注册并完成首次调用，即可领取 [5美元等值测试额度 / 首充专属优惠]！ |
+**模型服务合作伙伴**
+
+| APIMart | infistar.cc |
+| :---: | :---: |
+| <a href="https://go.apimart.ai/gh-prompthub"><img src="./imgs/sponsors/apimart-banner-en.png" alt="APIMart — plateforme API à bas coût pour la génération d’images et de vidéos par IA" width="280" /></a> | <a href="https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link"><img src="./imgs/sponsors/infistar-banner.png" alt="Infistar.cc 一站式全球大模型 API 服务平台" width="280" /></a> |
+
+<details>
+<summary>En savoir plus sur nos partenaires</summary>
+
+**Merci à APIMart de sponsoriser ce projet !**
+
+APIMart est une plateforme API à bas coût pour la génération d’images et de vidéos par IA — GPT-Image-2 dès **0,006 USD par image**, **160+ images par dollar**.
+
+Une seule API asynchrone pour les images et les vidéos : soumettez une tâche, obtenez un ID, puis récupérez les résultats par interrogation périodique ou callback. Traitez des dizaines de milliers d’images par lots sans expiration du délai et changez de modèle sans modifier le code.
+
+Paiement à l’usage, sans frais mensuels — [inscrivez-vous ici](https://go.apimart.ai/gh-prompthub) pour commencer.
+
+---
+
+**PromptHub × infistar.cc 无限星河｜全模型 API · 高效管理与测试 AI 资产**
+
+感谢 Infistar.ai 无限星河 赞助并为 PromptHub 提供模型服务支持！
+
+⚡ 稳定支持多模型测试：提供企业级高并发通道与多节点冗余，价格低至官方渠道 1 折，满足 Prompt 测试、AI生成、翻译润色及多模型并行对比等场景。
+
+🧠 一个 API Key 接入主流模型：全面支持 ChatGPT、Claude、Gemini、Kimi、GLM、DeepSeek 等模型，兼容 OpenAI 标准接口，可在 PromptHub 中快速完成Provider与模型配置。
+
+🛠️ 赋能Prompt与Skill工作流：适用于Prompt优化、Skill生成、图片Prompt反推及不同模型效果对比，帮助用户更高效地管理和复用AI编程资产。
+
+🎁 PromptHub用户专属福利：通过 [专属推广链接](https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link) 注册并完成首次调用，即可领取 [5美元等值测试额度 / 首充专属优惠]！
+
+</details>
 
 ---
 

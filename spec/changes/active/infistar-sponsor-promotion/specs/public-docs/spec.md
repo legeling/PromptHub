@@ -30,17 +30,21 @@ only other content transformation is to link the banner and the existing
 `专属推广链接` phrase to
 `https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link`.
 
-Each surface MUST place the complete campaign inside one row of a single-column
-partner table. The table currently contains only the Infistar entry and MUST
-allow future partners to be added as additional rows without restructuring the
-surrounding document.
+README surfaces MUST show linked partner banners side by side in a compact
+two-column table, with proportional display widths capped at 280 pixels.
+Complete approved campaign text MUST remain available in a closed-by-default
+`details` section. Image bytes, partner order and registration URLs stay intact.
+This README layout supersedes the single-column requirement as requested on
+2026-10-18. The public sponsor record and website backer pages retain their
+existing full campaign layout.
 
 ## Scenarios
 
 ### `AC-INFISTAR-001`: Reader follows the partner offer
 
 Given a reader on any supported README locale, the sponsor campaign exposes the
-same banner, approved copy, and registration URL before the download section.
+same banner and registration URL before the download section; expanding the
+partner details reveals the approved copy.
 
 ### `AC-INFISTAR-002`: Public copy remains exact
 
@@ -50,6 +54,5 @@ inserted into the sponsor-provided material.
 
 ### `AC-INFISTAR-003`: Partner inventory expands
 
-Given the current one-partner inventory, the table renders one Infistar row.
-When another partner is accepted, its campaign can be appended as another row
-under the existing partner-table header.
+The README shows APIMart and Infistar side by side. Additional partners can use
+subsequent table rows with their complete copy in the same details section.

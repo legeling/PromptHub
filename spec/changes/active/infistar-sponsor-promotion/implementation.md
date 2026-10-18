@@ -76,3 +76,12 @@ No application code, provider preset, runtime behavior, release version, or
 third-party service configuration changed. The full release harness was not run
 because this batch changes static public documentation only; the website build
 is the relevant executable gate.
+
+## Compact README Layout (2026-10-18)
+
+- All seven READMEs now show APIMart and Infistar banners side by side at
+  280-pixel display widths. Original image files and referral URLs are unchanged.
+- Full approved campaign text remains in a collapsed details section with a
+  localized summary. Large banners are not repeated inside the expanded text.
+- Website backer pages and the public sponsor record retain their existing layout.
+- No automated tests or GUI rendering were run for this documentation layout edit.

@@ -67,10 +67,38 @@ PromptHub 把你的 Prompt、SKILL.md 和项目级 AI 编程资产放进一个�
 
 ---
 
-| 模型服务合作伙伴                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **感谢 APIMart 赞助了本项目！**<br><br>[![APIMart 专注 AI 图片与视频生成的低价 API 平台](./docs/imgs/sponsors/apimart-banner.png)](https://go.apimart.ai/gh-prompthub)<br><br>APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 **$0.006/张**，**1 美元可出图 160+ 张**。<br><br>图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。<br><br>按量付费、无月费，通过此 [注册链接](https://go.apimart.ai/gh-prompthub) 注册即可开用。                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **PromptHub × infistar.cc 无限星河｜全模型 API · 高效管理与测试 AI 资产**<br><br>[![Infistar.cc 一站式全球大模型 API 服务平台](./docs/imgs/sponsors/infistar-banner.png)](https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link)<br><br>感谢 Infistar.ai 无限星河 赞助并为 PromptHub 提供模型服务支持！<br><br>⚡ 稳定支持多模型测试：提供企业级高并发通道与多节点冗余，价格低至官方渠道 1 折，满足 Prompt 测试、AI生成、翻译润色及多模型并行对比等场景。<br><br>🧠 一个 API Key 接入主流模型：全面支持 ChatGPT、Claude、Gemini、Kimi、GLM、DeepSeek 等模型，兼容 OpenAI 标准接口，可在 PromptHub 中快速完成Provider与模型配置。<br><br>🛠️ 赋能Prompt与Skill工作流：适用于Prompt优化、Skill生成、图片Prompt反推及不同模型效果对比，帮助用户更高效地管理和复用AI编程资产。<br><br>🎁 PromptHub用户专属福利：通过 [专属推广链接](https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link) 注册并完成首次调用，即可领取 [5美元等值测试额度 / 首充专属优惠]！ |
+**模型服务合作伙伴**
+
+| APIMart | infistar.cc |
+| :---: | :---: |
+| <a href="https://go.apimart.ai/gh-prompthub"><img src="./docs/imgs/sponsors/apimart-banner.png" alt="APIMart 专注 AI 图片与视频生成的低价 API 平台" width="280" /></a> | <a href="https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link"><img src="./docs/imgs/sponsors/infistar-banner.png" alt="Infistar.cc 一站式全球大模型 API 服务平台" width="280" /></a> |
+
+<details>
+<summary>查看合作伙伴介绍</summary>
+
+**感谢 APIMart 赞助了本项目！**
+
+APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 **$0.006/张**，**1 美元可出图 160+ 张**。
+
+图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。
+
+按量付费、无月费，通过此 [注册链接](https://go.apimart.ai/gh-prompthub) 注册即可开用。
+
+---
+
+**PromptHub × infistar.cc 无限星河｜全模型 API · 高效管理与测试 AI 资产**
+
+感谢 Infistar.ai 无限星河 赞助并为 PromptHub 提供模型服务支持！
+
+⚡ 稳定支持多模型测试：提供企业级高并发通道与多节点冗余，价格低至官方渠道 1 折，满足 Prompt 测试、AI生成、翻译润色及多模型并行对比等场景。
+
+🧠 一个 API Key 接入主流模型：全面支持 ChatGPT、Claude、Gemini、Kimi、GLM、DeepSeek 等模型，兼容 OpenAI 标准接口，可在 PromptHub 中快速完成Provider与模型配置。
+
+🛠️ 赋能Prompt与Skill工作流：适用于Prompt优化、Skill生成、图片Prompt反推及不同模型效果对比，帮助用户更高效地管理和复用AI编程资产。
+
+🎁 PromptHub用户专属福利：通过 [专属推广链接](https://infistar.cc/register?aff=RX9CVLVQ&ref_source=link) 注册并完成首次调用，即可领取 [5美元等值测试额度 / 首充专属优惠]！
+
+</details>
 
 ---
 

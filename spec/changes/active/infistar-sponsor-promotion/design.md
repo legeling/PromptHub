@@ -8,11 +8,11 @@ release content while keeping the project identity and navigation first. The
 existing sponsor section remains the home of personal donation methods and does
 not repeat the campaign.
 
-The sponsor inventory uses a one-column Markdown table. Its header identifies
-the model-service partner category, and each partner owns one complete row with
-its title, banner, supplied copy, and links. The initial table contains only the
-Infistar row; future partners append rows rather than introducing new parallel
-sections or columns.
+README partner entries use a compact two-column table with linked banners
+rendered at 280 pixels wide, preserving their aspect ratio and original bytes.
+The complete approved text remains in a closed-by-default details section below
+the table. This replaces the tall single-column layout at the maintainer's
+request on 2026-10-18. The partner order and registration URLs are preserved.
 
 The public sponsor record and the website backer pages carry the same disclosure
 boundary. The website remains Chinese/English because those are its existing
