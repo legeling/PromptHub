@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -9,7 +11,10 @@ const workflowPath = path.resolve(
   ".github/workflows/release.yml",
 );
 
-const workflowSource = readFileSync(workflowPath, "utf8");
+const workflowSource = readFileSync(workflowPath, "utf8").replaceAll(
+  "\r\n",
+  "\n",
+);
 const packagedStartupSmokePath = path.resolve(
   process.cwd(),
   "scripts/smoke-windows-packaged-startup.mts",
@@ -32,10 +37,14 @@ function getIfLines(source: string): string[] {
 }
 
 describe("release workflow secret guards", () => {
-  it("requires the full release gate before platform packaging starts", () => {
+  it("requires the full release gate before publishing parallel platform builds", () => {
     expect(workflowSource).toContain("  verify:\n");
-    expect(workflowSource).toContain("pnpm verify:release");
-    expect(workflowSource).toContain("  build:\n    needs: verify\n");
+    expect(workflowSource).toContain("scripts/verification/ci.mts group");
+    expect(workflowSource).toContain("scripts/verification/ci.mts merge");
+    expect(workflowSource).toContain(
+      "  release:\n    needs: [verify, build]\n",
+    );
+    expect(workflowSource).not.toContain("  build:\n    needs: verify\n");
   });
 
   it("does not read secret values from if expressions", () => {
@@ -78,13 +87,23 @@ describe("release workflow secret guards", () => {
   it("loads the packaged startup smoke with Node strip-types", () => {
     const result = spawnSync(
       process.execPath,
-      ["--experimental-strip-types", packagedStartupSmokePath],
+      [
+        "--experimental-strip-types",
+        packagedStartupSmokePath,
+        path.join(
+          tmpdir(),
+          `prompthub-missing-${randomUUID()}`,
+          "PromptHub.exe",
+        ),
+      ],
       { encoding: "utf8" },
     );
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      "The packaged Windows startup smoke must run on Windows",
+      process.platform === "win32"
+        ? "Packaged PromptHub executable not found:"
+        : "The packaged Windows startup smoke must run on Windows",
     );
     expect(result.stderr).not.toContain("ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX");
   });

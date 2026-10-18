@@ -39,7 +39,7 @@ PROMPTHUB_E2E_HEADED=1 pnpm --dir apps/desktop exec playwright test --grep @nati
 
 发布 CI 的既有 Linux `xvfb-run` 步骤显式设置 `PROMPTHUB_E2E_HEADED=1`，在虚拟显示器中保留原生窗口门禁；本地默认隐藏不会缩减该 CI 步骤的选择范围。
 
-发布验证 checkout 保留完整 Git 历史，供历史版本源码 fixture 核对和升级执行使用。Linux runner 安装 GNOME Keyring，并在独立 D-Bus 会话中解锁临时 runner 的密钥环；该服务覆盖仍调用系统凭据接口的集成测试。Quality 的 Shared/Desktop 检查同样保留完整历史，并使用相同的凭据服务；Shared 选择的 Database 检查也包含 Desktop 集成用例。根级发布检查使用 `--concurrency 1`，避免多个检查争用 runner 导致 CLI 75 秒预算误差；预算和用例选择不变。JSON 报告和桌面失败附件作为 Actions artifact 保留。
+发布验证 checkout 保留完整 Git 历史，供历史版本源码 fixture 核对和升级执行使用。Linux runner 安装 GNOME Keyring，并在独立 D-Bus 会话中解锁临时 runner 的密钥环；该服务覆盖仍调用系统凭据接口的集成测试。Quality 的 Shared/Desktop 检查同样保留完整历史，并使用相同的凭据服务；Shared 选择的 Database 检查也包含 Desktop 集成用例。本地根级命令继续保留依赖与资源组约束。发布 CI 从同一 registry 生成 14 个独立 runner 分组（8 个桌面 unit 分片、集成、桌面运行时、Core、CLI、Web/Worker、静态与共享检查），每组 concurrency=1，预算和用例选择不变。unit 与集成可同时收集证据，最终汇总必须同时通过；本地功能基线先行顺序不变。构建产物依赖保留在同一分组，Worker dry-run 与 Web 构建同组。JSON 报告和桌面失败附件作为 Actions artifact 保留。
 
 CLI 测试的进程入口位于 `apps/cli/out/cli-test-*`，因此 CLI 构建与测试共用串行资源组，避免 Vite 清理输出目录时删除运行中的测试入口。Windows 执行器通过 Node 启动 pnpm 的 JavaScript 入口；超时清理限定于当前检查的进程树，避免子进程持有输出管道而阻塞报告生成。
 
@@ -191,3 +191,25 @@ YAML/action SHA、Shell/评论 JavaScript 解析和相关格式检查通过。
 命中 13 项业务断言失败（23 项中 10 通过、13 失败，退出码 1）；未改写工作区源码。
 扫描器固定 tarball 的 SHA-512 与当前下载字节一致，未在本机安装或执行该工具；
 实际 GitHub scan job、Security tab 和 PR 评论仍待远端运行验收。
+
+## 发布 CI 并行与证据汇总（2026-10-18）
+
+`scripts/verification/ci-plan.mts` 只划分 `checks.mts` 的 release 清单，
+不维护第二套测试命令。`ci.mts` 复用现有执行器和脱敏报告；每组串行，
+runner 之间隔离。仅 unit 对集成功能基线的先行关系移到最终汇总关卡；
+其他跨组依赖报错，防止在缺失构建产物时执行。
+
+五平台打包与验证同时开始，matrix 使用 fail-fast=false。最终 `verify`
+拒绝失败、取消、阻塞、跳过、缺失、重复、多余或其他提交/运行的报告；
+重跑允许复用同一 run、同一提交已成功分组的证据。`release` 必须同时依赖
+`verify` 与全部 `build` 成功，仅下载 `*-build` 产物。签名、公证、
+Windows 两次启动、更新清单核验和草稿发布边界不变。
+
+依赖缓存按 lockfile 失效；验证组共同读取，仅一组保存，减少重复上传。
+目标为约 10 分钟完整流水线，属于性能目标而非公证/排队时限保证。
+回滚 workflow 和 CI 分组入口即可恢复原串行入口，无用户数据迁移。
+
+本地验证：harness 37 项通过（其中 CI 分组/汇总 11 项，包含真实 CLI 读写报告）；
+workflow 10 项通过；CI 配置 38 项及其附加 11 项通过；新增入口严格类型检查通过。
+静态子集首轮 15 项通过、旧串行命令断言 1 项失败，更新后 governance 3 项通过。
+完整远端并行运行和实际耗时仍需以 Actions 运行结果为准。

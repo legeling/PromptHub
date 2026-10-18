@@ -146,7 +146,7 @@ test("release verification provisions historical sources and Linux credential st
     verification,
     /gnome-keyring-daemon --unlock --components=secrets/,
   );
-  assert.match(verification, /xvfb-run -a pnpm verify:release --concurrency 1/);
+  assert.match(verification, /xvfb-run -a node scripts\/verification\/ci\.mts group/);
   assert.match(verification, /PROMPTHUB_E2E_HEADED: "1"/);
   assert.doesNotMatch(
     verification,

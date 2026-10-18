@@ -131,7 +131,7 @@ class ChildCheckRun {
   private readonly signal?: AbortSignal;
   private readonly child: ChildProcess;
   private readonly startedAt = Date.now();
-  private output = Buffer.alloc(0);
+  private output: Buffer = Buffer.alloc(0);
   private outputTruncated = false;
   private timedOut = false;
   private cancelled = false;

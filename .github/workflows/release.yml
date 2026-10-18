@@ -7,9 +7,25 @@ on:
   workflow_dispatch:
 
 jobs:
-  verify:
+  verify-plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - id: plan
+        run: echo "matrix=$(node scripts/verification/ci.mts matrix)" >> "$GITHUB_OUTPUT"
+
+  verify-group:
+    needs: verify-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.verify-plan.outputs.matrix) }}
 
     steps:
       - name: Checkout code
@@ -28,8 +44,27 @@ jobs:
           version: 9.15.0
           run_install: false
 
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore dependency cache
+        id: verification-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: Linux-verification-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: Linux-verification-pnpm-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Save shared dependency cache once
+        if: matrix.group == 'static-and-shared' && steps.verification-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: Linux-verification-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Linux credential service
         run: |
@@ -41,25 +76,64 @@ jobs:
       - name: Run release verification
         env:
           PROMPTHUB_E2E_HEADED: "1"
+          VERIFICATION_GROUP: ${{ matrix.group }}
         run: |
           dbus-run-session -- bash -euo pipefail -c '
             printf "\n" | gnome-keyring-daemon --unlock --components=secrets
-            xvfb-run -a pnpm verify:release --concurrency 1 --report output/release-verification.json
+            xvfb-run -a node scripts/verification/ci.mts group "$VERIFICATION_GROUP" "output/verification/$VERIFICATION_GROUP.json"
           '
 
       - name: Preserve verification evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: release-verification
+          overwrite: true
+          name: verification-report-${{ matrix.group }}
           path: |
-            output/release-verification.json
+            output/verification/*.json
+          if-no-files-found: error
+
+      - name: Preserve desktop failure attachments
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
+          name: verification-debug-${{ matrix.group }}
+          path: |
             apps/desktop/test-results/
           if-no-files-found: ignore
 
+  verify:
+    needs: [verify-plan, verify-group]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all verification jobs
+        env:
+          PLAN_RESULT: ${{ needs.verify-plan.result }}
+          GROUP_RESULT: ${{ needs.verify-group.result }}
+        run: test "$PLAN_RESULT" = success && test "$GROUP_RESULT" = success
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: verification-report-*
+          path: output/verification
+          merge-multiple: true
+      - name: Require complete successful evidence for this commit
+        run: node scripts/verification/ci.mts merge output/verification output/release-verification.json
+      - uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
+          name: release-verification
+          path: output/release-verification.json
+          if-no-files-found: error
+
   build:
-    needs: verify
     strategy:
+      fail-fast: false
       matrix:
         include:
           # macOS: Use Intel runner for x64, Apple Silicon runner for arm64
@@ -485,12 +559,14 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: ${{ matrix.platform }}-${{ matrix.arch || 'default' }}-build
           path: apps/desktop/upload_dist/*
-          if-no-files-found: ignore
+          if-no-files-found: error
+          compression-level: 0
 
   release:
-    needs: build
+    needs: [verify, build]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -510,6 +586,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
+          pattern: "*-build"
           path: artifacts
 
       - name: Set release version
