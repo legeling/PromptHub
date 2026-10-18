@@ -147,6 +147,17 @@ jobs:
         run: |
           rm -rf dist || true
 
+      # Intel runners can drop Apple's HTTP/3 ticket requests. Keep TLS and all
+      # notarization gates; constrain this workaround to the disposable CI host.
+      # https://github.com/actions/runner-images/issues/14924
+      - name: Use TCP for Apple ticket service on Intel runners
+        if: matrix.os == 'macos-15-intel'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "block return out quick proto udp from any to any port 443" | sudo pfctl -f -
+          sudo pfctl -E
+
       - name: Build for ${{ matrix.platform }} ${{ matrix.arch }}
         shell: bash
         working-directory: apps/desktop
