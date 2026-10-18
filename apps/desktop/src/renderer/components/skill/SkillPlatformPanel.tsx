@@ -14,7 +14,11 @@ import {
   Settings2Icon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
-import type { Skill, SkillProject } from "@prompthub/shared/types";
+import type {
+  Skill,
+  SkillProject,
+  SkillPlatformInstallStatusMap,
+} from "@prompthub/shared/types";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import { getSkillSourceMeta } from "./detail-utils";
 import { getRuntimeCapabilities } from "../../runtime";
@@ -45,6 +49,8 @@ interface SkillPlatformPanelProps {
   uninstallFromPlatform?: (platformId: string) => void;
   uninstalledPlatforms: SkillPlatform[];
   onBatchInstall: () => void;
+  onRedistribute?: () => void;
+  installDetails?: SkillPlatformInstallStatusMap;
   projects?: SkillProject[];
   getProjectDeployTargets?: (project: SkillProject) => string[];
   projectSkillImportPreferencesByProjectId?: Record<
@@ -102,6 +108,8 @@ export function SkillPlatformPanel({
   t,
   togglePlatformSelection,
   onBatchInstall,
+  onRedistribute,
+  installDetails,
   projects,
   getProjectDeployTargets,
   projectSkillImportPreferencesByProjectId = {},
@@ -663,6 +671,8 @@ export function SkillPlatformPanel({
                 installMode={installMode}
                 setInstallMode={setInstallMode}
                 installStatus={skillMdInstallStatus}
+                installDetails={installDetails}
+                onRedistribute={onRedistribute}
                 selectedPlatforms={selectedPlatforms}
                 isBusy={isBatchInstalling}
                 installProgress={installProgress}

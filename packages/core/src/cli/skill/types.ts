@@ -1,3 +1,4 @@
+import type { SkillSourceInstallOptions } from "../../skills/git-source";
 import type { SkillDB } from "@prompthub/db";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import type {
@@ -11,6 +12,11 @@ import type {
 import type { FetchLike } from "./install";
 
 export interface CliSkillService {
+  updateFromSource(
+    db: SkillDB,
+    id: string,
+    options?: { force?: boolean },
+  ): Promise<import("@prompthub/shared/types").Skill>;
   createVersion(
     skillDb: SkillDB,
     skillId: string,
@@ -35,10 +41,14 @@ export interface CliSkillService {
     skillName: string,
     skillId?: string,
   ): Promise<Record<string, boolean>>;
+  getSkillMdInstallStatusDetails(
+    skillName: string,
+    skillId?: string,
+  ): Promise<import("@prompthub/shared/types").SkillPlatformInstallStatusMap>;
   installFromSource(
     source: string,
     skillDb: SkillDB,
-    options?: { name?: string },
+    options?: SkillSourceInstallOptions,
   ): Promise<string>;
   installSkillMd(
     skillDb: SkillDB,
@@ -46,7 +56,10 @@ export interface CliSkillService {
     skillMdContent: string,
     platformId: string,
     skillId?: string,
-  ): Promise<void>;
+    mode?: "copy" | "symlink",
+  ): Promise<
+    import("@prompthub/shared/types").SkillPlatformInstallResult | void
+  >;
   installSkillToProject(
     skillDb: SkillDB,
     skillId: string,
@@ -133,6 +146,11 @@ export interface CliSkillService {
 }
 
 export interface CliSkillServiceDeps {
+  fetchArchive?: (url: string) => Promise<Uint8Array>;
   fetchImpl?: FetchLike;
-  gitCloneImpl?: (url: string, destinationDir: string) => Promise<void>;
+  gitCloneImpl?: (
+    url: string,
+    destinationDir: string,
+    branch?: string,
+  ) => Promise<void>;
 }

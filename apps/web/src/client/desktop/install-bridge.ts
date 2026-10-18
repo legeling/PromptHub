@@ -1,4 +1,7 @@
+import { serializeHostedResourceRequest } from "@prompthub/shared/utils/hosted-resource-limits";
+import { createHostedSkillFiles } from "./skill-files";
 import { promptToSummary } from "@prompthub/shared/utils/prompt-summary";
+import { createResourceLibraryBridge } from "./resource-library";
 import type {
   AITransportRequest,
   AITransportResponse,
@@ -42,6 +45,7 @@ import rootPackage from "../../../../../package.json";
 import { fetchWithAuthRetry } from "../api/auth-session";
 import i18n from "../i18n";
 import { createWebAgentBridge } from "./install-agent-bridge";
+import { createWebSkillExports } from "./skill-export";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json",
@@ -113,7 +117,12 @@ async function apiJsonBody<T>(
   return apiJson<T>(path, {
     method,
     headers: JSON_HEADERS,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body:
+      body === undefined
+        ? undefined
+        : path === "/api/skills/import-package"
+          ? serializeHostedResourceRequest(body)
+          : JSON.stringify(body),
   });
 }
 
@@ -299,6 +308,7 @@ export function installDesktopBridge(): void {
   Reflect.set(window, "__PROMPTHUB_WEB__", true);
 
   const api = {
+    ...createResourceLibraryBridge(apiJson),
     minimize: () => {},
     maximize: () => {},
     close: () => {},
@@ -308,8 +318,16 @@ export function installDesktopBridge(): void {
       get: (id: string) =>
         apiJson<Prompt>(`/api/prompts/${encodePathSegment(id)}`),
       getAll: () => apiJson<Prompt[]>("/api/prompts?scope=all"),
-      getAllMeta: async () => (await apiJson<Prompt[]>("/api/prompts?scope=all")).map(promptToSummary),
-      restoreGraph: (input: RestorePromptGraphInput) => apiJsonBody<RestorePromptGraphResult>("/api/prompts/graph/restore", "POST", input),
+      getAllMeta: async () =>
+        (await apiJson<Prompt[]>("/api/prompts?scope=all")).map(
+          promptToSummary,
+        ),
+      restoreGraph: (input: RestorePromptGraphInput) =>
+        apiJsonBody<RestorePromptGraphResult>(
+          "/api/prompts/graph/restore",
+          "POST",
+          input,
+        ),
       getAllTags: () => apiJson<string[]>("/api/prompts/meta/tags"),
       renameTag: (oldTag: string, newTag: string) =>
         apiOk("/api/prompts/meta/tags/rename", "POST", { oldTag, newTag }),
@@ -520,8 +538,16 @@ export function installDesktopBridge(): void {
       getAll: () => apiJson<Skill[]>("/api/skills?scope=all"),
       get: (id: string) =>
         apiJson<Skill>(`/api/skills/${encodePathSegment(id)}`),
-      create: (data: CreateSkillParams) =>
-        apiJsonBody<Skill>("/api/skills", "POST", data),
+      create: (
+        data: CreateSkillParams,
+        options?: { files?: SkillFileSnapshot[] },
+      ) =>
+        options?.files
+          ? apiJsonBody<Skill>("/api/skills/import-package", "POST", {
+              metadata: data,
+              files: options.files,
+            })
+          : apiJsonBody<Skill>("/api/skills", "POST", data),
       update: (id: string, data: UpdateSkillParams) =>
         apiJsonBody<Skill>(`/api/skills/${encodePathSegment(id)}`, "PUT", data),
       delete: (id: string) =>
@@ -549,21 +575,21 @@ export function installDesktopBridge(): void {
         ),
       insertVersionDirect: async (_version: SkillVersion) =>
         unsupportedDesktopOperation("Direct skill-version restore"),
-      readLocalFiles: async (_skillId: string) =>
-        unsupportedDesktopOperation("Local skill-file reads"),
-      readFilesSnapshot: async (_skillId: string) =>
-        unsupportedDesktopOperation("Local skill-file snapshots"),
-      replaceFilesSnapshot: async (_skillId: string, _files: SkillFileSnapshot[]) =>
-        unsupportedDesktopOperation("Local skill-file snapshot restore"),
-      listLocalFiles: async (_skillId: string) =>
-        unsupportedDesktopOperation("Local skill-file listing"),
-      readLocalFile: async (_skillId: string, _path: string) =>
-        unsupportedDesktopOperation("Local skill-file reads"),
-      writeLocalFile: async (
-        _skillId: string,
-        _path: string,
-        _content: string,
-      ) => unsupportedDesktopOperation("Local skill-file writes"),
+      ...createHostedSkillFiles(apiJson),
+      readFilesSnapshot: (skillId: string) =>
+        apiJson<SkillFileSnapshot[]>(
+          `/api/skills/${encodePathSegment(skillId)}/files`,
+        ),
+      replaceFilesSnapshot: async (
+        skillId: string,
+        files: SkillFileSnapshot[],
+      ) => {
+        await apiJsonBody<Skill>(
+          `/api/skills/${encodePathSegment(skillId)}/files`,
+          "PUT",
+          { files },
+        );
+      },
       createLocalDir: async (_skillId: string, _path: string) =>
         unsupportedDesktopOperation("Local skill-directory creation"),
       renameLocalPath: async (
@@ -624,13 +650,7 @@ export function installDesktopBridge(): void {
           "PUT",
           report,
         ),
-      export: async (skillId: string, _format: "skillmd" | "json") => {
-        const result = await apiJsonBody<{ name: string; content: string }>(
-          `/api/skills/${encodePathSegment(skillId)}/export`,
-          "POST",
-        );
-        return result.content;
-      },
+      ...createWebSkillExports(apiJson),
       fetchRemoteContent: async (url: string) => {
         const result = await apiJsonBody<{
           content: string;

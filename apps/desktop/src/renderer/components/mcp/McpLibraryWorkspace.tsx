@@ -1,11 +1,10 @@
+import { ResourceLibraryControls } from "../resources/ResourceLibraryControls";
+import { ResourceLibraryPagination } from "../resources/ResourceLibraryPagination";
+import { isResourceGalleryColumns } from "@prompthub/shared/constants/resource-library";
 import type { CSSProperties, ReactNode } from "react";
 import {
   CheckSquareIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   InboxIcon,
-  LayoutGridIcon,
-  ListIcon,
   RefreshCwIcon,
   SendIcon,
   ServerIcon,
@@ -23,11 +22,9 @@ import type {
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 import { Select, type SelectOption } from "../ui/Select";
-import { GalleryColumnSelect } from "../ui/GalleryColumnSelect";
 import { McpServerList, type McpServerViewMode } from "./McpServerList";
 import {
   hasFileItems,
-  MCP_LIST_PAGE_SIZE_OPTIONS,
   McpViewTransition,
   type McpGalleryColumnMode,
   type McpLibraryFilter,
@@ -173,79 +170,14 @@ function McpLibraryPagination({
   | "onChangePageSize"
   | "onGoToPage"
 >) {
-  if (filteredServers.length === 0) {
-    return null;
-  }
-
-  const start = (currentPage - 1) * pageSize + 1;
-  const end = Math.min(currentPage * pageSize, filteredServers.length);
-
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border app-wallpaper-panel-strong px-4 py-3">
-      <div className="text-sm text-muted-foreground">
-        {t("mcp.paginationSummary", {
-          start,
-          end,
-          total: filteredServers.length,
-          defaultValue: `${start}-${end} / ${filteredServers.length}`,
-        })}
-      </div>
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">
-            {t("prompt.pageSize", "Page size")}
-          </span>
-          <select
-            value={pageSize}
-            onChange={(event) => onChangePageSize(Number(event.target.value))}
-            className="rounded-md border border-border bg-muted px-2 py-1 text-sm text-foreground"
-          >
-            {MCP_LIST_PAGE_SIZE_OPTIONS.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onGoToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            aria-label={t("common.previous", "Previous")}
-            className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-            title={t("common.previous", "Previous")}
-          >
-            <ChevronLeftIcon aria-hidden="true" className="h-4 w-4" />
-          </button>
-          {visiblePageNumbers.map((page) => (
-            <button
-              key={page}
-              type="button"
-              onClick={() => onGoToPage(page)}
-              aria-current={currentPage === page ? "page" : undefined}
-              className={`h-8 w-8 rounded-md text-sm transition-colors ${
-                currentPage === page
-                  ? "bg-primary text-white"
-                  : "hover:bg-accent"
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => onGoToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            aria-label={t("common.next", "Next")}
-            className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-            title={t("common.next", "Next")}
-          >
-            <ChevronRightIcon aria-hidden="true" className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
+    <ResourceLibraryPagination
+      total={filteredServers.length}
+      currentPage={currentPage}
+      pageSize={pageSize}
+      onPageChange={onGoToPage}
+      onPageSizeChange={onChangePageSize}
+    />
   );
 }
 
@@ -443,44 +375,17 @@ function McpLibraryHeader(props: McpLibraryWorkspaceProps) {
               )}
               {t("mcp.batchManage", "Batch Manage")}
             </button>
-            <div className="flex items-center bg-muted rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => onChangeViewMode("gallery")}
-                aria-label={t("mcp.galleryView", "Gallery View")}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === "gallery"
-                    ? "app-wallpaper-surface text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={t("mcp.galleryView", "Gallery View")}
-              >
-                <LayoutGridIcon aria-hidden="true" className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeViewMode("list")}
-                aria-label={t("mcp.listView", "List View")}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === "list"
-                    ? "app-wallpaper-surface text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={t("mcp.listView", "List View")}
-              >
-                <ListIcon aria-hidden="true" className="w-4 h-4" />
-              </button>
-            </div>
-            {viewMode === "gallery" ? (
-              <GalleryColumnSelect
-                ariaLabel={t("mcp.galleryColumnsLabel", "MCP card columns")}
-                value={galleryColumns}
-                onChange={(value) =>
-                  onChangeGalleryColumns(value as McpGalleryColumnMode)
-                }
-                options={galleryColumnOptions}
-              />
-            ) : null}
+            <ResourceLibraryControls
+              columnsLabel={t("mcp.galleryColumnsLabel")}
+              viewMode={viewMode}
+              onViewModeChange={onChangeViewMode}
+              columns={galleryColumns}
+              columnOptions={galleryColumnOptions}
+              onColumnsChange={(value) => {
+                if (isResourceGalleryColumns(value))
+                  onChangeGalleryColumns(value);
+              }}
+            />
             <div className="h-4 w-px bg-border" />
             <button
               type="button"

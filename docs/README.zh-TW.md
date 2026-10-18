@@ -259,6 +259,8 @@ docker compose up -d --build
 
 更詳細的部署、升級、備份、GHCR 映像檔、開發說明在 [`web-self-hosted.md`](./web-self-hosted.md)。
 
+0.6.0 開發版：Desktop 與 CLI 共用 Skill、MCP、Plugin 的 Core 管理流程。自架 Web 與 Cloudflare 提供資源儲存、編輯、版本、完整套件匯入匯出及同步；不提供 Agent 分發、伺服器目錄掃描或 SSH 安裝。CLI 需獨立打包安裝。
+
 <div id="cli"></div>
 
 ## 命令列 CLI
@@ -301,7 +303,7 @@ rules     list / scan / read / save / rewrite
 skill     list / get / import（相容別名：install）/ delete / remove
           versions / create-version / rollback / delete-version
           export / scan / scan-safety / sync-from-repo
-          platforms / platform-status / distribute / undistribute
+          platforms / platform-status / distribute / redistribute / undistribute
           （相容別名：install-md / uninstall-md）
           repo-files / repo-read / repo-write / repo-delete / repo-mkdir / repo-rename
 

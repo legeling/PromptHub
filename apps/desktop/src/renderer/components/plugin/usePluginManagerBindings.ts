@@ -79,7 +79,41 @@ export function usePluginManagerBindings() {
     rawPluginStore.deployablePlatformIds,
     rawPluginStore.targetMatrix,
   ]);
-  const pluginStore = { ...rawPluginStore, targetMatrix };
+  const observedLibrary = useMemo(
+    () =>
+      rawPluginStore.library
+        ? {
+            ...rawPluginStore.library,
+            plugins: rawPluginStore.library.plugins.map((plugin) => {
+              const observed = rawPluginStore.distributionSnapshot[plugin.id];
+              return observed
+                ? {
+                    ...plugin,
+                    distributedTargetIds: Object.entries(observed)
+                      .filter(([, value]) => value.installed)
+                      .map(([id]) => id),
+                  }
+                : plugin;
+            }),
+          }
+        : null,
+    [rawPluginStore.library, rawPluginStore.distributionSnapshot],
+  );
+  const pluginStore = {
+    ...rawPluginStore,
+    library: observedLibrary,
+    isLoading:
+      rawPluginStore.selectedTab === "market"
+        ? rawPluginStore.isLoadingMarkets
+        : rawPluginStore.isLoading,
+    targetMatrix,
+    error:
+      rawPluginStore.error ??
+      (rawPluginStore.selectedTab === "market"
+        ? (rawPluginStore.marketErrors[rawPluginStore.selectedMarketSourceId] ??
+          null)
+        : null),
+  };
   const skillBindings = usePluginManagerSkillBindings();
   const mcpBindings = usePluginManagerMcpBindings();
   const settingsBindings = usePluginManagerSettingsBindings();

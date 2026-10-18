@@ -66,9 +66,17 @@ it("does not publish a successful distribution if the native install fails and p
     mode: "copy" as const,
   };
   const options = { runner, getRoot: () => path.join(root, "agent") };
-  await expect(
-    distributeDesktopPlugin(library, request, options),
-  ).rejects.toThrow("Native Plugin marketplace failed");
+  const failed = await distributeDesktopPlugin(library, request, options);
+  expect(failed.targets).toEqual([]);
+  expect(failed.failures).toEqual([
+    {
+      targetId: "claude-code",
+      error: expect.stringContaining("Native Plugin marketplace failed"),
+    },
+  ]);
+  expect(JSON.stringify(failed.failures)).not.toContain(
+    "synthetic account data",
+  );
   expect(service().read().plugins[0].distributedTargetIds).toEqual([]);
   expect(
     fs.readFileSync(

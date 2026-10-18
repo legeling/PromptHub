@@ -1,3 +1,5 @@
+import type { WebRuntime } from "@prompthub/shared/utils/web-runtime";
+
 export interface PromptHubRuntimeCapabilities {
   agentManagement: boolean;
   appUpdate: boolean;
@@ -9,10 +11,13 @@ export interface PromptHubRuntimeCapabilities {
   skillLocalScan: boolean;
   skillPlatformIntegration: boolean;
   skillStore: boolean;
+  skillSafetyScan: boolean;
+  skillRemoteImport: boolean;
 }
 
 export interface PromptHubWebContext {
-  mode: "self-hosted";
+  mode: WebRuntime["mode"];
+  capabilities?: WebRuntime["capabilities"];
   origin: string;
   username?: string;
   registrationAllowed?: boolean;
@@ -47,16 +52,20 @@ export function isPromptHubCloudEnabled(): boolean {
 export function getRuntimeCapabilities(): PromptHubRuntimeCapabilities {
   if (isWebRuntime()) {
     return {
-      agentManagement: true,
+      agentManagement: getWebContext()?.capabilities?.agentManagement === true,
       appUpdate: false,
       dataRecovery: false,
       desktopWindowControls: false,
       promptHubCloud: false,
       skillDistribution: false,
-      skillFileEditing: false,
+      skillFileEditing:
+        getWebContext()?.capabilities?.skillFileEditing === true,
       skillLocalScan: false,
       skillPlatformIntegration: false,
       skillStore: false,
+      skillSafetyScan: getWebContext()?.capabilities?.skillSafetyScan === true,
+      skillRemoteImport:
+        getWebContext()?.capabilities?.skillRemoteImport === true,
     };
   }
 
@@ -71,6 +80,8 @@ export function getRuntimeCapabilities(): PromptHubRuntimeCapabilities {
     skillLocalScan: true,
     skillPlatformIntegration: true,
     skillStore: true,
+    skillSafetyScan: true,
+    skillRemoteImport: true,
   };
 }
 

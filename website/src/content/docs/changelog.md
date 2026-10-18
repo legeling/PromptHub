@@ -6,6 +6,11 @@ The current build identity is `0.6.0`, prepared only as a draft and not publicly
 
 ### 新功能 / Features
 
+- **跨端资源管理**：Skill、MCP、Plugin 共用资源列表规则与 Core 管理流程；CLI 补齐来源、版本和分发入口，自托管 Web 与 Cloudflare 支持资源和完整包管理，不提供 Agent 分发
+  - **Cross-platform resource management**: Skills, MCP and Plugins share library rules and Core workflows. CLI adds source, version and distribution commands; self-hosted Web and Cloudflare manage resources and complete packages without Agent distribution
+- **分发状态与恢复**：差异应用和重新分发分别操作；旧副本保留已分发状态，内容冲突阻止覆盖，批量结果报告部分失败并保留成功目标
+  - **Distribution status and recovery**: Apply changes and redistribution are separate actions. Older copies remain distributed, content conflicts block overwrites, and batch results preserve successful targets while reporting failures
+
 - **完整数据同步与冲突处理**：WebDAV/S3 自动同步使用共同基线和条件发布，保留冲突审阅、加密与可恢复的数据和文件写入
   - **Complete Data Sync And Conflict Handling**: Automatic WebDAV/S3 sync uses common baselines and conditional publication with conflict review, encryption, and recoverable record/file writes
 - **统一结构化存储**：Prompt、Skill、Plugin、Rules、生成记录与设置使用 SQLite 管理结构化数据，完整 Skill/Plugin 包、媒体与历史文件由对应文件存储保留

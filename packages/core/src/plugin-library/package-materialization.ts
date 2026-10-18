@@ -89,7 +89,10 @@ export function copyPluginPackageToManagedPath(
 
 function isInsideManagedPluginsDir(candidatePath: string): boolean {
   try {
-    ensureInsideDirectory(path.join(getDataDir(), "plugin-files"), candidatePath);
+    ensureInsideDirectory(
+      path.join(getDataDir(), "plugin-files"),
+      candidatePath,
+    );
     return true;
   } catch {
     return false;
@@ -282,6 +285,7 @@ export function computePluginEntryManifestFingerprint(
 
 export function computePluginPackageFingerprint(
   packagePath: string | undefined,
+  ignoredFiles: readonly string[] = [],
 ): string | undefined {
   if (!packagePath?.trim() || !fs.existsSync(packagePath)) return undefined;
   if (!fs.statSync(packagePath).isDirectory()) return undefined;
@@ -307,6 +311,7 @@ export function computePluginPackageFingerprint(
       const relativePath = normalizeRelativePosixPath(
         path.relative(root, entryPath),
       );
+      if (ignoredFiles.includes(relativePath)) continue;
       const stat = fs.lstatSync(entryPath);
       if (stat.isSymbolicLink()) {
         hash.update(`symlink:${relativePath}:${fs.readlinkSync(entryPath)}\n`);
@@ -562,6 +567,7 @@ function inferPluginSourceKind(url: string): PluginSourceKind {
 
 function normalizeOptionalSourcePackagePath(
   packagePath: string | undefined,
+  ignoredFiles: readonly string[] = [],
 ): string | undefined {
   const trimmed = packagePath?.trim() ?? "";
   if (!trimmed || trimmed === "." || trimmed === "./") {

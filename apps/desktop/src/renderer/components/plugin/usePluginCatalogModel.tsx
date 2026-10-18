@@ -1,3 +1,9 @@
+import { observedDistributionPresence } from "@prompthub/shared/utils/resource-observation";
+import {
+  countResources,
+  filterResources,
+  paginateResources,
+} from "@prompthub/shared/utils/resource-library";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BotIcon,
@@ -74,6 +80,22 @@ export function usePluginCatalogModel({
   t,
   targetMatrix,
 }: PluginCatalogModelOptions) {
+  const distributionSnapshot = usePluginStore(
+    (store) => store.distributionSnapshot,
+  );
+  const summarizePlugin = useMemo(
+    () =>
+      (
+        plugin: PluginLibraryEntry,
+      ): import("@prompthub/shared/utils/resource-library").ResourceSummary => ({
+        id: plugin.id,
+        favorite: plugin.isFavorite,
+        tags: getPluginDisplayTags(plugin),
+        search: [],
+        presence: observedDistributionPresence(distributionSnapshot[plugin.id]),
+      }),
+    [distributionSnapshot],
+  );
   const [currentLibraryPage, setCurrentLibraryPage] = useState(1);
   const installedPlugins = useMemo(
     () => library?.plugins ?? [],
@@ -132,39 +154,15 @@ export function usePluginCatalogModel({
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const baseVisiblePlugins = useMemo(
     () =>
-      installedPlugins.filter(
-        (plugin) =>
-          matchesPluginSearch(plugin, normalizedSearchQuery) &&
-          (libraryFilter === "all" ||
-            (libraryFilter === "favorites"
-              ? plugin.isFavorite === true
-              : libraryFilter === "distributed"
-                ? (plugin.distributedTargetIds?.length ?? 0) > 0
-                : (plugin.distributedTargetIds?.length ?? 0) === 0)),
-      ),
-    [installedPlugins, libraryFilter, normalizedSearchQuery],
+      filterResources(installedPlugins, summarizePlugin, {
+        filter: libraryFilter,
+      }).filter((plugin) => matchesPluginSearch(plugin, normalizedSearchQuery)),
+    [installedPlugins, libraryFilter, normalizedSearchQuery, summarizePlugin],
   );
-  const libraryFilterCounts = useMemo(() => {
-    const counts: Record<PluginLibraryFilter, number> = {
-      all: installedPlugins.length,
-      favorites: 0,
-      distributed: 0,
-      pending: 0,
-    };
-
-    for (const plugin of installedPlugins) {
-      if (plugin.isFavorite === true) {
-        counts.favorites += 1;
-      }
-      if ((plugin.distributedTargetIds?.length ?? 0) > 0) {
-        counts.distributed += 1;
-      } else {
-        counts.pending += 1;
-      }
-    }
-
-    return counts;
-  }, [installedPlugins]);
+  const libraryFilterCounts = useMemo(
+    () => countResources(installedPlugins, summarizePlugin),
+    [installedPlugins, summarizePlugin],
+  );
   const libraryFilterOptions = useMemo(
     () =>
       [
@@ -262,23 +260,14 @@ export function usePluginCatalogModel({
       return matchesSource && matchesTag;
     });
   }, [activeLibrarySourceFilter, baseVisiblePlugins, libraryTagFilters]);
-  const libraryTotalPages = Math.max(
-    1,
-    Math.ceil(filteredLibraryPlugins.length / pageSize),
+  const libraryPage = useMemo(
+    () =>
+      paginateResources(filteredLibraryPlugins, currentLibraryPage, pageSize),
+    [filteredLibraryPlugins, currentLibraryPage, pageSize],
   );
-  const visiblePlugins = useMemo(() => {
-    const startIndex = (currentLibraryPage - 1) * pageSize;
-    return filteredLibraryPlugins.slice(startIndex, startIndex + pageSize);
-  }, [currentLibraryPage, filteredLibraryPlugins, pageSize]);
-  const libraryVisiblePageNumbers = useMemo(() => {
-    const pages: number[] = [];
-    const start = Math.max(1, currentLibraryPage - 2);
-    const end = Math.min(libraryTotalPages, start + 4);
-    for (let page = start; page <= end; page += 1) {
-      pages.push(page);
-    }
-    return pages;
-  }, [currentLibraryPage, libraryTotalPages]);
+  const libraryTotalPages = libraryPage.totalPages;
+  const visiblePlugins = libraryPage.items;
+  const libraryVisiblePageNumbers = libraryPage.pageNumbers;
   useEffect(() => {
     setCurrentLibraryPage(1);
   }, [

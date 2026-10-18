@@ -274,7 +274,13 @@ export interface PluginDistributedTarget {
   mode: PluginDistributeMode;
 }
 
+export interface PluginTargetFailure {
+  targetId: string;
+  error: string;
+}
+
 export interface PluginDistributeResult {
+  failures?: PluginTargetFailure[];
   plugin: PluginLibraryEntry;
   library: PluginLibraryFile;
   targets: PluginDistributedTarget[];
@@ -286,6 +292,7 @@ export interface PluginUndistributeRequest {
 }
 
 export interface PluginUndistributeResult {
+  failures?: PluginTargetFailure[];
   plugin: PluginLibraryEntry;
   library: PluginLibraryFile;
   removedTargetIds: string[];

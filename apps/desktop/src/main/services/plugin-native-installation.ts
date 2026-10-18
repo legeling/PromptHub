@@ -4,6 +4,7 @@ import type {
   PluginLibraryEntry,
 } from "@prompthub/shared/types/plugin";
 import {
+  isNativePluginRegistered as registered,
   installNativePlugin as install,
   uninstallNativePlugin as uninstall,
   type PluginNativeInstallationOptions as CoreOptions,
@@ -41,4 +42,11 @@ export function uninstallNativePlugin(
   options: PluginNativeInstallationOptions = {},
 ): Promise<void> {
   return uninstall(plugin, targetId, coreOptions(options));
+}
+
+export function isNativePluginRegistered(
+  plugin: PluginLibraryEntry,
+  targetId: string,
+): boolean {
+  return registered(plugin, targetId, coreOptions({}));
 }

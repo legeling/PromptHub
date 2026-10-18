@@ -1,4 +1,8 @@
 import type { CorePluginLibraryService } from "@prompthub/core";
+import {
+  distributeManagedPlugin,
+  removeManagedPluginDistribution,
+} from "@prompthub/core/plugin-distribution-workflow";
 import type {
   PluginDistributeRequest,
   PluginDistributeResult,
@@ -18,21 +22,10 @@ export async function distributeDesktopPlugin(
   request: PluginDistributeRequest,
   options: PluginNativeInstallationOptions = {},
 ): Promise<PluginDistributeResult> {
-  const prepared = service.preparePluginDistribution(request);
-  // Record each target only after its native installation succeeds. Earlier successful targets remain usable if a later target fails.
-  for (const target of prepared.targets) {
-    await installNativePlugin(prepared.plugin, target, options);
-    service.completePluginDistribution({ ...prepared, targets: [target] });
-  }
-  const library = service.read();
-  const plugin = library.plugins.find(
-    (entry) => entry.id === prepared.plugin.id,
-  );
-  if (!plugin)
-    throw new Error(
-      `Plugin disappeared during distribution: ${prepared.plugin.id}`,
-    );
-  return { ...prepared, plugin, library };
+  return distributeManagedPlugin(service, request, {
+    install: (plugin, target) => installNativePlugin(plugin, target, options),
+    uninstall: (plugin, id) => uninstallNativePlugin(plugin, id, options),
+  });
 }
 
 export async function removeDesktopPluginDistribution(
@@ -40,15 +33,10 @@ export async function removeDesktopPluginDistribution(
   request: PluginUndistributeRequest,
   options: PluginNativeInstallationOptions = {},
 ): Promise<PluginUndistributeResult> {
-  const plugin = service
-    .read()
-    .plugins.find((entry) => entry.id === request.pluginId);
-  if (!plugin) throw new Error(`Plugin does not exist: ${request.pluginId}`);
-  for (const targetId of request.targetIds) {
-    if (plugin.distributedTargetIds?.includes(targetId))
-      await uninstallNativePlugin(plugin, targetId, options);
-  }
-  return service.removePluginDistribution(request);
+  return removeManagedPluginDistribution(service, request, {
+    install: (plugin, target) => installNativePlugin(plugin, target, options),
+    uninstall: (plugin, id) => uninstallNativePlugin(plugin, id, options),
+  });
 }
 
 export async function deleteDesktopPlugin(
@@ -58,8 +46,19 @@ export async function deleteDesktopPlugin(
 ): Promise<PluginLibraryFile> {
   const plugin = service.read().plugins.find((entry) => entry.id === id);
   if (plugin && options.removeDistributedTargets) {
-    for (const targetId of plugin.distributedTargetIds ?? [])
-      await uninstallNativePlugin(plugin, targetId);
+    const ids = plugin.distributedTargetIds ?? [];
+    if (ids.length) {
+      const result = await removeDesktopPluginDistribution(service, {
+        pluginId: id,
+        targetIds: ids,
+      });
+      if (result.failures?.length)
+        throw new Error(
+          result.failures
+            .map((failure) => `${failure.targetId}: ${failure.error}`)
+            .join("; "),
+        );
+    }
   }
-  return service.deletePlugin(id, options);
+  return service.deletePlugin(id);
 }

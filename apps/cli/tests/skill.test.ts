@@ -890,6 +890,7 @@ describe("CLI skill commands", () => {
       expect.stringContaining("# Platform Skill"),
       "claude",
       installRes.json.id,
+      "copy",
     );
 
     const uninstallMdRes = await execCli(

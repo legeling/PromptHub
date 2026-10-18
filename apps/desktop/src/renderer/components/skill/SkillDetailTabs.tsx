@@ -1,4 +1,5 @@
 import { useSettingsStore } from "../../stores/settings.store";
+import { getRuntimeCapabilities } from "../../runtime";
 import { useTranslation } from "react-i18next";
 import {
   BookOpenIcon,
@@ -33,7 +34,11 @@ export function SkillDetailTabs({
   onSelectTab,
 }: SkillDetailTabsProps) {
   const { t } = useTranslation();
-  const scanEnabled = useSettingsStore((state) => state.skillSafetyScanEnabled);
+  const settingEnabled = useSettingsStore(
+    (state) => state.skillSafetyScanEnabled,
+  );
+  const canScan = getRuntimeCapabilities().skillSafetyScan;
+  const scanEnabled = settingEnabled && canScan;
   return (
     <div className="flex items-center px-6 gap-6 border-b border-border bg-accent/20">
       <TabButton
@@ -56,40 +61,42 @@ export function SkillDetailTabs({
           onClick={() => onSelectTab("files")}
         />
       ) : null}
-      <button
-        type="button"
-        onClick={() => {
-          if (safetyReport && !isScanningSafety) onOpenSafetyReport();
-          else if (!isScanningSafety) void onRunSafetyScan();
-        }}
-        disabled={isScanningSafety || (!safetyReport && !scanEnabled)}
-        title={
-          !scanEnabled && !safetyReport
-            ? t("settings.contentScanDisabled")
-            : safetyReport
-              ? t("skill.safetyModalTitle", "Safety Report")
-              : t("skill.safetyAssessmentEmpty", "No safety scan run yet")
-        }
-        className={`ml-auto my-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
-          safetyReport
-            ? safetyTone
-            : "border-border text-muted-foreground hover:border-primary/30 hover:text-primary"
-        }`}
-      >
-        {isScanningSafety ? (
-          <ShieldAlertIcon
-            className="w-3.5 h-3.5 animate-pulse"
-            aria-hidden="true"
-          />
-        ) : safetyReport?.level === "safe" ? (
-          <ShieldCheckIcon className="w-3.5 h-3.5" aria-hidden="true" />
-        ) : safetyReport ? (
-          <ShieldAlertIcon className="w-3.5 h-3.5" aria-hidden="true" />
-        ) : (
-          <ShieldIcon className="w-3.5 h-3.5" aria-hidden="true" />
-        )}
-        {getSafetyLabel({ isScanningSafety, safetyReport, t })}
-      </button>
+      {canScan || safetyReport ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (safetyReport && !isScanningSafety) onOpenSafetyReport();
+            else if (!isScanningSafety) void onRunSafetyScan();
+          }}
+          disabled={isScanningSafety || (!safetyReport && !scanEnabled)}
+          title={
+            !scanEnabled && !safetyReport
+              ? t("settings.contentScanDisabled")
+              : safetyReport
+                ? t("skill.safetyModalTitle", "Safety Report")
+                : t("skill.safetyAssessmentEmpty", "No safety scan run yet")
+          }
+          className={`ml-auto my-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
+            safetyReport
+              ? safetyTone
+              : "border-border text-muted-foreground hover:border-primary/30 hover:text-primary"
+          }`}
+        >
+          {isScanningSafety ? (
+            <ShieldAlertIcon
+              className="w-3.5 h-3.5 animate-pulse"
+              aria-hidden="true"
+            />
+          ) : safetyReport?.level === "safe" ? (
+            <ShieldCheckIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          ) : safetyReport ? (
+            <ShieldAlertIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          ) : (
+            <ShieldIcon className="w-3.5 h-3.5" aria-hidden="true" />
+          )}
+          {getSafetyLabel({ isScanningSafety, safetyReport, t })}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -1,3 +1,9 @@
+import {
+  withDirectoryRollback,
+  withDirectoryOperationLock,
+} from "../directory-transaction";
+import { assertPluginTargetWritable } from "../plugin-target-publication";
+import { assertSharedPluginOwnership } from "../plugin-shared-distribution";
 import fs from "fs";
 import path from "path";
 
@@ -1050,6 +1056,38 @@ export class CorePluginLibraryService {
         resolveTargetPath: this.resolvePluginTargetPath,
       },
       request,
+    );
+  }
+
+  async runDistributionTargetOperation<T>(
+    pluginId: string,
+    targetId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const plugin = this.read().plugins.find((entry) => entry.id === pluginId);
+    if (!plugin)
+      throw new CorePluginError(
+        "NOT_FOUND",
+        `Plugin does not exist: ${pluginId}`,
+      );
+    const target = this.resolvePluginTargetPath?.(targetId, plugin);
+    if (!target)
+      throw new CorePluginError(
+        "MISSING_TARGET_PATH",
+        `Cannot resolve Plugin target: ${targetId}`,
+      );
+    return withDirectoryOperationLock(
+      process.platform === "win32" ? target.toLowerCase() : target,
+      () => {
+        if (targetId === "shared-agents")
+          assertSharedPluginOwnership(target, plugin);
+        assertPluginTargetWritable(
+          getPluginLocalPackagePath(plugin),
+          target,
+          pluginId,
+        );
+        return withDirectoryRollback(target, operation);
+      },
     );
   }
 

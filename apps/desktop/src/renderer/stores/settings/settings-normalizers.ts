@@ -1,3 +1,4 @@
+import { RESOURCE_PAGE_SIZES } from "@prompthub/shared/constants/resource-library";
 import type { Settings, SyncProviderKind } from "@prompthub/shared/types";
 import { DEFAULT_DISABLED_PLATFORM_IDS } from "@prompthub/shared/types";
 import { normalizeCustomAgents } from "../../services/agent-root-paths";
@@ -13,7 +14,7 @@ import {
 } from "./settings-types";
 
 export const DEFAULT_TAGS_SECTION_HEIGHT = 140;
-export const SKILL_LIST_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+export const SKILL_LIST_PAGE_SIZE_OPTIONS = RESOURCE_PAGE_SIZES;
 export const DEFAULT_SKILL_LIST_PAGE_SIZE = 10;
 const PREVIOUS_DESKTOP_HOME_MODULE_DEFAULT: readonly DesktopHomeModule[] = [
   "prompt",

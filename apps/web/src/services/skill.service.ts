@@ -8,6 +8,7 @@ import type {
   SkillSafetyReport,
   SkillSafetyScanInput,
   SkillVersion,
+  SkillFileSnapshot,
   UpdateSkillParams,
 } from "@prompthub/shared";
 import { getServerDatabase } from "../database.js";
@@ -109,6 +110,28 @@ export class SkillService {
     return this.getById(actor, skill.id);
   }
 
+  importPackage(
+    actor: SkillActor,
+    data: CreateSkillParams,
+    files: SkillFileSnapshot[],
+  ): Skill {
+    const visibility = data.visibility ?? "private";
+    this.assertCanCreate(actor, visibility);
+    this.assertMetadataArraysAllowed(data);
+    this.assertUrlMetadataAllowed(data);
+    if (this.skillDb.getByName(data.name))
+      throw new SkillServiceError(
+        409,
+        ErrorCode.CONFLICT,
+        "Skill name already exists",
+      );
+    const skill = this.skillDb.createFromPackage(
+      { ...data, ownerUserId: actor.userId, visibility },
+      files,
+    );
+    return this.getById(actor, skill.id);
+  }
+
   list(
     actor: SkillActor,
     scope: "private" | "shared" | "all" = "shared",
@@ -193,6 +216,23 @@ export class SkillService {
   getVersions(actor: SkillActor, skillId: string): SkillVersion[] {
     this.getById(actor, skillId);
     return this.skillDb.getVersions(skillId);
+  }
+
+  readPackageFiles(actor: SkillActor, id: string): SkillFileSnapshot[] {
+    this.getById(actor, id);
+    return this.skillDb.capturePackage(id);
+  }
+
+  replacePackageFiles(
+    actor: SkillActor,
+    id: string,
+    files: SkillFileSnapshot[],
+  ): Skill {
+    this.assertCanWrite(actor, this.getRequiredRow(id));
+    const result = this.skillDb.replacePackageFiles(id, files);
+    if (!result)
+      throw new SkillServiceError(404, ErrorCode.NOT_FOUND, "Skill not found");
+    return this.getById(actor, id);
   }
 
   createVersion(

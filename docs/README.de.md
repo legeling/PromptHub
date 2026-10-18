@@ -259,6 +259,8 @@ Desktop verbinden: _Einstellungen → Daten → Self-Hosted PromptHub_. Version 
 
 Detaillierte Deployment- / Upgrade- / Backup- / GHCR-Image- / Dev-Hinweise in [`web-self-hosted.md`](./web-self-hosted.md).
 
+Im Entwicklungsstand 0.6.0 nutzen Desktop und CLI gemeinsame Core-Abläufe für Skills, MCP und Plugins. Self-Hosted Web und Cloudflare unterstützen Speicherung, Bearbeitung, Versionen, Import/Export vollständiger Pakete und Synchronisierung. Agent-Verteilung, Scans von Serververzeichnissen und SSH-Installation sind dort nicht verfügbar. Die CLI wird separat gepackt und installiert.
+
 <div id="cli"></div>
 
 ## CLI
@@ -301,7 +303,7 @@ rules     list / scan / read / save / rewrite
 skill     list / get / import (Alias: install) / delete / remove
           versions / create-version / rollback / delete-version
           export / scan / scan-safety / sync-from-repo
-          platforms / platform-status / distribute / undistribute
+          platforms / platform-status / distribute / redistribute / undistribute
           (Aliase: install-md / uninstall-md)
           repo-files / repo-read / repo-write / repo-delete / repo-mkdir / repo-rename
 

@@ -1,3 +1,7 @@
+import { ResourceDistributionNotice } from "../resources/ResourceDistributionNotice";
+import { countResources } from "@prompthub/shared/utils/resource-library";
+import { distributionPresence } from "@prompthub/shared/utils/resource-observation";
+import { paginateResources } from "@prompthub/shared/utils/resource-library";
 import React, {
   useCallback,
   useEffect,
@@ -122,6 +126,9 @@ export function SkillManager() {
   const storeView = useSkillStore((state) => state.storeView);
   const setStoreView = useSkillStore((state) => state.setStoreView);
   const setFilterType = useSkillStore((state) => state.setFilterType);
+  const distributionStatusError = useSkillStore(
+    (state) => state.distributionStatusError,
+  );
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
   const loadDeployedStatus = useSkillStore((state) => state.loadDeployedStatus);
   const skillFilterTags = useSkillStore((state) => state.filterTags);
@@ -216,28 +223,18 @@ export function SkillManager() {
         : filterType;
   const isDistributionView = false;
   const skillDistributionCounts = useMemo(() => {
-    let deployed = 0;
-    let favorite = 0;
-
-    for (const skill of skills) {
-      if (skill.is_favorite) {
-        favorite += 1;
-      }
-      if (
-        deployedSkillNames.has(skill.id) ||
-        deployedSkillNames.has(skill.name)
-      ) {
-        deployed += 1;
-      }
-    }
-
+    const counts = countResources(skills, (skill) => ({
+      id: skill.id,
+      search: [],
+      favorite: skill.is_favorite,
+      presence: distributionPresence(skillPlatformStatuses[skill.id]),
+    }));
     return {
-      all: skills.length,
-      deployed,
-      favorite,
-      pending: Math.max(skills.length - deployed, 0),
+      ...counts,
+      deployed: counts.distributed,
+      favorite: counts.favorites,
     };
-  }, [deployedSkillNames, skills]);
+  }, [skills, skillPlatformStatuses]);
   const mySkillFilterOptions = useMemo(
     () =>
       [
@@ -312,6 +309,7 @@ export function SkillManager() {
   const baseFilteredSkills = useMemo(() => {
     return filterVisibleSkills({
       deployedSkillNames,
+      platformStatuses: skillPlatformStatuses,
       filterTags: skillFilterTags,
       includeFrontmatter: skillTagFilterIncludeFrontmatter,
       filterType: effectiveFilterType,
@@ -569,10 +567,13 @@ export function SkillManager() {
     return result.importedCount;
   };
 
-  const totalPages = Math.max(1, Math.ceil(filteredSkills.length / pageSize));
+  const totalPages = paginateResources(
+    filteredSkills,
+    currentPage,
+    pageSize,
+  ).totalPages;
   const visibleSkills = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredSkills.slice(startIndex, startIndex + pageSize);
+    return paginateResources(filteredSkills, currentPage, pageSize).items;
   }, [currentPage, filteredSkills, pageSize]);
   const selectedSkills = useMemo(
     () => skills.filter((skill) => selectedSkillIds.has(skill.id)),
@@ -1224,6 +1225,13 @@ export function SkillManager() {
           webSkillLibraryMode={webSkillLibraryMode}
         />
 
+        {runtimeCapabilities.skillDistribution && (
+          <ResourceDistributionNotice
+            unknown={skillDistributionCounts.unknown}
+            error={distributionStatusError}
+            onRefresh={() => void loadDeployedStatus({ force: true })}
+          />
+        )}
         <SkillManagerLibraryContent
           currentPage={currentPage}
           distributedPlatformsBySkillId={distributedPlatformsBySkillId}

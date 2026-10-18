@@ -259,6 +259,8 @@ To connect the desktop: _Settings → Data → Self-Hosted PromptHub_. Verify ve
 
 Detailed deploy / upgrade / backup / GHCR image / dev notes live in [`web-self-hosted.md`](./web-self-hosted.md).
 
+In the 0.6.0 development build, Desktop and CLI share Core workflows for Skills, MCP and Plugins. Self-hosted Web and Cloudflare support resource storage, editing, versions, complete package import/export and sync. They do not distribute to Agents, scan server directories or install over SSH. The CLI is packaged and installed separately.
+
 <div id="cli"></div>
 
 ## CLI
@@ -305,7 +307,7 @@ skill     list / get / import (alias: install) / delete / remove
           versions / create-version / rollback / delete-version
           export / scan / scan-safety / sync-from-repo
           update / check-update
-          platforms / platform-status / distribute / undistribute
+          platforms / platform-status / distribute / redistribute / undistribute
           (aliases: install-md / uninstall-md)
           project-install / install-project
           repo-files / repo-read / repo-write / repo-delete / repo-mkdir / repo-rename
@@ -315,8 +317,10 @@ mcp       list / get / create / update / delete
           enable / disable / check / env-import
           export / apply / remove
 
-plugin    list / get / market / sources / install / delete
-          versions / create-version
+plugin    list / get / market / sources / install / import / delete
+          metadata / check / check-update / update / import-child-mcp
+          targets / status / distribute / redistribute / undistribute
+          versions / create-version / rollback / delete-version
 
 ai        providers / provider-add / provider-delete
           models / model-add / model-delete

@@ -924,10 +924,14 @@ describe("McpManager", () => {
     const actions = within(filesystemCard).getByTestId("mcp-card-actions");
 
     expect(headerMeta).toHaveClass("min-w-0", "flex-1", "items-end");
-    expect(distribution).toHaveClass("max-w-full", "flex-wrap", "justify-end");
+    expect(distribution).toHaveClass(
+      "max-w-full",
+      "flex-nowrap",
+      "justify-end",
+    );
     expect(actions).toHaveClass("w-full", "justify-end");
     expect(actions.contains(distribution)).toBe(false);
-    expect(within(filesystemCard).getByText("+1")).toBeInTheDocument();
+    expect(within(filesystemCard).getByText("+4")).toBeInTheDocument();
   });
 
   it("renders MCP list view with Skill-style row distribution actions", async () => {

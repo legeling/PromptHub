@@ -1,3 +1,4 @@
+import { handleSkillExport } from "./skill-export";
 import { SkillDB } from "../database";
 import type { Skill } from "@prompthub/shared/types";
 import {
@@ -139,9 +140,13 @@ export async function handleSkillCommand(
     const source = requirePositional(args, 1, "skill source");
     const installArgs = args.slice(2);
     const name = takeOption(installArgs, "--name");
+    const branch = takeOption(installArgs, "--branch");
+    const directory = takeOption(installArgs, "--directory");
     ensureNoUnknownOptions(installArgs);
     const skillId = await context.skills.installFromSource(source, skillDb, {
       name,
+      branch,
+      directory,
     });
     emitSuccess(
       context,
@@ -279,23 +284,20 @@ export async function handleSkillCommand(
   }
 
   if (action === "export") {
-    const identifier = requirePositional(args, 1, "skill id 或 name");
-    const exportArgs = args.slice(2);
-    const format = takeOption(exportArgs, "--format");
-    ensureNoUnknownOptions(exportArgs);
-    if (format !== "skillmd" && format !== "json") {
-      throw new CliError(
-        "USAGE_ERROR",
-        "skill export 需要 --format skillmd|json",
-        EXIT_CODES.USAGE,
-      );
-    }
+    await handleSkillExport(args, skillDb, context);
+    return;
+  }
+
+  if (action === "update-source") {
+    const identifier = requirePositional(args, 1, "Skill ID or name");
+    const options = args.slice(2);
+    const force = takeFlag(options, "--force");
+    ensureNoUnknownOptions(options);
     const { skill } = resolveSkillIdentifier(skillDb, identifier);
-    context.io.stdout(
-      format === "skillmd"
-        ? context.skills.exportAsSkillMd(skill)
-        : context.skills.exportAsJson(skill),
-    );
+    const updated = await context.skills.updateFromSource(skillDb, skill.id, {
+      force,
+    });
+    emitSuccess(context, await skillOutputPayload(context, skillDb, updated));
     return;
   }
 
@@ -317,19 +319,33 @@ export async function handleSkillCommand(
 
   if (action === "platform-status") {
     const identifier = requirePositional(args, 1, "skill id 或 name");
-    ensureNoUnknownOptions(args.slice(2));
+    const statusArgs = args.slice(2);
+    const details = takeFlag(statusArgs, "--details");
+    ensureNoUnknownOptions(statusArgs);
     const { skill } = resolveSkillIdentifier(skillDb, identifier);
     emitSuccess(
       context,
-      await context.skills.getSkillMdInstallStatus(skill.name, skill.id),
+      details
+        ? await context.skills.getSkillMdInstallStatusDetails(
+            skill.name,
+            skill.id,
+          )
+        : await context.skills.getSkillMdInstallStatus(skill.name, skill.id),
     );
     return;
   }
 
-  if (action === "install-md") {
+  if (action === "install-md" || action === "redistribute") {
     const identifier = requirePositional(args, 1, "skill id 或 name");
     const installArgs = args.slice(2);
     const platformId = takeOption(installArgs, "--platform");
+    const mode = takeOption(installArgs, "--mode") ?? "copy";
+    if (mode !== "copy" && mode !== "symlink")
+      throw new CliError(
+        "USAGE_ERROR",
+        "--mode must be copy or symlink",
+        EXIT_CODES.USAGE,
+      );
     ensureNoUnknownOptions(installArgs);
     if (!platformId?.trim()) {
       throw new CliError(
@@ -339,17 +355,31 @@ export async function handleSkillCommand(
       );
     }
     const { skill } = resolveSkillIdentifier(skillDb, identifier);
-    await context.skills.installSkillMd(
+    if (action === "redistribute") {
+      const status = await context.skills.getSkillMdInstallStatus(
+        skill.name,
+        skill.id,
+      );
+      if (!status[platformId.trim()])
+        throw new CliError(
+          "NOT_FOUND",
+          "Redistribution requires an existing installation",
+          EXIT_CODES.NOT_FOUND,
+        );
+    }
+    const result = await context.skills.installSkillMd(
       skillDb,
       skill.name,
       skill.instructions || skill.content || "",
       platformId.trim(),
       skill.id,
+      mode,
     );
     emitSuccess(context, {
       installed: true,
       skillId: skill.id,
       platformId: platformId.trim(),
+      ...(result ?? {}),
     });
     return;
   }

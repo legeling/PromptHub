@@ -278,6 +278,8 @@ docker compose up -d --build
 
 更详细的 Docker / NAS / VPS 自部署说明在 [`docs/web-self-hosted.md`](./docs/web-self-hosted.md)，Cloudflare Workers + D1 + R2 部署说明在 [`docs/cloudflare-workers.md`](./docs/cloudflare-workers.md)。
 
+0.6.0 开发版：Desktop 与 CLI 共用 Skill、MCP、Plugin 的 Core 管理流程。自托管 Web 与 Cloudflare 提供三类资源的保存、编辑、版本、完整包导入导出及同步；不提供 Agent 分发、服务器目录扫描或 SSH 安装。CLI 单独打包安装。
+
 <div id="cli"></div>
 
 ## 命令行 CLI
@@ -324,7 +326,7 @@ skill     list / get / import（兼容别名：install）/ delete / remove
           versions / create-version / rollback / delete-version
           export / scan / scan-safety / sync-from-repo
           update / check-update
-          platforms / platform-status / distribute / undistribute
+          platforms / platform-status / distribute / redistribute / undistribute
           （兼容别名：install-md / uninstall-md）
           project-install / install-project
           repo-files / repo-read / repo-write / repo-delete / repo-mkdir / repo-rename
@@ -334,8 +336,10 @@ mcp       list / get / create / update / delete
           enable / disable / check / env-import
           export / apply / remove
 
-plugin    list / get / market / sources / install / delete
-          versions / create-version
+plugin    list / get / market / sources / install / import / delete
+          metadata / check / check-update / update / import-child-mcp
+          targets / status / distribute / redistribute / undistribute
+          versions / create-version / rollback / delete-version
 
 ai        providers / provider-add / provider-delete
           models / model-add / model-delete

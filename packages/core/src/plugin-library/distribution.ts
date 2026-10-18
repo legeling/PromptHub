@@ -1,3 +1,7 @@
+import {
+  publishPluginTarget,
+  assertPluginTargetWritable,
+} from "../plugin-target-publication";
 import fs from "fs";
 import path from "path";
 import {
@@ -181,22 +185,22 @@ function writePluginPackageToTarget(
   sourcePath: string,
   targetPath: string,
   mode: PluginDistributeMode,
+  pluginId: string,
 ): void {
-  if (!targetPath.trim()) {
-    throw new CorePluginError("MISSING_TARGET_PATH", "Plugin 目标目录为空");
-  }
-  assertSafeExistingPluginTarget(targetPath, "write");
-  fs.rmSync(targetPath, { recursive: true, force: true });
-  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  if (mode === "symlink") {
-    fs.symlinkSync(
-      sourcePath,
-      targetPath,
-      process.platform === "win32" ? "junction" : "dir",
+  if (!targetPath.trim())
+    throw new CorePluginError(
+      "MISSING_TARGET_PATH",
+      "Plugin target path is empty",
     );
-    return;
-  }
-  copyPluginPackageDirectoryToTarget(sourcePath, targetPath);
+  publishPluginTarget(sourcePath, targetPath, pluginId, (stage) => {
+    if (mode === "symlink")
+      fs.symlinkSync(
+        sourcePath,
+        stage,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    else copyPluginPackageDirectoryToTarget(sourcePath, stage);
+  });
 }
 
 function isRawRecord(value: unknown): value is RawRecord {
@@ -460,7 +464,7 @@ export function writePluginPackageToAgentTarget(
     return mode;
   }
   if (canPassthroughNativePluginPackage(sourcePath, targetId)) {
-    writePluginPackageToTarget(sourcePath, targetPath, mode);
+    writePluginPackageToTarget(sourcePath, targetPath, mode, plugin.id);
     return mode;
   }
   if (
@@ -475,11 +479,10 @@ export function writePluginPackageToAgentTarget(
   if (!targetPath.trim()) {
     throw new CorePluginError("MISSING_TARGET_PATH", "Plugin 目标目录为空");
   }
-  assertSafeExistingPluginTarget(targetPath, "write");
-  fs.rmSync(targetPath, { recursive: true, force: true });
-  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  copyPluginPackageDirectoryToTarget(sourcePath, targetPath);
-  writeGeneratedPluginMarker(sourcePath, targetPath, targetId, plugin);
+  publishPluginTarget(sourcePath, targetPath, plugin.id, (stage) => {
+    copyPluginPackageDirectoryToTarget(sourcePath, stage);
+    writeGeneratedPluginMarker(sourcePath, stage, targetId, plugin);
+  });
   return "copy";
 }
 
@@ -812,6 +815,11 @@ function removeTargets(
     }
     if (targetId === "shared-agents")
       assertSharedPluginOwnership(targetPath, plugin);
+    assertPluginTargetWritable(
+      getPluginLocalPackagePath(plugin),
+      targetPath,
+      plugin.id,
+    );
     deletePluginPackageTarget(targetPath);
     removedTargetIds.push(targetId);
   }
@@ -871,6 +879,11 @@ export function deleteDistributedPluginTargets(
       );
     if (targetId === "shared-agents")
       assertSharedPluginOwnership(targetPath, plugin);
+    assertPluginTargetWritable(
+      getPluginLocalPackagePath(plugin),
+      targetPath,
+      plugin.id,
+    );
     assertSafeExistingPluginTarget(targetPath, "remove");
     return targetPath;
   });

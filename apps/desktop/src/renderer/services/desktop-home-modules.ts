@@ -5,6 +5,8 @@ const WEB_DESKTOP_HOME_MODULES: readonly DesktopHomeModule[] = [
   "prompt",
   "skill",
   "agents",
+  "mcp",
+  "plugin",
   "rules",
 ];
 

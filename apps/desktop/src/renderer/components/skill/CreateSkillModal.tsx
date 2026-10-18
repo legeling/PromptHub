@@ -1,4 +1,6 @@
 import { useTranslation } from "react-i18next";
+import { getWebContext } from "../../runtime";
+import { HostedSkillPackageUpload } from "./HostedSkillPackageUpload";
 import { CuboidIcon, Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react";
 import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
 import { SkillUpdateSafetyReviewDialog } from "./SkillUpdateSafetyReviewDialog";
@@ -193,11 +195,16 @@ function CreateSkillModalModeContent({
 }) {
   if (controller.mode === "select")
     return (
-      <CreateSkillMethodSelection
-        canScanLocal={controller.runtimeCapabilities.skillLocalScan}
-        onSelectGit={controller.enterGitHubMode}
-        onSelectMode={controller.setMode}
-      />
+      <>
+        <CreateSkillMethodSelection
+          canScanLocal={controller.runtimeCapabilities.skillLocalScan}
+          onSelectGit={controller.enterGitHubMode}
+          onSelectMode={controller.setMode}
+        />
+        {getWebContext()?.capabilities?.skillPackageImport && (
+          <HostedSkillPackageUpload onComplete={controller.handleClose} />
+        )}
+      </>
     );
   if (controller.mode === "github")
     return <CreateSkillGithubImportPanel controller={controller} />;

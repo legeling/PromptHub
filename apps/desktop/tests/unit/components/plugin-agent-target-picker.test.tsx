@@ -70,7 +70,7 @@ const disabledTarget: PluginTargetCompatibility = {
 };
 
 function getSubmitButton() {
-  return screen.getByRole("button", { name: "Distribute to selected Agents" });
+  return screen.getByRole("button", { name: "Apply changes" });
 }
 
 function hasHiddenSvgAncestor(element: Element): boolean {
@@ -183,7 +183,9 @@ describe("PluginAgentTargetPicker", () => {
       { language: "en" },
     );
 
-    expect(screen.getByRole("dialog", { name: "Select Agent targets" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Select Agent targets" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Codex" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -250,7 +252,10 @@ describe("PluginAgentTargetPicker", () => {
     expect(copyButton).toHaveAttribute("aria-pressed", "true");
     expect(symlinkButton).toHaveAttribute("aria-pressed", "false");
     expect(targetButton).toHaveAttribute("aria-pressed", "true");
-    expect(getExposedButtonMedia(), getExposedButtonMedia().join("\n")).toHaveLength(0);
+    expect(
+      getExposedButtonMedia(),
+      getExposedButtonMedia().join("\n"),
+    ).toHaveLength(0);
 
     fireEvent.click(clearButton);
     fireEvent.click(submitButton);

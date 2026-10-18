@@ -16,7 +16,7 @@
 | Core：`run skill` | 22 文件：21 通过、1 失败；167 用例通过、1 失败 |
 | CLI：`run skill` | 7 文件：5 通过、2 失败；30 用例通过、2 失败；其中共享目录测试隔离已随后修复，定向复跑 1 用例通过 |
 
-已复现的实现缺口（尚未修复）：
+已复现的实现缺口（2026-10-18 已修复以下请求生命周期问题）：
 
 - `use-skill-platform.ts` 的异步状态读取缺少请求归属检查。复用 hook 并切换
   Skill 后，旧请求的成功结果会覆盖新 Skill 的安装状态并清空选择；旧请求的
@@ -27,6 +27,11 @@
   上述 3 个回归用例失败。证据来自真实 hook 与 Zustand store，preload I/O
   使用替身；部分详情入口会通过 key 重挂载组件，不能据此断言所有界面切换均
   触发竞态。实际 GUI 入口仍需验收。
+
+2026-10-18 修复结果：请求序号与当前 Skill 身份共同约束状态写入，过期成功和失败
+均被丢弃；有效刷新成功清除旧错误。新增“同一 Skill 新刷新成功后旧请求失败”回归，
+`skill-platform-request-lifecycle.test.ts` 在 Node 24 下 5 项通过。以上仍为真实 hook /
+Store、替换 preload I/O 的组件契约证据，未运行 GUI，不代表上表所有失败已修复。
 
 测试隔离修复：`apps/cli/tests/skill-shared-target.test.ts` 原先仅修改 `HOME`，
 Windows 的 `os.homedir()` 仍解析真实用户目录。现改为将 `os.homedir()` 定向到

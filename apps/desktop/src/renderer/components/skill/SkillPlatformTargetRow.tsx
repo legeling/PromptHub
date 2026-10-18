@@ -1,3 +1,4 @@
+import type { SkillPlatformInstallStatus } from "@prompthub/shared/types";
 import { CheckIcon } from "lucide-react";
 import type { TFunction } from "i18next";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
@@ -21,6 +22,7 @@ export function DistributionCheck({
 export function SkillPlatformTargetRow({
   isBatchInstalling,
   isInstalled,
+  contentState,
   isSelected,
   onToggle,
   platform,
@@ -28,6 +30,7 @@ export function SkillPlatformTargetRow({
 }: {
   isBatchInstalling: boolean;
   isInstalled: boolean;
+  contentState?: SkillPlatformInstallStatus["contentState"];
   isSelected: boolean;
   onToggle: () => void;
   platform: SkillPlatform;
@@ -63,7 +66,9 @@ export function SkillPlatformTargetRow({
         <span
           className={`mt-0.5 block text-xs ${pending ? "text-primary" : "text-muted-foreground"}`}
         >
-          {status}
+          {isInstalled && !pending && contentState && contentState !== "synced"
+            ? t(`resourceLibrary.content.${contentState}`)
+            : status}
         </span>
         {platform.id === "cherry-studio" && (
           <span className="block text-[11px] text-muted-foreground">

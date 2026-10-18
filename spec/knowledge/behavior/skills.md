@@ -292,6 +292,13 @@ My Skills 批量入口必须明确包含安装与卸载；商店批量导入入�
 
 - CLI 以 `skill import` 表示纳入 PromptHub，以 `skill distribute` / `skill undistribute`
   表示向 Agent 平台分发或撤回；`install`、`install-md`、`uninstall-md` 作为兼容别名保留。
+- Git 来源支持 HTTPS 仓库、GitHub `tree/<branch>/<directory>` URL 和
+  `git@host:owner/repo.git`。`--branch`、`--directory` 显式覆盖 URL 中的选择；
+  目录必须位于仓库内，选择后的整个 Skill 包（包括二进制附件）纳入库。
+  例如 `prompthub skill import git@github.com:example/catalog.git --branch main --directory skills/writer`。
+  非 Git 来源不能使用这两个参数；多个 Skill 的仓库必须显式选择目录。
+  CLI 与 Desktop 共用 Core Git clone 进程、超时及脱敏错误边界；此项不代表
+  CLI 的设置 Token、代理与 HTTP 压缩包回退已全部对齐。
 - CLI 的 Skill `list/get/import/versions/create-version/rollback/sync/update` 成功结果默认只返回
   identity、version、fingerprint 与 file count 等有界摘要，不返回正文或文件快照；`--full`
   显式恢复完整 payload，`--quiet` 只抑制成功 stdout，错误仍写 stderr。显式 `repo-read`

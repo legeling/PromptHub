@@ -14,7 +14,9 @@ It is not the hosted commercial PromptHub Cloud stack. Keep the boundary clear:
 This app provides browser-safe workspace capabilities:
 
 - prompts, folders, prompt hierarchy, relations, and output-format sequences
-- skill records, versions, safety review, import/export, and remote import
+- Skill records, versions, complete package upload, text-file editing and ZIP export
+- MCP definitions and Plugin package libraries, metadata, favorites and deletion
+- Plugin package backups, version history and rollback
 - rules, media, settings, immutable desktop backup, and legacy sync compatibility
 
 Prompt creation and content edits require non-whitespace text in at least one
@@ -22,10 +24,12 @@ of `systemPrompt` or `userPrompt`. A system-only Prompt keeps `userPrompt: ""`;
 the API still requires a string for that field on creation. Partial updates use
 the stored value for any omitted content field and cannot clear the last body.
 
-MCP and Plugin data remains part of desktop backup and legacy synchronization payloads, but
-the browser does not manage or apply those Desktop-owned resources. The web
-workspace also does not expose local skill package files, agent scans,
-symlinks, platform installation, or native shell operations.
+MCP and Plugin management uses each authenticated user’s existing resource snapshot.
+Concurrent library edits use revisions and reject stale writes. Skill package files
+remain scoped to that user’s stored packages. Neither self-hosted Web nor Cloudflare
+distributes to Agents, scans server directories, creates symlinks, installs over SSH
+or executes native commands. Git import is hidden until complete package transport
+is supported; local uploads preserve text and binary attachments.
 
 It should not grow cloud-only features such as:
 

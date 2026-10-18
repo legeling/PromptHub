@@ -346,8 +346,10 @@ export function useSkillPlatform(
     skill,
   ]);
 
-  const applyPlatformChanges =
-    useCallback(async (): Promise<BatchInstallResult> => {
+  const applyPlatformChanges = useCallback(
+    async (
+      operation: "changes" | "redistribute" = "changes",
+    ): Promise<BatchInstallResult> => {
       if (
         !skill ||
         isLoading ||
@@ -359,7 +361,7 @@ export function useSkillPlatform(
       const changes = availablePlatforms.filter((platform) =>
         selectedPlatforms.has(platform.id),
       );
-      const redistributing = changes.length === 0;
+      const redistributing = operation === "redistribute";
       const installs = (redistributing ? availablePlatforms : changes)
         .filter((platform) =>
           redistributing
@@ -367,7 +369,7 @@ export function useSkillPlatform(
             : !installStatus[platform.id],
         )
         .map((platform) => platform.id);
-      const removals = changes
+      const removals = (redistributing ? [] : changes)
         .filter((platform) => installStatus[platform.id])
         .map((platform) => platform.id);
       const totalCount = installs.length + removals.length;
@@ -414,7 +416,8 @@ export function useSkillPlatform(
         setIsBatchInstalling(false);
         setInstallProgress(null);
       }
-    }, [
+    },
+    [
       availablePlatforms,
       installMode,
       installStatus,
@@ -424,7 +427,8 @@ export function useSkillPlatform(
       runtimeCapabilities.skillPlatformIntegration,
       selectedPlatforms,
       skill,
-    ]);
+    ],
+  );
 
   const uninstallFromPlatform = useCallback(
     async (platformId: string) => {

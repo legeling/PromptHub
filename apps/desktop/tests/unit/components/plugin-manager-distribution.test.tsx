@@ -369,6 +369,10 @@ function getPluginDescriptionFingerprint(plugin: PluginLibraryEntry): string {
 function resetPluginStore() {
   usePluginStore.setState({
     library: null,
+    distributionSnapshot: {},
+    distributionError: null,
+    isLoadingMarkets: false,
+    marketErrors: {},
     marketEntries: [],
     marketPreviews: {},
     marketSources: [],
@@ -445,6 +449,28 @@ function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
   window.api.plugin = {
     ...window.api.plugin,
     getLibrary: vi.fn().mockImplementation(async () => currentLibrary),
+    getDistributionStatus: vi
+      .fn()
+      .mockImplementation(async (pluginId?: string) =>
+        Object.fromEntries(
+          currentLibrary.plugins
+            .filter((plugin) => !pluginId || plugin.id === pluginId)
+            .map((plugin) => [
+              plugin.id,
+              Object.fromEntries(
+                targetMatrix.map((target) => [
+                  target.id,
+                  {
+                    installed: Boolean(
+                      plugin.distributedTargetIds?.includes(target.id),
+                    ),
+                    checkedAt: Date.now(),
+                  },
+                ]),
+              ),
+            ]),
+        ),
+      ),
     listMarket: vi.fn().mockResolvedValue(marketEntries),
     listMarketSources: vi.fn().mockResolvedValue(marketSources),
     getTargetMatrix: vi.fn().mockResolvedValue(targetMatrix),
@@ -613,9 +639,7 @@ describe("PluginManager", () => {
     expect(screen.queryByText("Claude Code")).not.toBeInTheDocument();
     expect(screen.queryByText("OpenCode")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Select All" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Distribute to selected Agents" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
     await waitFor(() =>
       expect(window.api.plugin.distributePlugin).toHaveBeenCalledWith({
         pluginId: "gmail",
@@ -643,7 +667,7 @@ describe("PluginManager", () => {
     expect(within(dialog).queryByText("OpenCode")).not.toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", {
-        name: "Distribute to selected Agents",
+        name: "Apply changes",
       }),
     ).toBeDisabled();
   });
@@ -689,7 +713,7 @@ describe("PluginManager", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Codex" }));
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: "Distribute to selected Agents",
+        name: "Redistribute",
       }),
     );
     await waitFor(() =>
@@ -720,9 +744,7 @@ describe("PluginManager", () => {
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Claude Code" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Distribute to selected Agents" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Apply changes" }));
 
     await waitFor(() => {
       expect(window.api.plugin.distributePlugin).toHaveBeenCalledWith({
@@ -855,17 +877,13 @@ describe("PluginManager", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Codex" }));
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: "Distribute to selected Agents",
+        name: "Apply changes",
       }),
     );
 
     await waitFor(() => {
+      expect(window.api.plugin.distributePlugin).toHaveBeenCalledTimes(1);
       expect(window.api.plugin.distributePlugin).toHaveBeenNthCalledWith(1, {
-        pluginId: "gmail",
-        targetIds: ["codex"],
-        mode: "copy",
-      });
-      expect(window.api.plugin.distributePlugin).toHaveBeenNthCalledWith(2, {
         pluginId: "calendar",
         targetIds: ["codex"],
         mode: "copy",
@@ -1096,7 +1114,7 @@ describe("PluginManager", () => {
 
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: "Distribute to selected Agents",
+        name: "Apply changes",
       }),
     );
 

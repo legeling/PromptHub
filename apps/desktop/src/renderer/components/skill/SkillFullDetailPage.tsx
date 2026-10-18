@@ -1,5 +1,9 @@
 import { exportSkillFile } from "./export-skill";
-import { formatSkillPlatformError, getSkillPlatformFailureSeverity, getSkillPlatformErrorFeedback } from "../../services/skill-platform-error";
+import {
+  formatSkillPlatformError,
+  getSkillPlatformFailureSeverity,
+  getSkillPlatformErrorFeedback,
+} from "../../services/skill-platform-error";
 import { runSkillContentSafetyScan } from "../../services/skill-content-scan";
 import { useTranslation } from "react-i18next";
 import { SaveIcon } from "lucide-react";
@@ -522,16 +526,24 @@ export function SkillFullDetailPage({
     uninstalledPlatforms,
   } = useSkillPlatform(selectedSkill, installMode);
 
-  const batchInstall = async () => {
+  const batchInstall = async (redistribute = false) => {
     if (platformInstallInFlightRef.current) {
       return;
     }
     platformInstallInFlightRef.current = true;
     try {
-      const result = await installSelectedPlatforms();
-      if (result.statusRefreshFailed) showToast(t("skill.platformStatusRefreshFailed"), "warning");
+      const result = await installSelectedPlatforms(
+        redistribute ? "redistribute" : "changes",
+      );
+      if (result.statusRefreshFailed)
+        showToast(t("skill.platformStatusRefreshFailed"), "warning");
       if (result.successCount > 0) {
-        showToast(t("skill.distribution.changesApplied", { count: result.successCount }), "success");
+        showToast(
+          t("skill.distribution.changesApplied", {
+            count: result.successCount,
+          }),
+          "success",
+        );
       }
       if (result.fallbacks.length > 0) {
         const details = result.fallbacks
@@ -694,7 +706,8 @@ export function SkillFullDetailPage({
     try {
       const result = await exportSkillFile(selectedSkill, format);
       if (result.status === "canceled") return;
-      if (result.status === "failed") throw new Error("Skill export was not saved");
+      if (result.status === "failed")
+        throw new Error("Skill export was not saved");
       showToast(
         result.status === "saved"
           ? t("skill.exportSaved", { fileName: result.fileName })
@@ -1007,6 +1020,8 @@ export function SkillFullDetailPage({
           setProjectDeployMode: handleSetProjectDeployMode,
           setProjectSkillImportPreferences,
           skillMdInstallStatus,
+          installDetails: skillMdInstallDetails,
+          onRedistribute: () => void batchInstall(true),
           t,
           togglePlatformSelection,
           getProjectDeployTargets,

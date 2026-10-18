@@ -1,16 +1,17 @@
+import {
+  cloneSkillRepository,
+  createGitLaunchError,
+  createGitProcessError,
+} from "@prompthub/core/skills/git-transport";
+export { GitExecutableUnavailableError } from "@prompthub/core/skills/git-transport";
 import { AgentSettingsRepository } from "@prompthub/core/agent-management/agent-settings-repository";
 import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import {
-  sanitizeSkillPackageDiagnostic,
-  sanitizeSkillPackageSourceUrl,
-} from "@prompthub/core/skills/package-operation";
+import { sanitizeSkillPackageSourceUrl } from "@prompthub/core/skills/package-operation";
 import { getDatabase } from "../database";
 import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
-import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
-import { getErrorCode } from "./skill-installer-internal";
 import {
   isPrivateAddress,
   resolvePublicAddress,
@@ -104,38 +105,7 @@ export function validateMCPConfig(config: unknown, name: string): void {
   validateMCPServerConfig(config, name);
 }
 
-const GIT_CLONE_TIMEOUT_MS = 60_000; // 60 seconds
 const GIT_REMOTE_TIMEOUT_MS = 30_000; // 30 seconds
-
-export class GitExecutableUnavailableError extends Error {
-  constructor() {
-    super(
-      "GIT_EXECUTABLE_UNAVAILABLE: Git is not installed or is not available in PATH",
-    );
-    this.name = "GitExecutableUnavailableError";
-  }
-}
-
-function createGitLaunchError(error: unknown, operation: string): Error {
-  const code = getErrorCode(error);
-  if (code === "ENOENT" || code === "EACCES") {
-    return new GitExecutableUnavailableError();
-  }
-  return new Error(`${operation}: ${sanitizeSkillPackageDiagnostic(error)}`);
-}
-
-function createGitProcessError(
-  operation: string,
-  code: number | null,
-  stderr: string,
-): Error {
-  const reason = getSkillPackageReadErrorCode(stderr);
-  const marker =
-    reason === "read-failed" ? "" : `SKILL_PACKAGE_READ:${reason}; `;
-  return new Error(
-    `${marker}${operation} failed with code ${code}: ${sanitizeSkillPackageDiagnostic(stderr)}`,
-  );
-}
 
 function normalizeRemoteGitUrl(url: string): string {
   const trimmed = url.trim();
@@ -189,64 +159,11 @@ export function gitClone(
   destDir: string,
   branch?: string,
 ): Promise<void> {
-  if (!url.trim()) {
-    throw new Error("Git clone URL cannot be empty");
-  }
-  if (url.startsWith("-")) {
-    throw new Error("Git clone URL cannot start with '-'");
-  }
-
-  const normalizedUrl = normalizeRemoteGitUrl(url);
-
-  return validateRemoteGitTransportUrl(normalizedUrl, "clone").then(
-    () =>
-      new Promise((resolve, reject) => {
-        const cloneArgs = ["clone", "--depth", "1"];
-        if (branch?.trim()) {
-          cloneArgs.push("--branch", branch.trim());
-        }
-        cloneArgs.push("--", normalizedUrl, destDir);
-        const proc = childProcess.spawn("git", cloneArgs, {
-          stdio: ["ignore", "pipe", "pipe"],
-        });
-
-        let stderr = "";
-        let settled = false;
-
-        const timeout = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            proc.kill("SIGKILL");
-            reject(
-              new Error(
-                `Git clone timed out after ${GIT_CLONE_TIMEOUT_MS / 1000}s for URL: ${sanitizeSkillPackageSourceUrl(url)}`,
-              ),
-            );
-          }
-        }, GIT_CLONE_TIMEOUT_MS);
-
-        proc.stderr?.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        proc.on("close", (code) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(createGitProcessError("Git clone", code, stderr));
-          }
-        });
-
-        proc.on("error", (error) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          reject(createGitLaunchError(error, "Git clone error"));
-        });
-      }),
+  if (!url.trim()) throw new Error("Git clone URL cannot be empty");
+  if (url.startsWith("-"))
+    throw new Error("Git clone URL cannot start with a dash");
+  return cloneSkillRepository(url, destDir, branch, (source) =>
+    validateRemoteGitTransportUrl(source, "clone"),
   );
 }
 

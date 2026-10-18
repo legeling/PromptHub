@@ -2,11 +2,19 @@ import fs from "fs/promises";
 import path from "path";
 
 import type { SkillDB } from "@prompthub/db";
+import {
+  resolveSkillGitSource,
+  type SkillSourceInstallOptions,
+} from "./git-source";
 
 export interface SkillInstallFlowDeps {
   fetchRemoteContent(sourceUrl: string): Promise<string>;
   importFromJson(jsonContent: string, skillDb: SkillDB): Promise<string>;
-  installFromGithub(sourceUrl: string, skillDb: SkillDB): Promise<string>;
+  installFromGithub(
+    sourceUrl: string,
+    skillDb: SkillDB,
+    options?: SkillSourceInstallOptions,
+  ): Promise<string>;
   installFromSkillContent(
     skillContent: string,
     skillDb: SkillDB,
@@ -22,15 +30,21 @@ export async function installSkillFromSource(
   source: string,
   skillDb: SkillDB,
   deps: SkillInstallFlowDeps,
-  options?: { name?: string },
+  options?: SkillSourceInstallOptions,
 ): Promise<string> {
   const trimmedSource = source.trim();
   if (!trimmedSource) {
     throw new Error("Skill source cannot be empty");
   }
 
-  if (/^https?:\/\/github\.com\//i.test(trimmedSource)) {
-    return deps.installFromGithub(trimmedSource, skillDb);
+  if (resolveSkillGitSource(trimmedSource, options)) {
+    return deps.installFromGithub(trimmedSource, skillDb, options);
+  }
+
+  if (options?.branch !== undefined || options?.directory !== undefined) {
+    throw new Error(
+      "Git branch and directory options require a repository source",
+    );
   }
 
   if (/^https:\/\//i.test(trimmedSource)) {
@@ -49,7 +63,9 @@ export async function installSkillFromSource(
 
   if (sourceStat.isDirectory()) {
     const skillMdPath = path.join(resolvedSourcePath, "SKILL.md");
-    const skillContent = await fs.readFile(skillMdPath, "utf-8").catch(() => null);
+    const skillContent = await fs
+      .readFile(skillMdPath, "utf-8")
+      .catch(() => null);
     if (!skillContent) {
       throw new Error(`SKILL.md not found in directory: ${resolvedSourcePath}`);
     }

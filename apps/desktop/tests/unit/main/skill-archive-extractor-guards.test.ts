@@ -24,9 +24,12 @@ vi.mock("fflate", () => ({
   unzipSync: mocks.unzipSync,
 }));
 
-vi.mock("../../../src/main/services/skill-installer-internal", () => ({
-  isPathWithin: mocks.isPathWithin,
-}));
+vi.mock("path", async (original) => {
+  const actual = await original<typeof import("path")>();
+  const relative = (from: string, to: string): string =>
+    mocks.isPathWithin() ? actual.relative(from, to) : `..${actual.sep}outside`;
+  return { ...actual, relative, default: { ...actual, relative } };
+});
 
 import { extractSkillZipArchive } from "../../../src/main/services/skill-archive-extractor";
 

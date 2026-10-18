@@ -1,13 +1,14 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import type {
   AgentAssetFilesSnapshot,
   AgentAssetStoreSourcesSnapshot,
   McpLibraryFile,
   PluginLibraryFile,
   PluginPackageSnapshot,
-} from '@prompthub/shared';
-import { getDataDir } from '../runtime-paths.js';
+} from "@prompthub/shared";
+import { getDataDir } from "../runtime-paths.js";
 
 export interface AgentAssetsSnapshot {
   mcpLibrary?: McpLibraryFile;
@@ -18,7 +19,7 @@ export interface AgentAssetsSnapshot {
 }
 
 function getAgentAssetsDir(): string {
-  return path.join(getDataDir(), 'agent-assets');
+  return path.join(getDataDir(), "agent-assets");
 }
 
 function getAgentAssetsPath(userId: string): string {
@@ -27,9 +28,17 @@ function getAgentAssetsPath(userId: string): string {
 
 function writeJsonFileAtomic(filePath: string, payload: unknown): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tempPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-  fs.renameSync(tempPath, filePath);
+  const tempPath = `${filePath}.tmp-${randomUUID()}`;
+  try {
+    fs.writeFileSync(tempPath, `${JSON.stringify(payload, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    fs.renameSync(tempPath, filePath);
+  } finally {
+    fs.rmSync(tempPath, { force: true });
+  }
 }
 
 function hasAgentAssetFields(payload: AgentAssetsSnapshot): boolean {
@@ -48,16 +57,15 @@ export function readAgentAssetsSnapshot(userId: string): AgentAssetsSnapshot {
     if (!fs.existsSync(filePath)) {
       return {};
     }
-    const parsed = JSON.parse(
-      fs.readFileSync(filePath, 'utf8'),
-    ) as AgentAssetsSnapshot;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      throw new Error("Invalid resource snapshot");
+    // The file is the existing per-tenant sync carrier; mutations validate their domain separately.
+    return parsed as AgentAssetsSnapshot;
   } catch (error) {
-    console.warn(
-      `[agent-assets-sync] failed to read agent assets for ${userId}:`,
-      error,
-    );
-    return {};
+    throw new Error(`Unable to read resource library for user ${userId}`, {
+      cause: error,
+    });
   }
 }
 

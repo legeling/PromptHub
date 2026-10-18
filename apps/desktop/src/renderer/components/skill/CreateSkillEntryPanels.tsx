@@ -1,5 +1,6 @@
 import type { ChangeEvent, RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import { getRuntimeCapabilities } from "../../runtime";
 import {
   BrainIcon,
   EditIcon,
@@ -150,15 +151,17 @@ export function CreateSkillMethodSelection({
         )}
         onClick={() => onSelectMode("ai")}
       />
-      <MethodButton
-        icon={<GithubIcon className="w-6 h-6 text-foreground" aria-hidden />}
-        title={t("skill.installFromGithub", "Install from Git Repository")}
-        description={t(
-          "skill.githubDesc",
-          "Paste a GitHub, Gitea, or self-hosted Git repository URL",
-        )}
-        onClick={onSelectGit}
-      />
+      {getRuntimeCapabilities().skillRemoteImport ? (
+        <MethodButton
+          icon={<GithubIcon className="w-6 h-6 text-foreground" aria-hidden />}
+          title={t("skill.installFromGithub", "Install from Git Repository")}
+          description={t(
+            "skill.githubDesc",
+            "Paste a GitHub, Gitea, or self-hosted Git repository URL",
+          )}
+          onClick={onSelectGit}
+        />
+      ) : null}
       <MethodButton
         icon={<EditIcon className="w-6 h-6 text-foreground" aria-hidden />}
         title={t("skill.createManually", "Create Manually")}

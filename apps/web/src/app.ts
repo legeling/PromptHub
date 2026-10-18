@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { getWebRuntime } from "@prompthub/shared/utils/web-runtime";
 import rootPackage from "../../../package.json";
 import { getServerDatabase } from "./database.js";
 import { logger } from "./middleware/logger.js";
@@ -9,6 +10,7 @@ import authRoutes from "./routes/auth.js";
 import promptRoutes from "./routes/prompts.js";
 import folderRoutes from "./routes/folders.js";
 import skillRoutes from "./routes/skills.js";
+import resourceLibraryRoutes from "./routes/resource-libraries.js";
 import rulesRoutes from "./routes/rules.js";
 import settingsRoutes from "./routes/settings.js";
 import agentRoutes from "./routes/agents.js";
@@ -34,9 +36,13 @@ export function createApp(): Hono {
 
   const protectedApi = new Hono();
   protectedApi.use("*", authMiddleware());
+  protectedApi.get("/runtime", (c) =>
+    c.json({ data: getWebRuntime("self-hosted") }),
+  );
   protectedApi.route("/prompts", promptRoutes);
   protectedApi.route("/folders", folderRoutes);
   protectedApi.route("/skills", skillRoutes);
+  protectedApi.route("/resource-libraries", resourceLibraryRoutes);
   protectedApi.route("/rules", rulesRoutes);
   protectedApi.route("/settings", settingsRoutes);
   protectedApi.route("/agents", agentRoutes);

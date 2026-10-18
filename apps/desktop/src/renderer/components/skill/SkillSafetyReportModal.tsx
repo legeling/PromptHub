@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getRuntimeCapabilities } from "../../runtime";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangleIcon,
@@ -90,7 +91,9 @@ export function SkillSafetyReportModal({
       {report ? (
         <div className="space-y-5">
           <SafetyReportHeader report={report} />
-          {report.scanMethod === "ai" ? <SafetyDimensions report={report} /> : null}
+          {report.scanMethod === "ai" ? (
+            <SafetyDimensions report={report} />
+          ) : null}
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground border-t border-border pt-3">
             <span>
               {t("skill.safetyFilesChecked", "{{count}} file(s) checked", {
@@ -112,22 +115,24 @@ export function SkillSafetyReportModal({
             {getSkillSafetyMethodDescription(t, report)}
           </p>
           <SafetyFindings findings={groupedFindings} />
-          <div className="flex items-center justify-end border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={() => void onRescan()}
-              disabled={isScanning}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
-            >
-              <RefreshCwIcon
-                aria-hidden="true"
-                className={`h-4 w-4 ${isScanning ? "animate-spin" : ""}`}
-              />
-              {isScanning
-                ? t("skill.safetyScanning", "Scanning...")
-                : t("skill.safetyRescan", "Rescan")}
-            </button>
-          </div>
+          {getRuntimeCapabilities().skillSafetyScan ? (
+            <div className="flex items-center justify-end border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => void onRescan()}
+                disabled={isScanning}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                <RefreshCwIcon
+                  aria-hidden="true"
+                  className={`h-4 w-4 ${isScanning ? "animate-spin" : ""}`}
+                />
+                {isScanning
+                  ? t("skill.safetyScanning", "Scanning...")
+                  : t("skill.safetyRescan", "Rescan")}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </Modal>

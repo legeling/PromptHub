@@ -4,7 +4,7 @@ export function encodeCanonicalResourceDirectory(resourceId: string): string {
   if (typeof resourceId !== "string" || resourceId.length === 0) {
     throw new Error("Canonical resource id is required");
   }
-  return Array.from(Buffer.from(resourceId, "utf8"), (byte) => {
+  return Array.from(new TextEncoder().encode(resourceId), (byte) => {
     const character = String.fromCharCode(byte);
     return SAFE_RESOURCE_PATH_BYTE.test(character)
       ? character

@@ -1,3 +1,9 @@
+import { distributionCountPresence } from "@prompthub/shared/utils/resource-observation";
+import {
+  countResources,
+  filterResources,
+  paginateResources,
+} from "@prompthub/shared/utils/resource-library";
 import { useMemo, type ReactNode } from "react";
 import { Clock3Icon, SendIcon, ServerIcon, StarIcon } from "lucide-react";
 import { MCP_OFFICIAL_MARKET_SOURCE_ID } from "@prompthub/shared/constants/mcp-market";
@@ -141,18 +147,12 @@ function countMcpLibraryServers(
   servers: McpServerConfig[],
   distributionById: Map<string, number>,
 ) {
-  let distributed = 0;
-  let favorites = 0;
-  for (const server of servers) {
-    if (server.isFavorite) favorites += 1;
-    if ((distributionById.get(server.id) ?? 0) > 0) distributed += 1;
-  }
-  return {
-    all: servers.length,
-    favorites,
-    distributed,
-    pending: Math.max(servers.length - distributed, 0),
-  };
+  return countResources(servers, (server) => ({
+    id: server.id,
+    favorite: server.isFavorite,
+    search: [],
+    presence: distributionCountPresence(distributionById.get(server.id)),
+  }));
 }
 
 function createMcpFilterOptions(
@@ -203,10 +203,22 @@ function useMcpDistributionModel(
       const count = targets.visibleTargetPresets.filter((preset) =>
         isServerOnPreset(targets.visibleTargetStatus, preset.id, server.name),
       ).length;
-      next.set(server.id, count);
+      const complete =
+        targets.inventoryLoaded &&
+        targets.visibleTargetPresets.every((preset) =>
+          targets.visibleTargetStatus.some(
+            (status) => status.presetId === preset.id && !status.error,
+          ),
+        );
+      if (count > 0 || complete) next.set(server.id, count);
     }
     return next;
-  }, [servers, targets.visibleTargetPresets, targets.visibleTargetStatus]);
+  }, [
+    servers,
+    targets.visibleTargetPresets,
+    targets.visibleTargetStatus,
+    targets.inventoryLoaded,
+  ]);
   const libraryCounts = useMemo(
     () => countMcpLibraryServers(servers, serverDistributionById),
     [serverDistributionById, servers],
@@ -215,7 +227,7 @@ function useMcpDistributionModel(
     () => createMcpFilterOptions(libraryCounts, t),
     [libraryCounts, t],
   );
-  return { serverDistributionById, mcpFilterOptions };
+  return { serverDistributionById, mcpFilterOptions, libraryCounts };
 }
 
 function filterMcpServers(options: {
@@ -225,20 +237,19 @@ function filterMcpServers(options: {
   servers: McpServerConfig[];
   serverDistributionById: Map<string, number>;
 }) {
-  return options.servers.filter((server) => {
-    const distributed = options.serverDistributionById.get(server.id) ?? 0;
-    if (options.libraryFilter === "favorites" && !server.isFavorite)
-      return false;
-    if (options.libraryFilter === "distributed" && distributed === 0)
-      return false;
-    if (options.libraryFilter === "pending" && distributed > 0) return false;
-    const matchesTag =
-      options.filterTags.length === 0 ||
-      options.filterTags.some((tag) => (server.tags ?? []).includes(tag));
-    return (
-      matchesTag && matchesMcpSearch(server, options.normalizedSearchQuery)
-    );
-  });
+  return filterResources(
+    options.servers,
+    (server) => ({
+      id: server.id,
+      favorite: server.isFavorite,
+      tags: server.tags,
+      search: [],
+      presence: distributionCountPresence(
+        options.serverDistributionById.get(server.id),
+      ),
+    }),
+    { filter: options.libraryFilter, tags: options.filterTags },
+  ).filter((server) => matchesMcpSearch(server, options.normalizedSearchQuery));
 }
 
 function getMcpSourceFilterEntries(
@@ -378,40 +389,19 @@ function useMcpServerFilterModel(
   return { ...base, ...source };
 }
 
-function getMcpVisiblePageNumbers(currentPage: number, totalPages: number) {
-  const windowSize = Math.min(5, totalPages);
-  if (totalPages <= windowSize || currentPage <= 3) {
-    return Array.from({ length: windowSize }, (_, index) => index + 1);
-  }
-  if (currentPage >= totalPages - 2) {
-    return Array.from(
-      { length: windowSize },
-      (_, index) => totalPages - windowSize + index + 1,
-    );
-  }
-  return Array.from(
-    { length: windowSize },
-    (_, index) => currentPage - 2 + index,
-  );
-}
-
 function useMcpPaginationModel(
   filteredServers: McpServerConfig[],
   state: McpManagerState,
 ) {
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredServers.length / state.pageSize),
+  const page = useMemo(
+    () => paginateResources(filteredServers, state.currentPage, state.pageSize),
+    [filteredServers, state.currentPage, state.pageSize],
   );
-  const visibleServers = useMemo(() => {
-    const startIndex = (state.currentPage - 1) * state.pageSize;
-    return filteredServers.slice(startIndex, startIndex + state.pageSize);
-  }, [filteredServers, state.currentPage, state.pageSize]);
-  const visiblePageNumbers = useMemo(
-    () => getMcpVisiblePageNumbers(state.currentPage, totalPages),
-    [state.currentPage, totalPages],
-  );
-  return { totalPages, visibleServers, visiblePageNumbers };
+  return {
+    totalPages: page.totalPages,
+    visibleServers: page.items,
+    visiblePageNumbers: page.pageNumbers,
+  };
 }
 
 function useMcpSelectionModel(

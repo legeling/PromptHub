@@ -1,4 +1,17 @@
 {
+  "hostedResources": {
+    "description": "Ressourcen speichern und verwalten. Die Verteilung an Agents erfolgt auf Ihrem Gerät.",
+    "operationFailed": "Der Vorgang ist fehlgeschlagen. Bitte erneut versuchen.",
+    "empty": "Keine passenden Ressourcen.",
+    "deleteConfirm": "„{{name}}“ aus der Bibliothek löschen? Das gespeicherte Paket und sein Verlauf werden ebenfalls gelöscht.",
+    "notes": "Persönliche Notizen",
+    "uploadSkillPackage": "Skill-Paket hochladen",
+    "uploadSkillPackageHint": "ZIP mit SKILL.md im Stammverzeichnis wählen. Zugehörige Dateien werden mitgespeichert.",
+    "importPlugins": "Plugin-Sicherung importieren",
+    "exportPlugins": "Plugin-Sicherung exportieren",
+    "pluginBackupHint": "Speichert vollständige Plugin-Pakete mit Versionsverlauf. Importiert eine PromptHub-JSON-Sicherung; IDs bleiben erhalten, Duplikate werden abgelehnt.",
+    "requestLimit": "Web-Uploads sind auf 1 MiB pro Anfrage begrenzt, einschließlich Metadaten und kodierter Dateien."
+  },
   "testHistory": {
     "title": "Testverlauf",
     "back": "Zurück zum Verlauf",
@@ -2107,7 +2120,6 @@
     "cliGlobalBinHint": "CLI in {{path}} installiert. Falls das Terminal prompthub nicht findet, fügen Sie dieses Verzeichnis zum PATH hinzu und öffnen Sie das Terminal erneut.",
     "cliCopyCommand": "Kopieren",
     "cliStatusLoadFailed": "PromptHub CLI-Status konnte nicht geladen werden",
-
     "cliCachedStatus": "Zuletzt geprüft: {{time}}. Zum erneuten Prüfen aktualisieren.",
     "openSource": "Open-Source-Projekt",
     "projectRepository": "Projekt-Repository",
@@ -3741,7 +3753,8 @@
       "applyChanges": "Änderungen anwenden",
       "changesApplied": "{{count}} Änderungen angewendet.",
       "redistribute": "Erneut verteilen",
-      "redistributeHint": "{{count}} markierte Ziele mit der gewählten Methode aktualisieren."
+      "redistributeHint": "{{count}} markierte Ziele mit der gewählten Methode aktualisieren.",
+      "noChanges": "Keine ausstehenden Änderungen. Erneut verteilen, um installierte Kopien zu aktualisieren."
     }
   },
   "error": {
@@ -4857,5 +4870,15 @@
     "compareEmpty": "Wählen Sie mindestens zwei Modelle und starten Sie den Vergleich.",
     "singleEmpty": "Starten Sie einen Test, um hier die Antwort zu sehen.",
     "emptyResponse": "Keine Antwort"
+  },
+  "resourceLibrary": {
+    "statusFailed": "Der Verteilungsstatus konnte nicht vollständig geprüft werden. Die letzten Ergebnisse bleiben erhalten.",
+    "statusUnknown": "Der Verteilungsstatus von {{count}} Ressourcen ist noch ungeprüft.",
+    "content": {
+      "needs-sync": "Synchronisierung ausstehend",
+      "conflict": "Inhaltskonflikt",
+      "unverified": "Nicht geprüft"
+    },
+    "pagination": "Seitennavigation"
   }
 }

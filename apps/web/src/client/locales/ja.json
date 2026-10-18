@@ -1,4 +1,7 @@
 {
+  "runtime": {
+    "loadFailed": "サーバーの対応機能を取得できません。接続を確認して再試行してください。"
+  },
   "auth": {
     "loginTitle": "PromptHub にログイン",
     "loginDescription": "既存のアカウントでサインインして、セルフホスト版 PromptHub ワークスペースにアクセスします。",

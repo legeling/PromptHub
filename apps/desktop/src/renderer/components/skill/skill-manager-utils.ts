@@ -1,3 +1,4 @@
+import { RESOURCE_GALLERY_COLUMNS } from "@prompthub/shared/constants/resource-library";
 import type { SkillPlatformInstallStatusMap } from "@prompthub/shared/types";
 import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
 import type {
@@ -8,14 +9,7 @@ import type {
 const SKILL_GALLERY_MANUAL_MIN_WIDTH_PX = 240;
 
 export const SKILL_GALLERY_COLUMNS: SkillGalleryColumnMode[] = [
-  "auto",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
+  ...RESOURCE_GALLERY_COLUMNS,
 ];
 export const LOCAL_SKILL_SCAN_TIMEOUT_MS = 30_000;
 export const ALL_SKILL_SOURCE_FILTER = "all";
@@ -78,25 +72,7 @@ export function getSkillGalleryGridStyle(
   };
 }
 
-export function getVisiblePageNumbers(
-  currentPage: number,
-  totalPages: number,
-): number[] {
-  const windowSize = Math.min(5, totalPages);
-  if (totalPages <= windowSize || currentPage <= 3) {
-    return Array.from({ length: windowSize }, (_, index) => index + 1);
-  }
-  if (currentPage >= totalPages - 2) {
-    return Array.from(
-      { length: windowSize },
-      (_, index) => totalPages - windowSize + index + 1,
-    );
-  }
-  return Array.from(
-    { length: windowSize },
-    (_, index) => currentPage - 2 + index,
-  );
-}
+export { resourcePageNumbers as getVisiblePageNumbers } from "@prompthub/shared/utils/resource-library";
 
 export function normalizeDroppedSkillPath(filePath: string): string {
   const normalizedPath = filePath.replace(/\\/g, "/").trim();

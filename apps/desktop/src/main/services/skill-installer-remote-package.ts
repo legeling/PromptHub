@@ -1,3 +1,4 @@
+import { materializeRemoteGitRepository as materializeRepository } from "@prompthub/core/skills/git-materialize";
 import * as fs from "fs/promises";
 import * as path from "path";
 import type {
@@ -7,10 +8,6 @@ import type {
 } from "@prompthub/shared/types";
 import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import { computeSkillPackageFingerprintV1Sync } from "@prompthub/shared/utils/skill-source-update";
-import {
-  sanitizeSkillPackageDiagnostic,
-  sanitizeSkillPackageSourceUrl,
-} from "@prompthub/core/skills/package-operation";
 import { extractSkillZipArchive } from "./skill-archive-extractor";
 import {
   resolveSkillDirBySelectorFromRepo,
@@ -29,15 +26,10 @@ import {
 } from "./skill-installer-repo";
 import { saveToLocalRepoBySkillId } from "./skill-installer-replacement";
 import { fetchRemoteBytes } from "./skill-installer-remote";
-import {
-  GitExecutableUnavailableError,
-  gitClone,
-} from "./skill-installer-utils";
+import { gitClone } from "./skill-installer-utils";
 import { type RemoteSkillPackageSafetyScanOptions } from "./skill-update-safety";
 import { validateMaterializedSkillPackage } from "./skill-package-validation";
 import { readSkillPackageSnapshotFromValidatedDirectory } from "./skill-package-snapshot";
-import { SkillPackageTransportError } from "./skill-package-transport-error";
-import { getSkillPackageReadErrorCode } from "@prompthub/shared/utils/skill-package-read-error";
 
 type FetchArchive = (url: string) => Promise<Uint8Array>;
 
@@ -139,91 +131,21 @@ async function persistStagedPackage(
   return saveToLocalRepoBySkillId(skill, skillDir, "copy");
 }
 
-function buildGitArchiveUrl(
-  repo: NonNullable<ReturnType<typeof parseGitRepo>>,
-  branch?: string,
-): string | null {
-  if (repo.protocol !== "https") return null;
-  const repositoryUrl = sanitizeSkillPackageSourceUrl(repo.repositoryUrl)
-    .replace(/\.git\/?$/iu, "")
-    .replace(/\/$/u, "");
-  const ref = encodeURIComponent(branch?.trim() || "HEAD");
-  if (repo.host === "github.com") {
-    return `https://codeload.github.com/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/zip/${ref}`;
-  }
-  if (repo.host === "gitlab.com") {
-    const archiveName = `${encodeURIComponent(repo.repo)}-${ref}.zip`;
-    return `${repositoryUrl}/-/archive/${ref}/${archiveName}`;
-  }
-  return `${repositoryUrl}/archive/${ref}.zip`;
-}
-
-async function resolveArchiveCheckoutRoot(extractDir: string): Promise<string> {
-  const entries = await fs.readdir(extractDir, { withFileTypes: true });
-  if (entries.length !== 1 || !entries[0]?.isDirectory()) {
-    throw new Error("Git archive must contain one repository root directory");
-  }
-  return path.join(extractDir, entries[0].name);
-}
-
-function dualTransportError(gitError: unknown, httpError: unknown) {
-  const gitDiagnostic = sanitizeSkillPackageDiagnostic(gitError);
-  const httpDiagnostic = sanitizeSkillPackageDiagnostic(httpError);
-  const httpCode = getSkillPackageReadErrorCode(httpError);
-  const gitCode = getSkillPackageReadErrorCode(gitError);
-  const code =
-    (httpCode === "network-timeout" || httpCode === "network-unavailable") &&
-    gitCode === "proxy-unavailable"
-      ? gitCode
-      : httpCode;
-  return new SkillPackageTransportError(
-    "git-http-fallback-failed",
-    `SKILL_PACKAGE_READ:${code}; HTTP archive fallback failed: ${httpDiagnostic}; Git transport failed: ${gitDiagnostic}`,
-  );
-}
-
 async function materializeRemoteGitRepository(
   repo: NonNullable<ReturnType<typeof parseGitRepo>>,
   branch: string | undefined,
-  tempRoot: string,
+  root: string,
   fetchArchive: FetchArchive,
-  requestedDirectory?: string,
+  directory?: string,
 ): Promise<string> {
-  const cloneDir = path.join(tempRoot, `${repo.owner}-${repo.repo}`);
-  try {
-    await gitClone(repo.cloneUrl, cloneDir, branch);
-    return cloneDir;
-  } catch (gitError) {
-    const archiveUrl = buildGitArchiveUrl(repo, branch);
-    if (!archiveUrl) {
-      if (gitError instanceof GitExecutableUnavailableError) {
-        throw new SkillPackageTransportError(
-          "git-unavailable",
-          gitError.message,
-        );
-      }
-      throw gitError;
-    }
-
-    let archiveBytes: Uint8Array;
-    try {
-      archiveBytes = await fetchArchive(archiveUrl);
-    } catch (httpError) {
-      throw dualTransportError(gitError, httpError);
-    }
-    const extractDir = path.join(tempRoot, "http-archive");
-    await extractSkillZipArchive(
-      archiveBytes,
-      extractDir,
-      requestedDirectory === undefined
-        ? undefined
-        : {
-            repositoryDirectory:
-              requestedDirectory === "." ? "" : requestedDirectory,
-          },
-    );
-    return resolveArchiveCheckoutRoot(extractDir);
-  }
+  return materializeRepository(
+    repo,
+    branch,
+    root,
+    fetchArchive,
+    directory,
+    gitClone,
+  );
 }
 
 /** Clone, validate, review, and materialize one Git-backed Skill package. */

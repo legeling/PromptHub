@@ -1,4 +1,17 @@
 {
+  "hostedResources": {
+    "description": "リソースを保存・管理します。Agent への配布はローカル端末で行います。",
+    "operationFailed": "操作に失敗しました。再試行してください。",
+    "empty": "一致するリソースがありません。",
+    "deleteConfirm": "ライブラリから「{{name}}」を削除しますか？保存済みのパッケージと履歴も削除されます。",
+    "notes": "個人メモ",
+    "uploadSkillPackage": "Skill パッケージをアップロード",
+    "uploadSkillPackageHint": "ルートに SKILL.md を含む ZIP を選択します。付属ファイルも保存されます。",
+    "importPlugins": "Plugin バックアップをインポート",
+    "exportPlugins": "Plugin バックアップをエクスポート",
+    "pluginBackupHint": "完全な Plugin パッケージとバージョン履歴を保存します。PromptHub JSON バックアップをインポートします。同じ ID の重複は拒否されます。",
+    "requestLimit": "Web のアップロードはメタデータとエンコード済みファイルを含め最大 1 MiB です。"
+  },
   "testHistory": {
     "title": "テスト履歴",
     "back": "履歴に戻る",
@@ -2107,7 +2120,6 @@
     "cliGlobalBinHint": "CLI は {{path}} にインストールされました。端末で prompthub が見つからない場合、このディレクトリを PATH に追加して端末を開き直してください。",
     "cliCopyCommand": "コピー",
     "cliStatusLoadFailed": "PromptHub CLI の状態読み込みに失敗しました",
-
     "cliCachedStatus": "最終確認：{{time}}。更新すると再確認できます。",
     "openSource": "オープンソースプロジェクト",
     "projectRepository": "プロジェクトリポジトリ",
@@ -3741,7 +3753,8 @@
       "applyChanges": "変更を適用",
       "changesApplied": "{{count}} 件の変更を適用しました。",
       "redistribute": "再配布",
-      "redistributeHint": "選択した方法でチェック済みの {{count}} 件を更新します。"
+      "redistributeHint": "選択した方法でチェック済みの {{count}} 件を更新します。",
+      "noChanges": "適用する変更はありません。再配布でインストール済みのコピーを更新できます。"
     }
   },
   "error": {
@@ -4857,5 +4870,15 @@
     "compareEmpty": "モデルを2つ以上選択して比較を開始してください。",
     "singleEmpty": "テストを開始すると、ここに応答が表示されます。",
     "emptyResponse": "応答なし"
+  },
+  "resourceLibrary": {
+    "statusFailed": "配布状態を完全に確認できませんでした。前回の結果を表示しています。",
+    "statusUnknown": "{{count}} 件のリソースの配布状態が未確認です。",
+    "content": {
+      "needs-sync": "同期待ち",
+      "conflict": "内容の競合",
+      "unverified": "未検証"
+    },
+    "pagination": "ページ切り替え"
   }
 }

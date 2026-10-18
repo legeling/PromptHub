@@ -8,6 +8,7 @@ beforeEach(() =>
     skills: [createSkillFixture({ id: "distribution-a" })],
     skillPlatformStatuses: {},
     deployedSkillNames: new Set(),
+    distributionStatusError: null,
   }),
 );
 
@@ -52,11 +53,17 @@ describe("shared Skill distribution status", () => {
     await useSkillStore.getState().loadDeployedStatus({ force: true });
     batch.mockResolvedValueOnce({});
     await useSkillStore.getState().loadDeployedStatus({ force: true });
+    expect(useSkillStore.getState().distributionStatusError).toContain(
+      "incomplete",
+    );
     expect(
       useSkillStore.getState().skillPlatformStatuses["distribution-a"].claude,
     ).toBe(true);
     batch.mockRejectedValueOnce(new Error("Scan unavailable"));
     await useSkillStore.getState().loadDeployedStatus({ force: true });
+    expect(useSkillStore.getState().distributionStatusError).toBe(
+      "Scan unavailable",
+    );
     expect(
       useSkillStore.getState().skillPlatformStatuses["distribution-a"].claude,
     ).toBe(true);
@@ -65,6 +72,7 @@ describe("shared Skill distribution status", () => {
     ).toBe(true);
     batch.mockResolvedValue({ "distribution-a": { claude: false } });
     await useSkillStore.getState().loadDeployedStatus({ force: true });
+    expect(useSkillStore.getState().distributionStatusError).toBeNull();
     expect(
       useSkillStore.getState().skillPlatformStatuses["distribution-a"].claude,
     ).toBe(false);

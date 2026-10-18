@@ -18,6 +18,7 @@ function createSkillLibraryState(): Pick<
   | "filterTags"
   | "deployedSkillNames"
   | "skillPlatformStatuses"
+  | "distributionStatusError"
   | "pendingPluginChildDeploySkillIds"
 > {
   return {
@@ -32,6 +33,7 @@ function createSkillLibraryState(): Pick<
     filterTags: [],
     deployedSkillNames: new Set<string>(),
     skillPlatformStatuses: {},
+    distributionStatusError: null,
     pendingPluginChildDeploySkillIds: [],
   };
 }

@@ -18,6 +18,7 @@ const fsMocks = vi.hoisted(() => ({
   cp: vi.fn(),
   readFile: vi.fn(),
   writeFile: vi.fn(),
+  rename: vi.fn(),
   lstat: vi.fn(),
   rm: vi.fn(),
   symlink: vi.fn(),
@@ -73,7 +74,21 @@ vi.mock("@prompthub/core/skills/destination", () => ({
   ) => prepare(target),
 }));
 
+// Complete package conflict guards are exercised by CLI real-filesystem parity tests.
+vi.mock("@prompthub/core/skills/platform-content", () => ({
+  assertPlatformContentWritable: vi.fn().mockResolvedValue(undefined),
+  fingerprintPlatformPackage: vi.fn().mockResolvedValue(undefined),
+  inspectPlatformContent: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("fs/promises", () => fsMocks);
+vi.mock("@prompthub/core/skills/platform-files", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@prompthub/core/skills/platform-files")
+  >()),
+  fileExists: internalMocks.fileExists,
+  getErrorCode: internalMocks.getErrorCode,
+  validateSkillName: internalMocks.validateSkillName,
+}));
 
 vi.mock("../../../src/main/services/skill-installer-internal", () => ({
   getSkillsDirAccessor: internalMocks.getSkillsDirAccessor,
@@ -97,7 +112,7 @@ vi.mock("../../../src/main/services/skill-installer-utils", () => ({
   validateMCPConfig: utilsMocks.validateMCPConfig,
 }));
 
-vi.mock("../../../src/main/services/cherry-studio-skill-platform", () => ({
+vi.mock("@prompthub/core/skills/cherry-studio-skill-platform", () => ({
   getCherryStudioSkillStatus: cherryStudioMocks.getCherryStudioSkillStatus,
   installCherryStudioSkill: cherryStudioMocks.installCherryStudioSkill,
   isCherryStudioPlatform: cherryStudioMocks.isCherryStudioPlatform,
@@ -130,6 +145,7 @@ describe("skill-installer-platform symlink install", () => {
     fsMocks.cp.mockResolvedValue(undefined);
     fsMocks.readFile.mockResolvedValue("{}");
     fsMocks.writeFile.mockResolvedValue(undefined);
+    fsMocks.rename.mockResolvedValue(undefined);
     fsMocks.rm.mockResolvedValue(undefined);
     fsMocks.symlink.mockResolvedValue(undefined);
     fsMocks.realpath.mockImplementation(async (targetPath: string) =>
@@ -187,6 +203,9 @@ describe("skill-installer-platform symlink install", () => {
       expect.objectContaining({ id: "cherry-studio" }),
       "demo-skill",
       fixturePath("/prompthub/skills/demo-skill"),
+      expect.objectContaining({
+        overrides: { "cherry-studio": fixturePath("/platform") },
+      }),
     );
     expect(fsMocks.cp).not.toHaveBeenCalled();
   });
@@ -264,7 +283,7 @@ describe("skill-installer-platform symlink install", () => {
       expect.objectContaining({ id: "cherry-studio" }),
       "demo-skill",
       fixturePath("/prompthub/skills/demo-skill"),
-      { mode: "symlink" },
+      expect.objectContaining({ mode: "symlink" }),
     );
     expect(fsMocks.symlink).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -412,7 +431,7 @@ describe("skill-installer-platform symlink install", () => {
       }),
     );
     expect(fsMocks.writeFile).toHaveBeenCalledWith(
-      fixturePath("/platform/skills/.prompthub-platform-activations.json"),
+      expect.stringContaining(".prompthub-platform-activations.json.tmp-"),
       expect.stringContaining('"writer"'),
       "utf-8",
     );
@@ -433,7 +452,7 @@ describe("skill-installer-platform symlink install", () => {
       "dir",
     );
     expect(fsMocks.writeFile).toHaveBeenCalledWith(
-      fixturePath("/platform/skills/.prompthub-platform-activations.json"),
+      expect.stringContaining(".prompthub-platform-activations.json.tmp-"),
       expect.stringContaining('"writer"'),
       "utf-8",
     );
@@ -675,7 +694,7 @@ describe("skill-installer-platform symlink install", () => {
       },
     );
     expect(fsMocks.writeFile).toHaveBeenCalledWith(
-      fixturePath("/platform/skills/.prompthub-platform-activations.json"),
+      expect.stringContaining(".prompthub-platform-activations.json.tmp-"),
       expect.not.stringContaining('"writer"'),
       "utf-8",
     );
@@ -704,6 +723,9 @@ describe("skill-installer-platform symlink install", () => {
     expect(cherryStudioMocks.uninstallCherryStudioSkill).toHaveBeenCalledWith(
       expect.objectContaining({ id: "cherry-studio" }),
       "find-skills",
+      expect.objectContaining({
+        overrides: { "cherry-studio": fixturePath("/platform") },
+      }),
     );
     expect(fsMocks.rm).not.toHaveBeenCalled();
     expect(fsMocks.writeFile).not.toHaveBeenCalled();
@@ -726,7 +748,6 @@ describe("skill-installer-platform symlink install", () => {
       ["writer"],
     );
 
-    expect(fsMocks.rm).toHaveBeenCalledTimes(1);
     expect(fsMocks.rm).toHaveBeenCalledWith(
       fixturePath("/platform/skills/writer"),
       {

@@ -46,6 +46,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     platformError,
     installProgress,
     installStatus,
+    installDetails,
     isBatchInstalling,
     selectedPlatforms,
     selectAllPlatforms,
@@ -69,7 +70,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     setInstallMode(skillInstallMethod);
   }, [skill.id, skillInstallMethod]);
 
-  const handleInstall = async () => {
+  const handleInstall = async (redistribute = false) => {
     if (
       isLoading ||
       platformError ||
@@ -83,7 +84,9 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     installPendingRef.current = true;
     setIsInstallPending(true);
     try {
-      const result = await applyPlatformChanges();
+      const result = await applyPlatformChanges(
+        redistribute ? "redistribute" : "changes",
+      );
       if (result.statusRefreshFailed)
         showToast(t("skill.platformStatusRefreshFailed"), "warning");
       if (result.successCount > 0) {
@@ -167,6 +170,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
             isBusy={isInstalling}
             installProgress={installProgress}
             onApply={() => void handleInstall()}
+            onRedistribute={() => void handleInstall(true)}
             onCancel={onClose}
             layout="grid"
           />
@@ -242,12 +246,14 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
           installMode={installMode}
           setInstallMode={setInstallMode}
           installStatus={installStatus}
+          installDetails={installDetails}
           selectedPlatforms={selectedPlatforms}
           isBusy={isInstalling}
           installProgress={installProgress}
           onToggle={togglePlatformSelection}
           onSelectAll={selectAllPlatforms}
           onApply={() => void handleInstall()}
+          onRedistribute={() => void handleInstall(true)}
           onCancel={onClose}
           layout="grid"
           hideFooter

@@ -1,3 +1,7 @@
+import {
+  RESOURCE_PAGE_SIZES,
+  RESOURCE_GALLERY_COLUMNS,
+} from "@prompthub/shared/constants/resource-library";
 import type { CSSProperties, HTMLAttributes } from "react";
 import type { TFunction } from "i18next";
 import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
@@ -9,8 +13,8 @@ import type {
 } from "@prompthub/shared/types/mcp";
 
 export const ALL_MCP_SOURCE_FILTER = "all";
-export const MCP_GALLERY_COLUMNS = ["auto", "2", "3", "4", "5", "6"] as const;
-export const MCP_LIST_PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
+export const MCP_GALLERY_COLUMNS = RESOURCE_GALLERY_COLUMNS;
+export const MCP_LIST_PAGE_SIZE_OPTIONS = RESOURCE_PAGE_SIZES;
 export const DEFAULT_MCP_LIST_PAGE_SIZE = 12;
 
 const MCP_VIEW_TRANSITION_CLASS =

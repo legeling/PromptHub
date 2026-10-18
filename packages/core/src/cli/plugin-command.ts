@@ -1,3 +1,7 @@
+import { CoreMcpLibraryService } from "../mcp-library";
+import { importChildMcpServersForPlugin } from "../plugin-child-mcp";
+import { removeManagedPluginDistribution } from "../plugin-distribution-workflow";
+import { readPluginDistributionStatus } from "../plugin-distribution-status";
 import { CorePluginError, CorePluginLibraryService } from "../plugin-library";
 import {
   getPluginTargetPlatformId,
@@ -7,8 +11,12 @@ import {
 import type { PluginTargetPathResolver } from "../plugin-library/shared";
 import { getCliAgentAssetInventory } from "./agent-assets";
 import type { CliDatabaseHooks } from "./types";
+import { CliError } from "./types";
+import { handlePluginManagement } from "./plugin-management";
 import {
+  isNativePluginRegistered,
   uninstallNativePlugin,
+  installNativePlugin,
   type PluginNativeInstallationOptions,
 } from "../plugin-native-installation";
 
@@ -79,6 +87,17 @@ export const PLUGIN_HELP = [
   "  prompthub plugin delete <id|name> [--remove-targets]",
   "  prompthub plugin versions <id|name>",
   "  prompthub plugin create-version <id|name> [--note <text>]",
+  "  prompthub plugin import <directory|Git URL> [--branch <ref>] [--directory <path>]",
+  "  prompthub plugin metadata <id|name> [--favorite|--unfavorite] [--tags <csv>] [--notes <text>]",
+  "  prompthub plugin targets",
+  "  prompthub plugin import-child-mcp <id|name>",
+  "  prompthub plugin status <id|name> [--details]",
+  "  prompthub plugin check|check-update <id|name>",
+  "  prompthub plugin update <id|name> [--force]",
+  "  prompthub plugin rollback <id|name> --version <number>",
+  "  prompthub plugin delete-version <id|name> <version-id>",
+  "  prompthub plugin distribute|redistribute <id|name> --targets <csv> [--mode copy|symlink]",
+  "  prompthub plugin undistribute <id|name> --targets <csv>",
   "",
   "说明:",
   "  Plugin CLI 读写与桌面端相同的 PromptHub Plugin library。",
@@ -197,12 +216,70 @@ export async function handlePluginCommand(
     databaseHooks.initDatabase();
     const action = requirePositional(args, 0, "plugin 子命令");
     const targets =
-      action === "delete" && args.includes("--remove-targets")
+      (action === "delete" && args.includes("--remove-targets")) ||
+      ["status", "distribute", "redistribute", "undistribute"].includes(action)
         ? await createTargetResolver(databaseHooks)
         : undefined;
     const service = new CorePluginLibraryService({
       resolvePluginTargetPath: targets?.resolvePath,
     });
+
+    if (action === "import-child-mcp") {
+      const plugin = resolvePlugin(
+        service,
+        requirePositional(args, 1, "Plugin"),
+      );
+      if (args.length !== 2)
+        throw new CorePluginError(
+          "USAGE_ERROR",
+          "Expected one Plugin id or name",
+        );
+      const result = importChildMcpServersForPlugin(
+        service,
+        plugin.id,
+        new CoreMcpLibraryService({ database: databaseHooks.initDatabase() }),
+      );
+      emitSuccess(io, output, result);
+      return result.failedFiles.length ? EXIT_CODES.CONFLICT : EXIT_CODES.OK;
+    }
+    if (action === "status") {
+      const includeContent = takeFlag(args, "--details");
+      ensureNoUnknownOptions(args.slice(1));
+      const plugin = resolvePlugin(
+        service,
+        requirePositional(args, 1, "plugin"),
+      );
+      if (!targets) throw new Error("Plugin targets are unavailable");
+      emitSuccess(
+        io,
+        output,
+        readPluginDistributionStatus([plugin], {
+          resolvePath: targets.resolvePath,
+          includeContent,
+          nativeRegistered: (id, entry) =>
+            isNativePluginRegistered(entry, id, targets.nativeOptions),
+        })[plugin.id],
+      );
+      return EXIT_CODES.OK;
+    }
+    const managed = await handlePluginManagement(action, args.slice(1), {
+      service,
+      resolve: (identifier) => resolvePlugin(service, identifier),
+      native: {
+        install: async (plugin, target) => {
+          if (!targets) throw new Error("Plugin targets are unavailable");
+          await installNativePlugin(plugin, target, targets.nativeOptions);
+        },
+        uninstall: async (plugin, id) => {
+          if (!targets) throw new Error("Plugin targets are unavailable");
+          await uninstallNativePlugin(plugin, id, targets.nativeOptions);
+        },
+      },
+    });
+    if (managed) {
+      emitSuccess(io, output, managed.value);
+      return managed.failed ? EXIT_CODES.CONFLICT : EXIT_CODES.OK;
+    }
 
     if (action === "list") {
       ensureNoUnknownOptions(args.slice(1));
@@ -305,14 +382,25 @@ export async function handlePluginCommand(
       ensureNoUnknownOptions(deleteArgs);
       const plugin = resolvePlugin(service, identifier);
       if (removeTargets && targets) {
-        for (const targetId of plugin.distributedTargetIds ?? [])
-          targets.resolvePath(targetId, plugin);
-        for (const targetId of plugin.distributedTargetIds ?? [])
-          await uninstallNativePlugin(plugin, targetId, targets.nativeOptions);
+        const ids = plugin.distributedTargetIds ?? [];
+        if (ids.length) {
+          const removal = await removeManagedPluginDistribution(
+            service,
+            { pluginId: plugin.id, targetIds: ids },
+            {
+              install: (entry, target) =>
+                installNativePlugin(entry, target, targets.nativeOptions),
+              uninstall: (entry, id) =>
+                uninstallNativePlugin(entry, id, targets.nativeOptions),
+            },
+          );
+          if (removal.failures?.length) {
+            emitSuccess(io, output, { deleted: false, ...removal });
+            return EXIT_CODES.CONFLICT;
+          }
+        }
       }
-      const library = service.deletePlugin(plugin.id, {
-        removeDistributedTargets: removeTargets,
-      });
+      const library = service.deletePlugin(plugin.id);
       emitSuccess(io, output, {
         deleted: true,
         id: plugin.id,
@@ -358,6 +446,10 @@ export async function handlePluginCommand(
       `不支持的 plugin 子命令: ${action}`,
     );
   } catch (error) {
+    if (error instanceof CliError) {
+      emitError(io, error.code, error.message);
+      return error.exitCode;
+    }
     if (error instanceof CorePluginError) {
       const exitCode =
         error.code === "NOT_FOUND"

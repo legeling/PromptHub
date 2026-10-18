@@ -316,6 +316,8 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
       async (_url, destDir, branch) => {
         await runGit([
+          "-c",
+          "core.symlinks=true",
           "clone",
           "--branch",
           branch || "main",
@@ -370,6 +372,8 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
       async (_url, destDir, branch) => {
         await runGit([
+          "-c",
+          "core.symlinks=true",
           "clone",
           "--branch",
           branch || "main",

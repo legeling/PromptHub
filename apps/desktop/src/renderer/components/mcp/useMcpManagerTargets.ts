@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { mergeMcpTargetObservations } from "@prompthub/shared/utils/mcp-target-observation";
+import { useMcpStore } from "../../stores/mcp.store";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { McpTargetPreset } from "@prompthub/core";
 import type { McpTargetStatusEntry } from "@prompthub/shared/types/mcp";
 import {
@@ -60,27 +62,52 @@ function useVisibleMcpTargetStatus(
   targetPresets: McpTargetPreset[],
   targetStatus: McpTargetStatusEntry[],
 ) {
-  const [visibleTargetStatus, setVisibleTargetStatus] = useState<
-    McpTargetStatusEntry[]
-  >([]);
+  const epoch = useRef(0);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const key = JSON.stringify(targetPresets);
+  const presetsRef = useRef(targetPresets);
+  presetsRef.current = targetPresets;
   const refreshVisibleTargetStatus = useCallback(async () => {
-    if (targetPresets.length === 0) {
-      setVisibleTargetStatus([]);
-      return;
+    const request = ++epoch.current;
+    try {
+      const presets = presetsRef.current;
+      const status = await window.api.mcp.getTargetStatus(presets);
+      if (request !== epoch.current) return;
+      const ids = new Set(status.map((entry) => entry.presetId));
+      useMcpStore.setState((state) => ({
+        targetStatus: [
+          ...state.targetStatus.filter((entry) => !ids.has(entry.presetId)),
+          ...mergeMcpTargetObservations(state.targetStatus, status),
+        ],
+      }));
+      setStatusError(
+        status.find((entry) => entry.error)?.error ??
+          (presets.some((preset) => !ids.has(preset.id))
+            ? "MCP target status check was incomplete"
+            : null),
+      );
+    } catch (error) {
+      if (request === epoch.current)
+        setStatusError(error instanceof Error ? error.message : String(error));
     }
-
-    const status = await window.api.mcp.getTargetStatus(targetPresets);
-    const visibleIds = new Set(targetPresets.map((preset) => preset.id));
-    setVisibleTargetStatus(
-      status.filter((entry) => visibleIds.has(entry.presetId)),
-    );
-  }, [targetPresets]);
-
+  }, []);
+  const missing = targetPresets.some(
+    (preset) => !targetStatus.some((entry) => entry.presetId === preset.id),
+  );
   useEffect(() => {
-    void refreshVisibleTargetStatus();
-  }, [refreshVisibleTargetStatus, targetStatus]);
-
-  return { visibleTargetStatus, refreshVisibleTargetStatus };
+    if (missing) void refreshVisibleTargetStatus();
+    return () => {
+      epoch.current++;
+    };
+  }, [key, missing, refreshVisibleTargetStatus]);
+  const visibleIds = new Set(targetPresets.map((preset) => preset.id));
+  return {
+    visibleTargetStatus: targetStatus.filter((entry) =>
+      visibleIds.has(entry.presetId),
+    ),
+    refreshVisibleTargetStatus,
+    statusError,
+  };
 }
 
 export function useMcpManagerTargets(bindings: McpManagerBindings) {
@@ -98,7 +125,12 @@ export function useMcpManagerTargets(bindings: McpManagerBindings) {
     () => new Set(presets.visibleTargetPresets.map((preset) => preset.id)),
     [presets.visibleTargetPresets],
   );
-  return { ...presets, ...status, visibleTargetPresetIds };
+  return {
+    ...presets,
+    ...status,
+    visibleTargetPresetIds,
+    inventoryLoaded: bindings.mcpStore.hasLoadedTargetInventory,
+  };
 }
 
 export type McpManagerTargets = ReturnType<typeof useMcpManagerTargets>;

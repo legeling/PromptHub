@@ -1,5 +1,9 @@
 import { BrowserWindow, ipcMain } from "electron";
-import { zipSync } from "fflate";
+import {
+  createSkillZip,
+  skillExportFileName,
+} from "@prompthub/core/skills/export";
+import { encodeSkillFileSnapshot } from "@prompthub/shared/utils/skill-file-snapshot";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import type { SkillExportSaveResult } from "@prompthub/shared/types/skill-export";
 import {
@@ -28,13 +32,13 @@ async function createZip(
   const repoPath = await ensureLocalRepoPath(db, id);
   if (!repoPath) throw new Error("Unable to resolve local Skill repo");
   const entries = await readLocalRepoFileBuffersByPath(repoPath);
-  const files: Record<string, Uint8Array> = {};
-  for (const file of entries) {
-    if (!isInternalSkillRepoEntry(file.path))
-      files[file.path.replace(/\\/g, "/")] = file.data;
-  }
-  if (Object.keys(files).length === 0) throw new Error("Skill repo is empty");
-  return zipSync(files, { level: 1 });
+  return createSkillZip(
+    entries
+      .filter((file) => !isInternalSkillRepoEntry(file.path))
+      .map((file) =>
+        encodeSkillFileSnapshot(file.path.replace(/\\/g, "/"), file.data),
+      ),
+  );
 }
 
 export function registerSkillExportHandlers({ db }: SkillIPCContext): void {
@@ -52,7 +56,7 @@ export function registerSkillExportHandlers({ db }: SkillIPCContext): void {
   ipcMain.handle(IPC_CHANNELS.SKILL_EXPORT_ZIP, async (_, id: string) => {
     const skill = getExportSkill(db, id);
     return {
-      fileName: skill.name + ".zip",
+      fileName: skillExportFileName(skill.name, "zip"),
       base64: Buffer.from(await createZip(db, id)).toString("base64"),
     };
   });
@@ -76,14 +80,12 @@ async function saveExport(
       format === "zip"
         ? await createZip(db, skill.id)
         : Buffer.from(exportAsSkillMd(skill), "utf8");
-    const name =
-      Array.from(skill.name, (char) => (char.charCodeAt(0) < 32 ? "_" : char))
-        .join("")
-        .replace(/[<>:"/\\|?*]/g, "_")
-        .replace(/[. ]+$/g, "") || "skill";
     return await saveSkillExportFile(
       {
-        fileName: name + (format === "zip" ? ".zip" : "-SKILL.md"),
+        fileName: skillExportFileName(
+          skill.name,
+          format === "zip" ? "zip" : "md",
+        ),
         data,
         extension: format === "zip" ? "zip" : "md",
       },

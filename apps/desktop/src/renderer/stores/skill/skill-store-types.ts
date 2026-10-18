@@ -280,6 +280,7 @@ export interface SkillState {
   // 已分发到平台的技能名称集合
   deployedSkillNames: Set<string>;
   skillPlatformStatuses: Record<string, Record<string, boolean>>;
+  distributionStatusError: string | null;
   loadDeployedStatus: (options?: { force?: boolean }) => Promise<void>;
 
   // Translation cache (with TTL + size limit)
@@ -322,6 +323,7 @@ export type SkillLibrarySlice = Pick<
   | "filterTags"
   | "deployedSkillNames"
   | "skillPlatformStatuses"
+  | "distributionStatusError"
   | "pendingPluginChildDeploySkillIds"
   | "loadSkills"
   | "loadDeployedStatus"

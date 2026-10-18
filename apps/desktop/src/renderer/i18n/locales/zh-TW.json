@@ -1,4 +1,17 @@
 {
+  "hostedResources": {
+    "description": "在這裡儲存和管理資源，Agent 分發由本機用戶端完成。",
+    "operationFailed": "操作失敗，請重試。",
+    "empty": "沒有符合的資源。",
+    "deleteConfirm": "從資源庫刪除「{{name}}」？儲存的套件檔案和歷史也會刪除。",
+    "notes": "個人備註",
+    "uploadSkillPackage": "上傳 Skill 套件",
+    "uploadSkillPackageHint": "選擇根目錄包含 SKILL.md 的 ZIP，附屬檔案將一起儲存。",
+    "importPlugins": "匯入 Plugin 備份",
+    "exportPlugins": "匯出 Plugin 備份",
+    "pluginBackupHint": "儲存完整 Plugin 套件及版本歷史。匯入 PromptHub JSON 備份；保留資源身分，拒絕重複資源。",
+    "requestLimit": "網頁版上傳請求最大 1 MiB，包含中繼資料和編碼後的檔案內容。"
+  },
   "testHistory": {
     "title": "測試歷史",
     "back": "返回歷史清單",
@@ -2107,7 +2120,6 @@
     "cliGlobalBinHint": "CLI 已安裝於 {{path}}。若終端找不到 prompthub，請將此目錄加入終端 PATH 後重新開啟終端。",
     "cliCopyCommand": "複製",
     "cliStatusLoadFailed": "載入 PromptHub CLI 狀態失敗",
-
     "cliCachedStatus": "上次檢查：{{time}}。重新整理可再次檢查。",
     "openSource": "開源專案",
     "projectRepository": "專案倉庫",
@@ -3741,7 +3753,8 @@
       "applyChanges": "套用變更",
       "changesApplied": "已套用 {{count}} 項變更。",
       "redistribute": "重新分發",
-      "redistributeHint": "使用目前方式更新 {{count}} 個已勾選目標。"
+      "redistributeHint": "使用目前方式更新 {{count}} 個已勾選目標。",
+      "noChanges": "沒有待套用的變更。可重新分發以更新已安裝副本。"
     }
   },
   "error": {
@@ -4857,5 +4870,15 @@
     "compareEmpty": "選擇至少兩個模型，然後開始對比測試。",
     "singleEmpty": "開始測試後，回應將顯示在這裡。",
     "emptyResponse": "暫無回應"
+  },
+  "resourceLibrary": {
+    "statusFailed": "分發狀態未能完整核驗，保留上次檢查結果。",
+    "statusUnknown": "{{count}} 個資源的分發狀態尚未核驗。",
+    "content": {
+      "needs-sync": "待同步",
+      "conflict": "內容衝突",
+      "unverified": "待核驗"
+    },
+    "pagination": "分頁"
   }
 }

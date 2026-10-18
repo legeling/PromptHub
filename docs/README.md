@@ -34,6 +34,10 @@
 
 ## 当前目录地图
 
+0.6.0 的 Desktop、独立 CLI、自托管 Web 和 Cloudflare 能力边界见各语言 README；
+Web 的资源保存、完整包管理及不提供 Agent 分发的范围见
+[自托管部署说明](web-self-hosted.md)和 [Cloudflare 说明](cloudflare-workers.md)。
+
 ```text
 docs/
 ├── README.md

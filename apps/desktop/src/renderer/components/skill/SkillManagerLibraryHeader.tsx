@@ -1,9 +1,9 @@
+import { ResourceLibraryControls } from "../resources/ResourceLibraryControls";
+import { isResourceGalleryColumns } from "@prompthub/shared/constants/resource-library";
 import type { TFunction } from "i18next";
 import {
   CheckSquareIcon,
   CuboidIcon,
-  LayoutGridIcon,
-  ListIcon,
   RefreshCwIcon,
   SendIcon,
   SquareIcon,
@@ -17,7 +17,6 @@ import type {
   SkillGalleryColumnMode,
 } from "../../stores/skill.store";
 import { Select, type SelectOption } from "../ui/Select";
-import { GalleryColumnSelect } from "../ui/GalleryColumnSelect";
 import { SkillTagSearchFilter } from "./SkillTagSearchFilter";
 
 export interface SkillManagerFilterOption {
@@ -139,64 +138,18 @@ function SelectionModeButton(props: HeaderProps) {
   );
 }
 
-function ViewModeButton({
-  active,
-  icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className={`rounded-md p-2 transition-colors ${
-        active
-          ? "app-wallpaper-surface text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground"
-      }`}
-      title={label}
-    >
-      {icon}
-    </button>
-  );
-}
-
 function GalleryLayoutControls(props: HeaderProps) {
-  const galleryLabel = props.t("skill.galleryView", "Gallery View");
-  const listLabel = props.t("skill.listView", "List View");
   return (
-    <>
-      <div className="flex items-center rounded-lg bg-muted p-0.5">
-        <ViewModeButton
-          active={props.viewMode === "gallery"}
-          icon={<LayoutGridIcon aria-hidden="true" className="h-4 w-4" />}
-          label={galleryLabel}
-          onClick={() => props.onViewModeChange("gallery")}
-        />
-        <ViewModeButton
-          active={props.viewMode === "list"}
-          icon={<ListIcon aria-hidden="true" className="h-4 w-4" />}
-          label={listLabel}
-          onClick={() => props.onViewModeChange("list")}
-        />
-      </div>
-      {props.viewMode === "gallery" ? (
-        <GalleryColumnSelect
-          ariaLabel={props.t("skill.galleryColumnsLabel", "Skill card columns")}
-          value={props.galleryColumns}
-          onChange={(value) =>
-            props.onGalleryColumnsChange(value as SkillGalleryColumnMode)
-          }
-          options={props.galleryColumnOptions}
-        />
-      ) : null}
-    </>
+    <ResourceLibraryControls
+      viewMode={props.viewMode}
+      onViewModeChange={props.onViewModeChange}
+      columns={props.galleryColumns}
+      columnOptions={props.galleryColumnOptions}
+      onColumnsChange={(value) => {
+        if (isResourceGalleryColumns(value))
+          props.onGalleryColumnsChange(value);
+      }}
+    />
   );
 }
 

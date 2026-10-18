@@ -370,6 +370,8 @@ export interface McpTargetStatusEntry {
   exists: boolean;
   serverNames: string[];
   servers?: McpServerConfig[];
+  /** A failed read is unknown, not evidence that all entries were removed. */
+  error?: string;
 }
 
 export type McpHealthStatus = "ok" | "warning" | "error";

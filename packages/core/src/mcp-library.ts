@@ -1,3 +1,4 @@
+import { normalizeStoredMcpDraft } from "@prompthub/shared/utils/mcp-stored-draft";
 import fs from "fs";
 import { McpVersionHistoryService } from "./mcp-version-history";
 import type {
@@ -159,30 +160,6 @@ function restoreRedactedDraftValues(
       value === MCP_REDACTED_VALUE ? (local?.[key] ?? "") : value,
     ]),
   );
-}
-
-function normalizeStoredMcpDraft(
-  draft: McpServerDraft,
-  current: McpServerConfig,
-): McpServerConfig {
-  const server = normalizeMcpServerDraft(draft);
-  if (draft.name === current.name) server.name = current.name;
-  for (const field of ["env", "headers"] as const) {
-    for (const [key, value] of Object.entries(draft[field] ?? {})) {
-      if (
-        value !== MCP_REDACTED_VALUE ||
-        current[field]?.[key] !== MCP_REDACTED_VALUE
-      )
-        continue;
-      Object.defineProperty((server[field] ??= {}), key, {
-        value,
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      });
-    }
-  }
-  return server;
 }
 
 function selectServers(
@@ -548,7 +525,9 @@ export class CoreMcpLibraryService {
   }
   getServer(identifier: string): McpServerConfig | null {
     const row = mcpRecords(this.canonicalOptions).server(identifier);
-    return row ? hydrateMcpStoredServer(row, this.canonicalOptions, true) : null;
+    return row
+      ? hydrateMcpStoredServer(row, this.canonicalOptions, true)
+      : null;
   }
 
   write(library: McpLibraryFile): McpLibraryFile {
@@ -1264,40 +1243,50 @@ export class CoreMcpLibraryService {
     presets: McpTargetPreset[] = getMcpTargetPresets(),
   ): McpTargetStatusEntry[] {
     return presets.map((preset) => {
-      if (!fs.existsSync(preset.path)) {
-        return {
-          presetId: preset.id,
-          path: preset.path,
-          exists: false,
-          serverNames: [],
-        };
-      }
       try {
+        try {
+          fs.statSync(preset.path);
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            "code" in error &&
+            error.code === "ENOENT"
+          )
+            return {
+              presetId: preset.id,
+              path: preset.path,
+              exists: false,
+              serverNames: [],
+            };
+          throw error;
+        }
         const servers = readMcpTargetServers(
           preset.path,
           preset.target,
           nowMs(),
         );
-        const serverNames = servers.map((server) => server.name);
         return {
           presetId: preset.id,
           path: preset.path,
           exists: true,
-          serverNames,
+          serverNames: servers.map((server) => server.name),
           servers: servers.map((server) => ({
             ...redactMcpServerConfig(server),
-            source: { type: "import", id: preset.id, label: preset.label },
+            source: {
+              type: "import" as const,
+              id: preset.id,
+              label: preset.label,
+            },
           })),
         };
       } catch {
-        // Unparseable target config is reported as present but unknown so
-        // the UI never claims a server is distributed based on bad data.
-        // 配置无法解析时报告为存在但内容未知，避免 UI 基于坏数据误报。
+        // Parser messages may contain credentials from the configuration.
         return {
           presetId: preset.id,
           path: preset.path,
           exists: true,
           serverNames: [],
+          error: `MCP target configuration could not be read: ${preset.id}`,
         };
       }
     });

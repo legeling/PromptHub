@@ -9,7 +9,6 @@ import type {
 import {
   writeJsonFileAtomic,
   getPluginNativeMarketplaceName,
-  getPluginNativeSourceRoot,
 } from "./plugin-library/shared";
 import {
   createNativeCommandRunner,
@@ -92,6 +91,16 @@ function isEnabled(native: NativeTarget): boolean {
         Reflect.get(entry, "enabled") === true,
       )
     : entry === true;
+}
+
+/** Registration presence is independent of whether the user enabled the Plugin. */
+export function isNativePluginRegistered(
+  plugin: PluginLibraryEntry,
+  targetId: string,
+  options: PluginNativeInstallationOptions,
+): boolean {
+  const native = nativeTarget(targetId, plugin, options);
+  return native === null || nativePluginEntry(native) !== undefined;
 }
 
 async function runNative(
@@ -200,8 +209,6 @@ export async function uninstallNativePlugin(
     ["marketplace", "remove", "--", native.marketplace],
     options,
   );
-  fs.rmSync(getPluginNativeSourceRoot(native.root, plugin.id), {
-    recursive: true,
-    force: true,
-  });
+  // Package directories belong to the distribution transaction. Removing the
+  // source root here would also remove its retained rollback backup.
 }

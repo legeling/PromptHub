@@ -1,14 +1,12 @@
-import type { DatabaseBackup, ImportSkippedStats } from "./services/database-backup-format";
+import type {
+  DatabaseBackup,
+  ImportSkippedStats,
+} from "./services/database-backup-format";
 import type { API } from "../preload";
+import type { PromptHubWebContext as RuntimeWebContext } from "./runtime";
 
 declare global {
-  interface PromptHubWebContext {
-    mode: "self-hosted";
-    origin: string;
-    username?: string;
-    registrationAllowed?: boolean;
-    initialized?: boolean;
-  }
+  type PromptHubWebContext = RuntimeWebContext;
 
   interface Window {
     api: API;
@@ -20,7 +18,9 @@ declare global {
         skipVideoContent?: boolean;
         limitMedia?: boolean;
       }) => Promise<DatabaseBackup>;
-      restoreFromBackup: (backup: DatabaseBackup) => Promise<ImportSkippedStats>;
+      restoreFromBackup: (
+        backup: DatabaseBackup,
+      ) => Promise<ImportSkippedStats>;
     };
   }
 }

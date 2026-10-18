@@ -1,3 +1,5 @@
+import { calculateResourceBundleContentHash } from "@prompthub/shared/utils/resource-bundle-hash";
+export { calculateResourceBundleContentHash } from "@prompthub/shared/utils/resource-bundle-hash";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -220,52 +222,6 @@ function validateRole(value: unknown): string | undefined {
     throw new Error("resource bundle payload role is invalid");
   }
   return value;
-}
-
-function stableContentHashInput(
-  manifest: Pick<
-    ResourceBundleManifest,
-    | "resourceType"
-    | "resourceId"
-    | "schemaVersion"
-    | "revision"
-    | "objectHashes"
-    | "payloadFiles"
-  >,
-): string {
-  return JSON.stringify({
-    algorithm: "prompthub-resource-content-sha256-v1",
-    resourceType: manifest.resourceType,
-    resourceId: manifest.resourceId,
-    schemaVersion: manifest.schemaVersion,
-    revision: manifest.revision,
-    objectHashes: [...manifest.objectHashes].sort(),
-    payloadFiles: [...manifest.payloadFiles]
-      .sort((left, right) => compareText(left.path, right.path))
-      .map(({ path: filePath, size, sha256, role }) => ({
-        path: filePath,
-        size,
-        sha256,
-        ...(role === undefined ? {} : { role }),
-      })),
-  });
-}
-
-export function calculateResourceBundleContentHash(
-  manifest: Pick<
-    ResourceBundleManifest,
-    | "resourceType"
-    | "resourceId"
-    | "schemaVersion"
-    | "revision"
-    | "objectHashes"
-    | "payloadFiles"
-  >,
-): string {
-  return crypto
-    .createHash("sha256")
-    .update(stableContentHashInput(manifest), "utf8")
-    .digest("hex");
 }
 
 function validateObjectHashes(value: unknown): string[] {

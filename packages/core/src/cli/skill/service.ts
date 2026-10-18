@@ -1,8 +1,13 @@
-import fs from "fs/promises";
+import { updateCliSkillFromSource } from "./source-update";
+import { cliSkillPlatforms, resolveDistributionSkill } from "./platform";
+import { getDatabase } from "../../database";
+import { SkillDB as CoreSkillDB } from "../../database";
 import {
-  getCliAgentAssetInventory,
-  getCliAgentSkillDirectory,
-} from "../agent-assets";
+  resolveSkillGitSource,
+  type SkillSourceInstallOptions,
+} from "../../skills/git-source";
+import fs from "fs/promises";
+import { getCliAgentAssetInventory } from "../agent-assets";
 import { scanSkillContent } from "@prompthub/shared/utils/skill-content-scan";
 import path from "path";
 import {
@@ -35,11 +40,7 @@ import {
 } from "@prompthub/shared/utils/skill-source-update";
 import { getSkillsDir } from "../../runtime-paths";
 import { installSkillFromSource } from "../../skills/install-flow";
-import {
-  SHARED_AGENT_SKILLS_TARGET_ID,
-  sharedSkillDistributionService,
-} from "../../skill-distribution-targets";
-import { serializeSkillMd } from "../../skills/skill-frontmatter";
+import { exportAsSkillMd, exportAsJson } from "../../skills/export";
 import {
   parseSkillMd,
   sanitizeString,
@@ -67,6 +68,7 @@ import {
   gitClone,
   importFromJson,
   installFromGithub,
+  withSelectedGitSkill,
   installFromSkillContent,
   markNameConflicts,
   readManifest,
@@ -78,7 +80,7 @@ import type { CliSkillService, CliSkillServiceDeps } from "./types";
 export function createCliSkillService(
   deps: CliSkillServiceDeps = {},
 ): CliSkillService {
-  const fetchImpl = deps.fetchImpl ?? fetch;
+  const fetchImpl = deps.fetchImpl;
   const gitCloneImpl = deps.gitCloneImpl ?? gitClone;
   async function isManagedRepoPath(absolutePath: string): Promise<boolean> {
     const managedSkillsDir = path.resolve(getSkillsDir());
@@ -464,12 +466,34 @@ export function createCliSkillService(
         if (skillMd?.content) {
           localContentHash = await computeSkillContentSha256(skillMd.content);
         }
-      } catch {
-        // keep prior hash
+      } catch (error) {
+        throw new Error(`Unable to read local Skill package: ${skill.id}`, {
+          cause: error,
+        });
       }
     }
 
-    if (options?.fetchRemote && skill.content_url) {
+    if (
+      options?.fetchRemote &&
+      skill.source_url &&
+      resolveSkillGitSource(skill.source_url)
+    ) {
+      const remote = await withSelectedGitSkill(
+        skill.source_url,
+        { branch: skill.source_branch, directory: skill.source_directory },
+        gitCloneImpl,
+        async (directory) => ({
+          contentHash: await computeSkillContentSha256(
+            await fs.readFile(path.join(directory, "SKILL.md"), "utf8"),
+          ),
+          directoryFingerprint:
+            await computeRepoDirectoryFingerprintByPath(directory),
+        }),
+        deps.fetchArchive,
+      );
+      remoteContentHash = remote.contentHash;
+      remoteDirectoryFingerprint = remote.directoryFingerprint;
+    } else if (options?.fetchRemote && skill.content_url) {
       const remoteContent = await fetchRemoteContent(
         skill.content_url,
         fetchImpl,
@@ -520,28 +544,25 @@ export function createCliSkillService(
   async function installSkillMd(
     skillDb: SkillDB,
     skillName: string,
-    _skillMdContent: string,
+    content: string,
     platformId: string,
     skillId?: string,
-  ): Promise<void> {
-    const canonicalRepoPath = await getRepoPathForSkillName(skillDb, skillName);
-    if (!canonicalRepoPath)
-      throw new Error(`Skill package is missing: ${skillName}`);
-    if (platformId === SHARED_AGENT_SKILLS_TARGET_ID) {
-      await sharedSkillDistributionService.install({
-        skillId: skillId ?? skillName,
-        skillName,
-        sourcePath: canonicalRepoPath,
-        mode: "copy",
-      });
-      return;
-    }
-    const skillDir = path.join(
-      await getCliAgentSkillDirectory(platformId),
-      validateSkillName(skillName),
-    );
-    await fs.mkdir(path.dirname(skillDir), { recursive: true });
-    await copyRepoToPlatform(canonicalRepoPath, skillDir);
+    mode: "copy" | "symlink" = "copy",
+  ): Promise<import("@prompthub/shared/types").SkillPlatformInstallResult> {
+    const skill = resolveDistributionSkill(skillDb, skillName, skillId);
+    const repo = await getRepoPathForSkill(skillDb, skill.id);
+    if (!repo) throw new Error(`Skill package is missing: ${skill.name}`);
+    await validateRepoPackageInventory(repo);
+    const platforms = await cliSkillPlatforms();
+    if (mode === "symlink")
+      return platforms.installSkillMdSymlinkForSkill(
+        skill,
+        content,
+        platformId,
+        repo,
+      );
+    await platforms.installSkillMdForSkill(skill, content, platformId, repo);
+    return { requestedMode: "copy", effectiveMode: "copy" };
   }
 
   async function installSkillToProject(
@@ -632,20 +653,14 @@ export function createCliSkillService(
     platformId: string,
     skillId?: string,
   ): Promise<void> {
-    if (platformId === SHARED_AGENT_SKILLS_TARGET_ID) {
-      await sharedSkillDistributionService.uninstall({
-        skillId: skillId ?? skillName,
-        skillName,
-      });
-      return;
-    }
-    const skillDir = path.join(
-      await getCliAgentSkillDirectory(platformId),
-      validateSkillName(skillName),
+    const skill = resolveDistributionSkill(
+      new CoreSkillDB(getDatabase()),
+      skillName,
+      skillId,
     );
-    if (await fileExists(skillDir)) {
-      await fs.rm(skillDir, { recursive: true, force: true });
-    }
+    await (
+      await cliSkillPlatforms()
+    ).uninstallSkillMdForSkill(skill, platformId);
   }
 
   function getSupportedPlatforms(): SkillPlatform[] {
@@ -669,60 +684,25 @@ export function createCliSkillService(
     skillName: string,
     skillId?: string,
   ): Promise<Record<string, boolean>> {
-    const status: Record<string, boolean> = {};
-    for (const platform of await getCliAgentAssetInventory()) {
-      if (!platform.paths.skills) continue;
-      const skillDir = path.join(
-        platform.paths.skills,
-        validateSkillName(skillName),
-      );
-      status[platform.id] = await fileExists(skillDir);
-    }
-    const sharedStatus = await sharedSkillDistributionService.getStatus({
-      skillId: skillId ?? skillName,
+    const skill = resolveDistributionSkill(
+      new CoreSkillDB(getDatabase()),
       skillName,
-    });
-    status[SHARED_AGENT_SKILLS_TARGET_ID] =
-      sharedStatus.state === "managed-clean" ||
-      sharedStatus.state === "managed-modified";
-    return status;
+      skillId,
+    );
+    return (await cliSkillPlatforms()).getSkillMdInstallStatusForSkill(skill);
   }
 
-  function exportAsSkillMd(skill: Skill): string {
-    return serializeSkillMd({
-      name: skill.name,
-      ...(skill.description !== undefined
-        ? { description: skill.description }
-        : {}),
-      ...(skill.version !== undefined ? { version: skill.version } : {}),
-      ...(skill.author !== undefined ? { author: skill.author } : {}),
-      ...(skill.tags !== undefined ? { tags: skill.tags } : {}),
-      ...(skill.compatibility !== undefined
-        ? { compatibility: skill.compatibility }
-        : {}),
-      instructions: skill.instructions || skill.content || "",
-    });
-  }
-
-  function exportAsJson(skill: Skill): string {
-    return JSON.stringify(
-      {
-        name: skill.name,
-        description: skill.description || "",
-        version: skill.version || "1.0.0",
-        author: skill.author || "",
-        tags: skill.tags || [],
-        instructions: skill.instructions || "",
-        protocol_type: skill.protocol_type || "skill",
-        source_url: skill.source_url || "",
-        icon_url: skill.icon_url || "",
-        icon_emoji: skill.icon_emoji || "",
-        icon_background: skill.icon_background || "",
-        exported_at: new Date().toISOString(),
-        format_version: "1.0",
-      },
-      null,
-      2,
+  async function getSkillMdInstallStatusDetails(
+    skillName: string,
+    skillId?: string,
+  ): Promise<import("@prompthub/shared/types").SkillPlatformInstallStatusMap> {
+    const skill = resolveDistributionSkill(
+      new CoreSkillDB(getDatabase()),
+      skillName,
+      skillId,
+    );
+    return (await cliSkillPlatforms()).getSkillMdInstallStatusDetailsForSkill(
+      skill,
     );
   }
 
@@ -758,10 +738,11 @@ export function createCliSkillService(
     exportAsSkillMd,
     getSupportedPlatforms,
     getSkillMdInstallStatus,
+    getSkillMdInstallStatusDetails,
     installFromSource: async (
       source: string,
       skillDb: SkillDB,
-      options?: { name?: string },
+      options?: SkillSourceInstallOptions,
     ): Promise<string> =>
       installSkillFromSource(
         source,
@@ -770,8 +751,14 @@ export function createCliSkillService(
           fetchRemoteContent: (sourceUrl) =>
             fetchRemoteContent(sourceUrl, fetchImpl),
           importFromJson,
-          installFromGithub: (sourceUrl, targetSkillDb) =>
-            installFromGithub(sourceUrl, targetSkillDb, gitCloneImpl),
+          installFromGithub: (sourceUrl, targetSkillDb, sourceOptions) =>
+            installFromGithub(
+              sourceUrl,
+              targetSkillDb,
+              gitCloneImpl,
+              sourceOptions,
+              deps.fetchArchive,
+            ),
           installFromSkillContent,
         },
         options,
@@ -787,6 +774,8 @@ export function createCliSkillService(
     rollbackVersion,
     updateMetadata,
     checkSourceUpdate,
+    updateFromSource: (db, id, options) =>
+      updateCliSkillFromSource(db, id, deps, options),
     scanLocalPreview: async (customPaths?: string[], skillDb?: SkillDB) => {
       const skillMap = new Map<string, ScannedSkill>();
       const scanEntries =

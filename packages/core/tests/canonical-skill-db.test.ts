@@ -140,3 +140,34 @@ it("preserves an existing managed sidecar across package replacement", () => {
   skills.update(skill.id, { content: "Edited" });
   expect(fs.readFileSync(sidecar, "utf8")).toBe("local annotation");
 });
+
+it("replaces managed snapshot bytes while preserving local annotations and rejecting linked packages", () => {
+  const skill = create();
+  const sidecar = path.join(skill.local_repo_path!, ".prompthub", "user.json");
+  fs.mkdirSync(path.dirname(sidecar));
+  fs.writeFileSync(sidecar, "keep annotation");
+  skills.replacePackageFiles(skill.id, [
+    { relativePath: "SKILL.md", content: "Replacement" },
+    { relativePath: "icon.bin", content: "AP8D", encoding: "base64" },
+  ]);
+  expect(skills.getById(skill.id)?.content).toBe("Replacement");
+  expect(
+    fs.readFileSync(path.join(skill.local_repo_path!, "icon.bin")),
+  ).toEqual(Buffer.from([0, 255, 3]));
+  expect(fs.readFileSync(sidecar, "utf8")).toBe("keep annotation");
+  const linked = skills.create({
+    name: "linked-snapshot",
+    protocol_type: "skill",
+    is_favorite: false,
+    source_url: source,
+    local_repo_path: source,
+  });
+  expect(() =>
+    skills.replacePackageFiles(linked.id, [
+      { relativePath: "SKILL.md", content: "Do not write" },
+    ]),
+  ).toThrow(/Linked packages/);
+  expect(fs.readFileSync(path.join(source, "SKILL.md"), "utf8")).toBe(
+    "Initial",
+  );
+});

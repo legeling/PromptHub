@@ -1,4 +1,5 @@
 import { BotIcon, PackageIcon, PlusIcon, StoreIcon } from "lucide-react";
+import { isWebRuntime } from "../../runtime";
 import { SidebarNavigationItem } from "./SidebarNavigationItem";
 import { SidebarResourceTagPanel } from "./SidebarResourceTagPanel";
 import type { SidebarController } from "./sidebar-view-types";
@@ -122,6 +123,22 @@ export function SidebarPluginPanel({
 }: {
   controller: SidebarController;
 }) {
+  if (isWebRuntime())
+    return (
+      <div className="px-3 py-2">
+        <SidebarNavigationItem
+          icon={<PackageIcon className="h-5 w-5" />}
+          label={controller.t("plugin.myPlugins")}
+          count={controller.pluginLibrary?.plugins.length ?? 0}
+          active
+          collapsed={controller.isCollapsed}
+          onClick={() => {
+            controller.setPluginSelectedTab("library");
+            controller.onNavigate("home");
+          }}
+        />
+      </div>
+    );
   return (
     <>
       <SidebarPluginNavigation controller={controller} />

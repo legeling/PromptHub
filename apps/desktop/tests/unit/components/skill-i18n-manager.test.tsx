@@ -153,6 +153,8 @@ function createSkillStoreState(
     storeSearchQuery: "",
     setStoreSearchQuery: vi.fn(),
     deployedSkillNames: new Set<string>(),
+    skillPlatformStatuses: {},
+    distributionStatusError: null,
     loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
     filterTags: [],
     installRegistrySkill: vi.fn().mockResolvedValue(undefined),
@@ -367,6 +369,7 @@ describe("skill i18n smoke", () => {
   it("renders skill manager actions in english and updates selection summary", async () => {
     const skillStoreState = createSkillStoreState({
       deployedSkillNames: new Set([baseSkill.id]),
+      skillPlatformStatuses: { [baseSkill.id]: { claude: true } },
     });
     const settingsState = createSettingsState();
     const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
@@ -713,6 +716,10 @@ describe("skill i18n smoke", () => {
     const selectSkill = vi.fn();
     const skillStoreState = createSkillStoreState({
       deployedSkillNames: new Set<string>([baseSkill.id]),
+      skillPlatformStatuses: {
+        [baseSkill.id]: { claude: true },
+        "skill-local": {},
+      },
       selectSkill,
       setFilterType,
       setStoreView,

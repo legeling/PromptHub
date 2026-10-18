@@ -7,6 +7,7 @@ import {
   type WheelEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { isWebRuntime } from "../../runtime";
 import { useTranslation } from "react-i18next";
 import {
   XIcon,
@@ -187,8 +188,8 @@ export function SkillFileEditor({
   visibleFilePaths,
   initialFilePath,
   includeMissingVisibleFiles = false,
-  allowStructuralMutations = true,
-  showFileManagerActions = true,
+  allowStructuralMutations = !isWebRuntime(),
+  showFileManagerActions = !isWebRuntime(),
   surfaceLabels,
 }: SkillFileEditorProps) {
   const { t } = useTranslation();

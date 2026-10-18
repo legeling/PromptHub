@@ -1,14 +1,15 @@
+import { observedDistributionPresence } from "@prompthub/shared/utils/resource-observation";
+import { ResourceDistributionNotice } from "../resources/ResourceDistributionNotice";
+import { ResourceLibraryControls } from "../resources/ResourceLibraryControls";
+import { ResourceLibraryPagination } from "../resources/ResourceLibraryPagination";
+import { isResourceGalleryColumns } from "@prompthub/shared/constants/resource-library";
 import {
   BotIcon,
   CheckSquareIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   FolderOpenIcon,
   GlobeIcon,
   InboxIcon,
-  LayoutGridIcon,
   ListChecksIcon,
-  ListIcon,
   Loader2Icon,
   PackageIcon,
   PackagePlusIcon,
@@ -21,17 +22,11 @@ import {
   TrashIcon,
   XIcon,
 } from "lucide-react";
-import { SKILL_LIST_PAGE_SIZE_OPTIONS } from "../../stores/settings.store";
-import type {
-  PluginLibraryGalleryColumnMode,
-  PluginLibraryViewMode,
-} from "../../stores/plugin.store";
 import { Spinner } from "../ui/Spinner";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Modal } from "../ui/Modal";
 import { Select } from "../ui/Select";
-import { GalleryColumnSelect } from "../ui/GalleryColumnSelect";
 import { PluginAgentTargetPicker } from "./PluginAgentTargetPicker";
 import { PluginFullDetailPage } from "./PluginFullDetailPage";
 import { SkillRenderBoundary } from "../skill/SkillRenderBoundary";
@@ -465,55 +460,17 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
                 </button>
               ) : null}
               {selectedTab === "library" ? (
-                <>
-                  <div className="flex items-center rounded-lg bg-muted p-0.5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLibraryViewMode("gallery" as PluginLibraryViewMode)
-                      }
-                      aria-label={t("plugin.galleryView", "Gallery View")}
-                      className={`rounded-md p-2 transition-colors ${
-                        libraryViewMode === "gallery"
-                          ? "app-wallpaper-surface text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      title={t("plugin.galleryView", "Gallery View")}
-                    >
-                      <LayoutGridIcon aria-hidden="true" className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLibraryViewMode("list" as PluginLibraryViewMode)
-                      }
-                      aria-label={t("plugin.listView", "List View")}
-                      className={`rounded-md p-2 transition-colors ${
-                        libraryViewMode === "list"
-                          ? "app-wallpaper-surface text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      title={t("plugin.listView", "List View")}
-                    >
-                      <ListIcon aria-hidden="true" className="h-4 w-4" />
-                    </button>
-                  </div>
-                  {libraryViewMode === "gallery" ? (
-                    <GalleryColumnSelect
-                      ariaLabel={t(
-                        "plugin.galleryColumnsLabel",
-                        "Plugin card columns",
-                      )}
-                      value={libraryGalleryColumns ?? "auto"}
-                      onChange={(value) =>
-                        setLibraryGalleryColumns(
-                          value as PluginLibraryGalleryColumnMode,
-                        )
-                      }
-                      options={libraryGalleryColumnOptions}
-                    />
-                  ) : null}
-                </>
+                <ResourceLibraryControls
+                  columnsLabel={t("plugin.galleryColumnsLabel")}
+                  viewMode={libraryViewMode}
+                  onViewModeChange={setLibraryViewMode}
+                  columns={libraryGalleryColumns ?? "auto"}
+                  columnOptions={libraryGalleryColumnOptions}
+                  onColumnsChange={(value) => {
+                    if (isResourceGalleryColumns(value))
+                      setLibraryGalleryColumns(value);
+                  }}
+                />
               ) : null}
               <button
                 type="button"
@@ -582,6 +539,13 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
         </div>
       </header>
 
+      {selectedTab === "library" && (
+        <ResourceDistributionNotice
+          unknown={model.libraryFilterCounts.unknown}
+          error={model.distributionError}
+          onRefresh={() => void model.refreshDistributionStatus()}
+        />
+      )}
       <main
         ref={contentScrollRef}
         className="min-h-0 flex-1 overflow-y-auto p-6"
@@ -611,6 +575,11 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
                       isSelected={selectedLibraryPluginIds.has(plugin.id)}
                       plugin={plugin}
                       sourceUpdateStatus={sourceUpdateChecks[plugin.id]?.status}
+                      distributionKnown={
+                        observedDistributionPresence(
+                          model.distributionSnapshot[plugin.id],
+                        ) !== "unknown"
+                      }
                       targetMatrix={targetMatrix}
                       onDelete={setDeleteTarget}
                       onContextMenu={handleLibraryContextMenu}
@@ -637,6 +606,11 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
                       isSelected={selectedLibraryPluginIds.has(plugin.id)}
                       plugin={plugin}
                       sourceUpdateStatus={sourceUpdateChecks[plugin.id]?.status}
+                      distributionKnown={
+                        observedDistributionPresence(
+                          model.distributionSnapshot[plugin.id],
+                        ) !== "unknown"
+                      }
                       targetMatrix={targetMatrix}
                       onDelete={setDeleteTarget}
                       onContextMenu={handleLibraryContextMenu}
@@ -728,86 +702,18 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
         ) : null}
       </main>
 
-      {selectedTab === "library" && filteredLibraryPlugins.length > 0 ? (
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border app-wallpaper-panel-strong px-4 py-3">
-          <div className="text-sm text-muted-foreground">
-            {t("plugin.paginationSummary", {
-              start: (currentLibraryPage - 1) * pageSize + 1,
-              end: Math.min(
-                currentLibraryPage * pageSize,
-                filteredLibraryPlugins.length,
-              ),
-              total: filteredLibraryPlugins.length,
-              defaultValue: `${(currentLibraryPage - 1) * pageSize + 1}-${Math.min(
-                currentLibraryPage * pageSize,
-                filteredLibraryPlugins.length,
-              )} / ${filteredLibraryPlugins.length}`,
-            })}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">
-                {t("prompt.pageSize", "Per page")}
-              </span>
-              <select
-                value={pageSize}
-                onChange={(event) => {
-                  setPluginPageSize(Number(event.target.value));
-                  setCurrentLibraryPage(1);
-                }}
-                className="rounded-md border border-border bg-muted px-2 py-1 text-sm text-foreground"
-              >
-                {SKILL_LIST_PAGE_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => goToLibraryPage(currentLibraryPage - 1)}
-                disabled={currentLibraryPage === 1}
-                aria-label={t("common.previous", "Previous")}
-                className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                title={t("common.previous", "Previous")}
-              >
-                <ChevronLeftIcon aria-hidden="true" className="h-4 w-4" />
-              </button>
-              {libraryVisiblePageNumbers.map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => goToLibraryPage(page)}
-                  aria-current={
-                    currentLibraryPage === page ? "page" : undefined
-                  }
-                  className={`h-8 w-8 rounded-md text-sm transition-colors ${
-                    currentLibraryPage === page
-                      ? "bg-primary text-white"
-                      : "hover:bg-accent"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => goToLibraryPage(currentLibraryPage + 1)}
-                disabled={currentLibraryPage === libraryTotalPages}
-                aria-label={t("common.next", "Next")}
-                className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                title={t("common.next", "Next")}
-              >
-                <ChevronRightIcon aria-hidden="true" className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {selectedTab === "library" && (
+        <ResourceLibraryPagination
+          total={filteredLibraryPlugins.length}
+          currentPage={currentLibraryPage}
+          pageSize={pageSize}
+          onPageChange={goToLibraryPage}
+          onPageSizeChange={(size) => {
+            setPluginPageSize(size);
+            setCurrentLibraryPage(1);
+          }}
+        />
+      )}
 
       {isBatchMode && (
         <div className="shrink-0 border-t border-border app-wallpaper-panel-strong px-6 py-3">

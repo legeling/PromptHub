@@ -1,4 +1,9 @@
 import fs from "node:fs";
+import type { SkillFileSnapshot } from "@prompthub/shared/types/skill";
+import {
+  decodeSkillFileSnapshot,
+  validateSkillFileSnapshots,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 import path from "node:path";
 import type { SkillPackagePayloadSource } from "./skill-resource-schema";
 import type { CanonicalEntryMutation } from "./canonical-entry-publication";
@@ -101,6 +106,46 @@ export function readSkillEntrypoint(file: string): string {
   }
 }
 
+function preserveSkillSidecar(
+  targetPath: string,
+  stage: string,
+  rootPath: string,
+): void {
+  const sidecar = path.join(targetPath, ".prompthub");
+  if (!fs.existsSync(sidecar)) return;
+  assertStoragePathComponentsSafe(rootPath, sidecar);
+  fs.cpSync(sidecar, path.join(stage, ".prompthub"), {
+    recursive: true,
+    dereference: false,
+    errorOnExist: true,
+    force: false,
+  });
+}
+
+export function skillSnapshotEntry(
+  targetPath: string,
+  files: readonly SkillFileSnapshot[],
+  rootPath: string,
+): CanonicalEntryMutation {
+  assertStoragePathComponentsSafe(rootPath, targetPath);
+  validateSkillFileSnapshots(files);
+  return {
+    targetPath,
+    prepare(stage) {
+      fs.mkdirSync(stage, { recursive: true, mode: 0o700 });
+      for (const file of files) {
+        const target = path.join(stage, ...file.relativePath.split("/"));
+        fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+        fs.writeFileSync(target, decodeSkillFileSnapshot(file), {
+          mode: 0o600,
+        });
+      }
+      preserveSkillSidecar(targetPath, stage, rootPath);
+      readSkillEntrypoint(path.join(stage, "SKILL.md"));
+    },
+  };
+}
+
 export function skillPackageEntry(
   targetPath: string,
   files: readonly SkillPackagePayloadSource[],
@@ -117,16 +162,7 @@ export function skillPackageEntry(
         fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
         fs.copyFileSync(file.sourcePath, target, fs.constants.COPYFILE_EXCL);
       }
-      const sidecar = path.join(targetPath, ".prompthub");
-      if (fs.existsSync(sidecar)) {
-        assertStoragePathComponentsSafe(rootPath, sidecar);
-        fs.cpSync(sidecar, path.join(stage, ".prompthub"), {
-          recursive: true,
-          dereference: false,
-          errorOnExist: true,
-          force: false,
-        });
-      }
+      preserveSkillSidecar(targetPath, stage, rootPath);
       if (content !== undefined)
         fs.writeFileSync(path.join(stage, "SKILL.md"), content, {
           mode: 0o600,

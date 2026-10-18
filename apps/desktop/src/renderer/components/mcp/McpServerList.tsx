@@ -1,3 +1,4 @@
+import { ResourceLibraryItem } from "../resources/ResourceLibraryItem";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -42,6 +43,7 @@ interface McpServerItemProps {
   selectedServerId: string | null;
   healthCheck?: McpHealthCheckResult;
   distributedPresets: McpTargetPreset[];
+  distributionKnown?: boolean;
   targetPresets: McpTargetPreset[];
   isFirstRow?: boolean;
   selectionMode: boolean;
@@ -127,10 +129,12 @@ function ServerIconBlock({ server }: { server: McpServerConfig }) {
 
 function DistributionIndicators({
   distributedPresets,
+  distributionKnown = true,
   className = "",
   testId,
 }: {
   distributedPresets: McpTargetPreset[];
+  distributionKnown?: boolean;
   className?: string;
   testId?: string;
 }) {
@@ -142,7 +146,7 @@ function DistributionIndicators({
     >
       {distributedPresets.length > 0 ? (
         distributedPresets
-          .slice(0, 6)
+          .slice(0, 3)
           .map((preset) => (
             <PlatformIcon
               key={preset.id}
@@ -153,12 +157,16 @@ function DistributionIndicators({
           ))
       ) : (
         <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
-          {t("mcp.notDistributed", "Not distributed")}
+          {t(
+            distributionKnown
+              ? "mcp.notDistributed"
+              : "resourceLibrary.statusUnknown",
+          )}
         </span>
       )}
-      {distributedPresets.length > 6 ? (
+      {distributedPresets.length > 3 ? (
         <span className="text-[10px] text-muted-foreground">
-          +{distributedPresets.length - 6}
+          +{distributedPresets.length - 3}
         </span>
       ) : null}
     </div>
@@ -170,6 +178,7 @@ function ListDistributionIndicators({
   targetPresets,
 }: {
   distributedPresets: McpTargetPreset[];
+  distributionKnown?: boolean;
   targetPresets: McpTargetPreset[];
 }) {
   const distributedPresetIds = new Set(
@@ -321,6 +330,7 @@ function ServerActions({
 }
 
 function McpServerCard({
+  distributionKnown = true,
   server,
   selectedServerId,
   healthCheck,
@@ -358,7 +368,7 @@ function McpServerCard({
   };
 
   return (
-    <div
+    <ResourceLibraryItem
       data-testid={`mcp-server-card-${server.id}`}
       role="button"
       tabIndex={0}
@@ -366,15 +376,8 @@ function McpServerCard({
       aria-pressed={selectionMode ? isChecked : isActive}
       onClick={handlePrimaryAction}
       onKeyDown={handleKeyDown}
-      className={`group relative app-wallpaper-panel border rounded-2xl p-5 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4 ${
-        selectionMode
-          ? isChecked
-            ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-            : "border-border hover:border-primary/40"
-          : isActive
-            ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-            : "border-border hover:border-primary/50 hover:shadow-xl hover:-translate-y-1"
-      }`}
+      view="gallery"
+      selected={selectionMode ? isChecked : isActive}
     >
       {selectionMode ? (
         <button
@@ -408,9 +411,10 @@ function McpServerCard({
             className="flex min-w-0 flex-1 flex-col items-end gap-2"
           >
             <DistributionIndicators
+              distributionKnown={distributionKnown}
               distributedPresets={distributedPresets}
               testId="mcp-distributed-targets"
-              className="max-w-full flex-wrap justify-end"
+              className="max-w-full flex-nowrap justify-end"
             />
             <ServerActions
               server={server}
@@ -448,7 +452,7 @@ function McpServerCard({
           </span>
         ))}
       </div>
-    </div>
+    </ResourceLibraryItem>
   );
 }
 
@@ -483,17 +487,10 @@ function McpServerRow({
   };
 
   return (
-    <div
+    <ResourceLibraryItem
       data-testid={`mcp-server-row-${server.id}`}
-      className={`group flex min-h-[72px] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-        isFirstRow ? "" : "border-t border-border"
-      } ${
-        isChecked && selectionMode
-          ? "bg-primary/8"
-          : isActive
-            ? "bg-primary/5"
-            : "hover:bg-accent/50"
-      }`}
+      view="list"
+      selected={selectionMode ? isChecked : isActive}
     >
       {selectionMode ? (
         <button
@@ -580,7 +577,7 @@ function McpServerRow({
           onDelete={onDelete}
         />
       ) : null}
-    </div>
+    </ResourceLibraryItem>
   );
 }
 
@@ -626,6 +623,11 @@ export function McpServerList({
     );
   }
 
+  const distributionKnown = targetPresets.every((preset) =>
+    targetStatus.some(
+      (status) => status.presetId === preset.id && !status.error,
+    ),
+  );
   const items = servers.map((server) => ({
     server,
     distributedPresets: getDistributedPresets(
@@ -665,12 +667,10 @@ export function McpServerList({
   }
 
   return (
-    <div
-      className="grid gap-4"
-      style={gridStyle ?? AUTO_GALLERY_GRID_STYLE}
-    >
+    <div className="grid gap-4" style={gridStyle ?? AUTO_GALLERY_GRID_STYLE}>
       {items.map((item) => (
         <McpServerCard
+          distributionKnown={distributionKnown}
           key={item.server.id}
           server={item.server}
           selectedServerId={selectedServerId}

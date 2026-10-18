@@ -13,7 +13,10 @@ import {
   Settings2Icon,
 } from "lucide-react";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import type { SkillInstallMode } from "@prompthub/shared/types";
+import type {
+  SkillInstallMode,
+  SkillPlatformInstallStatusMap,
+} from "@prompthub/shared/types";
 import {
   DistributionCheck,
   SkillPlatformTargetRow,
@@ -30,12 +33,14 @@ interface SkillDistributionControlsProps {
   installMode: SkillInstallMode;
   setInstallMode: (mode: SkillInstallMode) => void;
   installStatus: Record<string, boolean>;
+  installDetails?: SkillPlatformInstallStatusMap;
   selectedPlatforms: Set<string>;
   isBusy: boolean;
   installProgress: { current: number; total: number } | null;
   onToggle: (id: string) => void;
   onSelectAll: () => void;
   onApply: () => void;
+  onRedistribute?: () => void;
   onCancel?: () => void;
   hideFooter?: boolean;
   layout?: "grid" | "list";
@@ -83,12 +88,14 @@ function SharedDistributionTarget({
   skillName,
   selected,
   installed,
+  contentState,
   disabled,
   onToggle,
 }: {
   skillName: string;
   selected: boolean;
   installed: boolean;
+  contentState?: "synced" | "needs-sync" | "conflict" | "unverified";
   disabled: boolean;
   onToggle: () => void;
 }): JSX.Element {
@@ -142,7 +149,9 @@ function SharedDistributionTarget({
           <p className="mt-2 text-xs text-primary">
             {t(
               installed === selected
-                ? "skill.installed"
+                ? contentState && contentState !== "synced"
+                  ? `resourceLibrary.content.${contentState}`
+                  : "skill.installed"
                 : selected
                   ? "skill.distribution.pendingInstall"
                   : "skill.distribution.pendingUninstall",
@@ -164,12 +173,14 @@ export function SkillDistributionControls(
     installMode,
     setInstallMode,
     installStatus,
+    installDetails = {},
     selectedPlatforms,
     isBusy,
     installProgress,
     onToggle,
     onSelectAll,
     onApply,
+    onRedistribute,
     onCancel,
     hideFooter = false,
     layout = "list",
@@ -222,6 +233,7 @@ export function SkillDistributionControls(
               platform={platform}
               t={t}
               isInstalled={Boolean(installStatus[platform.id])}
+              contentState={installDetails[platform.id]?.contentState}
               isSelected={isDistributionTargetSelected(
                 platform.id,
                 installStatus,
@@ -243,6 +255,7 @@ export function SkillDistributionControls(
           skillName={skillName}
           selected={summary.sharedSelected}
           installed={Boolean(installStatus[SHARED_TARGET_ID])}
+          contentState={installDetails[SHARED_TARGET_ID]?.contentState}
           disabled={isBusy}
           onToggle={() => onToggle(SHARED_TARGET_ID)}
         />
@@ -264,6 +277,7 @@ export function SkillDistributionControls(
           isBusy={isBusy}
           installProgress={installProgress}
           onApply={onApply}
+          onRedistribute={onRedistribute}
           onCancel={onCancel}
           layout={layout}
         />
@@ -279,6 +293,7 @@ export function SkillDistributionFooter({
   isBusy,
   installProgress,
   onApply,
+  onRedistribute,
   onCancel,
   layout = "list",
 }: Pick<
@@ -289,6 +304,7 @@ export function SkillDistributionFooter({
   | "isBusy"
   | "installProgress"
   | "onApply"
+  | "onRedistribute"
   | "onCancel"
   | "layout"
 >): JSX.Element {
@@ -298,10 +314,9 @@ export function SkillDistributionFooter({
     installStatus,
     selectedPlatforms,
   );
-  const redistributionCount =
-    summary.installs + summary.removals === 0
-      ? summary.platformCount + Number(summary.sharedSelected)
-      : 0;
+  const redistributionCount = availablePlatforms.filter(
+    (platform) => installStatus[platform.id],
+  ).length;
   return (
     <footer
       className={`border-t border-border bg-card pt-4 ${layout === "grid" ? "flex flex-wrap items-center justify-between gap-3 pb-1" : "space-y-3 pb-1"}`}
@@ -318,17 +333,17 @@ export function SkillDistributionFooter({
           })}
         </p>
         <p className="text-xs text-muted-foreground">
-          {redistributionCount > 0
-            ? t("skill.distribution.redistributeHint", {
-                count: redistributionCount,
-              })
+          {summary.installs + summary.removals === 0
+            ? t("skill.distribution.noChanges")
             : t("skill.distribution.pendingSummary", {
                 install: summary.installs,
                 uninstall: summary.removals,
               })}
         </p>
       </div>
-      <div className={`flex gap-2 ${layout === "list" ? "w-full" : ""}`}>
+      <div
+        className={`flex min-w-0 flex-wrap gap-2 ${layout === "list" ? "w-full" : ""}`}
+      >
         {onCancel && (
           <button
             type="button"
@@ -339,13 +354,21 @@ export function SkillDistributionFooter({
             {t("common.cancel")}
           </button>
         )}
+        {onRedistribute && redistributionCount > 0 && (
+          <button
+            type="button"
+            disabled={isBusy || selectedPlatforms.size > 0}
+            onClick={onRedistribute}
+            className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent disabled:opacity-50"
+          >
+            <SendIcon aria-hidden="true" className="h-4 w-4" />
+            {t("skill.distribution.redistribute")}
+          </button>
+        )}
         <button
           type="button"
           onClick={onApply}
-          disabled={
-            isBusy ||
-            summary.installs + summary.removals + redistributionCount === 0
-          }
+          disabled={isBusy || summary.installs + summary.removals === 0}
           className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isBusy ? (
@@ -357,11 +380,7 @@ export function SkillDistributionFooter({
             ? installProgress
               ? `${installProgress.current}/${installProgress.total}`
               : t("skill.installing")
-            : t(
-                redistributionCount > 0
-                  ? "skill.distribution.redistribute"
-                  : "skill.distribution.applyChanges",
-              )}
+            : t("skill.distribution.applyChanges")}
         </button>
       </div>
     </footer>

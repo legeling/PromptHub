@@ -1,4 +1,17 @@
 {
+  "hostedResources": {
+    "description": "Enregistrez et gérez vos ressources. Le déploiement vers les agents reste local.",
+    "operationFailed": "L’opération a échoué. Veuillez réessayer.",
+    "empty": "Aucune ressource correspondante.",
+    "deleteConfirm": "Supprimer « {{name}} » de la bibliothèque ? Son package et son historique seront aussi supprimés.",
+    "notes": "Notes personnelles",
+    "uploadSkillPackage": "Importer un paquet Skill",
+    "uploadSkillPackageHint": "Choisissez un ZIP contenant SKILL.md à la racine. Les fichiers associés seront conservés.",
+    "importPlugins": "Importer une sauvegarde Plugin",
+    "exportPlugins": "Exporter une sauvegarde Plugin",
+    "pluginBackupHint": "Conserve les paquets Plugin complets et leur historique. Importez une sauvegarde JSON PromptHub ; les identifiants existants sont conservés et les doublons refusés.",
+    "requestLimit": "Les requêtes Web sont limitées à 1 Mio, métadonnées et fichiers encodés compris."
+  },
   "testHistory": {
     "title": "Historique des tests",
     "back": "Retour à l’historique",
@@ -2108,7 +2121,6 @@
     "cliGlobalBinHint": "CLI installé dans {{path}}. Si le terminal ne trouve pas prompthub, ajoutez ce répertoire au PATH puis rouvrez le terminal.",
     "cliCopyCommand": "Copier",
     "cliStatusLoadFailed": "Échec du chargement de l'état de PromptHub CLI",
-
     "cliCachedStatus": "Dernière vérification : {{time}}. Actualisez pour vérifier à nouveau.",
     "openSource": "Projet open source",
     "projectRepository": "Dépôt du projet",
@@ -3742,7 +3754,8 @@
       "applyChanges": "Appliquer",
       "changesApplied": "{{count}} modifications appliquées.",
       "redistribute": "Redistribuer",
-      "redistributeHint": "Actualiser les {{count}} cibles cochées avec la méthode choisie."
+      "redistributeHint": "Actualiser les {{count}} cibles cochées avec la méthode choisie.",
+      "noChanges": "Aucune modification en attente. Redistribuez pour mettre à jour les copies installées."
     }
   },
   "error": {
@@ -4858,5 +4871,15 @@
     "compareEmpty": "Sélectionnez au moins deux modèles, puis lancez la comparaison.",
     "singleEmpty": "Lancez un test pour afficher la réponse ici.",
     "emptyResponse": "Aucune réponse"
+  },
+  "resourceLibrary": {
+    "statusFailed": "Vérification de la distribution incomplète. Les derniers résultats sont conservés.",
+    "statusUnknown": "{{count}} ressources attendent une vérification de distribution.",
+    "content": {
+      "needs-sync": "À synchroniser",
+      "conflict": "Conflit de contenu",
+      "unverified": "Non vérifié"
+    },
+    "pagination": "Pagination"
   }
 }

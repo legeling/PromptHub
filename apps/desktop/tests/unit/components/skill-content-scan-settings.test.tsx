@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mock = vi.hoisted(() => ({
   scan: vi.fn(),
   toast: vi.fn(),
@@ -22,6 +22,20 @@ import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { SkillSafetySettingsSection } from "../../../src/renderer/components/settings/SkillSafetySettingsSection";
 
 describe("manual content scan settings UI", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, "__PROMPTHUB_WEB__");
+    Reflect.deleteProperty(window, "__PROMPTHUB_WEB_CONTEXT__");
+  });
+  it("hides scan settings when the backend does not support scanning", () => {
+    Reflect.set(window, "__PROMPTHUB_WEB__", true);
+    Reflect.set(window, "__PROMPTHUB_WEB_CONTEXT__", {
+      mode: "cloudflare",
+      capabilities: { skillSafetyScan: false },
+    });
+    render(<SkillSafetySettingsSection />);
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     useSettingsStore.setState({

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import rootPackage from "../../../../../package.json";
+import type { SkillFileSnapshot } from "@prompthub/shared";
+import { unzipSync } from "fflate";
 
 async function loadInstallDesktopBridge() {
   const module = await import("./install-bridge");
@@ -23,6 +25,93 @@ describe("installDesktopBridge media helpers", () => {
           }),
       ),
     );
+  });
+
+  it("round-trips complete managed Skill packages through resource-scoped HTTP", async () => {
+    const installDesktopBridge = await loadInstallDesktopBridge();
+    const files = [
+      { relativePath: "SKILL.md", content: "# Skill" },
+      {
+        relativePath: "asset.bin",
+        content: "AP8D",
+        encoding: "base64" as const,
+      },
+    ];
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: files })),
+    );
+    installDesktopBridge();
+    // The browser bridge is installed dynamically, outside the DOM Window type.
+    const api = Reflect.get(window, "api") as {
+      skill: {
+        readFilesSnapshot: (id: string) => Promise<SkillFileSnapshot[]>;
+        replaceFilesSnapshot: (
+          id: string,
+          files: SkillFileSnapshot[],
+        ) => Promise<void>;
+      };
+    };
+    expect(await api.skill.readFilesSnapshot("skill/a")).toEqual(files);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/skills/skill%2Fa/files");
+    await api.skill.replaceFilesSnapshot("skill/a", files);
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/skills/skill%2Fa/files");
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+      files,
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { message: "Package rejected" } }), {
+        status: 422,
+      }),
+    );
+    await expect(
+      api.skill.replaceFilesSnapshot("skill/a", files),
+    ).rejects.toThrow();
+  });
+
+  it("exports JSON and a complete ZIP through the web bridge", async () => {
+    const installDesktopBridge = await loadInstallDesktopBridge();
+    vi.mocked(fetch).mockImplementation(
+      async (input) =>
+        new Response(
+          JSON.stringify({
+            data: String(input).endsWith("/files")
+              ? [
+                  { relativePath: "SKILL.md", content: "# Writer" },
+                  {
+                    relativePath: "assets/icon.bin",
+                    content: "AP8D",
+                    encoding: "base64",
+                  },
+                ]
+              : { id: "writer", name: "writer", instructions: "# Writer" },
+          }),
+        ),
+    );
+    installDesktopBridge();
+    // The dynamically installed preload-compatible bridge is outside DOM Window typing.
+    const api = Reflect.get(window, "api") as {
+      skill: {
+        export: (id: string, format: "json" | "skillmd") => Promise<string>;
+        exportZip: (
+          id: string,
+        ) => Promise<{ fileName: string; base64: string }>;
+      };
+    };
+    expect(JSON.parse(await api.skill.export("writer", "json"))).toMatchObject({
+      name: "writer",
+      instructions: "# Writer",
+    });
+    expect(await api.skill.export("writer", "skillmd")).toContain("# Writer");
+    const result = await api.skill.exportZip("writer");
+    const files = unzipSync(
+      Uint8Array.from(atob(result.base64), (char) => char.charCodeAt(0)),
+    );
+    expect(result.fileName).toBe("writer.zip");
+    expect(Object.keys(files).sort()).toEqual(["SKILL.md", "assets/icon.bin"]);
+    expect([...files["assets/icon.bin"]]).toEqual([0, 255, 3]);
+    vi.mocked(fetch).mockResolvedValue(new Response("{}", { status: 500 }));
+    await expect(api.skill.exportZip("writer")).rejects.toThrow();
   });
 
   it("falls back when crypto.randomUUID is unavailable for pasted image uploads", async () => {
@@ -653,7 +742,7 @@ describe("installDesktopBridge media helpers", () => {
       "/api/skills/skill%2Fa%3Fb%23c/versions/3/rollback",
       "/api/skills/skill%2Fa%3Fb%23c/versions/version%2Fa%3Fb%23c",
       "/api/skills/skill%2Fa%3Fb%23c/safety-report",
-      "/api/skills/skill%2Fa%3Fb%23c/export",
+      "/api/skills/skill%2Fa%3Fb%23c",
     ]);
   });
 

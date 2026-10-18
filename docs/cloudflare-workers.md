@@ -23,7 +23,10 @@
 
 - 账号初始化、登录、刷新、登出、当前用户信息
 - 5 位字母数字图形验证码
-- Prompt / Folder / Rules / Skills 同步快照
+- Prompt / Folder / Rules / Skills / MCP / Plugin 同步快照
+- Skill CRUD、完整包上传、文件编辑、ZIP 导出及版本管理
+- MCP 定义与 Plugin 包管理、收藏、元数据、删除；Plugin 完整备份及版本回滚
+- 按认证用户隔离资源，陈旧的并发修改返回冲突并保留原数据
 - Prompt CRUD、搜索过滤、标签管理、版本创建 / 回滚 / 删除
 - Folder CRUD 与排序
 - 图片 / 视频媒体上传、下载、列表
@@ -33,7 +36,7 @@
 纯系统提示词的 `userPrompt` 仍提交空字符串；部分更新会合并已有正文后校验。
 两者均为空白时返回 422 `VALIDATION_ERROR`，不修改当前记录或版本历史。
 
-浏览器 / Worker 环境不能等价实现本地文件系统能力，例如安装 Skill 到 Claude / Codex 本地目录、扫描本机技能仓库、直接读取本地 SQLite。此类操作仍由桌面端负责。
+自托管 Web 与 Cloudflare 都只保存、管理和同步资源，不向 Agent 分发，不扫描服务器或用户电脑目录，不通过 SSH 安装，也不执行 MCP 配置中的命令。界面根据 `/api/runtime` 返回的能力展示入口；完整 Git 包导入尚不支持，相关入口隐藏。
 
 ## 资源准备
 

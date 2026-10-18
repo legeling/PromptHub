@@ -1,1 +1,1 @@
-export { ResourcesModal } from './ResourcesModal';
+export { ResourcesModal } from "./ResourcesModal";

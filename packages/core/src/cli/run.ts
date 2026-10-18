@@ -14,6 +14,7 @@ import { handleDoctorCommand } from "./doctor-command";
 import { handleWorkspaceCommand, handleSyncCommand } from "./workspace-command";
 import { handleRulesCommand } from "./rules-command";
 import { handleSkillCommand } from "./skill-command";
+import { normalizeSkillCommandError } from "./skill/errors";
 import { handleMcpCommand } from "./mcp-command";
 import { CliRemoteSyncError } from "./sync-command";
 import {
@@ -220,7 +221,11 @@ async function runCliOperation(
       return EXIT_CODES.OK;
     }
     if (resource === "skill") {
-      await handleSkillCommand(commandArgs, context, databaseHooks);
+      await handleSkillCommand(commandArgs, context, databaseHooks).catch(
+        (error: unknown) => {
+          throw normalizeSkillCommandError(error);
+        },
+      );
       return EXIT_CODES.OK;
     }
     if (resource === "mcp") {

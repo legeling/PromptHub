@@ -126,15 +126,13 @@ function createWindowApiDefaults() {
       updateOutputFormat: vi.fn(),
       deleteOutputFormat: vi.fn(),
       reorderOutputFormat: vi.fn(),
-      restoreGraph: vi
-        .fn()
-        .mockResolvedValue({
-          promptCount: 0,
-          folderCount: 0,
-          versionCount: 0,
-          relationCount: 0,
-          outputFormatItemCount: 0,
-        }),
+      restoreGraph: vi.fn().mockResolvedValue({
+        promptCount: 0,
+        folderCount: 0,
+        versionCount: 0,
+        relationCount: 0,
+        outputFormatItemCount: 0,
+      }),
     },
     agent: {
       launch: vi.fn(),
@@ -360,15 +358,13 @@ function createWindowApiDefaults() {
       import: vi.fn(),
     },
     mcp: {
-      listVersions: vi
-        .fn()
-        .mockResolvedValue({
-          currentVersion: 0,
-          total: 0,
-          offset: 0,
-          limit: MCP_VERSION_PAGE_SIZE,
-          items: [],
-        }),
+      listVersions: vi.fn().mockResolvedValue({
+        currentVersion: 0,
+        total: 0,
+        offset: 0,
+        limit: MCP_VERSION_PAGE_SIZE,
+        items: [],
+      }),
       getVersion: vi.fn(),
       compareVersions: vi.fn(),
       createVersion: vi.fn(),
@@ -423,6 +419,7 @@ function createWindowApiDefaults() {
       importEnv: vi.fn(),
     },
     plugin: {
+      getDistributionStatus: vi.fn().mockResolvedValue({}),
       removePluginDistribution: vi.fn(),
       checkInstalledPluginPackage: vi.fn(),
       versionGetAll: vi.fn(),

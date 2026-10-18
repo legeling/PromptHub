@@ -8,6 +8,7 @@ import {
 } from "../../services/skill-library-crud";
 import type {
   CreateSkillParams,
+  SkillFileSnapshot,
   SkillDeleteOptions,
   SkillSafetyScanInput,
   UpdateSkillParams,
@@ -21,8 +22,16 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
     async (
       _,
       data: CreateSkillParams,
-      options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
+      options?: {
+        skipInitialVersion?: boolean;
+        overwriteExisting?: boolean;
+        files?: SkillFileSnapshot[];
+      },
     ) => {
+      if (options?.files !== undefined)
+        throw new Error(
+          "Desktop package imports must use the package installation and safety review workflow",
+        );
       if (
         !data ||
         !data.name ||

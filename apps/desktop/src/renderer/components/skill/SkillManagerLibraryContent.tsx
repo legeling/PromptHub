@@ -1,9 +1,9 @@
+import { ResourceLibraryPagination } from "../resources/ResourceLibraryPagination";
 import { lazy, Suspense } from "react";
 import type { TFunction } from "i18next";
-import { ChevronLeftIcon, ChevronRightIcon, CuboidIcon } from "lucide-react";
+import { CuboidIcon } from "lucide-react";
 import type { Skill } from "@prompthub/shared/types";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import { SKILL_LIST_PAGE_SIZE_OPTIONS } from "../../stores/settings.store";
 import { SkillGalleryCard } from "./SkillGalleryCard";
 import { Spinner } from "../ui/Spinner";
 
@@ -197,88 +197,15 @@ type PaginationProps = Pick<
   | "visiblePageNumbers"
 >;
 
-function PaginationButtons({
-  currentPage,
-  onPageChange,
-  t,
-  totalPages,
-  visiblePageNumbers,
-}: Omit<PaginationProps, "filteredSkills" | "onPageSizeChange" | "pageSize">) {
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        aria-label={t("common.previous", "Previous")}
-        className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-        title={t("common.previous", "Previous")}
-      >
-        <ChevronLeftIcon aria-hidden="true" className="h-4 w-4" />
-      </button>
-      {visiblePageNumbers.map((page) => (
-        <button
-          key={page}
-          type="button"
-          onClick={() => onPageChange(page)}
-          aria-current={currentPage === page ? "page" : undefined}
-          className={`h-8 w-8 rounded-md text-sm transition-colors ${
-            currentPage === page ? "bg-primary text-white" : "hover:bg-accent"
-          }`}
-        >
-          {page}
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        aria-label={t("common.next", "Next")}
-        className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-        title={t("common.next", "Next")}
-      >
-        <ChevronRightIcon aria-hidden="true" className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
 function SkillLibraryPagination(props: PaginationProps) {
-  const { currentPage, filteredSkills, onPageSizeChange, pageSize, t } = props;
-  if (filteredSkills.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border app-wallpaper-panel-strong px-4 py-3">
-      <div className="text-sm text-muted-foreground">
-        {t("skill.paginationSummary", {
-          start: (currentPage - 1) * pageSize + 1,
-          end: Math.min(currentPage * pageSize, filteredSkills.length),
-          total: filteredSkills.length,
-          defaultValue: `${(currentPage - 1) * pageSize + 1}-${Math.min(
-            currentPage * pageSize,
-            filteredSkills.length,
-          )} / ${filteredSkills.length}`,
-        })}
-      </div>
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">
-            {t("prompt.pageSize", "每页")}
-          </span>
-          <select
-            value={pageSize}
-            onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="rounded-md border border-border bg-muted px-2 py-1 text-sm text-foreground"
-          >
-            {SKILL_LIST_PAGE_SIZE_OPTIONS.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
-        <PaginationButtons {...props} />
-      </div>
-    </div>
+    <ResourceLibraryPagination
+      total={props.filteredSkills.length}
+      currentPage={props.currentPage}
+      pageSize={props.pageSize}
+      onPageChange={props.onPageChange}
+      onPageSizeChange={props.onPageSizeChange}
+    />
   );
 }
 

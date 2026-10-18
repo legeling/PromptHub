@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getRuntimeCapabilities } from "../../runtime";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useSkillStore } from "../../stores/skill.store";
@@ -58,6 +59,7 @@ export function SkillSafetySettingsSection() {
     (state) => state.setSkillSafetyScanEnabled,
   );
   const setMethod = useSettingsStore((state) => state.setSkillSafetyScanMethod);
+  if (!getRuntimeCapabilities().skillSafetyScan) return null;
   return (
     <SettingSection title={t("settings.contentScanTitle")}>
       <SettingItem label={t("settings.contentScanEnable")}>

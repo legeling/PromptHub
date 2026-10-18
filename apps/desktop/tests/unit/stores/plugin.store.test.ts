@@ -156,14 +156,37 @@ function resetPluginStore() {
 describe("plugin store", () => {
   it("publishes a source update only when an actual update is available", async () => {
     const publish = vi.fn().mockResolvedValue({ success: true });
-    installWindowMocks({ electron: { applicationNotifications: { publish, onFeedback: vi.fn(() => () => undefined) } } });
+    installWindowMocks({
+      electron: {
+        applicationNotifications: {
+          publish,
+          onFeedback: vi.fn(() => () => undefined),
+        },
+      },
+    });
     const check = vi.mocked(window.api.plugin.getPluginSourceUpdateStatus);
-    check.mockResolvedValue({ status: "up-to-date", localModified: false, remoteChanged: false });
+    check.mockResolvedValue({
+      status: "up-to-date",
+      localModified: false,
+      remoteChanged: false,
+    });
     await usePluginStore.getState().getPluginSourceUpdateStatus("plugin-1");
     expect(publish).not.toHaveBeenCalled();
-    check.mockResolvedValue({ status: "update-available", localModified: false, remoteChanged: true, remotePackageHash: "revision-2" });
+    check.mockResolvedValue({
+      status: "update-available",
+      localModified: false,
+      remoteChanged: true,
+      remotePackageHash: "revision-2",
+    });
     await usePluginStore.getState().getPluginSourceUpdateStatus("plugin-1");
-    await vi.waitFor(() => expect(publish).toHaveBeenCalledWith({ category: "resourceUpdate", outcome: "available", module: "plugin", id: "plugin-1:revision-2" }));
+    await vi.waitFor(() =>
+      expect(publish).toHaveBeenCalledWith({
+        category: "resourceUpdate",
+        outcome: "available",
+        module: "plugin",
+        id: "plugin-1:revision-2",
+      }),
+    );
   });
   beforeEach(() => {
     resetPluginStore();
@@ -289,7 +312,7 @@ describe("plugin store", () => {
         codexSource,
       ]);
     });
-    expect(usePluginStore.getState().isLoading).toBe(true);
+    expect(usePluginStore.getState().isLoading).toBe(false);
     expect(usePluginStore.getState().marketEntries).toEqual([]);
 
     officialMarket.resolve(officialEntries);
@@ -297,7 +320,7 @@ describe("plugin store", () => {
     await waitFor(() => {
       expect(usePluginStore.getState().marketEntries).toEqual(officialEntries);
     });
-    expect(usePluginStore.getState().isLoading).toBe(true);
+    expect(usePluginStore.getState().isLoading).toBe(false);
 
     codexMarket.resolve(codexEntries);
     await loadPromise;
@@ -392,6 +415,24 @@ describe("plugin store", () => {
     expect(
       usePluginStore.getState().marketEntries.map((entry) => entry.id),
     ).toEqual(["prompthub-official-new", "openai-curated-new"]);
+  });
+
+  it("preserves cached entries and reports a failed source while the library remains usable", async () => {
+    const cached = createEntry("saved", "prompthub-official");
+    usePluginStore.setState({ marketEntries: [cached] });
+    vi.mocked(window.api.plugin.listMarket).mockRejectedValue(
+      new Error("Catalog offline"),
+    );
+    await usePluginStore.getState().load({ force: true });
+    expect(usePluginStore.getState().library).toEqual(library);
+    expect(usePluginStore.getState().isLoading).toBe(false);
+    expect(usePluginStore.getState().marketEntries).toContainEqual(cached);
+    expect(
+      usePluginStore.getState().marketErrors["prompthub-official"],
+    ).toContain("Catalog offline");
+    vi.mocked(window.api.plugin.listMarket).mockResolvedValue([cached]);
+    await usePluginStore.getState().load({ force: true });
+    expect(usePluginStore.getState().marketErrors).toEqual({});
   });
 
   it("imports a plugin from a Git source URL into My Plugins", async () => {

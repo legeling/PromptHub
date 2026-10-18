@@ -1,4 +1,7 @@
 {
+  "runtime": {
+    "loadFailed": "Impossible de charger les fonctionnalités du serveur. Vérifiez la connexion et réessayez."
+  },
   "auth": {
     "loginTitle": "Connexion à PromptHub",
     "loginDescription": "Connectez-vous avec un compte existant pour accéder à votre espace PromptHub auto-hébergé.",

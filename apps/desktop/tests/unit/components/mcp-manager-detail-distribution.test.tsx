@@ -554,15 +554,39 @@ describe("McpManager", () => {
         within(detailPage).getAllByText("Manually created").length,
       ).toBeGreaterThan(0);
       expect(within(detailPage).getByText("Health check")).toBeInTheDocument();
-      expect(
-        within(detailPage).getByText("Replace the placeholder in args"),
-      ).toBeInTheDocument();
       expect(within(detailPage).getByText("Codex CLI")).toBeInTheDocument();
       expect(within(detailPage).getByText("Claude Code")).toBeInTheDocument();
     });
 
+    expect(api.mcp.checkServer).not.toHaveBeenCalled();
+    expect(api.mcp.checkAllServers).not.toHaveBeenCalled();
+    api.mcp.checkServer.mockResolvedValueOnce({
+      serverId: "mcp_filesystem",
+      serverName: "filesystem",
+      status: "warning",
+      checkedAt: "2026-01-01T00:00:00.000Z",
+      issues: [
+        {
+          code: "PLACEHOLDER_VALUE",
+          severity: "warning",
+          field: "args",
+          message: "Replace the placeholder in args",
+        },
+      ],
+    });
     await user.click(
       within(detailPage).getAllByRole("button", { name: "Refresh" })[0],
+    );
+    expect(
+      await within(detailPage).findByText("Replace the placeholder in args"),
+    ).toBeInTheDocument();
+    await user.click(
+      within(detailPage).getAllByRole("button", { name: "Refresh" })[0],
+    );
+    await waitFor(() =>
+      expect(
+        within(detailPage).queryByText("Replace the placeholder in args"),
+      ).not.toBeInTheDocument(),
     );
     await waitFor(() => {
       expect(api.mcp.checkServer).toHaveBeenCalledWith("mcp_filesystem");
@@ -1159,7 +1183,13 @@ describe("McpManager", () => {
     await user.click(screen.getByRole("button", { name: "MCP Detail: Slack" }));
     const detailPage = await screen.findByTestId("mcp-full-detail-page");
 
-    expect(within(detailPage).getAllByText("Check format")).toHaveLength(2);
+    expect(api.mcp.checkServer).not.toHaveBeenCalled();
+    await user.click(
+      within(detailPage).getAllByRole("button", { name: "Refresh" })[0],
+    );
+    expect(await within(detailPage).findAllByText("Check format")).toHaveLength(
+      2,
+    );
     expect(
       within(detailPage).getAllByText(/SLACK_BOT_TOKEN format looks invalid/)
         .length,

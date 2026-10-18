@@ -114,6 +114,7 @@ function useRemovePluginDistributionAction(
     } catch (error) {
       console.error("Failed to remove Plugin distribution:", error);
       showToast(getErrorMessage(error), "error");
+      throw error;
     } finally {
       state.setRemovingLibraryPluginId(null);
     }

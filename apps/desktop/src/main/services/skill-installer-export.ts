@@ -4,69 +4,9 @@
  * Handles serialization to SKILL.md (frontmatter + body) and JSON formats,
  * as well as importing skills from JSON.
  */
-import { serializeSkillMd } from "@prompthub/core/skills/skill-frontmatter";
+export { exportAsSkillMd, exportAsJson } from "@prompthub/core/skills/export";
 import { SkillDB } from "../database/skill";
 import { sanitizeImportedSkillDraft } from "./skill-import-sanitize";
-
-// ==================== SKILL.md export ====================
-
-export function exportAsSkillMd(skill: {
-  name: string;
-  description?: string;
-  version?: string;
-  author?: string;
-  tags?: string[];
-  instructions?: string;
-  compatibility?: string | string[];
-  license?: string;
-  metadata?: Record<string, string>;
-  allowedTools?: string;
-  preservedFrontmatter?: Record<string, unknown>;
-}): string {
-  return serializeSkillMd(skill);
-}
-
-// ==================== JSON export ====================
-
-export function exportAsJson(skill: {
-  name: string;
-  description?: string;
-  version?: string;
-  author?: string;
-  tags?: string[];
-  instructions?: string;
-  protocol_type?: string;
-  source_url?: string;
-  source_label?: string;
-  source_branch?: string;
-  source_directory?: string;
-  canonical_skill_path?: string;
-  icon_url?: string;
-  icon_emoji?: string;
-  icon_background?: string;
-}): string {
-  const exportData = {
-    name: skill.name,
-    description: skill.description || "",
-    version: skill.version || "1.0.0",
-    author: skill.author || "",
-    tags: skill.tags || [],
-    instructions: skill.instructions || "",
-    protocol_type: skill.protocol_type || "skill",
-    source_url: skill.source_url || "",
-    source_label: skill.source_label || "",
-    source_branch: skill.source_branch || "",
-    source_directory: skill.source_directory || "",
-    canonical_skill_path: skill.canonical_skill_path || "",
-    icon_url: skill.icon_url || "",
-    icon_emoji: skill.icon_emoji || "",
-    icon_background: skill.icon_background || "",
-    exported_at: new Date().toISOString(),
-    format_version: "1.0",
-  };
-
-  return JSON.stringify(exportData, null, 2);
-}
 
 // ==================== JSON import ====================
 

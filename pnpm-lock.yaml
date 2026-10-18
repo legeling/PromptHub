@@ -33,6 +33,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.12.4
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       eslint:
         specifier: ^9.0.0
         version: 9.39.1(jiti@1.21.7)
@@ -540,6 +543,9 @@ importers:
 
   apps/web-cloudflare:
     dependencies:
+      '@prompthub/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@prompthub/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -586,6 +592,18 @@ importers:
       '@prompthub/shared':
         specifier: workspace:*
         version: link:../shared
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
+      http-proxy-agent:
+        specifier: ^7.0.2
+        version: 7.0.2
+      https-proxy-agent:
+        specifier: ^7.0.6
+        version: 7.0.6
+      socks-proxy-agent:
+        specifier: ^7.0.0
+        version: 7.0.0
       jsonc-parser:
         specifier: ^3.3.1
         version: 3.3.1
@@ -636,6 +654,9 @@ importers:
       ignore:
         specifier: 7.0.5
         version: 7.0.5
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: 5.9.3

@@ -369,6 +369,10 @@ function getPluginDescriptionFingerprint(plugin: PluginLibraryEntry): string {
 function resetPluginStore() {
   usePluginStore.setState({
     library: null,
+    distributionSnapshot: {},
+    distributionError: null,
+    isLoadingMarkets: false,
+    marketErrors: {},
     marketEntries: [],
     marketPreviews: {},
     marketSources: [],
@@ -444,6 +448,28 @@ function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
   window.api.plugin = {
     ...window.api.plugin,
     getLibrary: vi.fn().mockImplementation(async () => currentLibrary),
+    getDistributionStatus: vi
+      .fn()
+      .mockImplementation(async (pluginId?: string) =>
+        Object.fromEntries(
+          currentLibrary.plugins
+            .filter((plugin) => !pluginId || plugin.id === pluginId)
+            .map((plugin) => [
+              plugin.id,
+              Object.fromEntries(
+                targetMatrix.map((target) => [
+                  target.id,
+                  {
+                    installed: Boolean(
+                      plugin.distributedTargetIds?.includes(target.id),
+                    ),
+                    checkedAt: Date.now(),
+                  },
+                ]),
+              ),
+            ]),
+        ),
+      ),
     listMarket: vi.fn().mockResolvedValue(marketEntries),
     listMarketSources: vi.fn().mockResolvedValue(marketSources),
     getTargetMatrix: vi.fn().mockResolvedValue(targetMatrix),
@@ -697,7 +723,7 @@ describe("PluginManager", () => {
     expect(screen.getByText("Plugin 10")).toBeInTheDocument();
     expect(screen.queryByText("Plugin 11")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Gallery View" })).toHaveClass(
-      "app-wallpaper-surface",
+      "bg-card",
     );
 
     fireEvent.click(screen.getByLabelText("Plugin card columns"));
@@ -705,7 +731,7 @@ describe("PluginManager", () => {
 
     expect(screen.getByTestId("plugin-library-grid")).toHaveStyle({
       gridTemplateColumns:
-        "repeat(auto-fill, minmax(min(100%, max(280px, calc((100% - 2rem) / 3))), 1fr))",
+        "repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - 2rem) / 3))), 1fr))",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));

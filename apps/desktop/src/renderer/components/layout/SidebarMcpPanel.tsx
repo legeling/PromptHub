@@ -6,6 +6,7 @@ import {
   StoreIcon,
 } from "lucide-react";
 import { getMcpMarketSourceLabel } from "../mcp/mcp-market-labels";
+import { isWebRuntime } from "../../runtime";
 import { SidebarNavigationItem } from "./SidebarNavigationItem";
 import { SidebarResourceTagPanel } from "./SidebarResourceTagPanel";
 import type { SidebarController } from "./sidebar-view-types";
@@ -137,6 +138,22 @@ export function SidebarMcpPanel({
 }: {
   controller: SidebarController;
 }) {
+  if (isWebRuntime())
+    return (
+      <div className="px-3 py-2">
+        <SidebarNavigationItem
+          icon={<ServerIcon className="h-5 w-5" />}
+          label={controller.t("mcp.myMcp")}
+          count={controller.mcpLibrary?.servers.length ?? 0}
+          active
+          collapsed={controller.isCollapsed}
+          onClick={() => {
+            controller.setMcpSelectedTab("library");
+            controller.onNavigate("home");
+          }}
+        />
+      </div>
+    );
   return (
     <>
       <SidebarMcpNavigation controller={controller} />

@@ -1,3 +1,4 @@
+import { ResourceLibraryItem } from "../resources/ResourceLibraryItem";
 import React from "react";
 import {
   CheckSquareIcon,
@@ -35,7 +36,6 @@ interface SkillGalleryCardProps {
 }
 
 function SkillGalleryCardComponent({
-  animationDelayMs,
   distributedPlatforms,
   hasStoreUpdate = false,
   isSelected,
@@ -60,7 +60,7 @@ function SkillGalleryCardComponent({
     runtimeCapabilities.skillPlatformIntegration &&
     !isSelectionMode &&
     distributedPlatforms !== undefined;
-  const visibleDistributedPlatforms = (distributedPlatforms ?? []).slice(0, 6);
+  const visibleDistributedPlatforms = (distributedPlatforms ?? []).slice(0, 3);
   const selectLabel = isSelected
     ? t("common.clear", "清空")
     : t("common.select", "选择");
@@ -93,7 +93,7 @@ function SkillGalleryCardComponent({
   };
 
   return (
-    <div
+    <ResourceLibraryItem
       role="button"
       tabIndex={0}
       aria-label={primaryActionLabel}
@@ -117,18 +117,8 @@ function SkillGalleryCardComponent({
         event.stopPropagation();
         onDropTag?.(skill, tag);
       }}
-      style={{
-        animationDelay: `${animationDelayMs}ms`,
-        contentVisibility: "auto",
-        containIntrinsicSize: "220px",
-      }}
-      className={`group relative app-wallpaper-panel border rounded-2xl p-5 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4 ${
-        isSelectionMode
-          ? isSelected
-            ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-            : "border-border hover:border-primary/40"
-          : "border-border hover:border-primary/50 hover:shadow-xl hover:-translate-y-1"
-      }`}
+      view="gallery"
+      selected={isSelectionMode && isSelected}
     >
       {isSelectionMode && (
         <button
@@ -177,7 +167,7 @@ function SkillGalleryCardComponent({
             {showDistribution ? (
               <div
                 data-testid="skill-distributed-targets"
-                className="flex min-h-8 max-w-full flex-wrap items-center justify-end gap-1.5"
+                className="flex min-h-8 max-w-full flex-nowrap items-center justify-end gap-1.5 overflow-hidden"
               >
                 {visibleDistributedPlatforms.length > 0 ? (
                   visibleDistributedPlatforms.map((platform) => (
@@ -193,9 +183,9 @@ function SkillGalleryCardComponent({
                     {t("skill.notDistributed", "Not distributed")}
                   </span>
                 )}
-                {(distributedPlatforms?.length ?? 0) > 6 ? (
+                {(distributedPlatforms?.length ?? 0) > 3 ? (
                   <span className="text-[10px] text-muted-foreground">
-                    +{(distributedPlatforms?.length ?? 0) - 6}
+                    +{(distributedPlatforms?.length ?? 0) - 3}
                   </span>
                 ) : null}
               </div>
@@ -283,7 +273,7 @@ function SkillGalleryCardComponent({
           ))}
         </div>
       ) : null}
-    </div>
+    </ResourceLibraryItem>
   );
 }
 

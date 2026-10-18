@@ -125,3 +125,4 @@ packages/shared/types/index.js.map
 *.temp
 *.tsbuildinfo
 .omx/
+.local/agent-work/

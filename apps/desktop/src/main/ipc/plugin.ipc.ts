@@ -1,3 +1,6 @@
+import { importChildMcpServersForPlugin as importPluginChildMcp } from "@prompthub/core/plugin-child-mcp";
+import { readPluginDistributionStatus } from "@prompthub/core/plugin-distribution-status";
+import { isNativePluginRegistered } from "../services/plugin-native-installation";
 import { ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
@@ -74,21 +77,6 @@ const COMMON_ROOT_IGNORED_DIRS = new Set([
   "uploads",
 ]);
 
-const CHILD_MCP_SCAN_IGNORED_DIRS = new Set([
-  ".git",
-  ".hg",
-  ".svn",
-  ".cache",
-  "cache",
-  "dist",
-  "build",
-  "node_modules",
-  "vendor",
-]);
-
-const CHILD_MCP_SCAN_MAX_DEPTH = 5;
-const CHILD_MCP_SCAN_MAX_FILES = 40;
-const CHILD_MCP_CONFIG_MAX_BYTES = 1024 * 1024;
 const PLUGIN_JSON_MAX_BYTES = 1024 * 1024;
 
 const PLUGIN_DIR_INVENTORY: Array<{
@@ -227,149 +215,15 @@ function isInsideOrEqualDirectory(
   );
 }
 
-function splitSafeRelativePath(value: string | undefined): string[] {
-  if (!value) return [];
-  const parts = value.split(/[\\/]+/).filter(Boolean);
-  return parts.every((part) => part !== "." && part !== "..") ? parts : [];
-}
-
-function resolvePluginPackagePath(plugin: PluginLibraryEntry): string | null {
-  const candidates: string[] = [];
-  const sourcePackageParts = splitSafeRelativePath(plugin.source.packagePath);
-  const repositoryPath =
-    plugin.localRepositoryPath || plugin.source.localRepositoryPath;
-  if (repositoryPath && sourcePackageParts.length > 0) {
-    candidates.push(path.join(repositoryPath, ...sourcePackageParts));
-  }
-  if (plugin.localPackagePath) candidates.push(plugin.localPackagePath);
-  if (plugin.source.localPackagePath) {
-    candidates.push(plugin.source.localPackagePath);
-  }
-  if (plugin.managedPath) candidates.push(plugin.managedPath);
-  if (repositoryPath) candidates.push(repositoryPath);
-
-  for (const candidate of candidates) {
-    try {
-      const realPath = fs.realpathSync(path.resolve(candidate));
-      if (fs.statSync(realPath).isDirectory()) {
-        return realPath;
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-function hasMcpJsonConfigShape(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  return ["mcpServers", "servers", "mcp"].some((key) => isRecord(value[key]));
-}
-
-function looksLikeMcpConfigFile(filePath: string): boolean {
-  const extension = path.extname(filePath).toLowerCase();
-  if (extension !== ".json" && extension !== ".toml") return false;
-  try {
-    const stat = fs.statSync(filePath);
-    if (!stat.isFile() || stat.size > CHILD_MCP_CONFIG_MAX_BYTES) {
-      return false;
-    }
-    const content = fs.readFileSync(filePath, "utf8");
-    if (extension === ".toml") {
-      return /^\s*\[mcp_servers(?:\.|\])/m.test(content);
-    }
-    return hasMcpJsonConfigShape(JSON.parse(content));
-  } catch {
-    return false;
-  }
-}
-
-function collectChildMcpConfigFiles(packageDir: string): string[] {
-  const realRootDir = safeRealPath(packageDir);
-  if (!realRootDir) return [];
-  const files: string[] = [];
-  const queue: Array<{ depth: number; dir: string }> = [
-    { depth: 0, dir: realRootDir },
-  ];
-
-  while (queue.length > 0 && files.length < CHILD_MCP_SCAN_MAX_FILES) {
-    const current = queue.shift();
-    if (!current) break;
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(current.dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-
-    for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.name !== ".mcp.json") continue;
-      if (entry.isSymbolicLink()) continue;
-      const candidatePath = path.join(current.dir, entry.name);
-      const realCandidate = safeRealPath(candidatePath);
-      if (
-        !realCandidate ||
-        !isInsideOrEqualDirectory(realRootDir, realCandidate)
-      ) {
-        continue;
-      }
-      if (entry.isDirectory()) {
-        if (
-          current.depth < CHILD_MCP_SCAN_MAX_DEPTH &&
-          !CHILD_MCP_SCAN_IGNORED_DIRS.has(entry.name)
-        ) {
-          queue.push({ depth: current.depth + 1, dir: realCandidate });
-        }
-        continue;
-      }
-      if (looksLikeMcpConfigFile(realCandidate)) {
-        files.push(realCandidate);
-      }
-      if (files.length >= CHILD_MCP_SCAN_MAX_FILES) break;
-    }
-  }
-
-  return files.sort((left, right) => left.localeCompare(right));
-}
-
 export function importChildMcpServersForPlugin(
   service: CorePluginLibraryService,
   pluginId: string,
 ): PluginImportChildMcpResult {
-  const plugin = service.read().plugins.find((entry) => entry.id === pluginId);
-  if (!plugin) {
-    throw new Error(`Plugin not found: ${pluginId}`);
-  }
-  const packagePath = resolvePluginPackagePath(plugin);
-  if (!packagePath) {
-    throw new Error(
-      `Plugin has no local package folder: ${plugin.displayName}`,
-    );
-  }
-
-  const scannedFiles = collectChildMcpConfigFiles(packagePath);
-  const mcpService = createDesktopMcpLibraryService();
-  const result: PluginImportChildMcpResult = {
-    imported: [],
-    skipped: [],
-    scannedFiles,
-    failedFiles: [],
-  };
-
-  for (const filePath of scannedFiles) {
-    try {
-      const imported = mcpService.importFromFile(filePath);
-      result.imported.push(...imported.imported);
-      result.skipped.push(...imported.skipped);
-    } catch (error) {
-      result.failedFiles.push({
-        path: filePath,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  return result;
+  return importPluginChildMcp(
+    service,
+    pluginId,
+    createDesktopMcpLibraryService(),
+  );
 }
 
 function getContainedPath(
@@ -1057,6 +911,27 @@ export function registerPluginIPC(
         throw new Error("plugin:versionDelete requires a non-empty versionId");
       }
       return service.deletePluginVersion(pluginId, versionId);
+    },
+  );
+  ipcMain.handle(
+    IPC_CHANNELS.PLUGIN_DISTRIBUTION_STATUS,
+    (_event, pluginId?: unknown) => {
+      if (
+        pluginId !== undefined &&
+        (typeof pluginId !== "string" || !pluginId.trim())
+      )
+        throw new Error("Invalid Plugin status identifier");
+      const plugins = service
+        .read()
+        .plugins.filter(
+          (plugin) => pluginId === undefined || plugin.id === pluginId,
+        );
+      return readPluginDistributionStatus(plugins, {
+        resolvePath: resolveAgentPluginTargetPath,
+        nativeRegistered: (targetId, plugin) =>
+          isNativePluginRegistered(plugin, targetId),
+        includeContent: pluginId !== undefined,
+      });
     },
   );
   ipcMain.handle(IPC_CHANNELS.PLUGIN_TARGET_MATRIX, async () =>

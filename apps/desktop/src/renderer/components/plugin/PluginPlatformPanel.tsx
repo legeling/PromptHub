@@ -1,3 +1,4 @@
+import { usePluginStore } from "../../stores/plugin.store";
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckIcon,
@@ -44,6 +45,15 @@ export function PluginPlatformPanel({
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const observations = usePluginStore(
+    (state) => state.distributionSnapshot[plugin.id],
+  );
+  const refreshStatus = usePluginStore(
+    (state) => state.refreshDistributionStatus,
+  );
+  useEffect(() => {
+    void refreshStatus(plugin.id);
+  }, [plugin.id, refreshStatus]);
   const [installMode, setInstallMode] = useState<"copy" | "symlink">("copy");
   const [isDistributing, setIsDistributing] = useState(false);
   const [isRemovingTargetId, setIsRemovingTargetId] = useState<string | null>(
@@ -55,8 +65,15 @@ export function PluginPlatformPanel({
     new Set(),
   );
   const distributedTargetIds = useMemo(
-    () => new Set(plugin.distributedTargetIds ?? []),
-    [plugin.distributedTargetIds],
+    () =>
+      new Set(
+        observations
+          ? Object.entries(observations)
+              .filter(([, value]) => value.installed)
+              .map(([id]) => id)
+          : (plugin.distributedTargetIds ?? []),
+      ),
+    [plugin.distributedTargetIds, observations],
   );
   const effectiveTargetMatrix = useMemo(
     () => getPluginTargetMatrixForEntry(targetMatrix, plugin),
@@ -123,16 +140,21 @@ export function PluginPlatformPanel({
     selectableAgents.length > 0 &&
     selectableAgents.every((target) => selectedTargetIds.has(target.id));
 
-  const distributeToSelectedTargets = async () => {
-    if (!localPackagePath || selectedCount === 0 || isDistributing) {
+  const distributeToSelectedTargets = async (redistribute = false) => {
+    const targets = redistribute
+      ? supportedTargets
+          .filter((target) => distributedTargetIds.has(target.id))
+          .map((target) => target.id)
+      : [...selectedTargetIds];
+    if (!localPackagePath || targets.length === 0 || isDistributing) {
       return;
     }
     setIsDistributing(true);
     try {
-      await onDistribute(Array.from(selectedTargetIds), installMode);
+      await onDistribute(targets, installMode);
       showToast(
         t("plugin.distributionSuccess", {
-          count: selectedCount,
+          count: targets.length,
           defaultValue: "Distributed Plugin to {{count}} Agent target(s).",
         }),
         "success",
@@ -254,14 +276,26 @@ export function PluginPlatformPanel({
                 <SendIcon aria-hidden="true" className="h-3.5 w-3.5" />
                 {isDistributing
                   ? t("plugin.distributing", "Distributing...")
-                  : t(
-                      "plugin.distributeToSelectedAgents",
-                      "Distribute to selected Agents",
-                    )}
+                  : t("skill.distribution.applyChanges")}
               </button>
             </div>
           ) : null}
 
+          {distributedTargetIds.size > 0 && (
+            <button
+              type="button"
+              disabled={
+                isDistributing ||
+                Boolean(isRemovingTargetId) ||
+                selectedCount > 0
+              }
+              onClick={() => void distributeToSelectedTargets(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+            >
+              <SendIcon aria-hidden="true" className="h-4 w-4" />
+              {t("skill.distribution.redistribute")}
+            </button>
+          )}
           <div className="space-y-2">
             {effectiveTargetMatrix
               .filter((target) => target.id !== "shared-agents")
@@ -270,6 +304,7 @@ export function PluginPlatformPanel({
                 const selected =
                   !isDistributed && selectedTargetIds.has(target.id);
                 const description = getPluginTargetDescription(target, t);
+                const contentState = observations?.[target.id]?.contentState;
                 const content = (
                   <>
                     <div className="flex min-w-0 items-center gap-3">
@@ -295,7 +330,9 @@ export function PluginPlatformPanel({
                         </div>
                         <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
                           {isDistributed
-                            ? t("plugin.installed", "Installed")
+                            ? contentState && contentState !== "synced"
+                              ? t(`resourceLibrary.content.${contentState}`)
+                              : t("plugin.installed", "Installed")
                             : selected
                               ? t(
                                   "plugin.selectedForDistribution",

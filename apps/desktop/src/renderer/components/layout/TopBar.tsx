@@ -191,6 +191,7 @@ export function TopBar({
     !isSkillStoreCatalogView && !isAgentsView && !isGenerationWorkbench;
   const showCreateButton =
     !isGenerationWorkbench &&
+    !(webRuntime && isPluginView) &&
     (isPromptView || isSkillView || isMcpView || isPluginView);
   const selectedPromptForCreate = useMemo(() => {
     if (!isPromptView || !selectedPromptId) {

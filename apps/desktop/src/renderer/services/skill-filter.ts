@@ -1,9 +1,15 @@
+import { distributionPresence } from "@prompthub/shared/utils/resource-observation";
+import {
+  filterResources,
+  type ResourceFilter,
+} from "@prompthub/shared/utils/resource-library";
 import type { ScannedSkill, Skill } from "@prompthub/shared/types";
 import { getSkillFilterTags } from "./skill-stats";
 import type { SkillFilterType, SkillStoreView } from "../stores/skill.store";
 
 interface FilterVisibleSkillsOptions {
   deployedSkillNames: Set<string>;
+  platformStatuses?: Record<string, Record<string, boolean>>;
   filterTags?: string[];
   includeFrontmatter?: boolean;
   filterType: SkillFilterType;
@@ -21,6 +27,7 @@ function isSkillDeployed(
 
 export function filterVisibleSkills({
   deployedSkillNames,
+  platformStatuses,
   filterTags = [],
   includeFrontmatter = false,
   filterType,
@@ -28,65 +35,40 @@ export function filterVisibleSkills({
   skills,
   storeView,
 }: FilterVisibleSkillsOptions): Skill[] {
-  let result = skills;
-
-  if (storeView === "distribution") {
-    result = result.filter((skill) =>
-      isSkillDeployed(skill, deployedSkillNames),
-    );
-  } else if (filterType === "favorites") {
-    result = result.filter((skill) => skill.is_favorite);
-  } else if (filterType === "installed") {
-    result = result.filter((skill) => Boolean(skill.registry_slug));
-  } else if (filterType === "deployed") {
-    result = result.filter((skill) =>
-      isSkillDeployed(skill, deployedSkillNames),
-    );
-  } else if (filterType === "pending") {
-    result = result.filter(
-      (skill) => !isSkillDeployed(skill, deployedSkillNames),
-    );
-  }
-
-  if (filterTags.length > 0) {
-    // Normalize both sides so a tag stored with surrounding whitespace in a
-    // skill still matches the trimmed candidate shown in the filter UI. The
-    // sidebar tags and the My Skills tag filter both surface trimmed values,
-    // while persisted `skill.tags` may keep raw spaces.
-    // 对双方统一 trim：列表候选/侧栏展示的都是 trim 后的标签值，而持久化的
-    // skill.tags 可能带前后空格，这样点选“editor”也能命中原始“  editor  ”。
-    const normalizedTags = filterTags
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-    if (normalizedTags.length > 0) {
-      result = result.filter((skill) =>
-        getSkillFilterTags(skill, includeFrontmatter).some((rawTag) => {
-          const trimmed = rawTag.trim();
-          return trimmed.length > 0 && normalizedTags.includes(trimmed);
-        }),
-      );
-    }
-  }
-
-  const query = searchQuery.trim().toLowerCase();
-  if (!query) {
-    return result;
-  }
-
-  return result.filter((skill) => {
-    const fields = [
-      skill.name,
-      skill.description || "",
-      skill.author || "",
-      skill.instructions || "",
-      skill.content || "",
-      skill.source_url || "",
-      skill.local_repo_path || "",
-      ...(skill.tags || []),
-    ];
-
-    return fields.some((value) => value.toLowerCase().includes(query));
-  });
+  const filter: ResourceFilter =
+    storeView === "distribution" || filterType === "deployed"
+      ? "distributed"
+      : filterType === "favorites" || filterType === "pending"
+        ? filterType
+        : "all";
+  const candidates =
+    storeView !== "distribution" && filterType === "installed"
+      ? skills.filter((skill) => Boolean(skill.registry_slug))
+      : skills;
+  return filterResources(
+    candidates,
+    (skill) => ({
+      id: skill.id,
+      favorite: skill.is_favorite,
+      presence: platformStatuses
+        ? distributionPresence(platformStatuses[skill.id])
+        : isSkillDeployed(skill, deployedSkillNames)
+          ? "distributed"
+          : "absent",
+      tags: getSkillFilterTags(skill, includeFrontmatter),
+      search: [
+        skill.name,
+        skill.description || "",
+        skill.author || "",
+        skill.instructions || "",
+        skill.content || "",
+        skill.source_url || "",
+        skill.local_repo_path || "",
+        ...(skill.tags || []),
+      ],
+    }),
+    { filter, query: searchQuery, tags: filterTags },
+  );
 }
 
 export function filterVisibleScannedSkills(

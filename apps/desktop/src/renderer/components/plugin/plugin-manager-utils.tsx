@@ -1,3 +1,4 @@
+import { RESOURCE_GALLERY_COLUMNS } from "@prompthub/shared/constants/resource-library";
 import { useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { AUTO_GALLERY_GRID_STYLE } from "../ui/gallery-layout";
@@ -37,9 +38,9 @@ export const MARKET_GRID_ROW_HEIGHT_PX = 132;
 export const MARKET_GRID_HEADER_HEIGHT_PX = 36;
 export const MARKET_GRID_BOTTOM_GUTTER_PX = 24;
 export const MARKET_CATALOG_VIRTUALIZE_THRESHOLD = 240;
-export const PLUGIN_LIBRARY_GALLERY_MANUAL_MIN_WIDTH_PX = 280;
+export const PLUGIN_LIBRARY_GALLERY_MANUAL_MIN_WIDTH_PX = 240;
 export const PLUGIN_LIBRARY_GALLERY_COLUMNS: PluginLibraryGalleryColumnMode[] =
-  ["auto", "2", "3", "4"];
+  [...RESOURCE_GALLERY_COLUMNS];
 export function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

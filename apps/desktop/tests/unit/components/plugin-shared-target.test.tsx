@@ -47,8 +47,6 @@ it("allows shared distribution independently and excludes it from Agent select-a
   await user.click(shared);
   await user.click(screen.getByRole("button", { name: /^Deselect all$/i }));
   expect(shared).toHaveAttribute("aria-pressed", "true");
-  await user.click(
-    screen.getByRole("button", { name: "Distribute to selected Agents" }),
-  );
+  await user.click(screen.getByRole("button", { name: "Apply changes" }));
   expect(onDistribute).toHaveBeenCalledWith(["shared-agents"], "copy");
 });

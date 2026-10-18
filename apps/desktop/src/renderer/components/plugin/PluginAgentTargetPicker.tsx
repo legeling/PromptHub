@@ -1,3 +1,4 @@
+import { usePluginStore } from "../../stores/plugin.store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
@@ -333,7 +334,11 @@ function PluginPickerFooter({
   isDistributing,
   selectedCount,
   onConfirm,
+  onRedistribute,
+  redistributeCount,
 }: {
+  onRedistribute: () => void;
+  redistributeCount: number;
   isDistributing: boolean;
   selectedCount: number;
   onConfirm: () => void;
@@ -351,11 +356,19 @@ function PluginPickerFooter({
         <SendIcon aria-hidden="true" className="h-4 w-4" />
         {isDistributing
           ? t("plugin.distributing", "Distributing...")
-          : t("plugin.distributeToSelectedAgents", {
-              count: selectedCount,
-              defaultValue: "Distribute to selected Agents",
-            })}
+          : t("skill.distribution.applyChanges")}
       </button>
+      {redistributeCount > 0 && (
+        <button
+          type="button"
+          onClick={onRedistribute}
+          disabled={isDistributing}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+        >
+          <SendIcon aria-hidden="true" className="h-4 w-4" />
+          {t("skill.distribution.redistribute")}
+        </button>
+      )}
       <p className="text-xs leading-5 text-muted-foreground">
         {t(
           "plugin.distributionTargetHint",
@@ -435,7 +448,31 @@ export function PluginAgentTargetPicker({
     });
   };
 
-  const handleConfirm = async () => {
+  const currentLibrary = usePluginStore((state) => state.library);
+  const currentPlugins = currentLibrary
+    ? selectedPlugins.map(
+        (entry) =>
+          currentLibrary.plugins.find((current) => current.id === entry.id) ??
+          entry,
+      )
+    : selectedPlugins;
+  const changedCount = currentPlugins.reduce(
+    (count, entry) =>
+      count +
+      [...selectedTargetIds].filter(
+        (id) => !entry.distributedTargetIds?.includes(id),
+      ).length,
+    0,
+  );
+  const redistributeCount = currentPlugins.reduce(
+    (count, entry) =>
+      count +
+      [...selectedTargetIds].filter((id) =>
+        entry.distributedTargetIds?.includes(id),
+      ).length,
+    0,
+  );
+  const handleConfirm = async (redistribute = false) => {
     if (
       selectedPlugins.length === 0 ||
       selectedTargetIds.size === 0 ||
@@ -447,14 +484,22 @@ export function PluginAgentTargetPicker({
     setIsDistributing(true);
     const targetIds = Array.from(selectedTargetIds);
     let succeeded = 0;
+    let completedTargets = 0;
     let failed = 0;
     let firstError: unknown = null;
 
     try {
-      for (const selectedPlugin of selectedPlugins) {
+      for (const selectedPlugin of currentPlugins) {
         try {
-          await onDistribute(selectedPlugin, targetIds, installMode);
+          const selected = targetIds.filter(
+            (id) =>
+              Boolean(selectedPlugin.distributedTargetIds?.includes(id)) ===
+              redistribute,
+          );
+          if (selected.length === 0) continue;
+          await onDistribute(selectedPlugin, selected, installMode);
           succeeded += 1;
+          completedTargets += selected.length;
         } catch (error) {
           console.error("Plugin distribution failed:", error);
           failed += 1;
@@ -472,7 +517,7 @@ export function PluginAgentTargetPicker({
                 succeeded,
               })
             : t("plugin.distributionSuccess", {
-                count: selectedTargetIds.size,
+                count: completedTargets,
                 defaultValue:
                   "Distributed Plugin to {{count}} Agent target(s).",
               }),
@@ -506,9 +551,22 @@ export function PluginAgentTargetPicker({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isDistributing) onClose();
+      }}
       size="lg"
-      showCloseButton
+      footer={
+        <PluginPickerFooter
+          isDistributing={isDistributing}
+          selectedCount={changedCount}
+          redistributeCount={redistributeCount}
+          onRedistribute={() => void handleConfirm(true)}
+          onConfirm={() => void handleConfirm()}
+        />
+      }
+      closeOnEscape={!isDistributing}
+      closeOnBackdrop={!isDistributing}
+      showCloseButton={!isDistributing}
       title={t("plugin.selectAgentTargets", "Select Agent targets")}
       subtitle={
         isBatchDistribution
@@ -549,11 +607,6 @@ export function PluginAgentTargetPicker({
             />
           ))}
         </div>
-        <PluginPickerFooter
-          isDistributing={isDistributing}
-          selectedCount={selectedTargetIds.size}
-          onConfirm={() => void handleConfirm()}
-        />
       </div>
     </Modal>
   );

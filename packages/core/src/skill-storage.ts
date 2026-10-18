@@ -1,3 +1,4 @@
+import { parseManagedSkillFiles } from "@prompthub/shared/utils/managed-skill-files";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -24,6 +25,7 @@ import {
   getManagedSkillPackagePath,
   readSkillEntrypoint,
   skillPackageEntry,
+  skillSnapshotEntry,
 } from "./skill-storage-files";
 
 import { isDeepStrictEqual } from "node:util";
@@ -34,6 +36,10 @@ import {
   withSkillSnapshotEntrypoint,
 } from "@prompthub/shared/utils/skill-file-snapshot";
 import { assertStoragePathComponentsSafe } from "./runtime-storage-context";
+import {
+  computeSkillPackageFingerprintV1Sync,
+  SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
+} from "@prompthub/shared/utils/skill-source-update";
 import {
   getSkillHistoryDirectory,
   getSkillVersionPayloadPath,
@@ -219,6 +225,48 @@ export class SkillStorageDB extends SqlSkillDB {
     return this.publish(prepared.entries, () =>
       super.update(id, prepared.data),
     );
+  }
+
+  createFromPackage(
+    data: CreateSkillParams,
+    input: SkillFileSnapshot[],
+  ): Skill {
+    const files = parseManagedSkillFiles(input);
+    if (this.getByName(data.name))
+      throw new Error(`Skill name already exists: ${data.name}`);
+    const id = crypto.randomUUID();
+    const targetPath = getManagedSkillPackagePath(id, this.context.skillsRoot);
+    assertStoragePathComponentsSafe(this.context.rootPath, targetPath);
+    const content = files.find(
+      (file) => file.relativePath === "SKILL.md",
+    )!.content;
+    const fingerprint = computeSkillPackageFingerprintV1Sync(
+      files.map((file) => ({
+        path: file.relativePath,
+        data: decodeSkillFileSnapshot(file),
+      })),
+    ).fingerprint;
+    try {
+      return this.publish(
+        [skillSnapshotEntry(targetPath, files, this.context.rootPath)],
+        () =>
+          super.createWithId(id, {
+            ...data,
+            content,
+            instructions: content,
+            local_repo_path: targetPath,
+            directory_fingerprint: fingerprint,
+            fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
+          }),
+      );
+    } catch (error) {
+      // Publication rolls back package bytes. Remove only the now-empty new ID folder;
+      // uncertain commits retain files and the recovery journal for the next open.
+      const directory = path.dirname(targetPath);
+      if (fs.existsSync(directory) && fs.readdirSync(directory).length === 0)
+        fs.rmdirSync(directory);
+      throw error;
+    }
   }
 
   private version(
@@ -419,19 +467,7 @@ export class SkillStorageDB extends SqlSkillDB {
       return this.update(id, { content });
     const targetPath = getManagedSkillPackagePath(id, this.context.skillsRoot);
     const files = withSkillSnapshotEntrypoint(version.filesSnapshot, content);
-    const entry: CanonicalEntryMutation = {
-      targetPath,
-      prepare(stage) {
-        fs.mkdirSync(stage, { recursive: true, mode: 0o700 });
-        for (const file of files) {
-          const target = path.join(stage, ...file.relativePath.split("/"));
-          fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
-          fs.writeFileSync(target, decodeSkillFileSnapshot(file), {
-            mode: 0o600,
-          });
-        }
-      },
-    };
+    const entry = skillSnapshotEntry(targetPath, files, this.context.rootPath);
     return this.publish([entry], () =>
       super.update(id, {
         content,
@@ -449,6 +485,40 @@ export class SkillStorageDB extends SqlSkillDB {
           encodeSkillFileSnapshot(file.path, fs.readFileSync(file.sourcePath)),
         )
       : [];
+  }
+
+  /** Replace a managed package and its SQL content in one recoverable publication. */
+  replacePackageFiles(id: string, files: SkillFileSnapshot[]): Skill | null {
+    const skill = this.getById(id);
+    if (!skill) return null;
+    files = parseManagedSkillFiles(files);
+    const entrypoint = files.find((file) => file.relativePath === "SKILL.md");
+    if (!entrypoint || entrypoint.encoding === "base64")
+      throw new Error("A UTF-8 SKILL.md is required");
+    const targetPath = getManagedSkillPackagePath(id, this.context.skillsRoot);
+    if (
+      skill.local_repo_path &&
+      path.resolve(skill.local_repo_path) !== path.resolve(targetPath)
+    ) {
+      throw new Error("Linked packages must use their explicit edit workflow");
+    }
+    assertStoragePathComponentsSafe(this.context.rootPath, targetPath);
+    const fingerprint = computeSkillPackageFingerprintV1Sync(
+      files.map((file) => ({
+        path: file.relativePath,
+        data: decodeSkillFileSnapshot(file),
+      })),
+    ).fingerprint;
+    const entry = skillSnapshotEntry(targetPath, files, this.context.rootPath);
+    return this.publish([entry], () =>
+      super.update(id, {
+        content: entrypoint.content,
+        instructions: entrypoint.content,
+        local_repo_path: targetPath,
+        directory_fingerprint: fingerprint,
+        fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
+      }),
+    );
   }
 
   override delete(id: string): boolean {

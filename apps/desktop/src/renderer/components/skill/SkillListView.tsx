@@ -1,3 +1,4 @@
+import { ResourceLibraryItem } from "../resources/ResourceLibraryItem";
 import { useTranslation } from "react-i18next";
 import {
   CuboidIcon,
@@ -263,7 +264,7 @@ export function SkillListView({
           };
 
           return (
-            <div
+            <ResourceLibraryItem
               key={virtualRow.key}
               data-index={virtualRow.index}
               ref={rowVirtualizer.measureElement}
@@ -297,13 +298,8 @@ export function SkillListView({
                 width: "100%",
                 transform: `translateY(${virtualRow.start}px)`,
               }}
-              className={`group flex min-h-[72px] items-center gap-3 border-b border-border/60 px-5 py-3 cursor-pointer transition-colors ${
-                selectionMode && isChecked
-                  ? "bg-primary/10"
-                  : isSelected
-                    ? "bg-primary/10"
-                    : "hover:bg-primary/5"
-              }`}
+              view="list"
+              selected={selectionMode ? isChecked : isSelected}
             >
               {selectionMode && (
                 <button
@@ -502,7 +498,7 @@ export function SkillListView({
                   </button>
                 </div>
               )}
-            </div>
+            </ResourceLibraryItem>
           );
         })}
       </div>

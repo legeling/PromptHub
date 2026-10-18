@@ -32,12 +32,6 @@ const DEPLOYED_STATUS_CACHE_TTL_MS = 30_000;
 let deployedStatusRefreshPromise: Promise<void> | null = null;
 let deployedStatusLoadedAt = 0;
 
-function shouldReuseDeployedStatus(
-  options: { force?: boolean } | undefined,
-): boolean {
-  return Boolean(!options?.force && deployedStatusRefreshPromise);
-}
-
 function isDeployedStatusFresh(
   options: { force?: boolean } | undefined,
   get: SkillStoreGet,
@@ -86,11 +80,21 @@ async function refreshDeployedStatus(
         .filter(([, status]) => Object.values(status).some(Boolean))
         .map(([skillId]) => skillId),
     );
-    set({ skillPlatformStatuses: next, deployedSkillNames });
-    deployedStatusLoadedAt = Date.now();
+    const incomplete = get().skills.some(
+      (skill) => skillPlatformStatuses[skill.id] === undefined,
+    );
+    set({
+      skillPlatformStatuses: next,
+      deployedSkillNames,
+      distributionStatusError: incomplete
+        ? "Skill target status check was incomplete"
+        : null,
+    });
+    deployedStatusLoadedAt = incomplete ? 0 : Date.now();
   } catch (error) {
     console.warn("Failed to load deployed status:", error);
     deployedStatusLoadedAt = 0;
+    set({ distributionStatusError: getErrorMessage(error) });
   }
 }
 
@@ -99,7 +103,7 @@ async function loadDeployedStatus(
   get: SkillStoreGet,
   options: { force?: boolean } | undefined,
 ): Promise<void> {
-  if (shouldReuseDeployedStatus(options)) await deployedStatusRefreshPromise;
+  if (deployedStatusRefreshPromise) return deployedStatusRefreshPromise;
   if (isDeployedStatusFresh(options, get)) return;
   deployedStatusRefreshPromise = refreshDeployedStatus(set, get).finally(() => {
     deployedStatusRefreshPromise = null;
@@ -612,6 +616,7 @@ function createLibraryViewActions(set: SkillStoreSet, get: SkillStoreGet) {
       const state = get();
       return filterVisibleSkills({
         deployedSkillNames: state.deployedSkillNames,
+        platformStatuses: state.skillPlatformStatuses,
         filterTags: state.filterTags,
         includeFrontmatter:
           useSettingsStore.getState().skillTagFilterIncludeFrontmatter,
@@ -649,6 +654,7 @@ export function createSkillLibraryActions(
   | "filterTags"
   | "deployedSkillNames"
   | "skillPlatformStatuses"
+  | "distributionStatusError"
   | "pendingPluginChildDeploySkillIds"
 > {
   return Object.assign(

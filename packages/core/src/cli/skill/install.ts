@@ -1,5 +1,18 @@
+import { materializeRemoteGitRepository } from "../../skills/git-materialize";
+import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
+import { fetchRemoteBytes, fetchRemoteText } from "../../skills/remote-fetch";
+import {
+  readSkillNetworkSettings,
+  skillFetchOptions,
+  skillGitEnvironment,
+} from "../../skills/network-settings";
+import {
+  resolveSkillGitSource,
+  resolveSelectedSkillDirectory,
+  type SkillSourceInstallOptions,
+} from "../../skills/git-source";
+import { cloneSkillRepository } from "../../skills/git-transport";
 import { replaceSkillDestination } from "../../skills/destination";
-import * as childProcess from "child_process";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -22,7 +35,6 @@ import {
 import {
   computeRepoDirectoryFingerprintByPath,
   fileExists,
-  GIT_CLONE_TIMEOUT_MS,
   loadSkillPackageIgnoreMatcher,
   validateRepoPackageInventory,
 } from "./paths";
@@ -31,13 +43,19 @@ export type FetchLike = typeof fetch;
 
 export async function fetchRemoteContent(
   sourceUrl: string,
-  fetchImpl: FetchLike,
+  fetchImpl?: FetchLike,
 ): Promise<string> {
   const parsedUrl = new URL(sourceUrl);
   if (parsedUrl.protocol !== "https:") {
     throw new Error("Only HTTPS skill URLs are supported");
   }
 
+  if (!fetchImpl)
+    return fetchRemoteText(
+      sourceUrl,
+      0,
+      skillFetchOptions(readSkillNetworkSettings()),
+    );
   const response = await fetchImpl(sourceUrl);
   if (!response.ok) {
     throw new Error(
@@ -50,70 +68,32 @@ export async function fetchRemoteContent(
 
 export async function gitClone(
   url: string,
-  destinationDir: string,
+  destination: string,
+  branch?: string,
 ): Promise<void> {
-  if (!url.trim()) {
-    throw new Error("Git clone URL cannot be empty");
-  }
-  if (url.startsWith("-")) {
-    throw new Error("Git clone URL cannot start with '-'");
-  }
+  const settings = readSkillNetworkSettings();
+  await cloneSkillRepository(
+    url,
+    destination,
+    branch,
+    undefined,
+    skillGitEnvironment(url, settings),
+  );
+}
 
-  const parsedUrl = new URL(url);
-  if (parsedUrl.protocol !== "https:") {
-    throw new Error("Only HTTPS Git clone URLs are allowed");
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const processRef = childProcess.spawn(
-      "git",
-      ["clone", "--depth", "1", "--", url, destinationDir],
-      {
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-
-    let stderr = "";
-    let settled = false;
-    const timeout = setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      processRef.kill("SIGKILL");
-      reject(
-        new Error(
-          `Git clone timed out after ${GIT_CLONE_TIMEOUT_MS / 1000}s for URL: ${url}`,
-        ),
-      );
-    }, GIT_CLONE_TIMEOUT_MS);
-
-    processRef.stderr?.on("data", (data: Buffer | string) => {
-      stderr += data.toString();
-    });
-
-    processRef.on("close", (code) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timeout);
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(new Error(`Git clone failed with code ${code}: ${stderr}`));
-    });
-
-    processRef.on("error", (error) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timeout);
-      reject(new Error(`Git clone error: ${error.message}`));
-    });
-  });
+async function fetchConfiguredArchive(source: string): Promise<Uint8Array> {
+  const settings = readSkillNetworkSettings();
+  const url = new URL(source);
+  // GitHub's authenticated archive endpoint redirects without forwarding the PAT.
+  const archive =
+    url.hostname === "codeload.github.com"
+      ? url.pathname.match(/^\/([^/]+)\/([^/]+)\/zip\/(.+)$/)
+      : null;
+  const target =
+    archive && settings.githubToken
+      ? `https://api.github.com/repos/${archive[1]}/${archive[2]}/zipball/${archive[3]}`
+      : source;
+  return fetchRemoteBytes(target, 0, skillFetchOptions(settings));
 }
 
 export async function readManifest(skillDir: string): Promise<SkillManifest> {
@@ -248,6 +228,8 @@ export async function installFromSkillContent(
   options?: {
     name?: string;
     sourceUrl?: string;
+    sourceBranch?: string;
+    sourceDirectory?: string;
     repoSourceDir?: string;
   },
 ): Promise<string> {
@@ -323,6 +305,8 @@ export async function installFromSkillContent(
       original_tags: sanitizeTags(parsed?.frontmatter.tags, manifest.tags),
       is_favorite: false,
       source_url: options?.sourceUrl,
+      source_branch: options?.sourceBranch,
+      source_directory: options?.sourceDirectory,
       local_repo_path: localRepoPath,
       ...buildCliFingerprintFields(directoryFingerprint, {
         bindSource: Boolean(options?.sourceUrl),
@@ -333,82 +317,68 @@ export async function installFromSkillContent(
   }
 }
 
-export async function installFromGithub(
+export async function withSelectedGitSkill<T>(
   sourceUrl: string,
-  skillDb: SkillDB,
+  options: SkillSourceInstallOptions,
   gitCloneImpl: typeof gitClone,
-): Promise<string> {
-  const matches = sourceUrl.match(
-    /^https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/,
-  );
-  if (!matches) {
-    throw new Error(
-      "Invalid GitHub URL: must be https://github.com/{owner}/{repo}",
-    );
-  }
-
-  const owner = matches[1];
-  const repoName = matches[2];
-  const existingByName = skillDb.getByName(repoName);
-  if (existingByName) {
-    throw new Error(
-      `A skill named "${repoName}" already exists in the library (id: ${existingByName.id}). Delete it first or use a different repository.`,
-    );
-  }
-
+  read: (
+    directory: string,
+    source: NonNullable<ReturnType<typeof resolveSkillGitSource>>,
+  ) => Promise<T>,
+  fetchArchive: (url: string) => Promise<Uint8Array> = fetchConfiguredArchive,
+): Promise<T> {
+  const source = resolveSkillGitSource(sourceUrl, options);
+  if (!source) throw new Error("Invalid Git repository source");
   await fs.mkdir(getOperationsDir(), { recursive: true });
   const stagingRoot = await fs.mkdtemp(
     path.join(getOperationsDir(), "skill-git-"),
   );
-  const checkoutDir = path.join(stagingRoot, "checkout");
   try {
-    await gitCloneImpl(sourceUrl, checkoutDir);
-    const skillDir = await resolveSingleSkillDirFromRepo(checkoutDir);
-    const manifest = await readManifest(skillDir);
-
-    if (!manifest.instructions) {
-      try {
-        manifest.instructions = await fs.readFile(
-          path.join(skillDir, "SKILL.md"),
-          "utf-8",
-        );
-      } catch {
-        // Fall through to README fallback.
-      }
-    }
-
-    if (!manifest.instructions) {
-      try {
-        manifest.instructions = await fs.readFile(
-          path.join(checkoutDir, "README.md"),
-          "utf-8",
-        );
-      } catch {
-        // Leave empty if no markdown entry file exists.
-      }
-    }
-
-    await validateRepoPackageInventory(skillDir);
-    const directoryFingerprint =
-      await computeRepoDirectoryFingerprintByPath(skillDir);
-    return skillDb.create({
-      name: manifest.name || repoName,
-      description: manifest.description || `Installed from ${sourceUrl}`,
-      version: manifest.version || "1.0.0",
-      author: manifest.author || owner,
-      content: manifest.instructions || "",
-      instructions: manifest.instructions || "",
-      protocol_type: "skill",
-      source_url: sourceUrl,
-      local_repo_path: skillDir,
-      ...buildCliFingerprintFields(directoryFingerprint, { bindSource: true }),
-      is_favorite: false,
-      tags: [],
-      original_tags: manifest.tags || ["github"],
-    }).id;
+    const repo = parseGitRepo(source.cloneUrl);
+    if (!repo) throw new Error("Invalid Git repository source");
+    const checkoutDir = await materializeRemoteGitRepository(
+      repo,
+      source.branch,
+      stagingRoot,
+      fetchArchive,
+      source.directory,
+      gitCloneImpl,
+    );
+    const skillDir = source.directory
+      ? await resolveSelectedSkillDirectory(checkoutDir, source.directory)
+      : await resolveSingleSkillDirFromRepo(checkoutDir);
+    return await read(skillDir, source);
   } finally {
     await fs.rm(stagingRoot, { recursive: true, force: true });
   }
+}
+
+export async function installFromGithub(
+  sourceUrl: string,
+  skillDb: SkillDB,
+  gitCloneImpl: typeof gitClone,
+  options: SkillSourceInstallOptions = {},
+  fetchArchive?: (url: string) => Promise<Uint8Array>,
+): Promise<string> {
+  return withSelectedGitSkill(
+    sourceUrl,
+    options,
+    gitCloneImpl,
+    async (skillDir, source) => {
+      const content = await fs.readFile(
+        path.join(skillDir, "SKILL.md"),
+        "utf8",
+      );
+      return installFromSkillContent(content, skillDb, {
+        name: options.name,
+        sourceUrl,
+        sourceBranch: source.branch,
+        sourceDirectory: source.directory,
+        repoSourceDir: skillDir,
+      });
+    },
+    fetchArchive,
+  );
 }
 
 export async function importFromJson(

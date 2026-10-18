@@ -259,6 +259,8 @@ docker compose up -d --build
 
 詳細なデプロイ / アップグレード / バックアップ / GHCR イメージ / 開発メモは [`web-self-hosted.md`](./web-self-hosted.md) に記載しています。
 
+0.6.0 開発版では、Desktop と CLI が Skill、MCP、Plugin の Core 処理を共有します。セルフホスト Web と Cloudflare は保存、編集、バージョン、完全なパッケージのインポート／エクスポートと同期に対応します。Agent への配布、サーバーディレクトリのスキャン、SSH インストールは行いません。CLI は別途パッケージ化してインストールします。
+
 <div id="cli"></div>
 
 ## CLI
@@ -301,7 +303,7 @@ rules     list / scan / read / save / rewrite
 skill     list / get / import（互換エイリアス: install）/ delete / remove
           versions / create-version / rollback / delete-version
           export / scan / scan-safety / sync-from-repo
-          platforms / platform-status / distribute / undistribute
+          platforms / platform-status / distribute / redistribute / undistribute
           （互換エイリアス: install-md / uninstall-md）
           repo-files / repo-read / repo-write / repo-delete / repo-mkdir / repo-rename
 

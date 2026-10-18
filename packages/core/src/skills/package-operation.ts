@@ -458,6 +458,7 @@ export function buildStoreUpdateSkillData(
 export function sanitizeSkillPackageDiagnostic(value: unknown): string {
   const message = value instanceof Error ? value.message : String(value ?? "");
   return message
+    .replace(/\b(authorization\s*:\s*(?:basic|bearer)\s+)\S+/gi, "$1[REDACTED]")
     .replace(/(https?:\/\/)[^\s/@]+(?::[^\s/@]*)?@/gi, "$1[REDACTED]@")
     .replace(/([?&](?:token|secret|password|key)=)[^&\s]+/gi, "$1[REDACTED]")
     .replace(/\b(token|secret|password|api[_-]?key)=\S+/gi, "$1=[REDACTED]")

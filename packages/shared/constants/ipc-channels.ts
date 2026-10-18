@@ -387,6 +387,7 @@ export const IPC_CHANNELS = {
   PLUGIN_VERSION_CREATE: "plugin:version:create",
   PLUGIN_VERSION_ROLLBACK: "plugin:version:rollback",
   PLUGIN_VERSION_DELETE: "plugin:version:delete",
+  PLUGIN_DISTRIBUTION_STATUS: "plugin:distribution:status",
   PLUGIN_TARGET_MATRIX: "plugin:target:matrix",
 
   // Data Recovery

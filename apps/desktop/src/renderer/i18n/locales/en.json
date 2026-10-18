@@ -1,4 +1,17 @@
 {
+  "hostedResources": {
+    "description": "Save and manage resources here. Agent deployment stays on your device.",
+    "operationFailed": "The operation failed. Please try again.",
+    "empty": "No matching resources.",
+    "deleteConfirm": "Delete “{{name}}” from your library? Its saved package and history will also be removed.",
+    "notes": "Personal notes",
+    "uploadSkillPackage": "Upload Skill package",
+    "uploadSkillPackageHint": "Choose a ZIP with SKILL.md at its root. Attached files are saved together.",
+    "importPlugins": "Import Plugin backup",
+    "exportPlugins": "Export Plugin backup",
+    "pluginBackupHint": "Save complete Plugin packages and version history. Import a PromptHub JSON backup; existing IDs are retained and duplicates are rejected.",
+    "requestLimit": "Hosted uploads support requests up to 1 MiB, including metadata and encoded file contents."
+  },
   "testHistory": {
     "title": "Test history",
     "back": "Back to history",
@@ -2109,7 +2122,6 @@
     "cliGlobalBinHint": "CLI installed in {{path}}. If your terminal cannot find prompthub, add this directory to its PATH and reopen the terminal.",
     "cliCopyCommand": "Copy",
     "cliStatusLoadFailed": "Failed to load PromptHub CLI status",
-
     "cliCachedStatus": "Last checked: {{time}}. Refresh to check again.",
     "openSource": "Open Source",
     "projectRepository": "Project Repository",
@@ -3751,7 +3763,8 @@
       "applyChanges": "Apply changes",
       "changesApplied": "Applied {{count}} changes.",
       "redistribute": "Redistribute",
-      "redistributeHint": "Refresh {{count}} checked targets using the selected method."
+      "redistributeHint": "Refresh {{count}} checked targets using the selected method.",
+      "noChanges": "No pending changes. Redistribute to update installed copies."
     }
   },
   "error": {
@@ -4897,5 +4910,15 @@
     "compareEmpty": "Select at least two models, then run a comparison.",
     "singleEmpty": "Run a test to see the response here.",
     "emptyResponse": "No response"
+  },
+  "resourceLibrary": {
+    "statusFailed": "Distribution status could not be fully checked. The last known results are shown.",
+    "statusUnknown": "{{count}} resources await a distribution check.",
+    "content": {
+      "needs-sync": "Pending sync",
+      "conflict": "Content conflict",
+      "unverified": "Not verified"
+    },
+    "pagination": "Pagination"
   }
 }

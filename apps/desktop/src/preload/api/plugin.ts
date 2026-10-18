@@ -1,3 +1,4 @@
+import type { ResourceDistributionSnapshot } from "@prompthub/shared/types/resource-observation";
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
@@ -26,6 +27,10 @@ import type {
 import type { AgentAssetFileSnapshot } from "@prompthub/shared/types/sync";
 
 export const pluginApi = {
+  getDistributionStatus: (
+    pluginId?: string,
+  ): Promise<ResourceDistributionSnapshot> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_DISTRIBUTION_STATUS, pluginId),
   getLibrary: (): Promise<PluginLibraryFile> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_LIBRARY_GET),
   exportLibrarySnapshot: (): Promise<PluginLibrarySnapshot> =>
@@ -107,26 +112,15 @@ export const pluginApi = {
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_PACKAGE_HEALTH_CHECK, pluginId),
   versionGetAll: (pluginId: string): Promise<PluginVersion[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_VERSION_GET_ALL, pluginId),
-  versionCreate: (
-    pluginId: string,
-    note?: string,
-  ): Promise<PluginVersion> =>
+  versionCreate: (pluginId: string, note?: string): Promise<PluginVersion> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_VERSION_CREATE, pluginId, note),
   versionRollback: (
     pluginId: string,
     version: number,
   ): Promise<PluginVersionRollbackResult | null> =>
-    ipcRenderer.invoke(
-      IPC_CHANNELS.PLUGIN_VERSION_ROLLBACK,
-      pluginId,
-      version,
-    ),
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_VERSION_ROLLBACK, pluginId, version),
   versionDelete: (pluginId: string, versionId: string): Promise<boolean> =>
-    ipcRenderer.invoke(
-      IPC_CHANNELS.PLUGIN_VERSION_DELETE,
-      pluginId,
-      versionId,
-    ),
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_VERSION_DELETE, pluginId, versionId),
   deletePlugin: (
     id: string,
     options?: PluginDeleteOptions,

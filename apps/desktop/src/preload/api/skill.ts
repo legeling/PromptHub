@@ -34,7 +34,7 @@ export const skillApi = {
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_SAVE_EXPORT, id, format),
   create: (
     data: CreateSkillParams,
-    options?: { skipInitialVersion?: boolean },
+    options?: { skipInitialVersion?: boolean; files?: SkillFileSnapshot[] },
   ) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_CREATE, data, options),
   get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET, id),
   getAll: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_ALL),

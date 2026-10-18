@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { waitFor } from "@testing-library/react";
 
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
 import type {
@@ -124,6 +125,27 @@ describe("mcp store remote market cache persistence", () => {
     localStorage.clear();
     resetMcpStoreForTest();
     localStorage.clear();
+  });
+
+  it("shows the saved library before target scanning or health checks finish", async () => {
+    const targets = createDeferred<McpTargetStatusEntry[]>();
+    const health = createDeferred<[]>();
+    window.api.mcp = {
+      ...createWindowApiMock().mcp,
+      getLibrary: vi.fn().mockResolvedValue(mcpLibrary),
+      getTargetStatus: vi.fn().mockReturnValue(targets.promise),
+      checkAllServers: vi.fn().mockReturnValue(health.promise),
+    };
+    const loading = useMcpStore.getState().load();
+    await waitFor(() =>
+      expect(useMcpStore.getState().library).toEqual(mcpLibrary),
+    );
+    expect(useMcpStore.getState().isLoading).toBe(false);
+    targets.resolve([claudeTargetStatus]);
+    health.resolve([]);
+    await loading;
+    expect(window.api.mcp.checkAllServers).not.toHaveBeenCalled();
+    expect(useMcpStore.getState().targetStatus).toEqual([claudeTargetStatus]);
   });
 
   it("keeps catalog queries and paged results independent of library search (#217)", async () => {

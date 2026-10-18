@@ -16,8 +16,9 @@ function rotateRight(value: number, bits: number): number {
   return (value >>> bits) | (value << (32 - bits));
 }
 
-export function sha256HexSync(data: string): string {
-  const bytes = new TextEncoder().encode(data);
+export function sha256HexSync(data: string | Uint8Array): string {
+  const bytes =
+    typeof data === "string" ? new TextEncoder().encode(data) : data;
   const bitLength = bytes.length * 8;
   const paddedLength = Math.ceil((bytes.length + 1 + 8) / 64) * 64;
   const padded = new Uint8Array(paddedLength);

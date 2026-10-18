@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { publishPluginTarget } from "./plugin-target-publication";
 import type {
   PluginDistributeMode,
   PluginLibraryEntry,
@@ -92,24 +92,7 @@ export function writeSharedPluginPackage(
   plugin: PluginLibraryEntry,
 ): void {
   assertSharedPluginOwnership(targetPath, plugin);
-  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  const staging = `${targetPath}.staging-${randomUUID()}`;
-  const backup = `${targetPath}.backup-${randomUUID()}`;
-  let backedUp = false;
-  try {
-    stagePackage(sourcePath, staging, mode, plugin.id);
-    if (existingStat(targetPath)) {
-      fs.renameSync(targetPath, backup);
-      backedUp = true;
-    }
-    try {
-      fs.renameSync(staging, targetPath);
-    } catch (error) {
-      if (backedUp) fs.renameSync(backup, targetPath);
-      throw error;
-    }
-    if (backedUp) fs.rmSync(backup, { recursive: true, force: true });
-  } finally {
-    fs.rmSync(staging, { recursive: true, force: true });
-  }
+  publishPluginTarget(sourcePath, targetPath, plugin.id, (stage) =>
+    stagePackage(sourcePath, stage, mode, plugin.id),
+  );
 }

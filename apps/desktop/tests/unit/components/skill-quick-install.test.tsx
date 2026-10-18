@@ -115,6 +115,9 @@ describe("SkillQuickInstall", () => {
       }),
     ).toBeEnabled();
     await act(async () => {
+      expect(
+        screen.getByRole("button", { name: "Apply changes" }),
+      ).toBeDisabled();
       fireEvent.click(screen.getByRole("button", { name: "Redistribute" }));
     });
     expect(applyPlatformChangesMock).toHaveBeenCalledTimes(1);

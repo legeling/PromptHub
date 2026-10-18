@@ -1,5 +1,12 @@
+import {
+  isResourceGalleryColumns,
+  type ResourceGalleryColumns,
+} from "@prompthub/shared/constants/resource-library";
+import type { ResourceDistributionSnapshot } from "@prompthub/shared/types/resource-observation";
+import { mergeDistributionObservations } from "@prompthub/shared/utils/resource-observation";
 import { publishNotification } from "../services/application-notifications";
 import { create } from "zustand";
+import { createResourceRequest } from "../services/resource-request";
 import { persist } from "zustand/middleware";
 import { loadDeployableAgentPlatformIds } from "../services/platform-visibility";
 import type {
@@ -34,10 +41,13 @@ import {
 } from "../services/custom-store-source";
 
 export type PluginLibraryViewMode = "gallery" | "list";
-export type PluginLibraryGalleryColumnMode = "auto" | "2" | "3" | "4";
+export type PluginLibraryGalleryColumnMode = ResourceGalleryColumns;
 
 interface PluginState {
   library: PluginLibraryFile | null;
+  distributionSnapshot: ResourceDistributionSnapshot;
+  distributionError: string | null;
+  refreshDistributionStatus: (pluginId?: string) => Promise<void>;
   marketEntries: PluginMarketEntry[];
   marketPreviews: Record<string, PluginMarketPreview>;
   marketSources: PluginMarketSource[];
@@ -55,6 +65,8 @@ interface PluginState {
   searchQuery: string;
   isLoading: boolean;
   error: string | null;
+  marketErrors: Record<string, string>;
+  isLoadingMarkets: boolean;
   hasLoadedTargetInventory: boolean;
   isLoadingTargetInventory: boolean;
   targetInventoryError: string | null;
@@ -139,6 +151,8 @@ interface PluginState {
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+const loadPluginResources = createResourceRequest();
+const loadPluginDistribution = createResourceRequest();
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -284,6 +298,34 @@ export const usePluginStore = create<PluginState>()(
   persist(
     (set, get) => ({
       library: null,
+      distributionSnapshot: {},
+      distributionError: null,
+      refreshDistributionStatus: (pluginId) => {
+        const refresh = async () => {
+          try {
+            const next =
+              await window.api.plugin.getDistributionStatus(pluginId);
+            const errors = Object.values(next).flatMap((targets) =>
+              Object.values(targets).flatMap((entry) =>
+                entry.error ? [entry.error] : [],
+              ),
+            );
+            set((state) => ({
+              distributionSnapshot: {
+                ...(pluginId ? state.distributionSnapshot : {}),
+                ...mergeDistributionObservations(
+                  state.distributionSnapshot,
+                  next,
+                ),
+              },
+              distributionError: errors[0] ?? null,
+            }));
+          } catch (error) {
+            set({ distributionError: getErrorMessage(error) });
+          }
+        };
+        return pluginId ? refresh() : loadPluginDistribution(refresh);
+      },
       marketEntries: [],
       marketPreviews: {},
       marketSources: [],
@@ -301,6 +343,8 @@ export const usePluginStore = create<PluginState>()(
       searchQuery: "",
       isLoading: false,
       error: null,
+      marketErrors: {},
+      isLoadingMarkets: false,
       hasLoadedTargetInventory: false,
       isLoadingTargetInventory: false,
       targetInventoryError: null,
@@ -351,78 +395,94 @@ export const usePluginStore = create<PluginState>()(
         return request;
       },
 
-      load: async (options) => {
-        set({ isLoading: true, error: null });
-        try {
-          const force = options?.force === true;
-          const builtinSources = await window.api.plugin.listMarketSources();
-          const marketSources = mergePluginMarketSources(
-            builtinSources,
-            get().customStoreSources,
+      load: (options) =>
+        loadPluginResources(async () => {
+          set({ isLoading: true, isLoadingMarkets: true, error: null });
+          const libraryPromise = window.api.plugin.getLibrary().then(
+            (library) => {
+              set({ library, isLoading: false });
+              return get().refreshDistributionStatus();
+            },
+            (error) => set({ error: getErrorMessage(error), isLoading: false }),
           );
-          const selectedMarketSourceId = resolvePluginMarketSourceId(
-            get().selectedMarketSourceId,
-            marketSources,
-          );
-          set((state) => ({
-            marketEntries: pruneMarketEntriesToSources(
-              state.marketEntries,
+          const targetMatrixPromise = get()
+            .loadTargetInventory({ force: true })
+            .catch(() => {
+              // The target inventory action exposes its own error without discarding the library.
+            });
+          try {
+            const force = options?.force === true;
+            const builtinSources = await window.api.plugin.listMarketSources();
+            const marketSources = mergePluginMarketSources(
+              builtinSources,
+              get().customStoreSources,
+            );
+            const selectedMarketSourceId = resolvePluginMarketSourceId(
+              get().selectedMarketSourceId,
               marketSources,
-            ),
-            marketSources,
-            selectedMarketSourceId,
-          }));
-
-          const libraryPromise = window.api.plugin
-            .getLibrary()
-            .then((library) => set({ library }));
-          const targetMatrixPromise = get().loadTargetInventory({
-            force: true,
-          });
-          const marketEntriesPromise = Promise.all(
-            prioritizePluginMarketSources(
+            );
+            set((state) => ({
+              marketEntries: pruneMarketEntriesToSources(
+                state.marketEntries,
+                marketSources,
+              ),
               marketSources,
               selectedMarketSourceId,
-            ).map(async (source) => {
-              if (
-                !force &&
-                get().marketEntries.some(
-                  (entry) => entry.marketplaceId === source.id,
-                )
-              ) {
-                return;
-              }
-              try {
-                const sourceEntries = await window.api.plugin.listMarket([
-                  source,
-                ]);
-                set((state) => ({
-                  marketEntries: mergeMarketEntriesForSource(
-                    state.marketEntries,
-                    sourceEntries,
-                    source.id,
-                    marketSources,
-                  ),
-                }));
-              } catch (sourceError) {
-                console.warn(
-                  `[plugin-store] Failed to load plugin marketplace ${source.id}:`,
-                  sourceError,
-                );
-              }
-            }),
-          );
+            }));
 
-          await Promise.all([
-            libraryPromise,
-            targetMatrixPromise,
-            marketEntriesPromise,
-          ]);
-          set({ isLoading: false });
-        } catch (error) {
-          set({ error: getErrorMessage(error), isLoading: false });
-        }
-      },
+            const marketEntriesPromise = Promise.all(
+              prioritizePluginMarketSources(
+                marketSources,
+                selectedMarketSourceId,
+              ).map(async (source) => {
+                if (
+                  !force &&
+                  get().marketEntries.some(
+                    (entry) => entry.marketplaceId === source.id,
+                  )
+                ) {
+                  return;
+                }
+                try {
+                  const sourceEntries = await window.api.plugin.listMarket([
+                    source,
+                  ]);
+                  set((state) => ({
+                    marketErrors: Object.fromEntries(
+                      Object.entries(state.marketErrors).filter(
+                        ([id]) => id !== source.id,
+                      ),
+                    ),
+                    marketEntries: mergeMarketEntriesForSource(
+                      state.marketEntries,
+                      sourceEntries,
+                      source.id,
+                      marketSources,
+                    ),
+                  }));
+                } catch (sourceError) {
+                  set((state) => ({
+                    marketErrors: {
+                      ...state.marketErrors,
+                      [source.id]: getErrorMessage(sourceError),
+                    },
+                  }));
+                }
+              }),
+            );
+
+            await Promise.all([
+              libraryPromise,
+              targetMatrixPromise,
+              marketEntriesPromise,
+            ]);
+            set({ isLoading: false });
+          } catch (error) {
+            set({ error: getErrorMessage(error), isLoading: false });
+          }
+          await Promise.all([libraryPromise, targetMatrixPromise]);
+          set({ isLoadingMarkets: false });
+        }),
 
       setSelectedTab: (tab) => set({ selectedTab: tab }),
       setSelectedMarketSourceId: (sourceId) =>
@@ -585,6 +645,7 @@ export const usePluginStore = create<PluginState>()(
         const result =
           await window.api.plugin.importLocalPluginPackage(request);
         set({ library: result.library });
+        await get().refreshDistributionStatus(result.plugin.id);
         return result;
       },
 
@@ -663,6 +724,13 @@ export const usePluginStore = create<PluginState>()(
           mode,
         });
         set({ library: result.library });
+        await get().refreshDistributionStatus(pluginId);
+        if (result.failures?.length)
+          throw new Error(
+            result.failures
+              .map((failure) => `${failure.targetId}: ${failure.error}`)
+              .join("\n"),
+          );
         return result;
       },
 
@@ -672,6 +740,13 @@ export const usePluginStore = create<PluginState>()(
           targetIds,
         });
         set({ library: result.library });
+        await get().refreshDistributionStatus(pluginId);
+        if (result.failures?.length)
+          throw new Error(
+            result.failures
+              .map((failure) => `${failure.targetId}: ${failure.error}`)
+              .join("\n"),
+          );
         return result;
       },
 
@@ -796,13 +871,11 @@ export const usePluginStore = create<PluginState>()(
             persistedState?.libraryViewMode === "gallery"
               ? persistedState.libraryViewMode
               : current.libraryViewMode,
-          libraryGalleryColumns:
-            persistedState?.libraryGalleryColumns === "auto" ||
-            persistedState?.libraryGalleryColumns === "2" ||
-            persistedState?.libraryGalleryColumns === "3" ||
-            persistedState?.libraryGalleryColumns === "4"
-              ? persistedState.libraryGalleryColumns
-              : current.libraryGalleryColumns,
+          libraryGalleryColumns: isResourceGalleryColumns(
+            persistedState?.libraryGalleryColumns,
+          )
+            ? persistedState.libraryGalleryColumns
+            : current.libraryGalleryColumns,
         };
       },
     },

@@ -1,4 +1,6 @@
+import { mergeMcpTargetObservations } from "@prompthub/shared/utils/mcp-target-observation";
 import { create } from "zustand";
+import { createResourceRequest } from "../services/resource-request";
 import { persist } from "zustand/middleware";
 import { loadDeployableAgentPlatformIds } from "../services/platform-visibility";
 import type { McpTargetPreset } from "@prompthub/core";
@@ -250,28 +252,24 @@ function resolveMarketSourceId(
   return sources[0]?.id ?? DEFAULT_MCP_MARKET_SOURCE_ID;
 }
 
-async function loadMcpWorkspaceSnapshot(): Promise<{
+async function loadMcpWorkspaceSnapshot(library: McpLibraryFile): Promise<{
   library: McpLibraryFile;
   marketTemplates: McpMarketTemplate[];
   marketSources: McpMarketSource[];
-  healthChecks: McpHealthCheckResult[];
 }> {
-  const [library, marketTemplates, marketSources, healthChecks] =
-    await Promise.all([
-      window.api.mcp.getLibrary(),
-      window.api.mcp.listMarket(),
-      window.api.mcp.listMarketSources(),
-      window.api.mcp.checkAllServers(),
-    ]);
+  const [marketTemplates, marketSources] = await Promise.all([
+    window.api.mcp.listMarket(),
+    window.api.mcp.listMarketSources(),
+  ]);
   return {
     library,
     marketTemplates,
     marketSources,
-    healthChecks,
   };
 }
 
 let mcpTargetInventoryInFlight: Promise<void> | null = null;
+const loadMcpResources = createResourceRequest();
 
 function toRegisteredMcpMarketSources(
   sources: CustomStoreSource[],
@@ -397,11 +395,15 @@ export const useMcpStore = create<McpState>()(
               ]);
             set({
               targetPresets,
-              targetStatus,
+              targetStatus: mergeMcpTargetObservations(
+                get().targetStatus,
+                targetStatus,
+              ),
               deployablePlatformIds,
               hasLoadedTargetInventory: true,
               isLoadingTargetInventory: false,
-              targetInventoryError: null,
+              targetInventoryError:
+                targetStatus.find((entry) => entry.error)?.error ?? null,
             });
           } catch (error) {
             const message = getErrorMessage(error);
@@ -418,44 +420,52 @@ export const useMcpStore = create<McpState>()(
         return request;
       },
 
-      load: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          const [snapshot] = await Promise.all([
-            loadMcpWorkspaceSnapshot(),
-            get().loadTargetInventory({ force: true }),
-          ]);
-          const migration = reconcileMcpMarketSourceMigration(
-            snapshot.marketSources,
-            get().customStoreSources,
-          );
-          const marketSources = await window.api.mcp.replaceMarketSources(
-            migration.sourcesToRegister,
-          );
-          const selectedMarketSourceId = resolveMarketSourceId(
-            get().selectedMarketSourceId,
-            marketSources,
-          );
-          set({
-            ...snapshot,
-            customStoreSources: migration.customSources,
-            marketSources,
-            marketError: null,
-            remoteMarketEntries: pruneRemoteMarketEntriesForSources(
-              get().remoteMarketEntries,
+      load: () =>
+        loadMcpResources(async () => {
+          set({ isLoading: true, error: null });
+          const inventory = get()
+            .loadTargetInventory({ force: true })
+            .catch(() => {
+              // loadTargetInventory retains the last result and exposes targetInventoryError.
+            });
+          try {
+            const library = await window.api.mcp.getLibrary();
+            set({ library, isLoading: false });
+            const snapshot = await loadMcpWorkspaceSnapshot(library);
+            const migration = reconcileMcpMarketSourceMigration(
+              snapshot.marketSources,
+              get().customStoreSources,
+            );
+            const marketSources = await window.api.mcp.replaceMarketSources(
+              migration.sourcesToRegister,
+            );
+            const selectedMarketSourceId = resolveMarketSourceId(
+              get().selectedMarketSourceId,
               marketSources,
-            ),
-            selectedMarketSourceId,
-            selectedTargetId:
-              get().selectedTargetId ?? get().targetPresets[0]?.id ?? null,
-            selectedServerId:
-              get().selectedServerId ?? snapshot.library.servers[0]?.id ?? null,
-            isLoading: false,
-          });
-        } catch (error) {
-          set({ error: getErrorMessage(error), isLoading: false });
-        }
-      },
+            );
+            set({
+              ...snapshot,
+              customStoreSources: migration.customSources,
+              marketSources,
+              marketError: null,
+              remoteMarketEntries: pruneRemoteMarketEntriesForSources(
+                get().remoteMarketEntries,
+                marketSources,
+              ),
+              selectedMarketSourceId,
+              selectedTargetId:
+                get().selectedTargetId ?? get().targetPresets[0]?.id ?? null,
+              selectedServerId:
+                get().selectedServerId ??
+                snapshot.library.servers[0]?.id ??
+                null,
+              isLoading: false,
+            });
+          } catch (error) {
+            set({ error: getErrorMessage(error), isLoading: false });
+          }
+          await inventory;
+        }),
 
       refreshTargetStatus: async () => {
         set({
@@ -465,10 +475,14 @@ export const useMcpStore = create<McpState>()(
         try {
           const targetStatus = await window.api.mcp.getTargetStatus();
           set({
-            targetStatus,
+            targetStatus: mergeMcpTargetObservations(
+              get().targetStatus,
+              targetStatus,
+            ),
             hasLoadedTargetInventory: true,
             isLoadingTargetInventory: false,
-            targetInventoryError: null,
+            targetInventoryError:
+              targetStatus.find((entry) => entry.error)?.error ?? null,
           });
         } catch (error) {
           const message = getErrorMessage(error);

@@ -319,6 +319,7 @@ export interface SkillPlatformInstallResult {
 
 export interface SkillPlatformInstallStatus {
   installed: boolean;
+  contentState?: "synced" | "needs-sync" | "conflict" | "unverified";
   mode?: SkillInstallMode;
 }
 

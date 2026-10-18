@@ -1,4 +1,7 @@
 {
+  "runtime": {
+    "loadFailed": "Unable to load server capabilities. Check the connection and retry."
+  },
   "auth": {
     "loginTitle": "Login to PromptHub",
     "loginDescription": "Sign in with an existing account to access your self-hosted PromptHub workspace.",

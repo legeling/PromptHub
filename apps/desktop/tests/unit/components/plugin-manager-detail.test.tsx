@@ -371,6 +371,10 @@ function getPluginDescriptionFingerprint(plugin: PluginLibraryEntry): string {
 function resetPluginStore() {
   usePluginStore.setState({
     library: null,
+    distributionSnapshot: {},
+    distributionError: null,
+    isLoadingMarkets: false,
+    marketErrors: {},
     marketEntries: [],
     marketPreviews: {},
     marketSources: [],
@@ -446,6 +450,28 @@ function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
   window.api.plugin = {
     ...window.api.plugin,
     getLibrary: vi.fn().mockImplementation(async () => currentLibrary),
+    getDistributionStatus: vi
+      .fn()
+      .mockImplementation(async (pluginId?: string) =>
+        Object.fromEntries(
+          currentLibrary.plugins
+            .filter((plugin) => !pluginId || plugin.id === pluginId)
+            .map((plugin) => [
+              plugin.id,
+              Object.fromEntries(
+                targetMatrix.map((target) => [
+                  target.id,
+                  {
+                    installed: Boolean(
+                      plugin.distributedTargetIds?.includes(target.id),
+                    ),
+                    checkedAt: Date.now(),
+                  },
+                ]),
+              ),
+            ]),
+        ),
+      ),
     listMarket: vi.fn().mockResolvedValue(marketEntries),
     listMarketSources: vi.fn().mockResolvedValue(marketSources),
     getTargetMatrix: vi.fn().mockResolvedValue(targetMatrix),

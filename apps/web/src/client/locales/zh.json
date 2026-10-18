@@ -1,4 +1,5 @@
 {
+  "runtime": { "loadFailed": "无法获取服务器支持的功能，请检查连接后重试。" },
   "auth": {
     "loginTitle": "登录 PromptHub",
     "loginDescription": "使用现有账户登录，进入你的自部署 PromptHub 工作区。",

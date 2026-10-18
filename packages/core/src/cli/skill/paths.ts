@@ -389,7 +389,10 @@ export async function walkRepoDir<T>(opts: {
         continue;
       }
 
-      const relativePath = path.relative(baseDir, fullPath);
+      const relativePath = path
+        .relative(baseDir, fullPath)
+        .split(path.sep)
+        .join("/");
       if (shouldIgnore(relativePath)) {
         continue;
       }

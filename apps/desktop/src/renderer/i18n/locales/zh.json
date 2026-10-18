@@ -1,4 +1,17 @@
 {
+  "hostedResources": {
+    "description": "在这里保存和管理资源，Agent 分发由本机客户端完成。",
+    "operationFailed": "操作失败，请重试。",
+    "empty": "没有匹配的资源。",
+    "deleteConfirm": "从资源库删除“{{name}}”？保存的包文件和历史也会删除。",
+    "notes": "个人备注",
+    "uploadSkillPackage": "上传 Skill 包",
+    "uploadSkillPackageHint": "选择根目录包含 SKILL.md 的 ZIP，附属文件将一起保存。",
+    "importPlugins": "导入 Plugin 备份",
+    "exportPlugins": "导出 Plugin 备份",
+    "pluginBackupHint": "保存完整 Plugin 包及版本历史。导入 PromptHub JSON 备份；保留资源身份，重复资源会被拒绝。",
+    "requestLimit": "网页版上传请求最大 1 MiB，包含元数据和编码后的文件内容。"
+  },
   "testHistory": {
     "title": "测试历史",
     "back": "返回历史列表",
@@ -2109,7 +2122,6 @@
     "cliGlobalBinHint": "CLI 已安装在 {{path}}。如果终端找不到 prompthub，请将此目录加入终端 PATH 后重新打开终端。",
     "cliCopyCommand": "复制",
     "cliStatusLoadFailed": "加载 PromptHub CLI 状态失败",
-
     "cliCachedStatus": "上次检查：{{time}}。刷新可重新检查。",
     "openSource": "开源项目",
     "projectRepository": "项目仓库",
@@ -3751,7 +3763,8 @@
       "applyChanges": "应用变更",
       "changesApplied": "已应用 {{count}} 项变更。",
       "redistribute": "重新分发",
-      "redistributeHint": "使用当前方式更新 {{count}} 个已勾选目标。"
+      "redistributeHint": "使用当前方式更新 {{count}} 个已勾选目标。",
+      "noChanges": "没有待应用的变更。可重新分发以更新已安装副本。"
     }
   },
   "error": {
@@ -4895,5 +4908,15 @@
     "compareEmpty": "选择至少两个模型，然后开始对比测试。",
     "singleEmpty": "开始测试后，响应将显示在这里。",
     "emptyResponse": "暂无响应"
+  },
+  "resourceLibrary": {
+    "statusFailed": "分发状态未能完整核验，保留上次检查结果。",
+    "statusUnknown": "{{count}} 个资源的分发状态尚未核验。",
+    "content": {
+      "needs-sync": "待同步",
+      "conflict": "内容冲突",
+      "unverified": "待核验"
+    },
+    "pagination": "分页"
   }
 }

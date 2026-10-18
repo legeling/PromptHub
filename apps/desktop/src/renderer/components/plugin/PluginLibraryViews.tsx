@@ -1,3 +1,4 @@
+import { ResourceLibraryItem } from "../resources/ResourceLibraryItem";
 import { useMemo, useState, type MouseEvent } from "react";
 import {
   CheckIcon,
@@ -200,6 +201,7 @@ export function PluginCard({
   isSelected = false,
   plugin,
   sourceUpdateStatus,
+  distributionKnown = true,
   targetMatrix,
   onDelete,
   onContextMenu,
@@ -213,6 +215,7 @@ export function PluginCard({
   isSelected?: boolean;
   plugin: PluginLibraryEntry;
   sourceUpdateStatus?: PluginSourceUpdateCheck["status"];
+  distributionKnown?: boolean;
   targetMatrix: PluginTargetCompatibility[];
   onDelete: (plugin: PluginLibraryEntry) => void;
   onContextMenu: (event: MouseEvent, plugin: PluginLibraryEntry) => void;
@@ -229,7 +232,7 @@ export function PluginCard({
   const distributedTargets = (plugin.distributedTargetIds ?? [])
     .map((targetId) => targetMatrix.find((target) => target.id === targetId))
     .filter((target): target is PluginTargetCompatibility => Boolean(target));
-  const visibleDistributedTargets = distributedTargets.slice(0, 6);
+  const visibleDistributedTargets = distributedTargets.slice(0, 3);
   const displayTags = getPluginDisplayTags(plugin);
   const hasLocalPackage = Boolean(
     plugin.localPackagePath ||
@@ -257,7 +260,7 @@ export function PluginCard({
           : null;
 
   return (
-    <article
+    <ResourceLibraryItem
       data-testid={`plugin-library-card-${plugin.id}`}
       role="button"
       tabIndex={0}
@@ -281,11 +284,8 @@ export function PluginCard({
           onOpenDetail(plugin);
         }
       }}
-      className={`group relative min-h-[220px] cursor-pointer rounded-2xl border app-wallpaper-panel p-5 transition-all ${
-        isSelected
-          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-          : "border-border hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl"
-      }`}
+      view="gallery"
+      selected={isSelected}
     >
       {batchMode ? (
         <button
@@ -340,7 +340,7 @@ export function PluginCard({
               ) : null}
               <div
                 data-testid={`plugin-card-agent-targets-${plugin.id}`}
-                className="flex min-h-8 max-w-full flex-wrap items-center justify-end gap-1.5"
+                className="flex min-h-8 max-w-full flex-nowrap items-center justify-end gap-1.5 overflow-hidden"
                 title={t(
                   "plugin.distributedAgentTargets",
                   "Distributed Agent targets",
@@ -357,7 +357,11 @@ export function PluginCard({
                   ))
                 ) : (
                   <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
-                    {t("plugin.notDistributed", "Not distributed")}
+                    {t(
+                      distributionKnown
+                        ? "plugin.notDistributed"
+                        : "resourceLibrary.statusUnknown",
+                    )}
                   </span>
                 )}
                 {distributedTargets.length >
@@ -491,7 +495,7 @@ export function PluginCard({
           </div>
         </div>
       </div>
-    </article>
+    </ResourceLibraryItem>
   );
 }
 
@@ -500,6 +504,7 @@ export function PluginListRow({
   isSelected = false,
   plugin,
   sourceUpdateStatus,
+  distributionKnown = true,
   targetMatrix,
   onDelete,
   onContextMenu,
@@ -513,6 +518,7 @@ export function PluginListRow({
   isSelected?: boolean;
   plugin: PluginLibraryEntry;
   sourceUpdateStatus?: PluginSourceUpdateCheck["status"];
+  distributionKnown?: boolean;
   targetMatrix: PluginTargetCompatibility[];
   onDelete: (plugin: PluginLibraryEntry) => void;
   onContextMenu: (event: MouseEvent, plugin: PluginLibraryEntry) => void;
@@ -549,7 +555,7 @@ export function PluginListRow({
           : null;
 
   return (
-    <article
+    <ResourceLibraryItem
       data-testid={`plugin-library-row-${plugin.id}`}
       role="button"
       tabIndex={0}
@@ -569,11 +575,8 @@ export function PluginListRow({
           onOpenDetail(plugin);
         }
       }}
-      className={`group flex cursor-pointer items-center gap-4 rounded-2xl border app-wallpaper-panel px-4 py-3 transition-all ${
-        isSelected
-          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-          : "border-border hover:border-primary/40 hover:bg-accent/30"
-      }`}
+      view="list"
+      selected={isSelected}
     >
       {batchMode ? (
         <button
@@ -634,7 +637,7 @@ export function PluginListRow({
         <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1.5">
           {distributedTargets.length > 0 ? (
             distributedTargets
-              .slice(0, 6)
+              .slice(0, 3)
               .map((target) => (
                 <PlatformIcon
                   key={target.id}
@@ -645,7 +648,11 @@ export function PluginListRow({
               ))
           ) : (
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {t("plugin.notDistributed", "Not distributed")}
+              {t(
+                distributionKnown
+                  ? "plugin.notDistributed"
+                  : "resourceLibrary.statusUnknown",
+              )}
             </span>
           )}
         </div>
@@ -726,6 +733,6 @@ export function PluginListRow({
           </button>
         </div>
       ) : null}
-    </article>
+    </ResourceLibraryItem>
   );
 }

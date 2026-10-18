@@ -73,6 +73,14 @@ vi.mock("../../../src/main/services/skill-archive-extractor", () => ({
   extractSkillZipArchive: mocks.extractSkillZipArchive,
 }));
 
+vi.mock("@prompthub/core/skills/archive", () => ({
+  extractSkillZipArchive: mocks.extractSkillZipArchive,
+}));
+vi.mock("@prompthub/core/skills/git-transport", async (original) => ({
+  ...(await original<typeof import("@prompthub/core/skills/git-transport")>()),
+  GitExecutableUnavailableError: mocks.GitExecutableUnavailableError,
+}));
+
 vi.mock("../../../src/main/services/skill-update-safety", () => ({
   assertStagedRemoteSkillPackageSafe: mocks.assertStagedRemoteSkillPackageSafe,
 }));

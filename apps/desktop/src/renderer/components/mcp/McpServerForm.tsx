@@ -1,3 +1,4 @@
+import { isWebRuntime } from "../../runtime";
 import {
   cloneElement,
   useEffect,
@@ -253,15 +254,19 @@ export function McpServerForm({
             {selectedServer ? (
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-mono">{selectedServer.transport}</span>
-                <span>·</span>
-                <span>
-                  {distributedTargetCount > 0
-                    ? t("mcp.distributedTargets", {
-                        count: distributedTargetCount,
-                        defaultValue: `${distributedTargetCount} target(s) distributed`,
-                      })
-                    : t("mcp.notDistributed", "Not distributed")}
-                </span>
+                {!isWebRuntime() && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {distributedTargetCount > 0
+                        ? t("mcp.distributedTargets", {
+                            count: distributedTargetCount,
+                            defaultValue: `${distributedTargetCount} target(s) distributed`,
+                          })
+                        : t("mcp.notDistributed", "Not distributed")}
+                    </span>
+                  </>
+                )}
               </div>
             ) : null}
           </div>
