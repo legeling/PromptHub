@@ -817,3 +817,29 @@ harness；未修复产品逻辑，新增回归保持失败，未关闭相关问�
 本次重跑通过 93 个相关用例（Desktop 完整六文件 78 个、Core 14 个、usage 筛选 1 个；
 usage 其余 57 个未选中，不计入通过数）。新增会话重开及删除失败保全两条回归。
 测试文件 ESLint、spec 治理/索引/追踪检查通过；未重跑全仓测试类型检查与 Electron GUI。
+
+## 跨端资源批次首次完整 Linux CI（2026-10-18）
+
+来源：[39097497008](https://github.com/legeling/PromptHub/actions/runs/39097497008)，
+提交 `9a415d4f`（资源批次 `c99f5079` + 并行验证）。本轮失败未被跳过或改为通过，
+汇总关卡拒绝发布；之前定向验证不等于本提交完整发布通过。
+
+- 桌面 unit 17 项失败：`skill-library-platform-files` 2 项、
+  `skill-manager-large-dataset` 1 项、`skill-distribution-controls` 2 项、
+  `skill-gallery-card` 1 项、`skill-ui` 7 项、`mcp-library-codex-sync` 1 项、
+  `skill-i18n-runtime-export` 2 项、`skill-store-state-projects` 1 项。
+- 集成 6 项失败：`antigravity-plugin-entrypoints`、`qwen-work-skills` 各 1 项，
+  `skill-platform-management` 4 项。
+- Web `install-bridge` 1 项失败：旧的禁止文件写入断言与新托管包写入入口不一致。
+- E2E `agent-skill-lifecycle` 1 项失败：期待旧分发成功 Toast，未通过该步骤。
+- macOS ARM 校验发生 Apple CloudKit 网络断开（`-1005`、stapler 68），
+  Intel macOS、Windows 两架构及 Linux 打包通过。
+
+初步定位包含旧测试 Store 缺少 `skillPlatformStatuses`、分发/保护外部修改
+约定变化、旧文案及新错误字段的严格断言。不能仅凭这些观察认定所有失败都属于测试。
+Windows 单 worker 单独复跑 `skill-manager-large-dataset` 与
+`skill-library-platform-files`，同样重现 3 项失败，证明这三项不依赖 runner 间并行。
+其余失败仍需逐项按当前功能合同核对；本批 CI 优化没有修改产品代码来规避失败。
+
+日志和各组完整 JSON 保存在 OS 临时目录 `prompthub-ci-parallel-20261018`
+及上述 Actions artifacts。

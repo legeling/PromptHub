@@ -213,3 +213,17 @@ Windows 两次启动、更新清单核验和草稿发布边界不变。
 workflow 10 项通过；CI 配置 38 项及其附加 11 项通过；新增入口严格类型检查通过。
 静态子集首轮 15 项通过、旧串行命令断言 1 项失败，更新后 governance 3 项通过。
 完整远端并行运行和实际耗时仍需以 Actions 运行结果为准。
+
+### 首次并行 CI 实测
+
+[Actions 39097497008](https://github.com/legeling/PromptHub/actions/runs/39097497008)
+验证提交 `9a415d4ff95feb0f0646db822eedb21ff64abdd0`（包含资源跨端批次）。
+从 04:33:15 到 04:42:30 UTC 共 9 分 15 秒；14 个验证组均启动，
+8 个桌面 unit 分片各耗时 1 分 31 秒至 2 分 27 秒，集成组 6 分 37 秒。
+此前串行 verify 约 28 分钟，随后 Intel 打包约 10 分钟。此次为不同产品
+内容且有失败的观测值，不代表相同提交的成功发布性能对照，也不保证 Apple 延迟。
+
+Core、CLI、静态与共享组通过；Linux、Windows x64/ARM64、macOS Intel
+构建通过。macOS ARM 的签名公证校验遇到 Apple CloudKit `-1005` / stapler 68。
+桌面单元、集成、E2E 和 Web 有未通过项，完整清单见[质量记录](../../issues/active/quality.md)。
+最终 verify 阻止发布，release 未执行。当前 v0.6.0 标签与草稿未变更。
