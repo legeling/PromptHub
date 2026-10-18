@@ -34,7 +34,7 @@
 
 ## 当前目录地图
 
-0.6.0 的 Desktop、独立 CLI、自托管 Web 和 Cloudflare 能力边界见各语言 README；
+主线开发中的 Desktop、独立 CLI、自托管 Web 和 Cloudflare 能力边界见各语言 README；
 Web 的资源保存、完整包管理及不提供 Agent 分发的范围见
 [自托管部署说明](web-self-hosted.md)和 [Cloudflare 说明](cloudflare-workers.md)。
 
@@ -59,9 +59,11 @@ docs/
 
 ## 版本与更新说明
 
+当前稳定版为 [v0.6.0](https://github.com/legeling/PromptHub/releases/tag/v0.6.0)，于 2026-10-18 正式发布。
+
 - [主 README](../README.md) 区分最新稳定下载、已发布预览版和当前开发版本。
 - [CHANGELOG.md 的 Unreleased](../CHANGELOG.md#unreleased) 记录尚未随新发行包发布的主线改动；合并贡献分支不等于发布其版本号。
-- [0.6.0 发布准备记录](../spec/releases/0.6.0.md) 维护版本线、当前候选身份和发布门禁，历史预览说明不被后续主线改动覆盖。
+- [0.6.0 发布记录](../spec/releases/0.6.0.md) 维护版本线、当前候选身份和发布门禁，历史预览说明不被后续主线改动覆盖。
 
 ## 内部文档入口
 

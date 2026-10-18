@@ -167,3 +167,24 @@ this change has no visible product UI delta.
 - Website production build was not run: `website/node_modules` is absent.
   Existing Node/pnpm dependencies were reused for synchronization and metadata
   tests; no dependency installation or development server was started.
+
+## Published Stable Documentation Reconciliation (2026-10-18)
+
+- GitHub release `v0.6.0` became public at 06:15:03 UTC with 20 uploaded assets;
+  its remote tag targets `36401160d6370320cbc98e3421ff3be580aa0a9b`.
+- All seven product READMEs now use 0.6.0 stable badges and installer filenames.
+  The superseded beta download row is removed; historical preview notes retain
+  their dates and identify the stable version at that time.
+- CHANGELOG promotes only the tagged content into the dated 0.6.0 entry.
+  Later resource-management changes stay Unreleased. Development badges identify
+  main instead of implying that the published 0.6.0 is still a draft.
+- Release index and record reflect publication. Website metadata, changelog and
+  both introductions were regenerated with `pnpm --dir website sync:release`.
+- Existing 0.5.9 screenshots are explicitly historical; no GUI was operated and
+  no replacement screenshots or packaged binaries were produced.
+- `node --test scripts/version-alignment.test.mjs website/scripts/release-metadata.test.mjs`:
+  9 passed. README checks now validate every default installer filename against
+  the published stable record, in addition to badges and changelog separation.
+- `pnpm verify:release:quick --surface governance --quiet`: passed.
+  This documentation-only check does not rerun product suites or establish
+  readiness of main-branch binaries. Website hosting deployment was not verified.

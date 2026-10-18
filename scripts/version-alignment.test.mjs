@@ -67,7 +67,7 @@ test("separates development identity from published downloads in every README", 
     readText("CHANGELOG.md"),
     readText("spec/releases/README.md"),
   );
-  const developmentBadge = `development-v${expectedVersion.replaceAll("-", "--")}`;
+  const developmentBadge = "development-main";
   const stableBadge = `release-v${stableRelease.version}_stable`;
 
   for (const relativePath of productReadmes) {
@@ -80,6 +80,15 @@ test("separates development identity from published downloads in every README", 
     assert.ok(source.includes(changelogPath), relativePath);
     assert.ok(source.includes(`\`${expectedVersion}\``), relativePath);
     assert.ok(source.includes("releases/latest/download/"), relativePath);
+    const downloads = [...source.matchAll(/releases\/latest\/download\/([^\s)]+)/g)];
+    for (const [, filename] of downloads) {
+      assert.ok(
+        filename.includes(`-${stableRelease.version}-`),
+        `${relativePath}: ${filename}`,
+      );
+    }
+    assert.ok(source.includes(`### v${stableRelease.version}`), relativePath);
+    assert.doesNotMatch(source, /Preview-v0\.6\.0--beta/, relativePath);
     assert.doesNotMatch(source, /releases\/tag\/v0\.6\.[1-9]/, relativePath);
     assert.doesNotMatch(source, /^(?:<{7}|={7}|>{7})/m, relativePath);
   }

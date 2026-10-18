@@ -9,9 +9,9 @@
 
 [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
-[![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
+[![Version](https://img.shields.io/badge/release-v0.6.0_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
-[![開発版](https://img.shields.io/badge/development-v0.6.0-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
+[![開発版](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -74,17 +74,16 @@ PromptHub はあなたのプロンプト、SKILL.md、プロジェクトレベ�
 
 ## 📥 デスクトップ版ダウンロード
 
-最新安定版は **v0.5.9** です。直リンクは GitHub Latest の安定版アセットを指し、ミラー同期後は固定ファイル名の CDN リンクに戻ります:
+最新安定版は **v0.6.0** です。直リンクは GitHub Latest の安定版アセットを指し、ミラー同期後は固定ファイル名の CDN リンクに戻ります:
 
 - **直接ダウンロード** — GitHub Latest の安定版アセットを指します。CDN ミラーが空の間の 404 を避け、ミラー同期後は固定ファイル名の CDN リンクに戻ります。
 - **GitHub Releases** — 公式リリースページ。過去のバージョン、署名、完全なリリースノートを確認できます。
 
 | プラットフォーム | 直接ダウンロード                                                                                                                                                                                                                                                                                                                                                                                                                        | GitHub Releases                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows          | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.9-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.9-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.9-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.9-arm64.exe) |
-| macOS            | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-x64.dmg)     |
-| Linux            | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.9-amd64.deb)              |
-| プレビュー       | [![現在のプレビュー](https://img.shields.io/badge/Preview-v0.6.0--beta.2-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.6.0-beta.2)                                                                                                                                                                                                                                     | [GitHub Prerelease v0.6.0-beta.2](https://github.com/legeling/PromptHub/releases/tag/v0.6.0-beta.2)                                                                                                                                                                                                                                                                                                                                     |
+| Windows          | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-arm64.exe) |
+| macOS            | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.dmg)     |
+| Linux            | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-amd64.deb)              |
 
 > **macOS の arch?** Apple Silicon（M1/M2/M3/M4）→ `arm64`、Intel Mac → `x64`。
 > **Windows の arch?** ほとんどのマシン → `x64`。Surface Pro X など ARM 機のみ → `arm64`。
@@ -122,7 +121,7 @@ sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
 
 ## スクリーンショット
 
-> 以下のスクリーンショットは、現在の安定版 0.5.9 の 5 つのデスクトップワークスペース、Prompt、Skill、MCP、Plugin、Rules をカバーしています。
+> 以下は 0.5.9 当時の Prompt、Skill、MCP、Plugin、Rules ワークスペースのスクリーンショットです。0.6.0 では画面が更新されています。
 
 <div align="center">
   <p><strong>2 カラムのホーム</strong></p>
@@ -259,7 +258,7 @@ docker compose up -d --build
 
 詳細なデプロイ / アップグレード / バックアップ / GHCR イメージ / 開発メモは [`web-self-hosted.md`](./web-self-hosted.md) に記載しています。
 
-0.6.0 開発版では、Desktop と CLI が Skill、MCP、Plugin の Core 処理を共有します。セルフホスト Web と Cloudflare は保存、編集、バージョン、完全なパッケージのインポート／エクスポートと同期に対応します。Agent への配布、サーバーディレクトリのスキャン、SSH インストールは行いません。CLI は別途パッケージ化してインストールします。
+主線で開発中（0.6.0 には未収録）：Desktop と CLI が Skill、MCP、Plugin の Core 処理を共有します。セルフホスト Web と Cloudflare は保存、編集、バージョン、完全なパッケージのインポート／エクスポートと同期に対応します。Agent への配布、サーバーディレクトリのスキャン、SSH インストールは行いません。CLI は別途パッケージ化してインストールします。
 
 <div id="cli"></div>
 
@@ -334,9 +333,9 @@ Skill のインポート、バージョンスナップショット、配布で�
 
 完全な変更履歴: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### v0.6.0（開発中・未公開）
+### v0.6.0 (2026-10-18, 安定版)
 
-ソースのバージョンは `0.6.0` です。ドラフトとして準備中で、正式公開はしていません。以下の改善は主線に統合済みです。最新の公開安定版は `0.5.9` のままで、公開済み beta.2 には以後の変更すべてが含まれるわけではありません。
+`0.6.0` は 2026-10-18 に正式公開されました。Windows、macOS、Linux と独立 CLI のパッケージを提供します。公開後の主線の変更は CHANGELOG の Unreleased を参照してください。
 
 - **保存・同期・アップグレード**：SQLite が構造化データを管理し、完全なパッケージと履歴は復元可能な状態で保持します。WebDAV/S3 自動同期に共通ベースラインと競合確認を追加し、旧データの起動時移行を修正しました。
 
@@ -345,7 +344,6 @@ Skill のインポート、バージョンスナップショット、配布で�
 - 折りたためる出典・メモ、参照メディアの入口改善、空結果のフィルター解除、安全エラーのローカライズ
 - 複数語の AND 全文検索、トップバーからのルート作成、サブツリー移動時のフォルダー統一、選択に応じたツリー展開
 - ウィンドウ全体でのバックアップ取り込みプレビュー、移行ガイド、権限検証を維持した Web フォルダー可視性の推論
-- リリース系列は `0.6.0` のままです。安定版、公開プレビュー、開発中の変更を区別し、貢献ブランチの `0.6.4` を主線の公開版とは扱いません
 
 ### v0.6.0-beta.2（2026-09-03、プレビュー）
 
@@ -354,7 +352,7 @@ Skill のインポート、バージョンスナップショット、配布で�
 - Rules 復元で外部編集と履歴を保持し、アップグレード安全点、バックアップ保持、混在 Prompt レイアウト復元を強化
 - 更新元の自動/公式/ミラー切替、リリースノート、転送指標、macOS メニューバーの更新状態を追加
 - Doubao Work Skill 対応を追加し、終了方法の保存と OpenCode のグローバルセッション検出を修正
-- 最新の安定版は引き続き `v0.5.9`
+- このプレビュー公開時の安定版は `v0.5.9` でした
 
 ### v0.6.0-beta.1（2026-08-20、差し替えプレビュー）
 
@@ -362,7 +360,7 @@ Skill のインポート、バージョンスナップショット、配布で�
 - ファイル優先 canonical authority、復旧候補、self-heal、Windows `0.5.9` アップグレードのパッケージ 2 回起動 gate でプレビューデータを保護します
 - 有界な SQLite 一時パスで上書きインストール後の 2 回目起動失敗を修正し、影響を受けたプレビューを同じ beta tag で差し替えます
 - 旧 `v0.6.0-beta.1` をインストール済みの場合、同一バージョンの差し替えでは自動更新されないため、修正版を手動でダウンロードして上書きインストールする必要があります
-- 最新安定版は引き続き `v0.5.9` です
+- このプレビュー公開時の安定版は `v0.5.9` でした
 
 ### v0.5.9（2026-07-09、正式版）
 
@@ -446,7 +444,11 @@ Skill のインポート、バージョンスナップショット、配布で�
 
 ## ロードマップ
 
-### v0.5.9 ← 現在の安定版
+### v0.6.0 ← 安定版
+
+`0.6.0` は 2026-10-18 に正式公開されました。Windows、macOS、Linux と独立 CLI のパッケージを提供します。公開後の主線の変更は CHANGELOG の Unreleased を参照してください。
+
+### v0.5.9
 
 - Plugin / MCP 管理はストア、Agent 配布、詳細、タグフィルタ、更新確認、安全チェックで Skill 体験に揃いました
 - Agent アセット同期、ネットワークプロキシ、CLI プロジェクトインストール、Skill ソース更新チェックが安定版になりました

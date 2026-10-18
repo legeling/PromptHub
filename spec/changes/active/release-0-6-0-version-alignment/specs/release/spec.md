@@ -6,8 +6,8 @@
 
 The root manifest owns the current build identity on the `0.6.0` release line.
 Every shipped application distribution and the standalone CLI runtime must
-report that exact candidate version. The current candidate is `0.6.0-beta.2`;
-explicit stable promotion uses `0.6.0`. Contribution-branch version labels must
+report that exact candidate version. The published stable version is `0.6.0` as of 2026-10-18;
+subsequent main-branch changes remain explicitly unreleased. Contribution-branch version labels must
 not change this identity merely because their commits were merged.
 
 #### `AC-REL-001`
