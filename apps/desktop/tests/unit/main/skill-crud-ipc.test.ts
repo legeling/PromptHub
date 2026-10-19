@@ -258,7 +258,7 @@ describe("Skill CRUD IPC", () => {
       "writer",
     ]);
   });
-  it("restores symlink targets when deletion fails and rejects unknown target paths", async () => {
+  it("does not redeploy a symlink whose removal failed and rejects unknown target paths", async () => {
     const skill = await create();
     mocks.inspect.mockResolvedValue({
       codex: { installed: true, mode: "symlink" },
@@ -267,10 +267,12 @@ describe("Skill CRUD IPC", () => {
     await expect(
       call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
     ).rejects.toThrow("remove denied");
-    expect(mocks.link.mock.calls.map((c) => c[0].name)).toEqual([
-      "author",
+    expect(mocks.link.mock.calls.map((c) => c[0].name)).toEqual(["author"]);
+    expect(mocks.uninstall.mock.calls.map((c) => c[0].name)).toEqual([
       "writer",
+      "author",
     ]);
+    expect(db.getById(skill.id)?.name).toBe("writer");
     mocks.inspect.mockResolvedValue({
       unknown: { installed: true, mode: "copy" },
     });

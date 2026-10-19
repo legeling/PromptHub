@@ -14,6 +14,7 @@ import {
   writeRuntimeLayoutState,
 } from "@prompthub/core";
 import { createLibrarySkill } from "@prompthub/core/skills/library-commands";
+import { mutateSkillPackage } from "@prompthub/core/skills/package-mutation";
 import { updateLibrarySkill } from "../../../src/main/services/skill-library-crud";
 import {
   installSkillMdForSkill,
@@ -81,17 +82,19 @@ describe("Skill rename against actual platform files", () => {
       protocol_type: "skill",
       is_favorite: false,
     });
+    await mutateSkillPackage(db, skill.id, {
+      kind: "write",
+      relativePath: "notes.txt",
+      content: "Package resource",
+    });
+    const current = db.getById(skill.id)!;
     await installSkillMdForSkill(
-      skill,
-      skill.content!,
+      current,
+      current.content!,
       "claude",
-      skill.local_repo_path,
+      current.local_repo_path,
     );
-    fs.writeFileSync(
-      path.join(root, "platform/writer/notes.txt"),
-      "Local platform edits",
-    );
-    return skill;
+    return current;
   }
   it("retains the new directory and activation while removing only the old directory", async () => {
     const skill = await prepare();
@@ -100,7 +103,32 @@ describe("Skill rename against actual platform files", () => {
     expect(
       fs.readFileSync(path.join(root, "platform/author/SKILL.md"), "utf8"),
     ).toContain("name: author");
+    expect(
+      fs.readFileSync(path.join(root, "platform/author/notes.txt"), "utf8"),
+    ).toBe("Package resource");
     expect((await getSkillMdInstallStatusForSkill(updated!)).claude).toBe(true);
+  });
+  it("rejects rename before changing targets when a deployed package was externally edited", async () => {
+    const skill = await prepare();
+    const target = path.join(root, "platform/writer/notes.txt");
+    fs.writeFileSync(target, "Local platform edits");
+    const activationPath = path.join(
+      root,
+      "platform/.prompthub-platform-activations.json",
+    );
+    const activation = fs.readFileSync(activationPath, "utf8");
+    await expect(
+      updateLibrarySkill(db, skill.id, { name: "author" }),
+    ).rejects.toThrow("external changes");
+    expect(fs.readFileSync(target, "utf8")).toBe("Local platform edits");
+    expect(fs.existsSync(path.join(root, "platform/author"))).toBe(false);
+    expect(fs.readFileSync(activationPath, "utf8")).toBe(activation);
+    expect(db.getById(skill.id)?.name).toBe("writer");
+    expect(
+      fs
+        .readdirSync(path.join(root, "data/operations"))
+        .filter((name) => name.startsWith("skill-rename-")),
+    ).toEqual([]);
   });
   it("restores actual deployed bytes and activation if the final library commit fails", async () => {
     const skill = await prepare();
@@ -113,7 +141,7 @@ describe("Skill rename against actual platform files", () => {
     expect(fs.existsSync(path.join(root, "platform/author"))).toBe(false);
     expect(
       fs.readFileSync(path.join(root, "platform/writer/notes.txt"), "utf8"),
-    ).toBe("Local platform edits");
+    ).toBe("Package resource");
     expect((await getSkillMdInstallStatusForSkill(skill)).claude).toBe(true);
     expect(db.getById(skill.id)?.name).toBe("writer");
   });

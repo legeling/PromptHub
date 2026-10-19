@@ -19,6 +19,7 @@ import type {
   UpdateSkillParams,
 } from "@prompthub/shared/types";
 import { SkillInstaller } from "./skill-installer";
+import { SkillPlatformError } from "@prompthub/core/skills/platform-error";
 
 export { createLibrarySkill };
 
@@ -86,6 +87,16 @@ async function renameDistributions(
   const targets = Object.entries(details).filter(
     ([, detail]) => detail.installed,
   );
+  for (const [platform, detail] of targets) {
+    if (
+      detail.contentState === "conflict" ||
+      detail.contentState === "unverified"
+    )
+      throw new SkillPlatformError(
+        "target-conflict",
+        `Skill target on ${platform} has external changes or no verified baseline; preserve or resolve it before renaming`,
+      );
+  }
   const conflicts = await SkillInstaller.getSkillMdInstallStatusDetails(
     draft.name,
   );
@@ -96,7 +107,6 @@ async function renameDistributions(
   const removed: string[] = [];
   try {
     for (const [platform, detail] of targets) {
-      installed.push(platform);
       await deploy(
         draft,
         platform,
@@ -105,10 +115,11 @@ async function renameDistributions(
           ? previous.local_repo_path
           : draft.local_repo_path,
       );
+      installed.push(platform);
     }
     for (const [platform] of targets) {
-      removed.push(platform);
       await SkillInstaller.uninstallSkillMdForSkill(previous, platform);
+      removed.push(platform);
     }
     return commit();
   } catch (error) {

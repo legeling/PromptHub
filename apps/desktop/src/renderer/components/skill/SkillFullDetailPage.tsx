@@ -1004,7 +1004,7 @@ export function SkillFullDetailPage({
           installProgress,
           isBatchInstalling,
           isProjectDeploying,
-          onBatchInstall: batchInstall,
+          onBatchInstall: () => void batchInstall(),
           onCreateProject: openCreateProjectModal,
           onDeployToProjects: handleDeployToProjects,
           getProjectDeployedTargets,

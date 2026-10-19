@@ -61,6 +61,37 @@ function preparePlatforms() {
   return mocks.api.skill;
 }
 
+it("applies newly selected targets from the actual detail-page button", async () => {
+  const api = preparePlatforms();
+  let installed = false;
+  api.getMdInstallStatusDetails.mockImplementation(async () => ({
+    claude: { installed, mode: "symlink" },
+  }));
+  api.installMdSymlink.mockImplementation(async () => {
+    installed = true;
+    return { requestedMode: "symlink", effectiveMode: "symlink" };
+  });
+  const user = userEvent.setup();
+  await renderWithI18n(<SkillFullDetailPage />, { settleAsyncEffects: true });
+  const target = await screen.findByRole("button", { name: "Claude Code" });
+  await user.click(target);
+  expect(api.installMdSymlink).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Apply changes" }));
+  await waitFor(() => expect(api.installMdSymlink).toHaveBeenCalledOnce());
+  expect(api.installMdSymlink).toHaveBeenCalledWith(
+    skill.id,
+    expect.any(String),
+    "claude",
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Apply changes" }),
+    ).toBeDisabled(),
+  );
+  expect(target).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Redistribute" })).toBeEnabled();
+});
+
 it("keeps global selections while switching the modal to project distribution and back", async () => {
   const api = preparePlatforms();
   const user = userEvent.setup();

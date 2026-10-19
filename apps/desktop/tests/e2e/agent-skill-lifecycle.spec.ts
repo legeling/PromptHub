@@ -252,6 +252,7 @@ test("creates, reads, updates, versions, distributes, restarts, and deletes a Sk
     expect(state.installDetails.codex).toEqual({
       installed: true,
       mode: "symlink",
+      contentState: "synced",
     });
 
     await expect(codexTarget).toHaveAttribute("aria-pressed", "true");
