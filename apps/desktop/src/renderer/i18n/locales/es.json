@@ -1,4 +1,38 @@
 {
+  "startupRecovery": {
+    "title": "Revisar datos históricos de prompts",
+    "description": "Hay diferencias entre la base de datos actual y un antiguo espacio de prompts. La edición normal está pausada. Elige la fuente que conservar para cada conflicto. No se modificará nada hasta que confirmes.",
+    "differences": "Campos diferentes: {{fields}}",
+    "absent": "No existe en esta fuente. Esta opción mantiene la ausencia del registro.",
+    "failed": "No se pudo continuar la recuperación.",
+    "working": "Procesando…",
+    "complete": "Recuperación completada",
+    "saved": "Se conservaron los archivos históricos y se guardaron los datos seleccionados. Reinicia para volver a editar.",
+    "restart": "Reiniciar PromptHub",
+    "summary": "{{files}} archivos de origen · {{conflicts}} conflictos",
+    "reappeared": "Han reaparecido archivos históricos después de una migración anterior. Los registros que faltan en la base de datos podrían haberse eliminado. Revisa antes de restaurarlos.",
+    "navigation": "Navegación de conflictos",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "position": "{{index}} / {{total}}",
+    "apply": "Revisar y aplicar",
+    "refresh": "Revisar de nuevo",
+    "openDirectory": "Abrir carpeta de datos",
+    "quit": "Salir",
+    "confirmTitle": "¿Aplicar las opciones de recuperación?",
+    "confirmMessage": "Se conservarán los archivos históricos originales y un punto de recuperación de la base de datos. Tus elecciones se convertirán en los datos actuales; se creará una versión del historial si es necesario. La edición seguirá pausada hasta reiniciar.",
+    "confirm": "Aplicar opciones",
+    "source": {
+      "database": "Base de datos actual",
+      "workspace": "Espacio de trabajo histórico",
+      "data": "Directorio de datos histórico"
+    },
+    "kind": {
+      "prompt": "Prompt",
+      "folder": "Carpeta",
+      "version": "Versión del prompt"
+    }
+  },
   "hostedResources": {
     "description": "Guarda y gestiona recursos. La distribución a los agentes se realiza en tu dispositivo.",
     "operationFailed": "La operación ha fallado. Vuelve a intentarlo.",

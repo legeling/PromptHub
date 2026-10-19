@@ -90,6 +90,8 @@ import { runManagedBackupRetentionAtStartup } from "./services/managed-backup-re
 import * as packagedStartupSmokeProfile from "./testing/release-smoke-profile";
 import { performJournaledDatabaseRecovery } from "./services/journaled-database-recovery";
 import { registerPortableSnapshotIPC } from "./services/portable-snapshot-ipc";
+import { registerPromptWorkspaceRecoveryIPC } from "./services/prompt-workspace-recovery";
+import { PromptWorkspaceRecoveryRequired } from "@prompthub/core/migrations/prompt-workspace-v2";
 import {
   inspectStorageDatabase,
   verifyDataRootDatabase,
@@ -382,6 +384,7 @@ if (!gotTheLock) {
 }
 
 let disposeWindowState: (() => void) | undefined;
+let promptWorkspaceRecoveryActive = false;
 
 async function createWindow() {
   // Ensure single window
@@ -422,8 +425,8 @@ async function createWindow() {
     },
     // Use frameless window on Windows, native title bar on macOS
     // Windows 使用无边框窗口，macOS 使用原生标题栏
-    frame: isWin ? false : true,
-    titleBarStyle: isMac ? "hiddenInset" : "default",
+    frame: promptWorkspaceRecoveryActive || !isWin,
+    titleBarStyle: isMac && !promptWorkspaceRecoveryActive ? "hiddenInset" : "default",
     trafficLightPosition: isMac ? { x: 14, y: 22 } : undefined,
     // Dark background for Windows title bar
     // Windows 深色标题栏
@@ -438,6 +441,10 @@ async function createWindow() {
 
   // Handle window ready-to-show: check if we should minimize on launch
   mainWindow.once("ready-to-show", () => {
+    if (promptWorkspaceRecoveryActive) {
+      mainWindow?.show();
+      return;
+    }
     // OS-level signals that the app was auto-launched hidden:
     //   - Windows: the registered Run entry passes `--hidden`
     //   - macOS:   `wasOpenedAsHidden` reflects the `openAsHidden` flag
@@ -509,7 +516,9 @@ async function createWindow() {
       process.env.VITE_DEV_SERVER_URL || "http://127.0.0.1:5173";
     console.log("Loading dev server:", devServerUrl);
     try {
-      await mainWindow.loadURL(devServerUrl);
+      const rendererUrl = new URL(devServerUrl);
+      if (promptWorkspaceRecoveryActive) rendererUrl.searchParams.set("startupRecovery", "prompt-workspace");
+      await mainWindow.loadURL(rendererUrl.toString());
       if (shouldOpenStartupDevTools({ isDev, isE2E })) {
         mainWindow.webContents.openDevTools();
       }
@@ -517,7 +526,9 @@ async function createWindow() {
       console.error("Failed to load dev server:", error);
     }
   } else {
-    await mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+    await mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"), {
+      ...(promptWorkspaceRecoveryActive ? { query: { startupRecovery: "prompt-workspace" } } : {}),
+    });
     // Handle DevTools shortcuts in production
     // 生产环境处理开发者工具快捷键
     mainWindow.webContents.on("before-input-event", (event, input) => {
@@ -548,10 +559,14 @@ async function createWindow() {
   // Close behavior: decide based on settings whether to minimize to tray or close
   // 关闭行为：根据设置决定是最小化到托盘还是关闭
   mainWindow.on("close", (event) => {
+    if (isQuitting) return;
+    if (promptWorkspaceRecoveryActive) {
+      isQuitting = true;
+      app.quit();
+      return;
+    }
     // If quitting, allow close to proceed
     // 如果正在退出应用，直接关闭
-    if (isQuitting) return;
-
     const isWin = process.platform === "win32";
 
     // Windows-specific close behavior
@@ -1416,6 +1431,21 @@ app.whenReady().then(async () => {
       await createWindow();
     });
   } catch (error) {
+    if (error instanceof PromptWorkspaceRecoveryRequired) {
+      closeDatabase();
+      appDb = null;
+      promptWorkspaceRecoveryActive = true;
+      registerPromptWorkspaceRecoveryIPC({
+        rootPath: getUserDataPath(), databasePath: getDatabasePath(),
+        isActive: () => promptWorkspaceRecoveryActive,
+        windowId: () => mainWindow?.webContents.id,
+        restart: scheduleAppRelaunch,
+        quit: () => { isQuitting = true; app.quit(); },
+      });
+      logStartupEvent({ event: "startup:prompt_workspace_recovery_required", conflictCount: error.review.conflicts.length });
+      await createWindow();
+      return;
+    }
     console.error("Failed to initialize app:", error);
     dialog.showErrorBox(
       "Startup Error / 启动错误",

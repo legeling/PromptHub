@@ -2,7 +2,7 @@ import { migrateSkillPayloadFiles } from "./migrations/skill-payload-upgrade";
 import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
 import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
 import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
-import { migratePromptWorkspaceV1 } from "./migrations/prompt-workspace-v1";
+import { migratePromptWorkspaceV2 } from "./migrations/prompt-workspace-v2";
 import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
 import { migrateAgentProviderSqliteV1 } from "./migrations/agent-provider-sqlite-v1";
 import { migratePromptSqliteV1 } from "./migrations/prompt-sqlite-v1";
@@ -67,7 +67,7 @@ export function initDatabase(
       rootPath: getUserDataPath(),
       databasePath: getDatabasePath(),
     });
-    migratePromptWorkspaceV1(database, {
+    migratePromptWorkspaceV2(database, {
       rootPath: getUserDataPath(),
       databasePath: getDatabasePath(),
     });

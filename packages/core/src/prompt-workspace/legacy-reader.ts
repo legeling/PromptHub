@@ -14,6 +14,13 @@ import {
   versionFrontmatter,
 } from "./codec";
 
+/** Field presence belongs to the historical import boundary, not normal CRUD. */
+export interface LegacyPromptWorkspaceFields {
+  prompts: Map<string, ReadonlySet<string>>;
+  folders: Map<string, ReadonlySet<string>>;
+  versions: Map<string, ReadonlySet<string>>;
+}
+
 function assertId(value: unknown): asserts value is string {
   if (
     typeof value !== "string" ||
@@ -91,7 +98,10 @@ function insertUnique<T extends { id: string }>(
   map.set(value.id, value);
 }
 
-function readFolders(workspace: string): Folder[] {
+function readFolders(
+  workspace: string,
+  fields?: LegacyPromptWorkspaceFields,
+): Folder[] {
   const result = new Map<string, Folder>();
   const list = path.join(workspace, "folders.json");
   const values: unknown[] = [];
@@ -110,6 +120,7 @@ function readFolders(workspace: string): Folder[] {
       throw new Error("Historical folder is invalid");
     // Historical folder JSON is validated with the complete merged graph before writes.
     const folder = value as Folder;
+    fields?.folders.set(folder.id, new Set(Object.keys(value)));
     const normalized = normalizePromptGraphForDatabase({
       prompts: [],
       promptVersions: [],
@@ -124,13 +135,18 @@ function readFolders(workspace: string): Folder[] {
 
 export function readLegacyPromptWorkspace(
   workspace: string,
+  fields?: LegacyPromptWorkspaceFields,
 ): PromptCanonicalGraphSnapshot {
   const prompts = new Map<string, Prompt>();
   const versions = new Map<string, PromptVersion>();
   const versionDirectories = new Map<string, string>();
   for (const file of collectPromptFiles(path.join(workspace, "prompts"))) {
-    validateWorkspaceMetadata(file);
+    const metadata = validateWorkspaceMetadata(file);
     const prompt = parsePromptFile(file);
+    fields?.prompts.set(
+      prompt.id,
+      new Set([...Object.keys(metadata), "systemPrompt", "userPrompt"]),
+    );
     insertUnique(prompts, prompt);
     if (path.basename(file) === "prompt.md")
       versionDirectories.set(
@@ -155,20 +171,32 @@ export function readLegacyPromptWorkspace(
       const metadata = validateWorkspaceMetadata(file, true);
       if (metadata.promptId !== undefined && metadata.promptId !== owner)
         throw new Error("Historical version owner is inconsistent");
-      insertUnique(versions, parseVersionFile(file, owner));
+      const version = parseVersionFile(file, owner);
+      fields?.versions.set(
+        version.id,
+        new Set([
+          ...Object.keys(metadata),
+          "promptId",
+          "systemPrompt",
+          "userPrompt",
+        ]),
+      );
+      insertUnique(versions, version);
     }
   }
   return normalizePromptGraphForDatabase({
     prompts: [...prompts.values()],
     promptVersions: [...versions.values()],
-    folders: readFolders(workspace),
+    folders: readFolders(workspace, fields),
     promptRelations: [],
     outputFormatItems: [],
   });
 }
 
 /** Compare only fields represented by the historical Markdown exporter. */
-export function workspacePromptProjection(prompt: Prompt): unknown {
+export function workspacePromptProjection(
+  prompt: Prompt,
+): Record<string, unknown> {
   return {
     ...promptFrontmatter(prompt),
     systemPrompt: prompt.systemPrompt?.trim() || null,
@@ -176,7 +204,9 @@ export function workspacePromptProjection(prompt: Prompt): unknown {
   };
 }
 
-export function workspaceVersionProjection(version: PromptVersion): unknown {
+export function workspaceVersionProjection(
+  version: PromptVersion,
+): Record<string, unknown> {
   return {
     ...versionFrontmatter(version),
     systemPrompt: version.systemPrompt?.trim() || null,

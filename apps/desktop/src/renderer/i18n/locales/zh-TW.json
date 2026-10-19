@@ -1,4 +1,38 @@
 {
+  "startupRecovery": {
+    "title": "核對歷史提示詞資料",
+    "description": "PromptHub 發現目前資料庫與舊提示詞工作區存在差異，正常編輯已暫停。請為每項衝突選擇要保留的來源；確認前不會修改資料。",
+    "differences": "差異欄位：{{fields}}",
+    "absent": "此來源中不存在該記錄。選擇此項會保持記錄不存在。",
+    "failed": "復原無法繼續。",
+    "working": "正在處理…",
+    "complete": "復原完成",
+    "saved": "歷史檔案已保留，所選資料已寫入。重新啟動後即可恢復正常編輯。",
+    "restart": "重新啟動 PromptHub",
+    "summary": "{{files}} 個來源檔案 · {{conflicts}} 項衝突",
+    "reappeared": "歷史檔案在上次移轉後再次出現。資料庫中缺少的記錄可能已被刪除，請謹慎決定是否復原。",
+    "navigation": "衝突導覽",
+    "previous": "上一項",
+    "next": "下一項",
+    "position": "{{index}} / {{total}}",
+    "apply": "核對並套用",
+    "refresh": "重新檢查",
+    "openDirectory": "開啟資料目錄",
+    "quit": "結束",
+    "confirmTitle": "套用復原選擇？",
+    "confirmMessage": "原始歷史檔案和資料庫復原點將被保留。所選內容將成為目前資料庫資料，必要時會新增歷史版本。重新啟動前正常編輯仍將暫停。",
+    "confirm": "套用選擇",
+    "source": {
+      "database": "目前資料庫",
+      "workspace": "歷史工作區",
+      "data": "歷史資料目錄"
+    },
+    "kind": {
+      "prompt": "提示詞",
+      "folder": "資料夾",
+      "version": "提示詞版本"
+    }
+  },
   "hostedResources": {
     "description": "在這裡儲存和管理資源，Agent 分發由本機用戶端完成。",
     "operationFailed": "操作失敗，請重試。",

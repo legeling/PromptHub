@@ -3,7 +3,7 @@ import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
 import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
 import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
 import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
-import { migratePromptWorkspaceV1 } from "./migrations/prompt-workspace-v1";
+import { migratePromptWorkspaceV2 } from "./migrations/prompt-workspace-v2";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -213,7 +213,7 @@ function reconcileWithMaintenance(
       rootPath: options.activeRoot,
       databasePath: sourcePath,
     });
-    migratePromptWorkspaceV1(source, {
+    migratePromptWorkspaceV2(source, {
       rootPath: options.activeRoot,
       databasePath: sourcePath,
     });

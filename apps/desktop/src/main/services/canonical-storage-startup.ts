@@ -1,5 +1,6 @@
 import { upgradeSkillPackageInternals } from "@prompthub/core/migrations/skill-package-internals-v1";
 import { hasPromptSqliteMigration } from "@prompthub/core/migrations/prompt-sqlite-v1";
+import { PromptWorkspaceRecoveryRequired } from "@prompthub/core/migrations/prompt-workspace-v2";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -155,6 +156,7 @@ async function ensureExistingCanonicalAuthority(
         result.status === "rebuilt" ? "catalog-rebuilt" : "already-canonical",
     };
   } catch (error) {
+    if (error instanceof PromptWorkspaceRecoveryRequired) throw error;
     return {
       status: "recovery-required",
       reason: "invalid-canonical-storage",

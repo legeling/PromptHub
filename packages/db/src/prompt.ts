@@ -701,6 +701,21 @@ export class PromptDB {
     })();
   }
 
+  /** Explicit recovery only: replace reviewed version identities/slots atomically. */
+  replaceVersionsForRecovery(versions: readonly PromptVersion[]): void {
+    const normalized = versions.map((version) =>
+      this.rowToVersion(normalizeImportedPromptVersion(version)),
+    );
+    this.db.transaction(() => {
+      const remove = this.db.prepare(
+        "DELETE FROM prompt_versions WHERE id = ? OR (prompt_id = ? AND version = ?)",
+      );
+      for (const version of normalized)
+        remove.run(version.id, version.promptId, version.version);
+      for (const version of normalized) this.insertVersionDirect(version);
+    })();
+  }
+
   insertPromptDirect(prompt: Prompt): void {
     assertPromptTextHasNoNullBytes(prompt);
     this.db.prepare(UPSERT_PROMPT_SQL).run({

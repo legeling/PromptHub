@@ -21,6 +21,7 @@ import { ioApi } from "./api/io";
 import { mcpApi } from "./api/mcp";
 import { pluginApi } from "./api/plugin";
 import { promptApi } from "./api/prompt";
+import { promptWorkspaceRecoveryApi } from "./api/prompt-workspace-recovery";
 import { rulesApi } from "./api/rules";
 import { settingsApi } from "./api/settings";
 import { skillApi } from "./api/skill";
@@ -105,6 +106,7 @@ const api = {
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
   prompt: promptApi,
+  promptWorkspaceRecovery: promptWorkspaceRecoveryApi,
   agent: agentApi,
 
   // Security

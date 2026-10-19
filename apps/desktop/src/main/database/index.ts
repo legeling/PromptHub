@@ -2,7 +2,7 @@ import { migrateGenerationSqliteV1 } from "@prompthub/core/migrations/generation
 import { migrateSkillSqliteV1 } from "@prompthub/core/migrations/skill-sqlite-v1";
 import { migrateSkillPayloadFiles } from "@prompthub/core/migrations/skill-payload-upgrade";
 import { migrateRuleMetadataV1 } from "@prompthub/core/migrations/rule-metadata-v1";
-import { migratePromptWorkspaceV1 } from "@prompthub/core/migrations/prompt-workspace-v1";
+import { migratePromptWorkspaceV2 } from "@prompthub/core/migrations/prompt-workspace-v2";
 import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
 import { migratePluginSqliteV1 } from "@prompthub/core/migrations/plugin-sqlite-v1";
 import { migrateAgentProviderSqliteV1 } from "@prompthub/core/migrations/agent-provider-sqlite-v1";
@@ -217,7 +217,7 @@ export function initDatabase(): DatabaseAdapter.Database {
       rootPath: getUserDataPath(),
       databasePath: dbPath,
     });
-    migratePromptWorkspaceV1(database, {
+    migratePromptWorkspaceV2(database, {
       rootPath: getUserDataPath(),
       databasePath: dbPath,
     });

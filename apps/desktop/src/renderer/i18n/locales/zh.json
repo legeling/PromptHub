@@ -1,4 +1,38 @@
 {
+  "startupRecovery": {
+    "title": "核对历史提示词数据",
+    "description": "PromptHub 发现当前数据库与旧提示词工作区存在差异，正常编辑已暂停。请为每项冲突选择要保留的来源；确认前不会修改数据。",
+    "differences": "差异字段：{{fields}}",
+    "absent": "此来源中不存在该记录。选择此项会保持记录不存在。",
+    "failed": "恢复无法继续。",
+    "working": "正在处理…",
+    "complete": "恢复完成",
+    "saved": "历史文件已保留，所选数据已写入。重启后即可恢复正常编辑。",
+    "restart": "重启 PromptHub",
+    "summary": "{{files}} 个源文件 · {{conflicts}} 项冲突",
+    "reappeared": "历史文件在上次迁移后再次出现。数据库中缺失的记录可能已被删除，请谨慎决定是否恢复。",
+    "navigation": "冲突导航",
+    "previous": "上一项",
+    "next": "下一项",
+    "position": "{{index}} / {{total}}",
+    "apply": "核对并应用",
+    "refresh": "重新检查",
+    "openDirectory": "打开数据目录",
+    "quit": "退出",
+    "confirmTitle": "应用恢复选择？",
+    "confirmMessage": "原始历史文件和数据库恢复点将被保留。所选内容将成为当前数据库数据，必要时会新增历史版本。重启前正常编辑仍将暂停。",
+    "confirm": "应用选择",
+    "source": {
+      "database": "当前数据库",
+      "workspace": "历史工作区",
+      "data": "历史数据目录"
+    },
+    "kind": {
+      "prompt": "提示词",
+      "folder": "文件夹",
+      "version": "提示词版本"
+    }
+  },
   "hostedResources": {
     "description": "在这里保存和管理资源，Agent 分发由本机客户端完成。",
     "operationFailed": "操作失败，请重试。",

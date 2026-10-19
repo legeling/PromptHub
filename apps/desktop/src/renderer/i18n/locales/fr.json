@@ -1,4 +1,38 @@
 {
+  "startupRecovery": {
+    "title": "Vérifier les anciennes données de prompts",
+    "description": "Des différences existent entre la base actuelle et un ancien espace de prompts. L’édition normale est suspendue. Choisissez la source à conserver pour chaque conflit. Rien ne sera modifié avant confirmation.",
+    "differences": "Champs différents : {{fields}}",
+    "absent": "Absent de cette source. Ce choix maintient l’absence de l’enregistrement.",
+    "failed": "La récupération n’a pas pu continuer.",
+    "working": "Traitement…",
+    "complete": "Récupération terminée",
+    "saved": "Les anciens fichiers ont été conservés et les données choisies enregistrées. Redémarrez pour reprendre l’édition.",
+    "restart": "Redémarrer PromptHub",
+    "summary": "{{files}} fichiers sources · {{conflicts}} conflits",
+    "reappeared": "Des fichiers historiques ont réapparu après une migration. Les enregistrements absents de la base ont peut-être été supprimés. Vérifiez avant de les restaurer.",
+    "navigation": "Navigation des conflits",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "position": "{{index}} / {{total}}",
+    "apply": "Vérifier et appliquer",
+    "refresh": "Vérifier à nouveau",
+    "openDirectory": "Ouvrir le dossier de données",
+    "quit": "Quitter",
+    "confirmTitle": "Appliquer les choix de récupération ?",
+    "confirmMessage": "Les fichiers historiques originaux et un point de récupération de la base seront conservés. Vos choix deviendront les données actuelles ; une version d’historique sera créée si nécessaire. L’édition restera suspendue jusqu’au redémarrage.",
+    "confirm": "Appliquer les choix",
+    "source": {
+      "database": "Base actuelle",
+      "workspace": "Ancien espace de travail",
+      "data": "Ancien répertoire de données"
+    },
+    "kind": {
+      "prompt": "Prompt",
+      "folder": "Dossier",
+      "version": "Version du prompt"
+    }
+  },
   "hostedResources": {
     "description": "Enregistrez et gérez vos ressources. Le déploiement vers les agents reste local.",
     "operationFailed": "L’opération a échoué. Veuillez réessayer.",

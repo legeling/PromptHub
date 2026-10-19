@@ -1,4 +1,38 @@
 {
+  "startupRecovery": {
+    "title": "Review historical Prompt data",
+    "description": "PromptHub found differences between the current database and an old Prompt workspace. Normal editing is paused. Choose the source to keep for each conflict; no data is changed until you confirm.",
+    "differences": "Different fields: {{fields}}",
+    "absent": "Not present in this source. Choosing this keeps the record absent.",
+    "failed": "Recovery could not continue.",
+    "working": "Working…",
+    "complete": "Recovery complete",
+    "saved": "Historical files were preserved and the selected data was saved. Restart to resume normal editing.",
+    "restart": "Restart PromptHub",
+    "summary": "{{files}} source files · {{conflicts}} conflicts",
+    "reappeared": "Historical files reappeared after a previous migration. Missing database records may have been deleted; choose carefully before restoring them.",
+    "navigation": "Conflict navigation",
+    "previous": "Previous",
+    "next": "Next",
+    "position": "{{index}} / {{total}}",
+    "apply": "Review and apply",
+    "refresh": "Refresh review",
+    "openDirectory": "Open data folder",
+    "quit": "Quit",
+    "confirmTitle": "Apply recovery choices?",
+    "confirmMessage": "The original historical files and a database recovery point will be preserved. Your choices will become the current database data; a new history version is created when needed. Normal editing stays paused until restart.",
+    "confirm": "Apply choices",
+    "source": {
+      "database": "Current database",
+      "workspace": "Historical workspace",
+      "data": "Historical data directory"
+    },
+    "kind": {
+      "prompt": "Prompt",
+      "folder": "Folder",
+      "version": "Prompt version"
+    }
+  },
   "hostedResources": {
     "description": "Save and manage resources here. Agent deployment stays on your device.",
     "operationFailed": "The operation failed. Please try again.",

@@ -3,6 +3,11 @@
  */
 
 export const IPC_CHANNELS = {
+  PROMPT_WORKSPACE_RECOVERY_REVIEW: "promptWorkspaceRecovery:review",
+  PROMPT_WORKSPACE_RECOVERY_RESOLVE: "promptWorkspaceRecovery:resolve",
+  PROMPT_WORKSPACE_RECOVERY_OPEN_DIRECTORY: "promptWorkspaceRecovery:openDirectory",
+  PROMPT_WORKSPACE_RECOVERY_RESTART: "promptWorkspaceRecovery:restart",
+  PROMPT_WORKSPACE_RECOVERY_QUIT: "promptWorkspaceRecovery:quit",
   NOTIFICATION_PUBLISH: "notification:publish",
   NOTIFICATION_FEEDBACK: "notification:feedback",
   // Prompt

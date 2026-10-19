@@ -37,6 +37,13 @@ function mergeMocks<T extends MockRecord>(base: T, overrides?: unknown): T {
 
 function createWindowApiDefaults() {
   return {
+    promptWorkspaceRecovery: {
+      review: vi.fn(),
+      resolve: vi.fn(),
+      openDataDirectory: vi.fn(),
+      restart: vi.fn(),
+      quit: vi.fn(),
+    },
     generation: {
       list: vi.fn(),
       get: vi.fn(),

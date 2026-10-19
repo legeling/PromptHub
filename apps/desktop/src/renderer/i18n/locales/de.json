@@ -1,4 +1,38 @@
 {
+  "startupRecovery": {
+    "title": "Historische Prompt-Daten prüfen",
+    "description": "Die aktuelle Datenbank und ein alter Prompt-Arbeitsbereich unterscheiden sich. Die normale Bearbeitung ist pausiert. Wählen Sie für jeden Konflikt die Quelle, die erhalten bleiben soll. Vor Ihrer Bestätigung wird nichts geändert.",
+    "differences": "Abweichende Felder: {{fields}}",
+    "absent": "In dieser Quelle nicht vorhanden. Diese Auswahl behält den fehlenden Datensatz bei.",
+    "failed": "Die Wiederherstellung konnte nicht fortgesetzt werden.",
+    "working": "Wird verarbeitet…",
+    "complete": "Wiederherstellung abgeschlossen",
+    "saved": "Historische Dateien wurden gesichert und die ausgewählten Daten gespeichert. Starten Sie neu, um weiterzuarbeiten.",
+    "restart": "PromptHub neu starten",
+    "summary": "{{files}} Quelldateien · {{conflicts}} Konflikte",
+    "reappeared": "Historische Dateien sind nach einer früheren Migration erneut aufgetaucht. Fehlende Datenbankeinträge wurden möglicherweise gelöscht. Prüfen Sie die Auswahl vor der Wiederherstellung.",
+    "navigation": "Konfliktnavigation",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "position": "{{index}} / {{total}}",
+    "apply": "Prüfen und anwenden",
+    "refresh": "Erneut prüfen",
+    "openDirectory": "Datenordner öffnen",
+    "quit": "Beenden",
+    "confirmTitle": "Wiederherstellungsauswahl anwenden?",
+    "confirmMessage": "Die historischen Originaldateien und ein Datenbank-Wiederherstellungspunkt bleiben erhalten. Ihre Auswahl wird zum aktuellen Datenbestand; bei Bedarf entsteht eine neue Verlaufsversion. Die Bearbeitung bleibt bis zum Neustart pausiert.",
+    "confirm": "Auswahl anwenden",
+    "source": {
+      "database": "Aktuelle Datenbank",
+      "workspace": "Historischer Arbeitsbereich",
+      "data": "Historisches Datenverzeichnis"
+    },
+    "kind": {
+      "prompt": "Prompt",
+      "folder": "Ordner",
+      "version": "Prompt-Version"
+    }
+  },
   "hostedResources": {
     "description": "Ressourcen speichern und verwalten. Die Verteilung an Agents erfolgt auf Ihrem Gerät.",
     "operationFailed": "Der Vorgang ist fehlgeschlagen. Bitte erneut versuchen.",

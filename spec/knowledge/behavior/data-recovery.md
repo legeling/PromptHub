@@ -8,6 +8,71 @@
 
 ### 1. Recovery Safety
 
+#### Prompt workspace upgrade recovery (2026-10-19)
+
+- Confirmed requirement: historical Prompt workspaces must converge once into SQLite;
+  a recoverable same-identity conflict must open a recovery-only Desktop surface,
+  not terminate startup or enable normal business writes against partial state.
+  Existing portable ZIP compatibility and backup retention remain unchanged.
+- Implementation: retain the released `prompt-workspace-v1` converter and
+  introduce ordered `prompt-workspace-v2`. Current Desktop/Core startup uses the
+  successor; the old Web format keeps its existing explicit converter. Existing
+  completion/restore markers must prevent resurrection of deleted records.
+- Compare only fields actually represented by a historical source, after its
+  existing date/default/body normalization. Missing old fields do not erase SQL-only
+  metadata. Distinct records and history merge; divergent fields or version slots
+  require explicit source selection, never timestamp precedence. Reappearing legacy
+  records absent from SQL require explicit recovery rather than automatic import;
+  equivalent mirrors can be archived and retired without resurrecting records.
+- Recovery contract: Core owns analysis, a SHA-256 review fingerprint, source choices,
+  graph validation and journaled publication. Shared owns the typed report/request.
+  Desktop exposes review/resolve/restart and the data directory only while blocked;
+  its dedicated renderer entry does not mount the normal App or settings migration.
+  Choices are not preselected. Resolution rechecks the exact reviewed data, preserves
+  original SQLite in its managed safety registry and old files in the migration
+  recovery directory, then atomically publishes rows, retirement and completion.
+  Each publication uses a distinct recovery directory and never replaces an older
+  archive, including when identical source files reappear.
+  Failed publication rolls back; cancel/close leaves sources unchanged. No new table,
+  parallel runtime store, automatic retry policy or timestamp winner is introduced.
+- The UI shows record identity, actual source and field differences, supports keyboard
+  selection/confirmation, and offers refresh, opening the data directory and exit.
+  Failure stays recoverable; success requires a normal restart before business access.
+  Invalid/unsafe source files are not silently discarded to make recovery succeed.
+- Work is O(records + source bytes) plus deterministic O(n log n) ordering; records are
+  indexed by identity/version slot and file hashing is streamed. Recovery-only scans
+  are on demand; normal completed startup must not scan retained backup contents.
+- Acceptance: historical-format field omissions, full old-writer fixtures, same-ID
+  content/metadata and version-slot conflicts, stale review, deleted-record replay,
+  source-byte preservation, SQL/file failure rollback, restart/retry and frontend
+  confirmation through real preload/IPC/storage. Existing package test entrypoints
+  and the release harness select these tests. Native Windows/UI acceptance is separate.
+  Rollback requires the matching pre-migration SQLite safety point plus archived
+  source files in an isolated root, not copying legacy files into a live current root.
+- The recovery renderer keeps its continuous page layout together; its JSX render,
+  state hook, conflict-group merge, history completion and migration/IPC orchestrators
+  may exceed 50 lines to keep a single selection or transaction boundary visible.
+  Focused component and real SQLite/preload tests cover those boundaries. No new
+  file exceeds 1,000 lines.
+- Local verification on 2026-10-19: 15 successor migration cases and the 15 unchanged
+  v1 cases passed; 58 catalog/SQL publication/historical-runtime cases passed,
+  including v0.5.9, beta.1 and beta.2 upgrade/edit/reopen and failed-upgrade retry.
+  Desktop recovery preload/IPC has 2 passing real SQLite cases; recovery component
+  and seven-locale checks have 11 cases, the isolated renderer entry 1, existing
+  canonical startup 18, and current/historical portable imports 21. These are
+  targeted checks, not the full release harness.
+- Desktop source/test and Core source typechecks, scoped root-based ESLint, file
+  size checks and Desktop production build passed. The 500-record synthetic
+  migration took 473 ms locally; repeated startup rounded to 0 ms and did not read
+  the retained archive. These timings are observations, not platform guarantees.
+- The historical writer fixture extracts only pure serialization functions from
+  `v0.5.8` commit `28935b56186cdf213b3af500853b586bee9199d3`; it does not claim an
+  installed old Desktop binary or the reporter's private data. Native GUI/Windows
+  upgrade acceptance and the complete release gate remain unexecuted. A malformed
+  source or divergent duplicate IDs within one source still requires source repair;
+  the recovery choices distinguish database/workspace/data, not individual copies
+  inside an ambiguous source.
+
 #### Historical portable imports and backup volume (2026-10-19)
 
 - 历史版本正常导出的备份必须可通过显式导入迁移读取；不能要求用户安装旧版本
