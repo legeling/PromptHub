@@ -163,6 +163,7 @@ export type FetchLike = (
 
 export interface CorePluginLibraryServiceOptions {
   fetchFn?: FetchLike;
+  fetchArchiveFn?: (url: string) => Promise<Uint8Array>;
   marketSources?: PluginMarketSource[];
   materializePackages?: boolean;
   materializePackageFn?: PackageMaterializer;
@@ -218,6 +219,7 @@ export interface MaterializedPluginSourcePackage {
 
 export interface NormalizedPluginSourceRequest {
   branch?: string;
+  revision?: string;
   kind: PluginSourceKind;
   label?: string;
   packagePath?: string;

@@ -69,6 +69,7 @@ function buildBranchSuggestions(
 }
 
 interface SkillStoreSourceEditModalProps {
+  directoryPlaceholder?: string;
   isOpen: boolean;
   onClose: () => void;
   onDelete: (sourceId: string) => void;
@@ -91,6 +92,7 @@ interface SkillStoreSourceEditModalProps {
 }
 
 export function SkillStoreSourceEditModal({
+  directoryPlaceholder,
   isOpen,
   onClose,
   onDelete,
@@ -322,14 +324,21 @@ export function SkillStoreSourceEditModal({
                 type="text"
                 value={directory}
                 onChange={(event) => setDirectory(event.target.value)}
-                aria-label={t(
-                  "skill.storeDirectoryPlaceholder",
-                  "Directory (optional, e.g. skills/.curated)",
-                )}
-                placeholder={t(
-                  "skill.storeDirectoryPlaceholder",
-                  "Directory (optional, e.g. skills/.curated)",
-                )}
+                title={directoryPlaceholder}
+                aria-label={
+                  directoryPlaceholder ??
+                  t(
+                    "skill.storeDirectoryPlaceholder",
+                    "Directory (optional, e.g. skills/.curated)",
+                  )
+                }
+                placeholder={
+                  directoryPlaceholder ??
+                  t(
+                    "skill.storeDirectoryPlaceholder",
+                    "Directory (optional, e.g. skills/.curated)",
+                  )
+                }
                 className="w-full rounded-lg border border-border bg-accent/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
               />
             </div>

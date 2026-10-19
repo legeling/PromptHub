@@ -367,6 +367,8 @@ function normalizeLibrarySource(
     localPackagePath: plugin.source?.localPackagePath,
     url: plugin.source?.url,
     branch: safeString(plugin.source?.branch),
+    revision: safeString(plugin.source?.revision),
+    archive: plugin.source?.archive,
   };
 }
 

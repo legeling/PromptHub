@@ -57,10 +57,12 @@ export async function attachMarketSourcePackageHash(
 ): Promise<PluginMarketPreview> {
   const repository = preview.entry.source.repository;
   const packagePath = preview.entry.source.packagePath;
+  if (preview.entry.source.archive) return preview;
   if (!repository || !packagePath) return preview;
 
   const request = normalizePluginSourceImportRequest({
     branch: preview.entry.source.branch,
+    revision: preview.entry.source.revision,
     packagePath,
     url: repository,
   });

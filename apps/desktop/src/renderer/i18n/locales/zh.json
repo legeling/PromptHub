@@ -4353,6 +4353,7 @@
     }
   },
   "plugin": {
+    "marketplaceFilePlaceholder": "市场 JSON 文件路径（Claude：.claude-plugin/marketplace.json；默认：.agents/plugins/marketplace.json）",
     "sharedDirectory": "共享 Plugin 目录",
     "sharedDirectoryHint": "将完整插件包存放到 ~/.agents/plugins/<名称>/。使用时需要客户端支持该目录或另行注册。不参与“全选”。",
     "title": "Plugins",

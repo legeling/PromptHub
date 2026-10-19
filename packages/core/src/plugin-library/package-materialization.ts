@@ -16,7 +16,6 @@ import type {
 
 import { getCacheDir, getDataDir } from "../runtime-paths";
 import {
-  CODEX_PLUGIN_MANIFEST_FILE,
   CorePluginError,
   MAX_PLUGIN_PACKAGE_SNAPSHOT_FILE_BYTES,
   MAX_PLUGIN_PACKAGE_SNAPSHOT_FILES,
@@ -36,9 +35,13 @@ import {
 } from "./shared";
 import {
   getLocalPluginNativeTargetIds,
+  findLocalPluginMarker,
+  readLocalPluginManifest,
+  validateLocalPluginPackage,
   inspectLocalPluginNativeTargets,
 } from "./package-validation";
 import { normalizePluginSafetyReport } from "./normalization";
+import { parseGitHubRepositoryRef } from "./marketplace";
 
 function getPluginMaterializationDir(): string {
   return path.join(getCacheDir(), "plugin-materializations");
@@ -268,6 +271,8 @@ function getSourceFingerprintPayload(source: PluginPackageSource): RawRecord {
     manifestPath: source.manifestPath,
     url: source.url,
     branch: source.branch,
+    ...(source.revision ? { revision: source.revision } : {}),
+    ...(source.archive ? { archive: source.archive } : {}),
   };
 }
 
@@ -588,7 +593,7 @@ function normalizeSourceBranch(branch: string | undefined): string | undefined {
 }
 
 export function normalizePluginSourceImportRequest(
-  request: PluginImportSourceRequest,
+  request: PluginImportSourceRequest & { revision?: string },
 ): NormalizedPluginSourceRequest {
   const url = request.url.trim();
   if (!url || url.includes("\0")) {
@@ -596,6 +601,12 @@ export function normalizePluginSourceImportRequest(
   }
   const packagePath = normalizeOptionalSourcePackagePath(request.packagePath);
   const branch = normalizeSourceBranch(request.branch);
+  const revision = request.revision;
+  if (revision && !/^[a-f\d]{40}$/i.test(revision))
+    throw new CorePluginError(
+      "INVALID_SOURCE",
+      "Invalid Plugin Git commit SHA",
+    );
   const kind = inferPluginSourceKind(url);
   const fingerprint = crypto
     .createHash("sha256")
@@ -604,6 +615,7 @@ export function normalizePluginSourceImportRequest(
         kind,
         sanitizePluginSourceUrl(url),
         branch ?? "",
+        ...(revision ? [revision] : []),
         packagePath ?? "",
       ].join("\0"),
     )
@@ -611,6 +623,7 @@ export function normalizePluginSourceImportRequest(
     .slice(0, 10);
   return {
     branch,
+    revision,
     kind,
     label: request.label?.trim() || undefined,
     packagePath,
@@ -631,7 +644,7 @@ export async function materializeGitSourcePackage(
   if (request.packagePath) {
     cloneArgs.push("--sparse");
   }
-  if (request.branch) {
+  if (request.branch && !request.revision) {
     cloneArgs.push("--branch", request.branch);
   }
   cloneArgs.push("--", request.url, repoDir);
@@ -640,9 +653,21 @@ export async function materializeGitSourcePackage(
     fs.rmSync(tempRoot, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(tempRoot), { recursive: true });
     await runGit(cloneArgs, undefined, request.url);
+    if (request.revision) {
+      await runGit(
+        ["fetch", "--depth", "1", "origin", request.revision],
+        repoDir,
+        request.url,
+      );
+      await runGit(
+        ["checkout", "--detach", "FETCH_HEAD"],
+        repoDir,
+        request.url,
+      );
+    }
     if (request.packagePath) {
       await runGit(
-        ["sparse-checkout", "set", "--no-cone", request.packagePath],
+        ["sparse-checkout", "set", "--no-cone", "--", request.packagePath],
         repoDir,
         request.url,
       );
@@ -683,7 +708,11 @@ async function checkoutMarketGitPackage(
   repository: string,
   packagePath: string,
   repoDir: string,
+  entry: PluginMarketEntry,
 ): Promise<void> {
+  const branch =
+    entry.source.branch ??
+    parseGitHubRepositoryRef(repository, entry.source.rawJsonUrl)?.branch;
   await runGit(
     [
       "clone",
@@ -691,6 +720,7 @@ async function checkoutMarketGitPackage(
       "1",
       "--filter=blob:none",
       "--sparse",
+      ...(branch && !entry.source.revision ? ["--branch", branch] : []),
       "--",
       repository,
       repoDir,
@@ -698,8 +728,18 @@ async function checkoutMarketGitPackage(
     undefined,
     repository,
   );
+  if (entry.source.revision) {
+    await runGit(
+      ["fetch", "--depth", "1", "origin", entry.source.revision],
+      repoDir,
+      repository,
+    );
+    await runGit(["checkout", "--detach", "FETCH_HEAD"], repoDir, repository);
+  }
   await runGit(
-    ["sparse-checkout", "set", "--no-cone", packagePath],
+    packagePath === "."
+      ? ["sparse-checkout", "disable"]
+      : ["sparse-checkout", "set", "--no-cone", "--", packagePath],
     repoDir,
     repository,
   );
@@ -714,12 +754,20 @@ function finalizeMarketGitPackage(
 ): MaterializedPluginPackage {
   const localPackagePath = path.join(repoDir, ...packagePath.split("/"));
   ensureInsideDirectory(repoDir, localPackagePath);
-  if (!fs.existsSync(path.join(localPackagePath, CODEX_PLUGIN_MANIFEST_FILE))) {
+  const marker = entry.source.manifestPath
+    ? path.join(repoDir, entry.source.manifestPath)
+    : findLocalPluginMarker(localPackagePath);
+  if (!marker || !fs.existsSync(marker)) {
     throw new CorePluginError(
       "MISSING_MANIFEST",
       `${entry.displayName} 下载后没有找到 Plugin manifest`,
     );
   }
+  ensureInsideDirectory(localPackagePath, marker);
+  validateLocalPluginPackage(
+    localPackagePath,
+    readLocalPluginManifest(marker).manifest,
+  );
   getLocalPluginNativeTargetIds(localPackagePath);
   fs.rmSync(pluginRoot, { recursive: true, force: true });
   fs.renameSync(tempRoot, pluginRoot);
@@ -748,6 +796,7 @@ export async function materializeGitPackage(
       source.repository,
       source.packagePath,
       repoDir,
+      entry,
     );
     return finalizeMarketGitPackage(
       entry,

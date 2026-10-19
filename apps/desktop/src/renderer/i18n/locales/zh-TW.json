@@ -4315,6 +4315,7 @@
     }
   },
   "plugin": {
+    "marketplaceFilePlaceholder": "市集 JSON 檔案路徑（Claude：.claude-plugin/marketplace.json；預設：.agents/plugins/marketplace.json）",
     "sharedDirectory": "共用 Plugin 目錄",
     "sharedDirectoryHint": "將完整外掛包存放到 ~/.agents/plugins/<名稱>/。使用時需要用戶端支援此目錄或另行註冊。不參與「全選」。",
     "title": "Plugins",

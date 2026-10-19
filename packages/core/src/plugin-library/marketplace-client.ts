@@ -43,9 +43,18 @@ import {
   normalizeAuthor,
 } from "./normalization";
 import { PluginLibraryStorage } from "./storage";
+import { withPluginArchive, fetchPluginArchive } from "./archive-package";
+import {
+  findLocalPluginMarker,
+  readLocalPluginManifest,
+  validateLocalPluginPackage,
+  extractLocalPluginInventory,
+} from "./package-validation";
+import { computePluginPackageFingerprint } from "./package-materialization";
 
 interface PluginMarketplaceClientOptions {
   fetchFn?: FetchLike;
+  fetchArchiveFn?: (url: string) => Promise<Uint8Array>;
   marketSources: PluginMarketSource[];
   storage: PluginLibraryStorage;
 }
@@ -65,7 +74,26 @@ function findMarketSource(
       `${entry.displayName} 的 marketplace source 不存在`,
     );
   }
-  return source;
+  const repository = entry.source.repository;
+  if (
+    !repository ||
+    (repository === source.repository &&
+      !entry.source.branch &&
+      !entry.source.revision)
+  )
+    return source;
+  const ref = parseGitHubRepositoryRef(repository);
+  if (!ref)
+    throw new CorePluginError(
+      "UNSUPPORTED_SOURCE",
+      "Remote Plugin manifest preview requires a supported repository URL",
+    );
+  const branch = entry.source.revision ?? entry.source.branch ?? ref.branch;
+  return {
+    ...source,
+    repository,
+    rawJsonUrl: `https://raw.githubusercontent.com/${ref.owner}/${ref.repo}/${encodeURIComponent(branch)}/${source.marketplaceFile}`,
+  };
 }
 
 function getInterfaceRecord(manifest: RawRecord): RawRecord {
@@ -154,8 +182,43 @@ function createMarketPreview(
   };
 }
 
+function createArchivePreview(
+  entry: PluginMarketEntry,
+  source: PluginMarketSource,
+  packagePath: string,
+  archiveUrl: string,
+): PluginMarketPreview {
+  const marker = findLocalPluginMarker(packagePath);
+  if (!marker)
+    throw new CorePluginError(
+      "MISSING_MANIFEST",
+      "Plugin archive has no root native manifest",
+    );
+  const { manifest } = readLocalPluginManifest(marker);
+  validateLocalPluginPackage(packagePath, manifest);
+  const inventory = extractLocalPluginInventory(packagePath, manifest, marker);
+  const resolved = {
+    ...entry,
+    source: {
+      ...entry.source,
+      manifestPath: path
+        .relative(packagePath, marker)
+        .split(path.sep)
+        .join("/"),
+    },
+  };
+  const preview = createMarketPreview(
+    enrichMarketEntry(resolved, manifest, inventory, source),
+    manifest,
+    archiveUrl,
+  );
+  preview.sourcePackageHash = computePluginPackageFingerprint(packagePath);
+  return preview;
+}
+
 export class PluginMarketplaceClient {
   private fetchFn: FetchLike;
+  private fetchArchiveFn: (url: string) => Promise<Uint8Array>;
   private githubTreePathCache = new Map<string, Promise<string[]>>();
   private marketSources: PluginMarketSource[];
   private storage: PluginLibraryStorage;
@@ -166,6 +229,7 @@ export class PluginMarketplaceClient {
       (globalThis.fetch as unknown as FetchLike | undefined) ??
       unavailableFetch;
     this.marketSources = options.marketSources;
+    this.fetchArchiveFn = options.fetchArchiveFn ?? fetchPluginArchive;
     this.storage = options.storage;
   }
 
@@ -194,6 +258,14 @@ export class PluginMarketplaceClient {
     entryId: string,
     sources = this.marketSources,
   ): Promise<PluginMarketPreview> {
+    return this.withMarketPreview(entryId, sources, async (preview) => preview);
+  }
+
+  async withMarketPreview<T>(
+    entryId: string,
+    sources: PluginMarketSource[],
+    consume: (preview: PluginMarketPreview, packagePath?: string) => Promise<T>,
+  ): Promise<T> {
     const entries = await this.getMarketEntries(sources);
     const entry = entries.find((item) => item.id === entryId);
     if (!entry) {
@@ -202,26 +274,67 @@ export class PluginMarketplaceClient {
         `Plugin 商店条目不存在: ${entryId}`,
       );
     }
-    const preview = await this.buildPreviewForEntry(entry, sources);
-    this.storage.writeMarketPreviewCache(preview);
-    return preview;
+    return this.withPreviewForEntry(
+      entry,
+      sources,
+      async (preview, packagePath) => {
+        this.storage.writeMarketPreviewCache(preview);
+        return consume(preview, packagePath);
+      },
+    );
   }
 
   async buildPreviewForEntry(
     entry: PluginMarketEntry,
     sources = this.marketSources,
   ): Promise<PluginMarketPreview> {
+    return this.withPreviewForEntry(entry, sources, async (preview) => preview);
+  }
+
+  private async withPreviewForEntry<T>(
+    entry: PluginMarketEntry,
+    sources: PluginMarketSource[],
+    consume: (preview: PluginMarketPreview, packagePath?: string) => Promise<T>,
+  ): Promise<T> {
     const source = findMarketSource(entry, sources);
+    const archive = entry.source.archive;
+    if (archive) {
+      return withPluginArchive(
+        archive,
+        async (packagePath) =>
+          consume(
+            createArchivePreview(entry, source, packagePath, archive.url),
+            packagePath,
+          ),
+        this.fetchArchiveFn,
+      );
+    }
     const { manifest, manifestUrl } = await this.readCodexManifest(
       entry,
       sources,
       source,
     );
     const inventory = await this.resolveInventory(entry, manifest, source);
-    const resolvedEntry = isCodexPortablePluginManifest(manifest) && entry.source.packagePath
-      ? { ...entry, source: { ...entry.source, manifestPath: path.posix.join(entry.source.packagePath, "plugin.json") } } : entry;
-    const enriched = enrichMarketEntry(resolvedEntry, manifest, inventory, source);
-    return createMarketPreview(enriched, manifest, manifestUrl);
+    const resolvedEntry =
+      isCodexPortablePluginManifest(manifest) && entry.source.packagePath
+        ? {
+            ...entry,
+            source: {
+              ...entry.source,
+              manifestPath: path.posix.join(
+                entry.source.packagePath,
+                "plugin.json",
+              ),
+            },
+          }
+        : entry;
+    const enriched = enrichMarketEntry(
+      resolvedEntry,
+      manifest,
+      inventory,
+      source,
+    );
+    return consume(createMarketPreview(enriched, manifest, manifestUrl));
   }
 
   private async resolveInventory(
@@ -404,6 +517,12 @@ export class PluginMarketplaceClient {
     source: PluginMarketSource,
   ): Promise<{ manifest: RawRecord; manifestUrl: string }> {
     const legacyUrl = this.getManifestUrlForEntry(entry, sources);
+    if (!entry.source.manifestPath?.endsWith(".codex-plugin/plugin.json")) {
+      return {
+        manifest: await this.readManifest(legacyUrl, entry.displayName),
+        manifestUrl: legacyUrl,
+      };
+    }
     if (!entry.source.packagePath)
       return {
         manifest: await this.readManifest(legacyUrl, entry.displayName),

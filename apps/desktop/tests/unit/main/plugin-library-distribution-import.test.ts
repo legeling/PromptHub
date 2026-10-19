@@ -176,7 +176,9 @@ describe("CorePluginLibraryService", () => {
   let userDataPath: string;
 
   beforeEach(() => {
-    userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-"));
+    userDataPath = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-")),
+    );
     configureRuntimePaths({ userDataPath });
     initDatabase(path.join(userDataPath, "data", "prompthub.db"));
   });

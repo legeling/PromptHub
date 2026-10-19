@@ -130,7 +130,11 @@ function createInstalledPluginLibrary(userDataPath: string): {
     plugins: [plugin],
   };
   const stored = new CorePluginLibraryService().write(library);
-  return { library: stored, plugin: stored.plugins[0], packagePath: stored.plugins[0].localPackagePath! };
+  return {
+    library: stored,
+    plugin: stored.plugins[0],
+    packagePath: stored.plugins[0].localPackagePath!,
+  };
 }
 
 function writePluginSourcePackage(options: {
@@ -177,7 +181,9 @@ describe("CorePluginLibraryService", () => {
   let userDataPath: string;
 
   beforeEach(() => {
-    userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-"));
+    userDataPath = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "plugin-library-")),
+    );
     configureRuntimePaths({ userDataPath });
     initDatabase(path.join(userDataPath, "data", "prompthub.db"));
   });
@@ -308,8 +314,14 @@ describe("CorePluginLibraryService", () => {
       "utf8",
     );
     fs.mkdirSync(legacyPackagePath, { recursive: true });
-    fs.writeFileSync(path.join(legacyPackagePath, "README.md"), "legacy package");
-    migratePluginSqliteV1(getDatabase(), { rootPath: userDataPath, databasePath: path.join(userDataPath,"data","prompthub.db") });
+    fs.writeFileSync(
+      path.join(legacyPackagePath, "README.md"),
+      "legacy package",
+    );
+    migratePluginSqliteV1(getDatabase(), {
+      rootPath: userDataPath,
+      databasePath: path.join(userDataPath, "data", "prompthub.db"),
+    });
     const service = new CorePluginLibraryService();
 
     expect(service.read().plugins.map((plugin) => plugin.name)).toEqual([
@@ -569,7 +581,12 @@ describe("CorePluginLibraryService", () => {
   });
 
   it("records materialized package paths and removes only the managed plugin directory", async () => {
-    const managedPath = path.join(userDataPath, "cache", "plugin-materializations", "bundle");
+    const managedPath = path.join(
+      userDataPath,
+      "cache",
+      "plugin-materializations",
+      "bundle",
+    );
     const localRepositoryPath = path.join(managedPath, "repo");
     const localPackagePath = path.join(
       localRepositoryPath,
@@ -577,7 +594,12 @@ describe("CorePluginLibraryService", () => {
       "bundle",
     );
     fs.mkdirSync(localPackagePath, { recursive: true });
-    fs.writeFileSync(path.join(localPackagePath,"README.md"), "package bytes");
+    fs.mkdirSync(path.join(localPackagePath, ".codex-plugin"));
+    fs.writeFileSync(
+      path.join(localPackagePath, ".codex-plugin/plugin.json"),
+      JSON.stringify({ name: "bundle" }),
+    );
+    fs.writeFileSync(path.join(localPackagePath, "README.md"), "package bytes");
     const materializePackageFn = vi.fn(async () => ({
       managedPath,
       localRepositoryPath,
@@ -605,8 +627,12 @@ describe("CorePluginLibraryService", () => {
       "test-market:bundle",
     );
     const publishedPath = result.plugin.localPackagePath!;
-    expect(publishedPath).toContain(path.join("data", "plugin-files", "test-market%3Abundle", "current"));
-    expect(fs.readFileSync(path.join(publishedPath,"README.md"),"utf8")).toBe("package bytes");
+    expect(publishedPath).toContain(
+      path.join("data", "plugin-files", "test-market%3Abundle", "current"),
+    );
+    expect(fs.readFileSync(path.join(publishedPath, "README.md"), "utf8")).toBe(
+      "package bytes",
+    );
     expect(fs.existsSync(managedPath)).toBe(false);
 
     service.deletePlugin(result.plugin.id);

@@ -643,6 +643,7 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
         ) : selectedTab === "market" &&
           selectedMarketSourceId === "new-custom" ? (
           <SkillStoreSourceForm
+            directoryPlaceholder={t("plugin.marketplaceFilePlaceholder")}
             branch={sourceBranch}
             directory={sourceDirectory}
             handleAddSource={handleAddCustomSource}
@@ -1063,6 +1064,7 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
         />
       ) : null}
       <SkillStoreSourceEditModal
+        directoryPlaceholder={t("plugin.marketplaceFilePlaceholder")}
         isOpen={editingCustomSourceId !== null}
         onClose={() => setEditingCustomSourceId(null)}
         onDelete={setPendingDeleteCustomSourceId}

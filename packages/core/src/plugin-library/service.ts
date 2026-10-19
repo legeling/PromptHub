@@ -5,6 +5,7 @@ import {
 import { assertPluginTargetWritable } from "../plugin-target-publication";
 import { assertSharedPluginOwnership } from "../plugin-shared-distribution";
 import fs from "fs";
+import { withPluginArchive, fetchPluginArchive } from "./archive-package";
 import path from "path";
 
 import type {
@@ -236,7 +237,9 @@ function buildInstalledPlugin(
     author: preview.author,
     category: preview.category,
     trustLevel: options.trustLevel,
-    inventory: preview.inventory,
+    inventory: materialized?.localPackagePath
+      ? readInstalledPluginInventory(materialized.localPackagePath)
+      : preview.inventory,
     classification: preview.classification,
     source: options.source,
     tags: preview.tags,
@@ -254,6 +257,14 @@ function buildInstalledPlugin(
     installedAt: timestamp,
     updatedAt: timestamp,
   };
+}
+
+function readInstalledPluginInventory(
+  packagePath: string,
+): PluginInventorySummary {
+  const { manifest, markerPath } =
+    readCanonicalLocalPluginManifest(packagePath);
+  return extractLocalPluginInventory(packagePath, manifest, markerPath);
 }
 
 function buildAndPersistInstalledPlugin(
@@ -476,12 +487,22 @@ export class CorePluginLibraryService {
     this.marketSources = options.marketSources ?? BUILTIN_PLUGIN_MARKET_SOURCES;
     this.marketplace = new PluginMarketplaceClient({
       fetchFn: options.fetchFn,
+      fetchArchiveFn: options.fetchArchiveFn,
       marketSources: this.marketSources,
       storage: this.storage,
     });
     this.materializePackages = options.materializePackages ?? false;
     this.materializePackageFn =
-      options.materializePackageFn ?? materializeGitPackage;
+      options.materializePackageFn ??
+      ((entry, id) =>
+        entry.source.archive
+          ? withPluginArchive(
+              entry.source.archive,
+              async (packagePath) =>
+                copyPluginPackageToManagedPath(packagePath, id),
+              options.fetchArchiveFn ?? fetchPluginArchive,
+            )
+          : materializeGitPackage(entry, id));
     this.materializeSourcePackageFn =
       options.materializeSourcePackageFn ?? materializeGitSourcePackage;
     this.resolvePluginTargetPath = options.resolvePluginTargetPath;
@@ -569,35 +590,45 @@ export class CorePluginLibraryService {
     entryId: string,
     sources = this.marketSources,
   ): Promise<PluginInstallResult> {
-    const preview = await this.previewMarketPlugin(entryId, sources);
-    assertBundlePlugin(preview.classification, preview.entry.displayName);
-    const id = createPluginId(preview.entry.marketplaceId, preview.entry.name);
-    const library = this.read();
-    assertPluginIsNew(
-      library,
-      preview.entry.displayName,
-      (plugin) => plugin.id === id,
-      "安装",
-    );
-    const materialized = this.materializePackages
-      ? await this.materializePackageFn(preview.entry, id)
-      : undefined;
-    const source: PluginPackageSource = {
-      ...preview.entry.source,
-      localRepositoryPath: materialized?.localRepositoryPath,
-      localPackagePath: materialized?.localPackagePath,
-    };
-    return buildAndPersistInstalledPlugin(
-      library,
-      {
-        id,
-        materialized,
-        preview,
-        source,
-        trustLevel: preview.entry.trustLevel,
+    return this.marketplace.withMarketPreview(
+      entryId,
+      sources,
+      async (preview, preparedPackagePath) => {
+        assertBundlePlugin(preview.classification, preview.entry.displayName);
+        const id = createPluginId(
+          preview.entry.marketplaceId,
+          preview.entry.name,
+        );
+        const library = this.read();
+        assertPluginIsNew(
+          library,
+          preview.entry.displayName,
+          (plugin) => plugin.id === id,
+          "安装",
+        );
+        const materialized = this.materializePackages
+          ? preparedPackagePath
+            ? copyPluginPackageToManagedPath(preparedPackagePath, id)
+            : await this.materializePackageFn(preview.entry, id)
+          : undefined;
+        const source: PluginPackageSource = {
+          ...preview.entry.source,
+          localRepositoryPath: materialized?.localRepositoryPath,
+          localPackagePath: materialized?.localPackagePath,
+        };
+        return buildAndPersistInstalledPlugin(
+          library,
+          {
+            id,
+            materialized,
+            preview,
+            source,
+            trustLevel: preview.entry.trustLevel,
+          },
+          preview.warnings,
+          (next) => this.write(next),
+        );
       },
-      preview.warnings,
-      (next) => this.write(next),
     );
   }
 

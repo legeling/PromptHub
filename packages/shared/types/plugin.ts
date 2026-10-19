@@ -70,6 +70,10 @@ export interface PluginPackageSource {
   localPackagePath?: string;
   url?: string;
   branch?: string;
+  /** Exact Git commit selected by the marketplace, distinct from a branch/ref. */
+  revision?: string;
+  /** Verified archive transport; absent for repository-backed packages. */
+  archive?: { url: string; sha256: string };
 }
 
 export interface PluginMarketEntry {

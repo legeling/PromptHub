@@ -42,6 +42,16 @@ Official references:
 - Git/SSH/HTTP/local folder 都可以作为自定义 plugin source。
 - SSH source 应走本地 git 和本地密钥，不应依赖匿名 GitHub API 完成主扫描。
 
+#### Third-party marketplace repair (#242 / #243)
+
+- The Core marketplace boundary normalizes Claude relative-directory and Git repository entries, and Antigravity `type=archive` entries, into `PluginPackageSource`. Relative Claude entries use `.claude-plugin/plugin.json`; Codex retains its existing portable/legacy manifest contract. Repository `ref` and pinned `sha` must be used consistently for preview and checkout, never replaced by the default branch.
+- Archive sources retain their HTTPS URL and required SHA-256 in an optional `archive` field; Git pins use optional `revision`. These are additive source JSON metadata, not new tables or an alternative storage authority. Existing sources need no migration. Normalization, fingerprints, snapshots and reopen must retain the fields. Downgrade requires a full backup; older binaries cannot install or update archive sources.
+- Archive preview verifies the digest before extracting a root-native Plugin package. Installation reuses that validated temporary package within the same operation, then publishes through the existing SQLite/file owner. Failed verification, unsafe paths, missing manifests and publication errors leave existing library data intact; all task-owned staging is removed. Preview never installs, executes scripts, registers Agent plugins or authorizes Apps.
+- Archive reads reuse existing HTTPS/proxy/DNS/redirect/download limits. Extraction streams files to disk using the Plugin owner's existing file-count and per-file limits, rejects duplicate/case-colliding paths and traversal, and does not materialize archive links. Work is linear in compressed and expanded bytes, with bounded input chunks rather than retaining the whole expanded archive. Listing stays manifest-lazy; no bulk package download or new retry policy.
+- Sources: [Claude marketplace contract](https://code.claude.com/docs/en/plugin-marketplaces), [Claude official catalog](https://github.com/anthropics/claude-plugins-official/blob/main/.claude-plugin/marketplace.json), and [Antigravity catalog](https://www.gstatic.com/antigravity/plugins/marketplace.json), inspected 2026-10-19. Unsupported executable source types are not run or guessed into Git sources.
+- Installed inventory is derived from the validated materialized package, including native conventional directories omitted from the manifest. Git remote preview still reports manifest-derived counts; it is not a complete repository inventory. Native Agent loading, third-party executable sources and arbitrary Git hosts are not established by these marketplace tests.
+- The source adapter keeps its format discrimination and canonical field mapping together; the ordered Git/SQLite and archive rollback regression cases intentionally exceed 50 lines to keep setup, operation, reopen and failure assertions readable as one lifecycle.
+
 ### 3. Static Scan Contract
 
 - 扫描和预览阶段不得执行插件代码。

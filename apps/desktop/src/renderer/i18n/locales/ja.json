@@ -4315,6 +4315,7 @@
     }
   },
   "plugin": {
+    "marketplaceFilePlaceholder": "マーケット JSON ファイル（Claude: .claude-plugin/marketplace.json、既定: .agents/plugins/marketplace.json）",
     "sharedDirectory": "共有 Plugin ディレクトリ",
     "sharedDirectoryHint": "パッケージ全体を ~/.agents/plugins/<名前>/ に保存します。利用には対応クライアントまたは別途登録が必要です。「すべて選択」の対象外です。",
     "title": "プラグイン",

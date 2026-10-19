@@ -4355,6 +4355,7 @@
     }
   },
   "plugin": {
+    "marketplaceFilePlaceholder": "Marketplace JSON file (Claude: .claude-plugin/marketplace.json; default: .agents/plugins/marketplace.json)",
     "sharedDirectory": "Shared Plugin directory",
     "sharedDirectoryHint": "Store the complete package in ~/.agents/plugins/<name>/. A compatible client or separate registration is required to use it. Excluded from Select all.",
     "title": "Plugins",

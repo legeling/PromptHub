@@ -11,6 +11,7 @@ import { formatSkillBranchListError } from "../../services/skill-git-error";
 interface SkillStoreSourceFormProps {
   branch: string;
   directory: string;
+  directoryPlaceholder?: string;
   handleAddSource: () => void;
   setBranch: (value: string) => void;
   setDirectory: (value: string) => void;
@@ -83,6 +84,7 @@ function buildBranchSuggestions(
 export function SkillStoreSourceForm({
   branch,
   directory,
+  directoryPlaceholder,
   handleAddSource,
   setBranch,
   setDirectory,
@@ -318,14 +320,21 @@ export function SkillStoreSourceForm({
             type="text"
             value={directory}
             onChange={(event) => setDirectory(event.target.value)}
-            aria-label={t(
-              "skill.storeDirectoryPlaceholder",
-              "Directory (optional, e.g. skills/.curated)",
-            )}
-            placeholder={t(
-              "skill.storeDirectoryPlaceholder",
-              "Directory (optional, e.g. skills/.curated)",
-            )}
+            title={directoryPlaceholder}
+            aria-label={
+              directoryPlaceholder ??
+              t(
+                "skill.storeDirectoryPlaceholder",
+                "Directory (optional, e.g. skills/.curated)",
+              )
+            }
+            placeholder={
+              directoryPlaceholder ??
+              t(
+                "skill.storeDirectoryPlaceholder",
+                "Directory (optional, e.g. skills/.curated)",
+              )
+            }
             className="px-3 py-2 text-sm bg-accent/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
           />
         </div>

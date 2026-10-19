@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { normalizeMarketplaceSource } from "./marketplace-source";
 
 import type {
   PluginInventorySummary,
@@ -9,7 +10,6 @@ import type {
 } from "@prompthub/shared/types/plugin";
 
 import {
-  CODEX_PLUGIN_MANIFEST_FILE,
   CorePluginError,
   type GitHubRepositoryRef,
   PLUGIN_MARKETPLACE_FILE,
@@ -372,34 +372,6 @@ function buildCodexPluginDetailUrl(
   )}`;
 }
 
-function getMarketplaceEntrySource(
-  record: RawRecord,
-  source: PluginMarketSource,
-  marketplaceDisplayName: string,
-): PluginMarketEntry["source"] {
-  const rawSource =
-    record.source && typeof record.source === "object"
-      ? (record.source as RawRecord)
-      : {};
-  const rawPath = safeString(rawSource.path);
-  const packagePath = rawPath ? normalizeRelativePosixPath(rawPath) : undefined;
-  return {
-    kind: safeString(rawSource.source) === "local" ? "market" : "git",
-    sourceId: source.id,
-    label: marketplaceDisplayName,
-    repository: source.repository,
-    rawJsonUrl: source.rawJsonUrl,
-    marketplaceFile: source.marketplaceFile,
-    packagePath,
-    manifestPath: packagePath
-      ? normalizeRelativePosixPath(
-          path.posix.join(packagePath, CODEX_PLUGIN_MANIFEST_FILE),
-        )
-      : undefined,
-    url: safeString(rawSource.url),
-  };
-}
-
 export function normalizeMarketEntry(
   raw: unknown,
   source: PluginMarketSource,
@@ -439,7 +411,7 @@ export function normalizeMarketEntry(
     brandColor: safePluginBrandColor(rawInterface.brandColor),
     category: safeString(record.category) || safeString(rawInterface.category),
     trustLevel: source.trustLevel,
-    source: getMarketplaceEntrySource(record, source, marketplaceDisplayName),
+    source: normalizeMarketplaceSource(record, source, marketplaceDisplayName),
     policy: normalizeMarketPolicy(record.policy),
     codexDetailUrl: buildCodexPluginDetailUrl(name, source.id),
   };

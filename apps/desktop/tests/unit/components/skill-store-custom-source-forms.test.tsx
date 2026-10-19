@@ -218,12 +218,14 @@ describe("SkillStore custom sources", () => {
 
   it("exposes add-source type choices as pressed buttons and keeps add non-submit", async () => {
     const setSourceType = vi.fn();
+    const marketplacePathLabel = "Marketplace JSON file path";
 
     await act(async () => {
       await renderWithI18n(
         <SkillStoreSourceForm
           branch=""
           directory=""
+          directoryPlaceholder={marketplacePathLabel}
           handleAddSource={vi.fn()}
           setBranch={vi.fn()}
           setDirectory={vi.fn()}
@@ -253,6 +255,9 @@ describe("SkillStore custom sources", () => {
       );
     });
 
+    expect(
+      screen.getByRole("textbox", { name: marketplacePathLabel }),
+    ).toHaveAttribute("placeholder", marketplacePathLabel);
     const marketplace = screen.getByRole("button", {
       name: /Marketplace JSON/u,
     });
