@@ -96,6 +96,30 @@ afterEach(() => {
 });
 
 describe("Prompt and AI public workflows", () => {
+  it("creates and edits prompts before and after storage restart (#236)", async () => {
+    const first = await promptApi.create({
+      title: "First prompt",
+      userPrompt: "first body",
+    });
+    expect(await promptApi.get(first.id)).toMatchObject({
+      title: "First prompt",
+      userPrompt: "first body",
+    });
+    await reopen();
+    const second = await promptApi.create({
+      title: "Second prompt",
+      userPrompt: "second body",
+    });
+    await promptApi.update(second.id, { userPrompt: "edited body" });
+    await reopen();
+
+    expect(await promptApi.get(first.id)).toMatchObject({ userPrompt: "first body" });
+    expect(await promptApi.get(second.id)).toMatchObject({ userPrompt: "edited body" });
+    expect((await promptApi.getAll()).map((item) => item.id).sort()).toEqual(
+      [first.id, second.id].sort(),
+    );
+  });
+
   it("persists folder order and preserves prompts when a folder subtree is deleted", async () => {
     const first: Folder = await folderApi.create({ name: "First" });
     const second: Folder = await folderApi.create({ name: "Second" });

@@ -28,7 +28,7 @@
 | ID                 | Title                            | Status | Path                                                                      | Related change/issue                      | Updated    |
 | ------------------ | -------------------------------- | ------ | ------------------------------------------------------------------------- | ----------------------------------------- | ---------- |
 | `ISS-20260710-001` | Spec Governance Debt             | open   | `spec/issues/active/ISS-20260710-001-spec-governance-debt.md`             | `2026-07-10-spec-init-upstream-alignment` | 2026-07-10 |
-| `ISS-20260809-001` | Remaining Open Issues Roadmap    | open   | `spec/issues/active/ISS-20260809-001-remaining-open-issues-roadmap.md`    | Multiple routed active changes            | 2026-10-03 |
+| `ISS-20260809-001` | Remaining Open Issues Roadmap | open | `active/ISS-20260809-001-remaining-open-issues-roadmap.md` | 42 reports reviewed; 6 closed, 36 remain open | 2026-10-19 |
 | `ISS-20260820-001` | Rules Restore Conflict Data Loss | open   | `spec/issues/active/ISS-20260820-001-rules-restore-conflict-data-loss.md` | `rules-managed-copies`, #209, #210        | 2026-08-20 |
 | `ISS-20260902-001` | Git Transport Resilience Parity  | open   | `spec/issues/active/ISS-20260902-001-git-transport-resilience-parity.md`  | `skills-issue-211-git-http-fallback`      | 2026-09-02 |
 | `ISS-20260806-001` | MCP Issues 200-202 Triage        | closed | `spec/issues/archive/ISS-20260806-001-mcp-issue-triage.md`                | `0.6.0-beta.1`, #200, #201, #202          | 2026-08-20 |
@@ -41,33 +41,34 @@ GitHub issue state and PromptHub local delivery state are intentionally separate
 
 - `github-open.md` / `github-closed.md` only mirror remote GitHub state.
 - `local-github-status.md` records local statuses such as `untriaged`, `accepted`, `in_progress`, `local_done`, `release_pending`, `released`, `wontfix`, and `duplicate`.
-- A locally completed issue remains open on GitHub until the target release has shipped.
-- After a release ships, close the GitHub issue publicly, then refresh both snapshots.
+- Issue closure follows [the issue-management rules](../rules/issue-management-rules.md): a complete verified fix may close independently of release; partial work remains open.
+- Verify remote state before refreshing snapshots. Publication or local audit alone does not authorize remote comments or closure.
 
-This prevents the project from closing user-reported issues before users can download a build that contains the fix.
+This separates implementation, issue closure and publication instead of treating any one as proof of the other two.
 
 ## Sync Note
 
-- 当前 GitHub issue 清单通过 GitHub CLI 手工同步到仓库。
-- 本轮同步时间：`2026-10-03`。远端当前为 42 个 open issue、155 个 closed issue，
-  两份快照无重叠。
-- 相比上次快照新增 #212、#215、#216、#217、#218、#219、#220、#221；
-  #211 已在远端关闭。PR #222/#223 不计入 issue 数量。
-- 当前逐项核查与实施顺序由 `active/ISS-20260809-001-remaining-open-issues-roadmap.md`
-  维护；远端列表同步不代表本地实现或发布验收完成。
-- #187、#200、#201、#202 已随 `0.6.0-beta.1` 发布并关闭；#199 已链接
-  #198 后按 duplicate 关闭；#207 因不属于 PromptHub 产品仓库范围关闭。
-- 新增 #204、#205 的本地未分类记录；#209、#210 作为 Rules 恢复数据风险
-  路由到 `rules-managed-copies`，不因 Beta 发布而关闭。
-- #203 仍为 `in_progress`，对应 active change 为
-  `mcp-version-history-and-projection-safety`。
-- 2026-10-03 起逐项核查当前 42 个未关闭问题，先处理升级阻塞、数据安全和
-  现有功能缺陷，再核验已有实现与补齐增量功能。移动端、Windows 签名、
-  云端协作、外部商店和 Git 远端备份仍须明确外部依赖与验收条件。
-- MCP issue triage 已在发布后归档到
-  `archive/ISS-20260806-001-mcp-issue-triage.md`。
-- 如果 GitHub issue 状态发生明显变化，或某个 active change 依赖 issue 上下文，应优先刷新这里的快照。
-- 如果只是本地实现状态变化，更新 `active/local-github-status.md`，不要手改 GitHub 快照文件。
+- Latest capture: **2026-10-19**, via GitHub CLI; **36 open / 181 closed / 217 total**.
+  The two snapshots are disjoint and exclude pull requests.
+- Compared with 2026-10-16, #240–#243 are new. Following isolated Electron
+  reproduction, #241/#216/#210/#191/#188 were commented on and closed with
+  explicit user authorization; GitHub closure was verified.
+- [The complete 42-report release review](active/ISS-20260809-001-remaining-open-issues-roadmap.md)
+  compares the original open reports with the **published** 0.6.0 commit `36401160`,
+  not current main or the stale local tag.
+- The original seven-fix conclusion is corrected: published 0.6.0 scans all Claude
+  files but drops same-platform entries from the sidebar. Follow-up `f1faa73f`
+  repairs #196 and its push automatically closed the issue; this is not a release.
+  #239 stays open pending native Windows verification. The original 35-item
+  classification remains historical; #240/#242/#243 now have committed repairs
+  with their remaining native acceptance recorded in the roadmap.
+- [The local overlay](active/local-github-status.md) now records completed
+  0.6.0 work as released while preserving scoped test evidence and unverified
+  platform/reporter boundaries.
+- The authorized split commits were pushed to main on 2026-10-19. No tag or
+  release was created; issue closure does not publish a binary fix.
+- If only local implementation changes, update the overlay; do not infer a new
+  remote status for either snapshot.
 
 ## Routing Rule
 
