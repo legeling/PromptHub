@@ -143,7 +143,7 @@ Then reopen the app. Replace the path if you installed it somewhere else.
 
 ### Preview channel
 
-Want to try the next dev preview? Open _Settings → About_ and toggle the preview channel. The app will then check GitHub Prereleases. Turn it off to return to stable; PromptHub will not auto-downgrade from a newer preview to an older stable.
+Enable the preview channel in _Settings → About_ to try upcoming builds. Upcoming versions check both stable and preview releases and offer the newest version; for example, `0.6.0-beta.2` can upgrade to `0.6.0`. Disable it to receive stable releases only. PromptHub never downgrades automatically. If an older installed preview does not detect `0.6.0`, disable the preview channel and check again.
 
 <div id="screenshots"></div>
 

@@ -143,7 +143,7 @@ Danach erneut öffnen. Pfad anpassen, wenn die App an einem anderen Ort installi
 
 ### Vorschau-Kanal
 
-Nächste Entwicklungs-Vorschau testen? _Einstellungen → Über_ öffnen und den Vorschau-Kanal aktivieren. Die App prüft dann GitHub Prereleases. Ausschalten kehrt zur Stable zurück; PromptHub macht keinen automatischen Downgrade von einer neueren Vorschau auf eine ältere Stable.
+Der Vorschaukanal lässt sich unter _Einstellungen → Über_ aktivieren. Künftige Versionen prüfen stabile und Vorabversionen und bieten die neueste an, etwa `0.6.0` für `0.6.0-beta.2`. Nach dem Deaktivieren werden nur stabile Versionen angeboten, niemals automatische Downgrades. Erkennt eine ältere installierte Vorschau `0.6.0` nicht, deaktivieren Sie den Vorschaukanal und prüfen Sie erneut.
 
 <div id="screenshots"></div>
 

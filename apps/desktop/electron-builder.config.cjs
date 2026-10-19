@@ -1,3 +1,15 @@
+const { readFileSync } = require("node:fs");
+const { resolve } = require("node:path");
+const { extractReleaseSection } = require("./src/utils/release-notes.ts");
+const { version } = require("./package.json");
+const releaseNotes = extractReleaseSection(
+  readFileSync(resolve(__dirname, "../../CHANGELOG.md"), "utf8"),
+  version,
+);
+if (!releaseNotes) {
+  throw new Error(`CHANGELOG.md must contain a release section for ${version}`);
+}
+
 const enableMacReleaseSigning =
   process.env.PROMPTHUB_MAC_RELEASE_SIGN === "true";
 
@@ -114,6 +126,6 @@ module.exports = {
     releaseType: "release",
   },
   releaseInfo: {
-    releaseNotesFile: "../../CHANGELOG.md",
+    releaseNotes,
   },
 };

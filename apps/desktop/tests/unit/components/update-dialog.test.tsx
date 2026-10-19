@@ -1,7 +1,10 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { UpdateDialog, type UpdateStatus } from "../../../src/renderer/components/UpdateDialog";
+import {
+  UpdateDialog,
+  type UpdateStatus,
+} from "../../../src/renderer/components/UpdateDialog";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
@@ -11,9 +14,11 @@ const getManualBackupStatusMock = vi.fn();
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
   useSettingsStore: (
-    selector: (state: { useUpdateMirror: boolean; updateChannel: string }) => unknown,
-  ) =>
-    selector(useSettingsStoreMock()),
+    selector: (state: {
+      useUpdateMirror: boolean;
+      updateChannel: string;
+    }) => unknown,
+  ) => selector(useSettingsStoreMock()),
 }));
 
 vi.mock("../../../src/renderer/services/backup-status", () => ({
@@ -134,7 +139,11 @@ describe("UpdateDialog", () => {
   it("keeps download enabled because install creates an automatic data snapshot", async () => {
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={availableStatus} />,
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={availableStatus}
+        />,
         { language: "en" },
       );
     });
@@ -144,7 +153,9 @@ describe("UpdateDialog", () => {
     });
     expect(downloadButton).not.toBeDisabled();
     expect(
-      screen.getByText("Manual backup is required before in-app upgrade"),
+      screen.getByText(
+        "A local snapshot will be created automatically before installation.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText("Release Notes")).toBeInTheDocument();
     expect(
@@ -160,7 +171,7 @@ describe("UpdateDialog", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Create Full Backup",
+        name: "Export backup (optional)",
       }),
     );
 
@@ -214,6 +225,97 @@ describe("UpdateDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Later" }));
 
     expect(handleSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows unavailable notes without inventing beta content and opens Releases", async () => {
+    const openReleases = vi.fn();
+    installWindowMocks({
+      electron: {
+        updater: {
+          check: vi.fn().mockResolvedValue({ success: true }),
+          getVersion: vi.fn().mockResolvedValue("0.5.9"),
+          getPlatform: vi.fn().mockResolvedValue("win32"),
+          onStatus: vi.fn(() => vi.fn()),
+          openReleases,
+        },
+      },
+    });
+    await act(async () => {
+      await renderWithI18n(
+        <UpdateDialog
+          isOpen
+          onClose={vi.fn()}
+          initialStatus={{
+            status: "available",
+            info: { version: "0.6.0", releaseNotes: "" },
+          }}
+        />,
+        { language: "en" },
+      );
+    });
+    expect(
+      screen.getByText(
+        "Release notes for this version are unavailable. You can view the published release for details.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/beta/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open Releases" }));
+    expect(openReleases).toHaveBeenCalledOnce();
+  });
+
+  it("shows optional export failure without starting installation", async () => {
+    runPreUpgradeBackupMock.mockRejectedValueOnce(
+      new Error("Export destination unavailable"),
+    );
+    await act(async () => {
+      await renderWithI18n(
+        <UpdateDialog
+          isOpen
+          onClose={vi.fn()}
+          initialStatus={availableStatus}
+        />,
+        { language: "en" },
+      );
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Export backup (optional)" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Export destination unavailable",
+    );
+    expect(window.electron.updater.install).not.toHaveBeenCalled();
+  });
+
+  it("shows an automatic snapshot failure returned by the install boundary", async () => {
+    installWindowMocks({
+      electron: {
+        updater: {
+          check: vi.fn().mockResolvedValue({ success: true }),
+          getVersion: vi.fn().mockResolvedValue("0.5.9"),
+          getPlatform: vi.fn().mockResolvedValue("win32"),
+          onStatus: vi.fn(() => vi.fn()),
+          install: vi.fn().mockResolvedValue({
+            success: false,
+            error: "Snapshot failed: disk full",
+          }),
+        },
+      },
+    });
+    await act(async () => {
+      await renderWithI18n(
+        <UpdateDialog
+          isOpen
+          onClose={vi.fn()}
+          initialStatus={downloadedStatus}
+        />,
+        { language: "en" },
+      );
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Install Now" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Snapshot failed: disk full",
+    );
+    expect(screen.queryByRole("button", { name: "Install Now" })).toBeNull();
   });
 
   it("renders unsafe release-note markdown links as text", async () => {
@@ -304,7 +406,8 @@ describe("UpdateDialog", () => {
       status: "available",
       info: {
         version: "0.6.0-beta.1",
-        releaseNotes: "## 🔄 What's new\n\n![Preview](https://img.shields.io/badge/Preview-ready-purple)",
+        releaseNotes:
+          "## 🔄 What's new\n\n![Preview](https://img.shields.io/badge/Preview-ready-purple)",
       },
     };
 
@@ -345,7 +448,9 @@ describe("UpdateDialog", () => {
       });
     });
 
-    expect(screen.getByRole("heading", { name: "🔄 What's new" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "🔄 What's new" }),
+    ).toBeVisible();
     expect(screen.getAllByText("42.5%")).toHaveLength(1);
     const progressbar = screen.getByRole("progressbar", {
       name: "Downloading...",
@@ -378,7 +483,11 @@ describe("UpdateDialog", () => {
 
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={availableStatus} />,
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={availableStatus}
+        />,
         { language: "en" },
       );
     });
@@ -396,12 +505,11 @@ describe("UpdateDialog", () => {
 
     expect(screen.getByText("48.0 MB / 120.0 MB")).toBeVisible();
     expect(screen.getByText("3.5 MB/s")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Automatic" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Mirror" }));
+    expect(
+      screen.getByRole("button", { name: "Download source" }),
+    ).toHaveTextContent("Automatic");
+    fireEvent.click(screen.getByRole("button", { name: "Download source" }));
+    fireEvent.click(screen.getByRole("option", { name: "Mirror" }));
     await waitFor(() => {
       expect(download).toHaveBeenCalledWith({
         source: "mirror",
@@ -409,7 +517,10 @@ describe("UpdateDialog", () => {
         mirror: "gh-proxy",
       });
     });
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "0",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Manual Download" }));
     expect(openReleases).toHaveBeenCalledTimes(1);
@@ -435,7 +546,11 @@ describe("UpdateDialog", () => {
 
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={availableStatus} />,
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={availableStatus}
+        />,
         { language: "en" },
       );
     });
@@ -447,7 +562,7 @@ describe("UpdateDialog", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Create Full Backup",
+        name: "Export backup (optional)",
       }),
     ).not.toBeInTheDocument();
     expect(
@@ -457,7 +572,7 @@ describe("UpdateDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("requires only acknowledgement before allowing install", async () => {
+  it("installs without a manual export or acknowledgement", async () => {
     installWindowMocks({
       electron: {
         updater: {
@@ -476,7 +591,11 @@ describe("UpdateDialog", () => {
 
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={downloadedStatus} />,
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={downloadedStatus}
+        />,
         { language: "en" },
       );
     });
@@ -484,27 +603,13 @@ describe("UpdateDialog", () => {
     const installButton = await screen.findByRole("button", {
       name: "Install Now",
     });
-    expect(installButton).toBeDisabled();
+    expect(installButton).not.toBeDisabled();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "A manual backup for version 0.5.1 is required before installation. PromptHub will also create an automatic local snapshot once installation starts.",
+        "A local snapshot will be created automatically before installation.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Confirm the backup acknowledgement before continuing with the upgrade.",
-      ),
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByLabelText(
-        "I have backed up the relevant data and understand the app will close during installation.",
-      ),
-    );
-
-    await waitFor(() => {
-      expect(installButton).not.toBeDisabled();
-    });
 
     fireEvent.click(installButton);
 
@@ -534,24 +639,21 @@ describe("UpdateDialog", () => {
 
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={downloadedStatus} />,
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={downloadedStatus}
+        />,
         { language: "en" },
       );
     });
 
     expect(
       screen.getByRole("button", { name: "Install Now" }),
-    ).toBeDisabled();
+    ).not.toBeDisabled();
     expect(screen.queryByText(/manually install the update/i)).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Open Downloads" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Downloads" })).toBeNull();
 
-    fireEvent.click(
-      screen.getByLabelText(
-        "I have backed up the relevant data and understand the app will close during installation.",
-      ),
-    );
     fireEvent.click(screen.getByRole("button", { name: "Install Now" }));
 
     await waitFor(() => {
@@ -579,22 +681,22 @@ describe("UpdateDialog", () => {
 
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={availableStatus} />,
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={availableStatus}
+        />,
         { language: "en" },
       );
     });
 
-    expect(
-      screen.getByText("Update Available"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Update Available")).toBeInTheDocument();
 
     await act(async () => {
       statusHandler?.({ status: "checking" });
     });
 
-    expect(
-      screen.getByText("Update Available"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Update Available")).toBeInTheDocument();
     expect(
       screen.queryByText("Checking for updates..."),
     ).not.toBeInTheDocument();
@@ -619,11 +721,7 @@ describe("UpdateDialog", () => {
 
     await act(async () => {
       await renderWithI18n(
-        <UpdateDialog
-          isOpen={true}
-          onClose={vi.fn()}
-          initialStatus={null}
-        />,
+        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={null} />,
         { language: "en" },
       );
     });
@@ -647,25 +745,24 @@ describe("UpdateDialog", () => {
     );
 
     await act(async () => {
-      statusHandler?.(
-        { status: "error", error: undefined } as unknown as UpdateStatus,
-      );
+      statusHandler?.({
+        status: "error",
+        error: undefined,
+      } as unknown as UpdateStatus);
     });
 
     expect(screen.getByText("Unknown error")).toBeInTheDocument();
 
     await act(async () => {
-      statusHandler?.(
-        {
-          status: "downloading",
-          progress: {
-            percent: 150,
-            bytesPerSecond: 0,
-            total: 0,
-            transferred: 0,
-          },
-        } as UpdateStatus,
-      );
+      statusHandler?.({
+        status: "downloading",
+        progress: {
+          percent: 150,
+          bytesPerSecond: 0,
+          total: 0,
+          transferred: 0,
+        },
+      } as UpdateStatus);
     });
 
     expect(screen.getAllByText(/100\.0%/)).toHaveLength(1);

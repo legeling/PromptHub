@@ -1,5 +1,10 @@
 # Release Delta Spec
 
+Current delivery target (2026-10-19): `0.6.1`, following the already published
+stable `0.6.0`. The current dialog, localized release notes and download-feedback
+fixes belong to this next release. Preview screenshots show `0.6.0 → 0.6.1`;
+they do not establish that `0.6.1` has been published.
+
 ## Added Requirements
 
 ### Requirement: Preview builds must use semver prerelease versions
@@ -35,6 +40,12 @@ Desktop clients running a prerelease app version must default to the preview upd
 
 Desktop update checks must filter out remote versions that are less than or equal to the currently running version.
 
+The stable channel accepts published stable releases only. The preview channel
+includes both published stable and prerelease builds and selects the highest
+SemVer version, independently of API ordering. Drafts and invalid versions are
+excluded. `0.6.0` supersedes `0.6.0-beta.2`; `0.7.0-beta.1` must not downgrade to
+`0.6.0`. Installing a stable release does not change an explicitly chosen channel.
+
 #### Scenario: Preview build checks the stable lane
 
 - Given a user is running a newer preview build than the latest stable release
@@ -64,7 +75,11 @@ Desktop background update polling must not force the UI back into a transient ch
 
 ### Requirement: Update dialog content must stay readable within desktop viewport constraints
 
-Desktop update dialogs must keep long release notes and upgrade guidance inside a bounded scrollable content area instead of letting the modal overflow the window.
+Desktop update dialogs use a version/source sidebar and a release-notes pane.
+The header and action footer stay fixed; only the notes pane scrolls on desktop.
+At narrow widths, both columns stack into one content scroller. No nested
+vertical scrollers are allowed. Content uses the selected release's real notes,
+not invented summaries. Homebrew instructions remain in the content pane.
 
 #### Scenario: User opens an available update with long release notes
 
@@ -73,16 +88,19 @@ Desktop update dialogs must keep long release notes and upgrade guidance inside 
 - Then the dialog uses a bounded modal layout that fits within the current desktop viewport
 - And release notes scroll inside the content area instead of forcing the whole dialog to overflow
 
-### Requirement: Download-stage UI must not show install-only backup confirmation copy
+### Requirement: Manual backup export is optional during updates
 
-Desktop update dialogs must keep the `available` state focused on download guidance and reserve install acknowledgement UI for the `downloaded` state where installation can actually start.
+Available and downloaded updates offer an optional full backup export. Neither
+manual backup history nor an acknowledgement checkbox gates installation.
+The main process must still create its automatic local snapshot before invoking
+the installer; snapshot failure prevents installation and remains visible.
 
 #### Scenario: User views an available update before downloading
 
 - Given PromptHub detected an available update that has not been downloaded yet
 - When the update dialog renders the `available` state
 - Then it may still expose the manual backup shortcut
-- But it does not require the installation acknowledgement checkbox or install-only warning copy yet
+- And neither download nor installation requires an acknowledgement checkbox
 
 ### Requirement: Homebrew-managed updates must not show in-app install gating
 
@@ -134,10 +152,39 @@ downloading states after the user's request.
 
 ### `FR-UPDATER-007`: Update notes must retain published release content during download
 
-When the preview lookup identifies an exact published GitHub Release, the
-desktop updater must present that Release body instead of replacing it with the
-packaged full changelog. Safe Markdown headings, emoji, links, and images must
-remain readable while untrusted image origins stay blocked.
+Release notes must belong to the selected version. An exact GitHub Release body
+or that version's manifest notes supplies the content; the installed client's
+local CHANGELOG is not a source for a future release. A versioned changelog must
+contain the exact target section; missing sections show a localized unavailable
+message and the Releases action, never an older beta or Unreleased content.
+Packaging and GitHub Release creation use the same exact-version extractor and
+fail preparation if the current package version has no CHANGELOG section. Safe
+Markdown headings, emoji, links, and images remain readable while untrusted image
+origins stay blocked.
+
+The published CHANGELOG keeps bilingual source content: a bilingual category
+heading followed by Chinese list entries with one nested English translation per
+entry. The renderer selects Chinese for `zh`/`zh-TW`, and English for other UI
+languages until corresponding body translations exist. Category labels use all
+seven UI locales (features, fixes, improvements, maintenance, security, upgrade
+notes, architecture). Switching UI language updates the open notes immediately.
+Unpaired content and ordinary nested lists remain intact; links, images and code
+retain the existing Markdown safety boundary. Main-process payloads and published
+notes remain bilingual. This presentation contract requires no storage migration.
+
+Recognized release categories use a Lucide icon beside the localized heading.
+Category headings, entry titles and descriptions have distinct spacing and
+typography. Entries with a leading bold title display that title on its own line;
+the remaining Markdown content retains its links, code and nesting. Decorative
+icons are hidden from assistive technology and colors use existing theme tokens.
+
+#### Scenario: User reads bilingual release notes in their selected language
+
+- Given published notes contain bilingual categories and paired Chinese/English entries
+- When the user opens the update dialog or changes the application language
+- Then each paired entry displays only the selected language's body
+- And categories use localized headings without flattening the published grouping
+- And untranslated languages display the English body with localized category labels
 
 #### Scenario: User reviews and downloads a rich preview release
 
@@ -148,6 +195,12 @@ remain readable while untrusted image origins stay blocked.
 - And only approved HTTPS image origins load inside the renderer
 
 ### `FR-UPDATER-008`: Download source changes must restart visibly and remain recoverable
+
+Clicking Download must immediately enter the visible downloading state, before
+IPC completion or the first network byte. The download action must not remain
+available for duplicate clicks. Both returned failures and rejected IPC calls
+must produce a visible error with the existing manual-download action. A stale
+request's failure must not replace a newer source's active transfer.
 
 The download UI must expose automatic, official, and mirror source modes.
 Automatic mode tries the official source first and then a bounded mirror list.

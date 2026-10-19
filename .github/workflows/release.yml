@@ -648,7 +648,7 @@ jobs:
           if [ "$IS_PRERELEASE" = "true" ]; then
             PREVIEW_NOTE='> 本次发布带 semver prerelease 后缀，下载链接固定到当前 tag。稳定通道默认不会自动切换到 prerelease 版本；如需测试，请在应用内启用预览通道或手动下载当前 tag。'
           else
-            PREVIEW_NOTE='> 预览构建发布在 GitHub Prereleases；应用内启用预览更新通道后会检查 prerelease 构建。'
+            PREVIEW_NOTE='> 预览构建发布在 GitHub Prereleases；应用内启用预览更新通道后会检查正式版与 prerelease 构建中的最新版本。'
           fi
 
           # 1. Prepare Release Notes
@@ -673,6 +673,8 @@ jobs:
 
           详细更新日志请查看 [更新日志](https://github.com/legeling/PromptHub#-更新日志)
           EOF
+
+          node -e 'process.stdout.write(require("./apps/desktop/electron-builder.config.cjs").releaseInfo.releaseNotes + "\n")' >> release_notes.md
 
           # 2. Collect release assets deterministically.
           # Avoid flattening multiple artifact folders with blind overwrite, or

@@ -228,15 +228,19 @@ describe("Updater Service (Main Process)", () => {
     autoUpdater._trigger?.("update-downloaded", { version: "1.1.0" });
     const installHandler = vi
       .mocked(ipcMain.handle)
-      .mock.calls.find(([channel]) => channel === "updater:install")?.[1] as () => Promise<{
+      .mock.calls.find(
+        ([channel]) => channel === "updater:install",
+      )?.[1] as () => Promise<{
       success: boolean;
     }>;
 
     await expect(installHandler()).resolves.toMatchObject({ success: true });
-    expect(upgradeBackupMocks.createUpgradeDataSnapshotMock).toHaveBeenCalledWith(
-      "/tmp",
-      { fromVersion: "1.0.0", toVersion: "1.1.0" },
-    );
+    expect(
+      upgradeBackupMocks.createUpgradeDataSnapshotMock,
+    ).toHaveBeenCalledWith("/tmp", {
+      fromVersion: "1.0.0",
+      toVersion: "1.1.0",
+    });
     expect(autoUpdater.quitAndInstall).toHaveBeenCalledWith(false, true);
   });
 
@@ -287,10 +291,9 @@ describe("Updater Service (Main Process)", () => {
 
     const downloadHandler = vi
       .mocked(ipcMain.handle)
-      .mock.calls.find(
-        ([channel]) => channel === "updater:download",
-      )?.[1];
-    if (!downloadHandler) throw new Error("Updater download IPC was not registered");
+      .mock.calls.find(([channel]) => channel === "updater:download")?.[1];
+    if (!downloadHandler)
+      throw new Error("Updater download IPC was not registered");
 
     const result = await Reflect.apply(downloadHandler, undefined, [
       {},
@@ -314,10 +317,13 @@ describe("Updater Service (Main Process)", () => {
       options: { source: "automatic"; channel: "stable" },
     ) => Promise<{ success: boolean }>;
 
-    const result = await downloadHandler({}, {
-      source: "automatic",
-      channel: "stable",
-    });
+    const result = await downloadHandler(
+      {},
+      {
+        source: "automatic",
+        channel: "stable",
+      },
+    );
 
     expect(result).toEqual({ success: true });
     expect(autoUpdater.setFeedURL).toHaveBeenNthCalledWith(
@@ -334,32 +340,48 @@ describe("Updater Service (Main Process)", () => {
     expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["updater:check", "updater:download"])("uses the selected mirror for %s without trying other mirrors", async (channel) => {
-    registerUpdaterIPC();
-    const handler = vi.mocked(ipcMain.handle).mock.calls.find(([name]) => name === channel)?.[1];
-    if (!handler) throw new Error("Updater IPC was not registered");
-    await Reflect.apply(handler, undefined, [{}, { source: "mirror", mirror: "gh-proxy" }]);
-    expect(autoUpdater.setFeedURL).toHaveBeenCalledWith(expect.objectContaining({
-      provider: "generic",
-      url: "https://gh-proxy.com/https://github.com/legeling/PromptHub/releases/latest/download",
-    }));
-    vi.mocked(autoUpdater.setFeedURL).mockClear();
-    vi.mocked(autoUpdater.checkForUpdates).mockRejectedValue(new Error("selected mirror unavailable"));
-    const result = await Reflect.apply(handler, undefined, [{}, { source: "mirror", mirror: "gh-proxy" }]);
-    expect(result.success).toBe(false);
-    expect(autoUpdater.setFeedURL).toHaveBeenCalledTimes(1);
-  });
+  it.each(["updater:check", "updater:download"])(
+    "uses the selected mirror for %s without trying other mirrors",
+    async (channel) => {
+      registerUpdaterIPC();
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find(([name]) => name === channel)?.[1];
+      if (!handler) throw new Error("Updater IPC was not registered");
+      await Reflect.apply(handler, undefined, [
+        {},
+        { source: "mirror", mirror: "gh-proxy" },
+      ]);
+      expect(autoUpdater.setFeedURL).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "generic",
+          url: "https://gh-proxy.com/https://github.com/legeling/PromptHub/releases/latest/download",
+        }),
+      );
+      vi.mocked(autoUpdater.setFeedURL).mockClear();
+      vi.mocked(autoUpdater.checkForUpdates).mockRejectedValue(
+        new Error("selected mirror unavailable"),
+      );
+      const result = await Reflect.apply(handler, undefined, [
+        {},
+        { source: "mirror", mirror: "gh-proxy" },
+      ]);
+      expect(result.success).toBe(false);
+      expect(autoUpdater.setFeedURL).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("cancels the active download and starts only the latest replacement", async () => {
     initUpdater(mockWindow);
     registerUpdaterIPC();
     let rejectActiveDownload: ((error: Error) => void) | undefined;
     vi.mocked(autoUpdater.downloadUpdate)
-      .mockImplementationOnce((token: any) =>
-        new Promise((_resolve, reject) => {
-          rejectActiveDownload = reject;
-          token.on("cancel", () => reject(new Error("cancelled")));
-        }),
+      .mockImplementationOnce(
+        (token: any) =>
+          new Promise((_resolve, reject) => {
+            rejectActiveDownload = reject;
+            token.on("cancel", () => reject(new Error("cancelled")));
+          }),
       )
       .mockResolvedValueOnce([]);
 
@@ -370,11 +392,17 @@ describe("Updater Service (Main Process)", () => {
       options: { source: "official" | "mirror"; channel: "stable" },
     ) => Promise<{ success: boolean; cancelled?: boolean }>;
 
-    const first = downloadHandler({}, { source: "official", channel: "stable" });
+    const first = downloadHandler(
+      {},
+      { source: "official", channel: "stable" },
+    );
     await vi.waitFor(() => {
       expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
     });
-    const second = downloadHandler({}, { source: "official", channel: "stable" });
+    const second = downloadHandler(
+      {},
+      { source: "official", channel: "stable" },
+    );
     const latest = downloadHandler({}, { source: "mirror", channel: "stable" });
 
     await expect(first).resolves.toEqual({ success: false, cancelled: true });
@@ -382,18 +410,15 @@ describe("Updater Service (Main Process)", () => {
     await expect(latest).resolves.toEqual({ success: true });
     expect(rejectActiveDownload).toBeTypeOf("function");
     expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(2);
-    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
-      "updater:status",
-      {
-        status: "downloading",
-        progress: {
-          percent: 0,
-          bytesPerSecond: 0,
-          transferred: 0,
-          total: 0,
-        },
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith("updater:status", {
+      status: "downloading",
+      progress: {
+        percent: 0,
+        bytesPerSecond: 0,
+        transferred: 0,
+        total: 0,
       },
-    );
+    });
   });
 
   it('should send "available" status to window when update found', () => {
@@ -548,7 +573,7 @@ describe("Updater Service (Main Process)", () => {
     );
   });
 
-  it("keeps preview checks on prerelease feeds even when a newer stable release exists", async () => {
+  it("selects a newer stable release for preview users", async () => {
     mockGithubReleases([
       { tag_name: "v1.1.0", prerelease: false, draft: false },
       { tag_name: "v1.1.0-beta.2", prerelease: true, draft: false },
@@ -568,7 +593,7 @@ describe("Updater Service (Main Process)", () => {
     expect(autoUpdater.setFeedURL).toHaveBeenCalledWith({
       provider: "generic",
       channel: undefined,
-      url: "https://github.com/legeling/PromptHub/releases/download/v1.1.0-beta.2",
+      url: "https://github.com/legeling/PromptHub/releases/download/v1.1.0",
     });
   });
 
@@ -585,6 +610,47 @@ describe("Updater Service (Main Process)", () => {
       expect.objectContaining({
         status: "not-available",
         info: expect.objectContaining({ version: "0.9.9" }),
+      }),
+    );
+  });
+
+  it("sends stable release notes from the manifest without substituting beta history", async () => {
+    initUpdater(mockWindow);
+    registerUpdaterIPC();
+    const check = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === "updater:check")?.[1];
+    if (!check) throw new Error("Check handler missing");
+    await Reflect.apply(check, null, [
+      {},
+      { source: "official", channel: "stable" },
+    ]);
+    const trigger = Reflect.get(autoUpdater, "_trigger");
+    if (typeof trigger !== "function")
+      throw new Error("Test event adapter missing");
+    trigger("update-available", {
+      version: "1.1.0",
+      releaseNotes: "## [Unreleased]\nDraft\n\n## [1.1.0-beta.2]\nBeta",
+    });
+    expect(mockWindow.webContents.send).toHaveBeenLastCalledWith(
+      "updater:status",
+      expect.objectContaining({
+        status: "available",
+        info: expect.objectContaining({ version: "1.1.0", releaseNotes: "" }),
+      }),
+    );
+    trigger("update-available", {
+      version: "1.1.0",
+      releaseNotes: "## [1.1.0]\nStable\n\n## [1.1.0-beta.2]\nBeta",
+    });
+    expect(mockWindow.webContents.send).toHaveBeenLastCalledWith(
+      "updater:status",
+      expect.objectContaining({
+        status: "available",
+        info: expect.objectContaining({
+          version: "1.1.0",
+          releaseNotes: "## [1.1.0]\nStable",
+        }),
       }),
     );
   });

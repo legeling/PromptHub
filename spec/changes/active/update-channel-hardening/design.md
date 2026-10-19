@@ -13,6 +13,31 @@
 
 ## Affected Areas
 
+### 2026-10-19 dialog and metadata correction
+
+- `apps/desktop` owns the updater, renderer dialog and build configuration. The
+  selected release/manifest owns future-version notes; installed local files do
+  not. No DB, IPC or settings schema changes are required.
+- Preview selection scans the existing release response once, O(n) time and
+  O(1) additional candidate state. Note extraction scans its text once. No
+  extra network request, worker, retry policy or dependency is introduced.
+- Packaging and runtime share `src/utils/release-notes.ts`. The Node 24 build
+  configuration reads only the package version's CHANGELOG section and fails
+  when it is missing. The publication workflow appends the same section.
+- The existing hook-based dialog controller stays together to preserve status,
+  download-source switching and lifecycle behavior. Markdown security/rendering
+  moves to `UpdateReleaseNotes`; longer JSX functions remain declarative views
+  of that single state and are covered by component interaction tests.
+- Manual export remains the existing backup orchestration; the install IPC
+  still owns the mandatory automatic snapshot and its failure handling.
+- Existing public `0.6.0` manifests were observed with draft text under
+  `Unreleased` and beta history; fixing local code does not rewrite those assets.
+  Existing preview clients can disable the preview channel to discover `0.6.0`.
+  Any remote metadata correction or publication requires separate authorization.
+- Reverting these source/config changes restores the previous updater policy;
+  no persisted user data or completed backups need to be removed. Real GUI,
+  installer replacement and remote publication remain distinct acceptance steps.
+
 - Data model:
   - `settings.store` 需要区分“推断默认通道”和“用户显式选择通道”
 - IPC / API:
@@ -26,7 +51,11 @@
 
 ### 1. 版本与通道语义
 
-建议采用以下稳定规则：
+当前规则（2026-10-19）：
+
+- 稳定通道只检查正式版；预览通道包含正式版与预览版，以 SemVer 选取最高版本。
+- API 返回顺序不决定版本优先级；Draft 与无效版本不参与候选。
+- 正式版 `0.6.0` 高于同版本的所有 beta，但低于 `0.7.0-beta.1`。
 
 - 稳定版使用纯 semver：`0.5.5`
 - 预览版使用 semver prerelease：`0.5.6-beta.1`、`0.5.6-beta.2`
@@ -57,9 +86,9 @@
 
 收敛方案：
 
-- stable 与 preview 都统一走 GitHub provider
+- stable 走 GitHub provider；preview 通过 GitHub Releases API 选择最高版本，再使用固定 tag 的 generic feed
 - stable：`allowPrerelease=false`，只看 GitHub latest 正式发布
-- preview：`allowPrerelease=true`，并基于当前 prerelease 版本 / 显式 channel 选择 prerelease feed
+- preview：`allowPrerelease=true`，固定候选 tag 读取现有 `latest*.yml`，正式版也可成为候选
 
 这样做的好处：
 
@@ -138,11 +167,12 @@ the real `Update check disabled in development mode` result after one click.
 ### `DES-UPDATER-007`: Rich release notes and continuous download layout
 
 Preview channel discovery already requests the GitHub Releases API to identify
-the newest prerelease tag. That bounded response also contains the exact
+the highest eligible stable or prerelease tag. That bounded response also contains the exact
 published Release body, so `FeedContext` carries it alongside the tag and uses
 it only when the candidate version matches that tag. This adds no request,
-retry, or unbounded cache. Stable checks keep the existing packaged changelog
-and manifest fallback.
+retry, or unbounded cache. Stable checks use the exact target version’s manifest
+notes. Versioned release bodies and manifests share the exact-section extractor;
+the installed client’s packaged changelog is not a future release source.
 
 The renderer continues to sanitize Markdown. Release-note images are restricted
 to HTTPS hosts owned by GitHub or Shields, load lazily, and send no referrer;
@@ -150,6 +180,25 @@ blocked images degrade to alt text. The dialog retains the last available update
 metadata locally while progress events arrive, avoiding repeated IPC
 serialization of a large release body. The progress track spans the content
 width and the right-aligned value is the only visible percentage.
+
+The renderer localizes the existing Markdown AST in one linear pass over category
+headings and entries. Recognized bilingual category sections contain Chinese
+primary paragraphs and a single nested English translation with a bold title.
+Only these pairs are projected; unpaired entries, ordinary sublists, shared blocks
+and unknown sections stay intact. Chinese UI locales use the Chinese body; other
+locales use English. All seven locales own category labels in
+`settings.updateCategories`. No translation service, extra request, duplicated
+persistent data or migration is introduced. The memoized notes component still
+responds to i18n context changes but avoids reparsing on download progress alone.
+The original published payload remains unchanged and sanitization runs afterward.
+Recognized category headings and entry lists receive local Markdown node metadata.
+The renderer maps the canonical category to a Lucide icon and uses token-based
+heading, title, description and divider styles. Only the four local category/list/
+entry/title attributes are added to the existing sanitizer allowlist; raw HTML,
+URL and image security rules remain unchanged. Leading bold entry titles are
+separated from their body in the AST, preserving inline links/code and nested
+blocks. Unknown sections retain normal Markdown semantics.
+
 
 ### `DES-UPDATER-008`: Explicit source policy and cancellable replacement
 
@@ -169,6 +218,11 @@ request per attempted source and keeps memory constant.
 Renderer state owns only the user's current source selection and formatting of
 the existing `bytesPerSecond`, `transferred`, and `total` progress fields. The
 main process remains authoritative for transfer lifecycle and provider state.
+The Download click immediately resets visible progress to zero before invoking
+IPC. Returned errors and IPC rejections both enter the error view; the existing
+request identity prevents a superseded source's late failure from replacing the
+new transfer. This adds constant-size UI state handling, with no new request,
+retry, timeout or persistence policy.
 
 ### `DES-UPDATER-009`: Native macOS update affordance
 

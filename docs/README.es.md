@@ -143,7 +143,7 @@ Vuelve a abrir la app. Sustituye la ruta si la instalaste en otro sitio.
 
 ### Canal de vista previa
 
-¿Quieres probar la próxima versión preliminar? Abre _Ajustes → Acerca de_ y activa el canal de vista previa. La app consultará entonces los Prereleases de GitHub. Al desactivarlo vuelve a la estable; PromptHub no degrada automáticamente de una preview más nueva a una estable más antigua.
+Active el canal de vista previa en _Ajustes → Acerca de_. Las próximas versiones buscarán versiones estables y preliminares y ofrecerán la más reciente, por ejemplo `0.6.0` para `0.6.0-beta.2`. Al desactivarlo solo se ofrecen versiones estables, sin retrocesos automáticos. Si una versión preliminar antigua no detecta `0.6.0`, desactive el canal y vuelva a buscar.
 
 <div id="screenshots"></div>
 

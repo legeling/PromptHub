@@ -143,7 +143,7 @@ Puis rouvrez l'application. Adaptez le chemin si vous l'avez installée ailleurs
 
 ### Canal Aperçu
 
-Vous voulez tester la prochaine version d'aperçu ? Ouvrez _Paramètres → À propos_ et activez le canal aperçu. L'application vérifiera alors les Prereleases GitHub. Désactivez-le pour revenir à la stable ; PromptHub ne fait pas de retour automatique d'une preview plus récente vers une stable plus ancienne.
+Activez le canal aperçu dans _Paramètres → À propos_. Les prochaines versions proposeront la plus récente des versions stables et préliminaires, par exemple `0.6.0` après `0.6.0-beta.2`. Désactivez ce canal pour ne recevoir que les versions stables, sans rétrogradation automatique. Si une ancienne préversion installée ne détecte pas `0.6.0`, désactivez le canal aperçu et relancez la recherche.
 
 <div id="screenshots"></div>
 

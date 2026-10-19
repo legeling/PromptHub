@@ -77,7 +77,7 @@ const releaseBody = JSON.stringify([
   { tag_name: "v1.1.0-beta.2", draft: false, prerelease: true },
 ]);
 const updateInfo = {
-  version: "1.1.0-beta.2",
+  version: "9.0.0",
   files: [],
   releaseDate: "2026-10-01T00:00:00.000Z",
 };
@@ -111,7 +111,7 @@ describe("release acceptance: updater metadata at the registered IPC boundary", 
       expect(nativeUpdater.setFeedURL).toHaveBeenCalledWith({
         provider: "generic",
         channel: undefined,
-        url: "https://github.com/legeling/PromptHub/releases/download/v1.1.0-beta.2",
+        url: "https://github.com/legeling/PromptHub/releases/download/v9.0.0",
       });
       expect(nativeUpdater.checkForUpdates).toHaveBeenCalledOnce();
     },
@@ -164,13 +164,15 @@ describe("release acceptance: updater metadata at the registered IPC boundary", 
     expect(nativeUpdater.checkForUpdates).not.toHaveBeenCalled();
   });
 
-  it("fails explicitly when metadata has no published preview candidate", async () => {
-    respondWith(JSON.stringify([{ tag_name: "v2.0.0", prerelease: false }]));
+  it("fails explicitly when metadata has no published version candidate", async () => {
+    respondWith(
+      JSON.stringify([{ tag_name: "v2.0.0", prerelease: false, draft: true }]),
+    );
 
     expect(await checkPreview()).toEqual({
       success: false,
       error:
-        "Update check failed: No published prerelease preview release is currently available.",
+        "Update check failed: No published release is currently available for preview updates.",
     });
     expect(nativeUpdater.checkForUpdates).not.toHaveBeenCalled();
   });

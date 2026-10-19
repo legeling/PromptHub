@@ -13,6 +13,7 @@ interface ModalProps {
   headerActions?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  contentClassName?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "full" | "fullscreen";
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
@@ -47,6 +48,7 @@ export function Modal({
   headerActions,
   children,
   footer,
+  contentClassName,
   size = "md",
   showCloseButton = true,
   closeOnBackdrop = true,
@@ -258,7 +260,14 @@ export function Modal({
         )}
 
         {/* Form / Content Area */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
+        <div
+          className={clsx(
+            "min-h-0 flex-1",
+            contentClassName ?? "overflow-y-auto p-6",
+          )}
+        >
+          {children}
+        </div>
         {footer && <div className="shrink-0 bg-card px-6 pb-5">{footer}</div>}
       </div>
     </div>

@@ -9,6 +9,11 @@ import { getHttpRequestAgent } from "./services/network-proxy";
 import { compareVersions, isPrereleaseVersion } from "../utils/version";
 import desktopPackage from "../../package.json";
 import {
+  selectPreviewRelease,
+  resolveUpdateNotes,
+  type GithubReleaseMetadata,
+} from "./updater-release-metadata";
+import {
   UPDATE_MIRRORS,
   normalizeUpdateMirrorSource,
   type UpdateMirrorSource,
@@ -142,39 +147,6 @@ interface FeedContext {
 
 let lastFeedContext: FeedContext = { channel: "stable" };
 
-interface GithubReleaseMetadata {
-  tagName: string;
-  body?: string;
-}
-
-function parseLatestPreviewRelease(body: string): GithubReleaseMetadata | null {
-  const releases = JSON.parse(body) as Array<{
-    body?: string;
-    draft?: boolean;
-    prerelease?: boolean;
-    tag_name?: string;
-  }>;
-  const latestPreview = releases.find(
-    (release) =>
-      release.prerelease === true &&
-      release.draft !== true &&
-      typeof release.tag_name === "string" &&
-      release.tag_name.length > 0,
-  );
-
-  if (!latestPreview?.tag_name) {
-    return null;
-  }
-
-  return {
-    tagName: latestPreview.tag_name,
-    body:
-      typeof latestPreview.body === "string" && latestPreview.body.trim()
-        ? latestPreview.body.trim()
-        : undefined,
-  };
-}
-
 async function fetchLatestPreviewRelease(): Promise<GithubReleaseMetadata | null> {
   return await new Promise<GithubReleaseMetadata | null>((resolve, reject) => {
     const request = https.get(
@@ -206,7 +178,7 @@ async function fetchLatestPreviewRelease(): Promise<GithubReleaseMetadata | null
           }
 
           try {
-            resolve(parseLatestPreviewRelease(body));
+            resolve(selectPreviewRelease(body));
           } catch (error) {
             reject(error instanceof Error ? error : new Error(String(error)));
           }
@@ -228,12 +200,12 @@ async function resolveFeedContext(
     return { channel };
   }
 
-  // Preview channel is intentionally prerelease-only. Stable releases are not
-  // fallback candidates; users return to stable updates by switching channels.
+  // Preview opts into prereleases in addition to stable releases. SemVer picks
+  // the newest candidate, including the stable successor of an installed beta.
   const release = await fetchLatestPreviewRelease();
   if (!release) {
     throw new Error(
-      "Update check failed: No published prerelease preview release is currently available.",
+      "Update check failed: No published release is currently available for preview updates.",
     );
   }
 
@@ -344,229 +316,23 @@ function toCheckResult(result: unknown): {
 
 export { compareVersions };
 
-// Read changelog for specified version range from CHANGELOG.md
-// 从 CHANGELOG.md 读取指定版本区间的更新日志
-export function getChangelogForVersionRange(
-  newVersion: string,
-  currentVersion: string,
-): string {
-  try {
-    const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
-    let changelogPath: string;
-
-    if (isDev) {
-      changelogPath = path.join(__dirname, "../../../../CHANGELOG.md");
-    } else {
-      // Check if resourcesPath exists (may be undefined in test environment)
-      // 检查 resourcesPath 是否存在（在测试环境中可能为 undefined）
-      if (!process.resourcesPath) {
-        return "";
-      }
-      // After packaging, CHANGELOG.md is in resources directory
-      // 打包后，CHANGELOG.md 在 resources 目录
-      changelogPath = path.join(process.resourcesPath, "CHANGELOG.md");
-      // If not exists, try app.asar.unpacked
-      // 如果不存在，尝试 app.asar.unpacked
-      if (!fs.existsSync(changelogPath)) {
-        changelogPath = path.join(
-          process.resourcesPath,
-          "app.asar.unpacked",
-          "CHANGELOG.md",
-        );
-      }
-      // Still not exists, try app directory
-      // 还不存在，尝试 app 目录
-      if (!fs.existsSync(changelogPath)) {
-        changelogPath = path.join(app.getAppPath(), "CHANGELOG.md");
-      }
-    }
-
-    if (!fs.existsSync(changelogPath)) {
-      console.warn("[Updater] CHANGELOG.md not found at:", changelogPath);
-      console.warn("[Updater] isDev:", isDev);
-      console.warn("[Updater] __dirname:", __dirname);
-      console.warn("[Updater] resourcesPath:", process.resourcesPath);
-      console.warn("[Updater] appPath:", app.getAppPath());
-      return "";
-    }
-
-    console.log("[Updater] Reading CHANGELOG from:", changelogPath);
-
-    const content = fs.readFileSync(changelogPath, "utf-8");
-
-    // Parse CHANGELOG, extract all updates within version range
-    // Format: ## [0.2.9] - 2025-12-18
-    // 解析 CHANGELOG，提取版本区间内的所有更新
-    // 格式: ## [0.2.9] - 2025-12-18
-    const versionRegex = /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/gm;
-    const versions: { version: string; startIndex: number }[] = [];
-
-    let match;
-    while ((match = versionRegex.exec(content)) !== null) {
-      versions.push({
-        version: match[1],
-        startIndex: match.index,
-      });
-    }
-
-    // Find versions to include (greater than currentVersion and less than or equal to newVersion)
-    // 找到需要包含的版本（大于 currentVersion 且小于等于 newVersion）
-    const relevantSections: string[] = [];
-
-    for (let i = 0; i < versions.length; i++) {
-      const ver = versions[i].version;
-      // Version is in (currentVersion, newVersion] range
-      // 版本在 (currentVersion, newVersion] 区间内
-      if (
-        compareVersions(ver, currentVersion) > 0 &&
-        compareVersions(ver, newVersion) <= 0
-      ) {
-        const startIndex = versions[i].startIndex;
-        const endIndex = versions[i + 1]?.startIndex || content.length;
-        let section = content.slice(startIndex, endIndex).trim();
-
-        // Remove separator lines
-        // 移除分隔线
-        section = section.replace(/^---\s*$/gm, "").trim();
-
-        relevantSections.push(section);
-      }
-    }
-
-    if (relevantSections.length === 0) {
-      return "";
-    }
-
-    return relevantSections.join("\n\n---\n\n");
-  } catch (error) {
-    console.error("Failed to read CHANGELOG.md:", error);
-    return "";
-  }
-}
-
-// Convert from electron-updater's UpdateInfo to simplified format
-// 从 electron-updater 的 UpdateInfo 转换为简化格式
-function getExactReleaseNotes(
-  info: ElectronUpdateInfo,
-  context: FeedContext,
-): string {
-  if (
-    !context.releaseTag ||
-    !context.releaseNotes ||
-    compareVersions(context.releaseTag, info.version) !== 0
-  ) {
-    return "";
-  }
-
-  return context.releaseNotes;
-}
-
 function toSimpleInfo(
   info: ElectronUpdateInfo,
   context: FeedContext = lastFeedContext,
 ): SimpleUpdateInfo {
-  const currentVersion = app.getVersion();
-
-  // Preview lookup already returns the exact published GitHub Release body.
-  // Reuse it so badges, images, emoji, and release-specific notices are not
-  // replaced by the packaged full changelog. Other lanes keep the bounded
-  // local changelog and manifest fallback below without another API request.
-  let releaseNotes = getExactReleaseNotes(info, context);
-
-  if (!releaseNotes) {
-    releaseNotes = getChangelogForVersionRange(info.version, currentVersion);
-  }
-
-  // If CHANGELOG has no content, fallback to GitHub Release notes
-  // 如果 CHANGELOG 没有内容，回退到 GitHub Release 的说明
-  if (!releaseNotes) {
-    let githubNotes = "";
-    if (typeof info.releaseNotes === "string") {
-      githubNotes = info.releaseNotes;
-    } else if (Array.isArray(info.releaseNotes)) {
-      githubNotes = info.releaseNotes
-        .map((n) => (n.note ? n.note : ""))
-        .filter(Boolean)
-        .join("\n\n");
-    }
-
-    // Check if GitHub notes is the full CHANGELOG (contains multiple version headers)
-    // 检查 GitHub notes 是否是完整的 CHANGELOG（包含多个版本标题）
-    const versionHeaders = githubNotes.match(/^## \[\d+\.\d+\.\d+/gm) || [];
-
-    if (versionHeaders.length > 3) {
-      // Likely full CHANGELOG, try to extract version range
-      // 可能是完整的 CHANGELOG，尝试提取版本区间
-      console.log(
-        "[Updater] GitHub notes appears to be full CHANGELOG, extracting version range...",
-      );
-      releaseNotes = extractVersionRange(
-        githubNotes,
-        info.version,
-        currentVersion,
-      );
-    } else {
-      releaseNotes = githubNotes;
-    }
-  }
-
+  const exactReleaseBody =
+    context.releaseTag &&
+    compareVersions(context.releaseTag, info.version) === 0
+      ? context.releaseNotes
+      : undefined;
   return {
     version: info.version,
-    releaseNotes,
+    releaseNotes: resolveUpdateNotes(
+      exactReleaseBody || info.releaseNotes,
+      info.version,
+    ),
     releaseDate: info.releaseDate,
   };
-}
-
-// Extract version range from CHANGELOG content (for fallback)
-// 从 CHANGELOG 内容中提取版本区间（用于 fallback）
-function extractVersionRange(
-  content: string,
-  newVersion: string,
-  currentVersion: string,
-): string {
-  const versionRegex = /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/gm;
-  const versions: { version: string; startIndex: number }[] = [];
-
-  let match;
-  while ((match = versionRegex.exec(content)) !== null) {
-    versions.push({
-      version: match[1],
-      startIndex: match.index,
-    });
-  }
-
-  const relevantSections: string[] = [];
-
-  for (let i = 0; i < versions.length; i++) {
-    const ver = versions[i].version;
-    if (
-      compareVersions(ver, currentVersion) > 0 &&
-      compareVersions(ver, newVersion) <= 0
-    ) {
-      const startIndex = versions[i].startIndex;
-      const endIndex = versions[i + 1]?.startIndex || content.length;
-      let section = content.slice(startIndex, endIndex).trim();
-      section = section.replace(/^---\s*$/gm, "").trim();
-      relevantSections.push(section);
-    }
-  }
-
-  if (relevantSections.length === 0) {
-    // If no relevant sections, just return the first version's content
-    // 如果没有相关版本，返回第一个版本的内容
-    if (versions.length > 0) {
-      const startIndex = versions[0].startIndex;
-      const endIndex = versions[1]?.startIndex || content.length;
-      return content
-        .slice(startIndex, endIndex)
-        .trim()
-        .replace(/^---\s*$/gm, "")
-        .trim();
-    }
-    return content;
-  }
-
-  return relevantSections.join("\n\n---\n\n");
 }
 
 let mainWindow: BrowserWindow | null = null;

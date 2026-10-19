@@ -1,8 +1,21 @@
 ## [Unreleased]
 
-以下为 0.6.0 正式发布后的主线改动，尚未包含在发行包中。
+以下为计划纳入 0.6.1 的主线改动，尚未发布；当前已发布稳定版为 0.6.0。
 
-These main-branch changes are not included in the published 0.6.0 packages.
+These main-branch changes are planned for 0.6.1 and are not yet published. The current published stable version is 0.6.0.
+
+### 问题修复 / Fixes
+
+- **更新窗口**：版本信息与更新内容分栏展示，正文使用单一滚动区，操作按钮固定在底部。
+  - **Update dialog**: Version details and release notes use separate columns, with one content scroller and fixed bottom actions.
+- **备份与安装**：手动导出备份改为可选；安装前仍会自动创建本地快照。
+  - **Backup and installation**: Manual backup export is optional; a local snapshot is still created automatically before installation.
+- **更新通道**：预览通道按版本号接收正式版与预览版，支持升级到更新的正式版本。
+  - **Update channels**: Preview users receive the newest stable or preview build, including newer stable successors.
+- **更新日志**：只展示目标版本的内容，按界面语言选择中文或英文，并为分类添加图标、清晰的条目标题和分隔样式。
+  - **Release notes**: Notes belong to the selected version, show Chinese or English according to the UI language, and use category icons, clear entry titles and separators.
+- **下载反馈**：点击下载立即显示进度，下载失败与调用异常会明确提示。
+  - **Download feedback**: Download clicks show progress immediately, and download or IPC failures are surfaced.
 
 ### 新功能 / Features
 

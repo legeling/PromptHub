@@ -1,124 +1,100 @@
-/**
- * @vitest-environment node
- * Local changelog and version contracts. No remote artifact availability is tested.
- */
-import { describe, it, expect, vi } from 'vitest';
+/** @vitest-environment node */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { describe, expect, it } from "vitest";
+import { extractReleaseSection } from "../../../src/utils/release-notes";
+import { compareVersions } from "../../../src/utils/version";
+import {
+  selectPreviewRelease,
+  resolveUpdateNotes,
+} from "../../../src/main/updater-release-metadata";
 
-// Mock electron 模块（因为 updater.ts 依赖 electron）
-vi.mock('electron', () => ({
-    app: {
-        isPackaged: false, // 开发模式
-        getVersion: vi.fn(() => '0.2.9'), // 模拟当前版本
-        getAppPath: vi.fn(() => process.cwd()),
-        getPath: vi.fn(() => '/tmp'),
-    },
-    ipcMain: { handle: vi.fn() },
-    BrowserWindow: { getAllWindows: vi.fn(() => []) },
-    shell: { openExternal: vi.fn(), openPath: vi.fn() },
-}));
+describe("release identity and update notes", () => {
+  const changelog =
+    "## [Unreleased]\nFuture work\n\n## [0.6.0]\nStable changes\n\n## [0.6.0-beta.2]\nPreview changes\n\n## [0.5.9]\nOld changes";
 
-vi.mock('electron-updater', () => ({
-    autoUpdater: {
-        on: vi.fn(),
-        checkForUpdatesAndNotify: vi.fn(),
-        downloadUpdate: vi.fn(),
-        quitAndInstall: vi.fn(),
-        autoDownload: false,
-        autoInstallOnAppQuit: true,
-        channel: 'latest',
-    }
-}));
+  it("extracts exactly the requested version, excluding future and beta sections", () => {
+    expect(extractReleaseSection(changelog, "v0.6.0")).toBe(
+      "## [0.6.0]\nStable changes",
+    );
+    expect(extractReleaseSection(changelog, "0.6.0-beta.2")).toBe(
+      "## [0.6.0-beta.2]\nPreview changes",
+    );
+    expect(extractReleaseSection(changelog, "0.7.0")).toBe("");
+  });
 
-// 导入真实的函数
-import { getChangelogForVersionRange, compareVersions } from '../../../src/main/updater';
+  it("never substitutes beta history or Unreleased for missing stable notes", () => {
+    const historicalManifest =
+      "## [Unreleased]\nDraft changes\n\n## [0.6.0-beta.2]\nPreview changes";
+    expect(resolveUpdateNotes(historicalManifest, "0.6.0")).toBe("");
+    expect(resolveUpdateNotes(changelog, "0.6.0")).toBe(
+      "## [0.6.0]\nStable changes",
+    );
+  });
 
-describe('Updater local changelog and version contracts', () => {
+  it("retains rich release-specific content and selects only matching array notes", () => {
+    const rich =
+      "## Features\n[![Badge](https://img.shields.io/badge/test-blue)](https://github.com/legeling/PromptHub)";
+    expect(resolveUpdateNotes(rich, "0.6.0")).toBe(rich);
+    expect(
+      resolveUpdateNotes(
+        [
+          { version: "0.6.0-beta.2", note: "Beta" },
+          { version: "0.6.0", note: rich },
+        ],
+        "0.6.0",
+      ),
+    ).toBe(rich);
+    expect(
+      resolveUpdateNotes([{ version: "0.5.9", note: "Old" }], "0.6.0"),
+    ).toBe("");
+  });
 
-    describe('getChangelogForVersionRange - 真实代码测试', () => {
-
-        it('从 0.2.9 升级到 0.3.3 应该只显示 0.3.0, 0.3.1, 0.3.2, 0.3.3 的更新日志', () => {
-            const result = getChangelogForVersionRange('0.3.3', '0.2.9');
-
-            console.log('=== 更新日志内容 ===');
-            console.log(result);
-            console.log('=== 结束 ===');
-
-            // 应该包含 0.3.3, 0.3.2, 0.3.1, 0.3.0
-            expect(result).toContain('## [0.3.3]');
-            expect(result).toContain('## [0.3.2]');
-            expect(result).toContain('## [0.3.1]');
-            expect(result).toContain('## [0.3.0]');
-
-            // 不应该包含 0.2.9 及之前的版本
-            expect(result).not.toContain('## [0.2.9]');
-            expect(result).not.toContain('## [0.2.8]');
-            expect(result).not.toContain('## [0.2.7]');
-
-            // 不应该包含 CHANGELOG 开头的说明文字
-            expect(result).not.toContain('# 更新日志 / Changelog');
-            expect(result).not.toContain('所有重要的版本更新都会记录在此文件中');
-            expect(result).not.toContain('All notable changes to this project');
-            expect(result).not.toContain('Keep a Changelog');
-            expect(result).not.toContain('Semantic Versioning');
-        });
-
-        it('从 0.2.9 升级到 0.3.0 应该只显示 0.3.0 的更新日志', () => {
-            const result = getChangelogForVersionRange('0.3.0', '0.2.9');
-
-            // 应该只包含 0.3.0
-            expect(result).toContain('## [0.3.0]');
-
-            // 不应该包含其他版本
-            expect(result).not.toContain('## [0.3.1]');
-            expect(result).not.toContain('## [0.3.2]');
-            expect(result).not.toContain('## [0.2.9]');
-        });
-
-        it('已经是最新版本时应该返回空字符串', () => {
-            const result = getChangelogForVersionRange('0.3.3', '0.3.3');
-            expect(result).toBe('');
-        });
-
-        it('更新日志内容应该包含实际的功能描述', () => {
-            const result = getChangelogForVersionRange('0.3.3', '0.2.9');
-
-            // 验证包含实际的功能描述
-            // 0.3.3 的内容
-            expect(result).toContain('多层级文件夹支持');
-
-            // 0.3.2 的内容
-            expect(result).toContain('搜索展示优化');
-            expect(result).toContain('文件夹图标扩展');
-
-            // 0.3.1 的内容  
-            expect(result).toContain('搜索体验优化');
-
-            // 0.3.0 的内容
-            expect(result).toContain('检查更新优化');
-        });
+  it("chooses the highest published version, regardless of API ordering", () => {
+    const candidates = [
+      { tag_name: "v0.6.0-beta.2", prerelease: true, draft: false },
+      { tag_name: "v0.6.0", prerelease: false, draft: false, body: "Stable" },
+      { tag_name: "v9.0.0", prerelease: false, draft: true },
+      { tag_name: "bad", prerelease: false, draft: false },
+    ];
+    expect(selectPreviewRelease(JSON.stringify(candidates))).toEqual({
+      tagName: "v0.6.0",
+      body: "Stable",
     });
-
-    describe('compareVersions - 真实代码测试', () => {
-
-        it('应该正确比较版本号', () => {
-            expect(compareVersions('0.3.0', '0.2.9')).toBe(1);  // 0.3.0 > 0.2.9
-            expect(compareVersions('0.2.9', '0.3.0')).toBe(-1); // 0.2.9 < 0.3.0
-            expect(compareVersions('0.3.3', '0.3.3')).toBe(0);  // 相等
-            expect(compareVersions('1.0.0', '0.9.9')).toBe(1);  // 主版本号更大
-            expect(compareVersions('0.10.0', '0.9.0')).toBe(1); // 次版本号 10 > 9
-        });
-
-        it('应该正确处理带 v 前缀的版本号', () => {
-            expect(compareVersions('v0.3.0', '0.2.9')).toBe(1);
-            expect(compareVersions('0.3.0', 'v0.2.9')).toBe(1);
-            expect(compareVersions('v0.3.3', 'v0.3.3')).toBe(0);
-        });
-
-        it('应该正确处理 beta 预览版和正式版的 SemVer 顺序', () => {
-            expect(compareVersions('0.5.5-beta.2', '0.5.5-beta.1')).toBe(1);
-            expect(compareVersions('0.5.5', '0.5.5-beta.2')).toBe(1);
-            expect(compareVersions('0.5.6-beta.1', '0.5.5')).toBe(1);
-        });
+    candidates.push({
+      tag_name: "v0.7.0-beta.1",
+      prerelease: true,
+      draft: false,
     });
+    expect(selectPreviewRelease(JSON.stringify(candidates))?.tagName).toBe(
+      "v0.7.0-beta.1",
+    );
+    expect(selectPreviewRelease("[]")).toBeNull();
+    expect(() => selectPreviewRelease("{}")).toThrow();
+  });
 
+  it.each([
+    ["0.6.0", "0.6.0-beta.2", 1],
+    ["0.6.0-beta.10", "0.6.0-beta.2", 1],
+    ["0.6.0", "0.7.0-beta.1", -1],
+    ["v0.6.0", "0.6.0+build.1", 0],
+  ])("compares %s against %s without downgrades", (left, right, expected) => {
+    expect(compareVersions(left, right)).toBe(expected);
+  });
+
+  it("packages only the current version's release notes", () => {
+    const require = createRequire(import.meta.url);
+    const config = require("../../../electron-builder.config.cjs");
+    const { version } = require("../../../package.json");
+    const source = readFileSync(
+      new URL("../../../../../CHANGELOG.md", import.meta.url),
+      "utf8",
+    );
+    expect(config.releaseInfo.releaseNotes).toBe(
+      extractReleaseSection(source, version),
+    );
+    expect(config.releaseInfo.releaseNotes).toContain(`## [${version}]`);
+    expect(config.releaseInfo.releaseNotes).not.toContain("## [Unreleased]");
+    expect(config.releaseInfo.releaseNotes).not.toContain("## [0.6.0-beta.2]");
+  });
 });
