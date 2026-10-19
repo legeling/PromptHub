@@ -6,7 +6,7 @@
 
 `0.6.1` is undergoing verification and is not yet published. The current stable release remains `0.6.0`.
 
-## [0.6.1] - Unreleased
+## [0.6.1]
 
 ### 新功能 / Features
 
