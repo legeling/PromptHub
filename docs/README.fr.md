@@ -13,6 +13,8 @@ Un espace de travail local-first pour les prompts, les skills et les assets de c
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Développement](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
+La branche main prépare `0.6.1`, qui n’est pas encore publiée. Les téléchargements ci-dessous restent sur la version stable `0.6.0`.
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

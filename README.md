@@ -15,6 +15,8 @@
 [![许可证](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
 [![开发版本](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](./CHANGELOG.md#unreleased)
 
+当前主线正在准备 `0.6.1`，尚未发布；下方下载仍为稳定版 `0.6.0`。
+
   <br/>
 
   <!-- 技术栈 -->

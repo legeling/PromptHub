@@ -59,6 +59,8 @@ docs/
 
 ## 版本与更新说明
 
+主线候选为 `0.6.1`，验证与剩余发布门槛见 [0.6.1 发布准备记录](../spec/releases/0.6.1.md)。
+
 当前稳定版为 [v0.6.0](https://github.com/legeling/PromptHub/releases/tag/v0.6.0)，于 2026-10-18 正式发布。
 
 - [主 README](../README.md) 区分最新稳定下载、已发布预览版和当前开发版本。

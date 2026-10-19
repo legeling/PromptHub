@@ -13,6 +13,8 @@ A local-first workspace for prompts, skills, and AI coding assets.
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Development](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
+Main is preparing `0.6.1`, which is not yet published. Downloads below remain on stable `0.6.0`.
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

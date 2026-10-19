@@ -13,6 +13,8 @@ Ein Local-First-Arbeitsbereich für Prompts, Skills und KI-Coding-Assets.
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Entwicklung](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
+Auf main wird die noch unveröffentlichte Version `0.6.1` vorbereitet. Die Downloads unten bleiben bei der stabilen Version `0.6.0`.
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

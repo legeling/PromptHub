@@ -13,6 +13,8 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Desarrollo](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
+La rama main prepara `0.6.1`, aún sin publicar. Las descargas siguientes siguen siendo de la versión estable `0.6.0`.
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

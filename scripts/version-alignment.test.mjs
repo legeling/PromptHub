@@ -31,8 +31,14 @@ function readText(relativePath) {
   return fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 }
 
-test("keeps main on the 0.6.0 release line after contribution merges", () => {
-  assert.match(expectedVersion, /^0\.6\.0(?:-[0-9A-Za-z.-]+)?$/);
+test("gives the stable candidate a semver identity and an exact changelog section", () => {
+  assert.match(expectedVersion, /^\d+\.\d+\.\d+$/);
+  assert.ok(readText("CHANGELOG.md").includes(`## [${expectedVersion}]`));
+  assert.ok(
+    fs.existsSync(
+      path.join(repositoryRoot, "spec/releases", `${expectedVersion}.md`),
+    ),
+  );
 });
 
 test("keeps every shipped distribution on the release candidate version", () => {
@@ -80,7 +86,9 @@ test("separates development identity from published downloads in every README", 
     assert.ok(source.includes(changelogPath), relativePath);
     assert.ok(source.includes(`\`${expectedVersion}\``), relativePath);
     assert.ok(source.includes("releases/latest/download/"), relativePath);
-    const downloads = [...source.matchAll(/releases\/latest\/download\/([^\s)]+)/g)];
+    const downloads = [
+      ...source.matchAll(/releases\/latest\/download\/([^\s)]+)/g),
+    ];
     for (const [, filename] of downloads) {
       assert.ok(
         filename.includes(`-${stableRelease.version}-`),

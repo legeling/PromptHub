@@ -1,15 +1,41 @@
 ## [Unreleased]
 
-以下为 0.6.0 正式发布后的主线改动，尚未包含在发行包中。
+### 发布准备 / Release preparation
 
-These main-branch changes are not included in the published 0.6.0 packages.
+`0.6.1` 正在验证，尚未发布；当前稳定版为 `0.6.0`。
+
+`0.6.1` is undergoing verification and is not yet published. The current stable release remains `0.6.0`.
+
+## [0.6.1] - Unreleased
 
 ### 新功能 / Features
 
-- **跨端资源管理**：Skill、MCP、Plugin 共用资源列表规则与 Core 管理流程；CLI 补齐来源、版本和分发入口，自托管 Web 与 Cloudflare 支持资源和完整包管理，不提供 Agent 分发
-  - **Cross-platform resource management**: Skills, MCP and Plugins share library rules and Core workflows. CLI adds source, version and distribution commands; self-hosted Web and Cloudflare manage resources and complete packages without Agent distribution
-- **分发状态与恢复**：差异应用和重新分发分别操作；旧副本保留已分发状态，内容冲突阻止覆盖，批量结果报告部分失败并保留成功目标
-  - **Distribution status and recovery**: Apply changes and redistribution are separate actions. Older copies remain distributed, content conflicts block overwrites, and batch results preserve successful targets while reporting failures
+- **Plugin 市场来源**：新增 Claude Git 市场和 Antigravity ZIP 来源，可导入并管理完整 Plugin 包。
+  - **Plugin marketplace sources**: Import and manage complete Plugin packages from Claude Git marketplaces and Antigravity ZIP sources.
+- **跨端资源管理**：CLI 增加 Skill、MCP、Plugin 的来源、版本和分发管理；自托管 Web 与 Cloudflare 支持资源及完整包管理。
+  - **Cross-platform resource management**: The CLI adds source, version and distribution management for Skills, MCP and Plugins. Self-hosted Web and Cloudflare support resource and complete-package management.
+
+### 改进 / Improvements
+
+- **更新窗口**：版本信息与更新内容分栏展示，安装按钮始终可见；更新内容按界面语言显示当前版本的中文或英文说明。
+  - **Update dialog**: Version details and release notes appear in separate columns with installation actions always visible. Notes show the selected version in Chinese or English according to the interface language.
+- **备份与安装**：安装更新前自动创建本地快照，手动导出备份可按需选择。
+  - **Backup and installation**: A local snapshot is created automatically before installing an update; manual backup export is optional.
+- **分发操作**：“应用变更”处理新增和移除目标，“重新分发”更新已有副本。批量操作遇到失败时会保留成功结果并列出失败目标。
+  - **Distribution actions**: Apply changes adds or removes targets, while Redistribute updates existing copies. Batch operations retain successful results and identify failed targets.
+
+### 问题修复 / Fixes
+
+- **Skill 首次分发**：修复详情页首次勾选目标后点击“应用变更”未安装的问题；进入 Agent Skills 时会读取当前目标的已安装列表。
+  - **Initial Skill distribution**: Fixed Apply changes failing to install newly selected targets from the detail page. Agent Skills now loads the selected target's installed inventory on entry.
+- **Skill 改名与内容保护**：分发副本存在外部修改时会提示先处理冲突；改名失败后保留原名称、包文件和分发状态。
+  - **Skill renaming and content protection**: Renaming asks you to resolve externally modified copies first. Failed renames preserve the original name, package files and distribution state.
+- **历史数据恢复**：支持导入历史备份；遇到旧 Prompt 工作区冲突时提供明确的恢复选择，并保留原数据。
+  - **Historical data recovery**: Historical backups can be imported. Conflicts in older Prompt workspaces offer explicit recovery choices while preserving original data.
+- **Rules 列表**：修复同一平台的多个 Rules 文件无法完整显示的问题。
+  - **Rules list**: Fixed multiple Rules files from the same platform not all appearing in the list.
+- **更新通道与下载反馈**：预览通道可升级到更新的正式版；下载开始时立即显示进度，失败时给出明确提示。
+  - **Update channels and download feedback**: Preview users can upgrade to newer stable releases. Downloads show progress immediately and report failures clearly.
 
 ## [0.6.0] - 2026-10-18
 
