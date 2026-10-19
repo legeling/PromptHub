@@ -36,7 +36,9 @@ before implementation.
 
 1. Update version-bearing manifests for affected distributions, including the
    root and workspace packages when the monorepo version changes.
-2. Update `CHANGELOG.md` and `spec/releases/<version>.md`.
+2. Update `CHANGELOG.md` and `spec/releases/<version>.md`. Apply the Public
+   Release Notes contract in `spec/releases/release-rules.md`; review the exact
+   version section against shipped behavior before synchronizing public copies.
 3. Sync repository-facing documentation:
    - `README.md`
    - `docs/README.md`

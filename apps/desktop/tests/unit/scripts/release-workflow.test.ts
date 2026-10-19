@@ -37,6 +37,12 @@ function getIfLines(source: string): string[] {
 }
 
 describe("release workflow secret guards", () => {
+  it("publishes curated version notes without appending generated commit summaries", () => {
+    expect(workflowSource).toContain("releaseInfo.releaseNotes");
+    expect(workflowSource).toContain("--notes-file release_notes.md");
+    expect(workflowSource).not.toContain("--generate-notes");
+  });
+
   it("requires the full release gate before publishing parallel platform builds", () => {
     expect(workflowSource).toContain("  verify:\n");
     expect(workflowSource).toContain("scripts/verification/ci.mts group");

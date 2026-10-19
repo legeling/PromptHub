@@ -112,6 +112,9 @@ Do not write phrases like "I am analyzing", "I think", "I will first", "my reaso
 
 Docs may record concise decisions, shipped changes, assumptions, risks, commands run, and verification results. They should not preserve the agent's conversational process. Maintainer-only operational details, such as signing certificates, release credentials, or secret-handling steps, belong in internal `spec/` records or secure secret stores, not public README files unless they are explicitly intended for contributors or users.
 
+Public changelog and release-note writing follows the single contract in
+[release-rules.md](spec/releases/release-rules.md#11-public-release-notes).
+
 ### 0.9 Mandatory Submission Gate
 
 Before any commit, split commit, history rewrite, or push operation:

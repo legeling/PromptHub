@@ -790,8 +790,7 @@ jobs:
               --title "PromptHub ${VERSION}" \
               --notes-file release_notes.md \
               --draft=true \
-              --prerelease=${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }} \
-              --generate-notes
+              --prerelease=${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
