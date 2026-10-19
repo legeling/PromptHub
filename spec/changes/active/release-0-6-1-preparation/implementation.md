@@ -1,12 +1,13 @@
 # 0.6.1 preparation evidence
 
-## Candidate and changes
+## Initial candidate and changes
 
-Base: `de0f63541faf88bea6e0421b11ea70583c093570`. Product versions identify
-unpublished 0.6.1; published downloads and generated stable metadata remain 0.6.0.
+Base: `de0f63541faf88bea6e0421b11ea70583c093570`. Initial preparation identified
+unpublished 0.6.1 while published downloads and stable metadata remained 0.6.0.
 The two product repairs are detail-page Apply callback arguments and Skill rename
 conflict preflight/compensation. Other test changes follow current contracts.
-No schema, dependency version, release tag or published artifact was changed.
+Initial preparation changed no schema, dependency version, release tag or
+published artifact. Publication results below supersede that initial state.
 
 ## Verification
 
@@ -118,3 +119,14 @@ No npm registry, Worker deployment or Mobile store submission is implied.
 The release-job-only rerun passed. Homebrew readback confirms version 0.6.1 and
 both DMG SHA256 values match GitHub assets. Public metadata validation passed
 spec governance, five version checks and four website release-sync checks.
+
+## Final delivery
+
+Self-Hosted Web run 39234204977 passed verification and Docker publication.
+Direct GHCR manifest reads confirm `0.6.1` and `latest` share digest
+`sha256:44bcc168d69831d14ebe155fe5c5eda55fdf66db9ede559e49e5a2cda23f3f6c`.
+Vercel production deployment 7170895691 succeeded at stable-metadata commit
+3f871379e5ae011955fe9f9d797ed02497bc2692. Local public-page HTTP readback was
+inconclusive due network errors; no visual/browser acceptance is inferred.
+Homebrew and GitHub stable publication are verified; R2 remains unconfigured.
+No task-owned local development service, tunnel or test process is retained.

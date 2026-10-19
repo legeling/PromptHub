@@ -7,8 +7,8 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 47 |
-| Recorded complete (original path) | 2 |
+| Active | 46 |
+| Recorded complete (original path) | 3 |
 | Archived | 235 |
 | Legacy | 1 |
 
@@ -48,7 +48,6 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `prompt-current-version-missing-self-heal` | active | `spec/changes/active/prompt-current-version-missing-self-heal/` |
 | `r2-direct-downloads` | active | `spec/changes/active/r2-direct-downloads/` |
 | `release-0-6-0-version-alignment` | active | `spec/changes/active/release-0-6-0-version-alignment/` |
-| `release-0-6-1-preparation` | in progress | `spec/changes/active/release-0-6-1-preparation/` |
 | `risk-aware-verification-harness` | active | `spec/changes/active/risk-aware-verification-harness/` |
 | `rules-managed-copies` | active | `spec/changes/active/rules-managed-copies/` |
 | `self-hosted-skill-sync-reliability` | active | `spec/changes/active/self-hosted-skill-sync-reliability/` |
@@ -73,6 +72,7 @@ rules are superseded by [current documentation policy](../rules/document-routing
 | Change | Recorded status | Path |
 | --- | --- | --- |
 | `desktop-issue-192-copy-action-parity` | completed | `spec/changes/active/desktop-issue-192-copy-action-parity/` |
+| `release-0-6-1-preparation` | completed | `spec/changes/active/release-0-6-1-preparation/` |
 | `rules-issue-193-missing-project-reconciliation` | completed | `spec/changes/active/rules-issue-193-missing-project-reconciliation/` |
 
 ## Archived

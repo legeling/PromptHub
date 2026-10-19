@@ -2,14 +2,13 @@
 
 ## Status
 
-Published stable; downstream distribution synchronization in progress.
+Completed: 0.6.1 is published; website, Homebrew and self-hosted image are synchronized.
 
 ## Scope and authority
 
 Prepare the current main branch for stable 0.6.1. Release policy is owned by
 `spec/releases/release-rules.md`; package/distribution behavior remains owned by
-the Skills and resource-library topics. Published stable downloads remain 0.6.0
-until publication. Delivery scope now includes submission, push and deployment;
+the Skills and resource-library topics. Published stable downloads now select 0.6.1. Delivery scope now includes submission, push and deployment;
 publication requires successful candidate and platform gates.
 
 ## Work
@@ -86,7 +85,7 @@ contract. The workflow no longer appends generated commit/PR summaries.
 - [x] Submit independently reversible fix, test, release and writing-policy changes.
 - [x] Push the candidate and run all verification groups plus five platform builds.
 - [x] Verify artifacts and publish 0.6.1.
-- [ ] Synchronize public downloads, Homebrew and self-hosted image deployment.
+- [x] Synchronize public downloads, Homebrew and self-hosted image deployment.
 
 ## Verification and recovery
 
