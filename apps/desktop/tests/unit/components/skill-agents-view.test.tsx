@@ -262,6 +262,123 @@ describe("SkillAgentsView", () => {
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
   });
 
+  it("allows library selection for the initially selected agent without a scan cache (#240)", async () => {
+    useSkillStore.setState({ agentScanState: {} });
+    vi.mocked(window.api.skill.scanPlatformSkills).mockResolvedValue({
+      platform: claudePlatform,
+      skillsDir: "/agents/claude/skills",
+      scannedSkills: [],
+    });
+    render(<SkillAgentsView />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Install My Skill" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Install My Skill" }));
+    const dialog = screen.getByRole("dialog", { name: "Install My Skill" });
+    const skill = within(dialog).getByRole("button", { name: /linked-skill/ });
+    fireEvent.click(skill);
+
+    expect(skill).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Install 1 selected skill(s)",
+      }),
+    ).toBeEnabled();
+  });
+
+  it("allows library selection after explicitly selecting an empty agent (#240 control)", async () => {
+    useSkillStore.setState({ agentScanState: {} });
+    vi.mocked(window.api.skill.scanPlatformSkills).mockResolvedValue({
+      platform: claudePlatform,
+      skillsDir: "/agents/claude/skills",
+      scannedSkills: [],
+    });
+    render(<SkillAgentsView />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Install My Skill" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Claude Code.*skills/ }),
+    );
+    await waitFor(() =>
+      expect(
+        useSkillStore.getState().agentScanState.claude?.result?.skillsDir,
+      ).toBe("/agents/claude/skills"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Install My Skill" }));
+    const dialog = screen.getByRole("dialog", { name: "Install My Skill" });
+    const skill = within(dialog).getByRole("button", { name: /linked-skill/ });
+    fireEvent.click(skill);
+
+    expect(skill).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Install 1 selected skill(s)",
+      }),
+    ).toBeEnabled();
+  });
+
+  it("keeps installation unavailable while the first agent scan is pending (#240)", async () => {
+    useSkillStore.setState({ agentScanState: {} });
+    let finishScan!: (result: ReturnType<typeof scanResult>) => void;
+    vi.mocked(window.api.skill.scanPlatformSkills).mockReturnValue(
+      new Promise((resolve) => {
+        finishScan = resolve;
+      }),
+    );
+    render(<SkillAgentsView />);
+
+    expect(await screen.findByText("Scanning...")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Install My Skill" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText("No skills in this agent"),
+    ).not.toBeInTheDocument();
+    finishScan({ ...scanResult(), scannedSkills: [] });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Install My Skill" }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByText("No skills in this agent")).toBeInTheDocument();
+    expect(window.api.skill.scanPlatformSkills).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows scan failure without an empty inventory and recovers on explicit refresh (#240)", async () => {
+    useSkillStore.setState({ agentScanState: {} });
+    vi.mocked(window.api.skill.scanPlatformSkills)
+      .mockRejectedValueOnce(new Error("Cannot read agent directory"))
+      .mockResolvedValue({ ...scanResult(), scannedSkills: [] });
+    render(<SkillAgentsView />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Failed to scan agent skills",
+    );
+    expect(
+      screen.queryByText("No skills in this agent"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Install My Skill" }),
+    ).toBeDisabled();
+    expect(window.api.skill.scanPlatformSkills).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getAllByTitle("Refresh")[1]);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Install My Skill" }),
+      ).toBeEnabled(),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("No skills in this agent")).toBeInTheDocument();
+    expect(window.api.skill.scanPlatformSkills).toHaveBeenCalledTimes(2);
+  });
+
   it("renders the agent skill browser without opening a persistent detail pane", async () => {
     render(<SkillAgentsView />);
 
@@ -565,7 +682,7 @@ describe("SkillAgentsView", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps entry passive but auto-scans an uncached agent when the user selects it", async () => {
+  it("scans the initially selected agent once, reuses its cache, and supports manual refresh", async () => {
     const { api } = installWindowMocks({
       api: {
         skill: {
@@ -584,12 +701,12 @@ describe("SkillAgentsView", () => {
     expect((await screen.findAllByText("Claude Code")).length).toBeGreaterThan(
       0,
     );
-    expect(api.skill.scanPlatformSkills).not.toHaveBeenCalled();
-    expect(screen.getByText("No skills in this agent")).toBeInTheDocument();
+    expect(await screen.findByText("copy-skill")).toBeInTheDocument();
+    expect(api.skill.scanPlatformSkills).toHaveBeenCalledTimes(1);
 
     const agentPlatformCard = (
       await screen.findAllByRole("button", { name: /Claude Code/i })
-    ).find((button) => button.textContent?.includes("0 skills"));
+    ).find((button) => button.textContent?.includes("2 skills"));
     expect(agentPlatformCard).toBeTruthy();
     fireEvent.click(agentPlatformCard!);
 
@@ -597,6 +714,7 @@ describe("SkillAgentsView", () => {
       expect(api.skill.scanPlatformSkills).toHaveBeenCalledWith("claude");
     });
     expect(await screen.findByText("copy-skill")).toBeInTheDocument();
+    expect(api.skill.scanPlatformSkills).toHaveBeenCalledTimes(1);
 
     api.skill.scanPlatformSkills.mockClear();
     fireEvent.click(screen.getAllByTitle("Refresh")[1]);

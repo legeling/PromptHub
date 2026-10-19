@@ -127,7 +127,11 @@ export function SkillAgentsView() {
     ? agentScanState[selectedPlatformId]
     : undefined;
   const scanResult = selectedAgentScanState?.result ?? null;
-  const isScanning = Boolean(selectedAgentScanState?.isScanning);
+  const isScanning = Boolean(
+    selectedPlatformId &&
+    (!selectedAgentScanState || selectedAgentScanState.isScanning),
+  );
+  const scanFailed = Boolean(selectedAgentScanState?.error);
 
   const agentSkillRows = useMemo(
     () =>
@@ -377,6 +381,15 @@ export function SkillAgentsView() {
   }, [loadPlatforms]);
 
   useEffect(() => {
+    if (!selectedPlatformId) return;
+    // Read the live cache so effect replay cannot start a second scan.
+    const state = useSkillStore.getState().agentScanState[selectedPlatformId];
+    if (!state?.result && !state?.isScanning && !state?.error) {
+      void scanPlatform(selectedPlatformId);
+    }
+  }, [selectedPlatformId, scanPlatform]);
+
+  useEffect(() => {
     setSelectedSkillPath((current) => {
       if (
         current &&
@@ -447,7 +460,7 @@ export function SkillAgentsView() {
       console.error("Failed to install skill to agent:", error);
       showToast(
         getSkillPlatformErrorFeedback(error).reason,
-          getSkillPlatformErrorFeedback(error).severity,
+        getSkillPlatformErrorFeedback(error).severity,
       );
     } finally {
       setImportingJob(null);
@@ -821,6 +834,13 @@ export function SkillAgentsView() {
                   <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
                   {t("skill.scanning", "Scanning...")}
                 </div>
+              ) : scanFailed ? (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-destructive/30 px-4 py-8 text-center text-sm text-destructive"
+                >
+                  {t("skill.agentScanFailed", "Failed to scan agent skills")}
+                </div>
               ) : visibleAgentSkillRows.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
                   <FolderOpenIcon className="mx-auto mb-3 h-10 w-10 opacity-30" />
@@ -1024,7 +1044,13 @@ export function SkillAgentsView() {
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
-                disabled={!selectedPlatformId || skills.length === 0}
+                disabled={
+                  !selectedPlatformId ||
+                  !scanResult ||
+                  isScanning ||
+                  scanFailed ||
+                  skills.length === 0
+                }
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
                 <SendIcon aria-hidden="true" className="h-4 w-4" />

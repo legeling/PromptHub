@@ -91,6 +91,7 @@ Agent 分发的当前契约以 [FR-AGENT-138](../../changes/active/agent-managem
   `agentScanState` 只允许作为当前 renderer session 的派生缓存，不得跨应用重启
   持久化后阻止新的文件扫描。直接打开 Agent Skills 且本 session 尚无结果时，
   必须自动执行一次有界扫描；未完成、失败和成功空目录必须是三个不同状态。
+- 首次自动选择 Agent 与手动选择共用扫描状态；扫描进行中或失败时不打开缺少目标目录的安装弹窗。失败显示扫描错误，由用户显式刷新重试；成功的空目录允许安装 My Skills。同 session 返回页面复用已有结果，不重复扫描其它 Agent。
 - 本地 Skill 扫描遇到普通外部断链时，必须静默跳过并继续发现其它有效 Skill；
   若平台 activation 记录、当前 Skill id/name 与链接保存的旧 PromptHub 托管目标
   完全一致，则启动必须在 canonical workspace 物化后原子重绑。不得按名称猜测、
