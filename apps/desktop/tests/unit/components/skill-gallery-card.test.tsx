@@ -115,7 +115,7 @@ describe("SkillGalleryCard", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("wraps distributed platform icons separately from card actions", async () => {
+  it("keeps platform icons on one line with an overflow count separate from card actions", async () => {
     const skill = makeSkill();
 
     await renderWithI18n(
@@ -147,10 +147,15 @@ describe("SkillGalleryCard", () => {
     const actions = screen.getByTestId("skill-card-actions");
 
     expect(headerMeta).toHaveClass("min-w-0", "flex-1", "items-end");
-    expect(distribution).toHaveClass("max-w-full", "flex-wrap", "justify-end");
+    expect(distribution).toHaveClass(
+      "max-w-full",
+      "flex-nowrap",
+      "justify-end",
+      "overflow-hidden",
+    );
     expect(actions).toHaveClass("w-full", "justify-end");
     expect(actions.contains(distribution)).toBe(false);
-    expect(screen.getByText("+1")).toBeInTheDocument();
+    expect(screen.getByText("+4")).toBeInTheDocument();
   });
 
   it("exposes the selection toggle as a non-submit pressed control", async () => {

@@ -116,6 +116,7 @@ function createSkillStoreState(
     setStoreView: vi.fn(),
     setFilterType: vi.fn(),
     deployedSkillNames: new Set<string>(),
+    skillPlatformStatuses: {},
     loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
     filterTags: [],
     scanLocalPreview: vi.fn().mockResolvedValue([]),

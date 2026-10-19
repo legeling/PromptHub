@@ -149,17 +149,32 @@ it("scans, imports, updates and redistributes a complete native Qwen Work packag
     "docs/nested/note.txt",
     "Edited in PromptHub\n",
   );
+  // Importing an external native package does not authorize overwriting its source.
+  const sourceBeforeDistribution = fileInventory(source);
+  await expect(
+    skillApi.installMd(skill.id, updated.instructions, "qwen-work"),
+  ).rejects.toThrow("SKILL_PLATFORM:target-conflict");
+  expect(fileInventory(source)).toEqual(sourceBeforeDistribution);
+  const managedRoot = runtime.platformRoot("qwen-work");
+  getDatabase()
+    .prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+    .run(
+      "builtinAgentOverrides",
+      JSON.stringify({ "qwen-work": { rootPath: managedRoot } }),
+    );
+  invalidateCustomPathsCache();
+  const destination = path.join(managedRoot, "skills", skill.name);
   await skillApi.installMd(skill.id, updated.instructions, "qwen-work");
   expect(
-    fs.readFileSync(path.join(source, "docs/nested/note.txt"), "utf8"),
+    fs.readFileSync(path.join(destination, "docs/nested/note.txt"), "utf8"),
   ).toBe("Edited in PromptHub\n");
   await runtime.reopen();
-  useNativeRoots();
   const reopened = await skillApi.get(skill.id);
   const rescanned = await skillApi.scanPlatformSkills("qwen-work");
   expect(fileInventory(reopened.local_repo_path)).toEqual(
-    fileInventory(source),
+    fileInventory(destination),
   );
+  expect(fileInventory(source)).toEqual(sourceBeforeDistribution);
   expect(
     getSkillScanStatus(rescanned.scannedSkills[0], [reopened]),
   ).toMatchObject({ isInMySkills: true, installBadge: "copy" });

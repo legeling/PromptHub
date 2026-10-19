@@ -153,6 +153,7 @@ function createSkillStoreState(
     storeSearchQuery: "",
     setStoreSearchQuery: vi.fn(),
     deployedSkillNames: new Set<string>(),
+    skillPlatformStatuses: {},
     loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
     filterTags: [],
     installRegistrySkill: vi.fn().mockResolvedValue(undefined),

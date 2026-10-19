@@ -88,6 +88,7 @@ function createSkillStoreState(skills: Skill[]) {
     setStoreView: vi.fn(),
     setFilterType: vi.fn(),
     deployedSkillNames: new Set<string>(),
+    skillPlatformStatuses: {},
     loadDeployedStatus: vi.fn().mockImplementation(() => neverSettled),
     filterTags: [],
     customStoreSources: [],

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import rootPackage from "../../../../../package.json";
 import type { SkillFileSnapshot } from "@prompthub/shared";
 import { unzipSync } from "fflate";
+import { managedSkillFilesRevision } from "@prompthub/shared/utils/managed-skill-files";
 
 async function loadInstallDesktopBridge() {
   const module = await import("./install-bridge");
@@ -762,18 +763,19 @@ describe("installDesktopBridge media helpers", () => {
     );
   });
 
-  it("rejects Desktop-owned skill filesystem and platform operations", async () => {
+  it("writes managed Skill files over HTTP and rejects Desktop-owned platform operations", async () => {
     const installDesktopBridge = await loadInstallDesktopBridge();
 
     installDesktopBridge();
 
     const api = Reflect.get(window, "api") as {
       skill: {
+        readLocalFile: (skillId: string, path: string) => Promise<unknown>;
         writeLocalFile: (
           skillId: string,
           path: string,
           content: string,
-        ) => Promise<boolean>;
+        ) => Promise<void>;
         getSupportedPlatforms: () => Promise<unknown>;
         scanPlatformSkills: (platformId: string) => Promise<unknown>;
       };
@@ -781,8 +783,24 @@ describe("installDesktopBridge media helpers", () => {
 
     await expect(
       api.skill.writeLocalFile("skill-1", "SKILL.md", "content"),
-    ).rejects.toThrow(
-      "Local skill-file writes is not supported in the web runtime",
+    ).rejects.toThrow("reload and retry");
+    const originalFiles = [{ relativePath: "SKILL.md", content: "original" }];
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: originalFiles })),
+    );
+    await api.skill.readLocalFile("skill-1", "SKILL.md");
+    await api.skill.writeLocalFile("skill-1", "SKILL.md", "content");
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      "/api/skills/skill-1/files",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          files: [
+            { relativePath: "SKILL.md", content: "content", encoding: "utf8" },
+          ],
+          revision: managedSkillFilesRevision(originalFiles),
+        }),
+      }),
     );
     await expect(api.skill.getSupportedPlatforms()).rejects.toThrow(
       "Local skill-platform discovery is not supported in the web runtime",

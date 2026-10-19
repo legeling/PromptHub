@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { PromptDB } from "@prompthub/db";
 import { initDatabase as initCoreDatabase } from "@prompthub/core/database";
+import { PromptWorkspaceRecoveryRequired } from "@prompthub/core/migrations/prompt-workspace-v2";
 import { writeRuntimeLayoutState } from "@prompthub/core/runtime-paths";
 import { closeDatabase, initDatabase } from "../../../src/main/database";
 import {
@@ -64,6 +65,6 @@ it("honors an empty restored database and prevents an old writer reopening a wri
   expect(new PromptDB(initDatabase()).getAll()).toEqual([]);
   closeDatabase();
   const file = source();
-  expect(() => initDatabase()).toThrow(/explicit recovery/i);
+  expect(() => initDatabase()).toThrow(PromptWorkspaceRecoveryRequired);
   expect(fs.existsSync(file)).toBe(true);
 });

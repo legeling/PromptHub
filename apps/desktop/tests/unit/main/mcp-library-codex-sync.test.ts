@@ -429,6 +429,7 @@ describe("CoreMcpLibraryService", () => {
         path: invalidPath,
         exists: true,
         serverNames: [],
+        error: "MCP target configuration could not be read: broken",
       },
     ]);
   });

@@ -32,6 +32,7 @@ const resetSkillStore = () => {
     filterType: "all",
     filterTags: [],
     deployedSkillNames: new Set<string>(),
+    skillPlatformStatuses: {},
     storeView: "my-skills",
     registrySkills: [],
     isLoadingRegistry: false,
@@ -92,6 +93,10 @@ describe("skill store", () => {
       filterType: "deployed",
       filterTags: ["team"],
       deployedSkillNames: new Set(["skill-1"]),
+      skillPlatformStatuses: {
+        "skill-1": { claude: true },
+        "skill-2": { claude: false },
+      },
     });
 
     expect(

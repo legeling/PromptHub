@@ -106,6 +106,7 @@ it.each(["copy", "symlink"] as const)(
       targetIds: ["antigravity"],
       mode,
     });
+    expect(distribution.failures).toEqual([]);
     expect(distribution.targets).toEqual([
       expect.objectContaining({
         targetId: "antigravity",
@@ -113,7 +114,18 @@ it.each(["copy", "symlink"] as const)(
         mode,
       }),
     ]);
-    expect(fileInventory(targetPath)).toEqual(original);
+    const persistedInventory = fileInventory(targetPath);
+    const deployed = { ...persistedInventory };
+    if (mode === "copy") {
+      const receiptPath = ".prompthub-plugin-target.json";
+      expect(
+        JSON.parse(
+          Buffer.from(deployed[receiptPath], "base64").toString("utf8"),
+        ),
+      ).toMatchObject({ pluginId });
+      delete deployed[receiptPath];
+    }
+    expect(deployed).toEqual(original);
     expect(fs.existsSync(path.join(targetPath, "0.1.2"))).toBe(false);
     expect(fs.existsSync(path.join(targetPath, "gemini-extension.json"))).toBe(
       false,
@@ -136,7 +148,7 @@ it.each(["copy", "symlink"] as const)(
     expect(target?.installedPlugins).toEqual([
       expect.objectContaining({ name: "zotero", sourcePath: targetPath }),
     ]);
-    expect(fileInventory(targetPath)).toEqual(original);
+    expect(fileInventory(targetPath)).toEqual(persistedInventory);
 
     await pluginApi.removePluginDistribution({
       pluginId,

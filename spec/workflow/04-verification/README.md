@@ -142,6 +142,7 @@ pnpm verify:release:quick --list --format json
 - `changed`、`quick`、`release`、`package` 分别服务受影响面诊断、全仓快速诊断、发布候选准入和单平台非发布打包。桌面 integration 和测试类型检查在所有 profile 中；E2E smoke 仍只在 release/package 中。桌面 unit 依赖 integration 通过后执行，功能基线失败会阻塞这些单元分片。
 - `--surface`、`--exclude-layer` 可缩小选择；必须说明被排除的边界，不能把缩小后的成功称为完整 release 通过。`--list` 只证明选择结果，不证明测试执行或通过。
 - 默认并发上限为 2，每个 check 有超时；依赖失败阻塞下游，独立 check 仍继续执行。
+- Desktop integration 的测试进程总时限为 900 秒，单 worker 和全部用例保持不变。2026-10-19 同一候选的本地真实存储套件一次 572 秒通过、一次触及原 600 秒上限；时限为执行资源边界，不替代独立的 Core/Desktop 性能预算，也不把超时结果算作通过。CI 独立 integration 分组的 20 分钟 job 上限保留。
 - `--report <path>` 可选，输出有界、脱敏 JSON；显式报告路径不可写会导致命令失败。保留失败、跳过、阻塞和后续确认结果。
 - Pull Request 的 Quality Checks 始终执行 spec 治理、CI 配置契约、显式启用的 traceability 和文件大小门禁。
 - Self-Hosted Web workflow 负责 `apps/web` 与 Docker；Cloudflare Worker workflow 通过同一 registry 验证 `apps/web-cloudflare`，Worker-only 变更不触发无关 Docker 构建。

@@ -33,6 +33,7 @@ function Fixture({
       isBusy={busy}
       installProgress={null}
       onApply={vi.fn()}
+      onRedistribute={vi.fn()}
       onSelectAll={() => setChanges(new Set(["claude", "cursor", "windsurf"]))}
       onToggle={(id) =>
         setChanges((previous) => {
@@ -108,7 +109,12 @@ describe("Skill distribution controls", () => {
     );
     expect(screen.getByRole("button", { name: "Redistribute" })).toBeEnabled();
     expect(
-      screen.getByText("Refresh 4 checked targets using the selected method."),
+      screen.getByText(
+        "No pending changes. Redistribute to update installed copies.",
+      ),
     ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Apply changes" }),
+    ).toBeDisabled();
   });
 });

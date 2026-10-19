@@ -101,6 +101,7 @@ function Sidebar({ skill }: { skill: Skill }): JSX.Element {
       setInstallMode={() => undefined}
       selectedPlatforms={state.selectedPlatforms}
       skillMdInstallStatus={state.installStatus}
+      installDetails={state.installDetails}
       isLoading={state.isLoading}
       platformError={state.platformError}
       installProgress={state.installProgress}
@@ -110,6 +111,7 @@ function Sidebar({ skill }: { skill: Skill }): JSX.Element {
       togglePlatformSelection={state.togglePlatformSelection}
       uninstalledPlatforms={state.uninstalledPlatforms}
       onBatchInstall={() => void state.applyPlatformChanges()}
+      onRedistribute={() => void state.applyPlatformChanges("redistribute")}
     />
   );
 }

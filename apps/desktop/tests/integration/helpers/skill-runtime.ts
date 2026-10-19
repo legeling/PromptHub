@@ -128,7 +128,7 @@ async function prepareFreshProfile(profile: string): Promise<void> {
   writeRuntimeLayoutState(profile);
   const database = initDatabase();
   const rendererPersistence = createRendererPersistenceStore({
-      database: database,
+    database: database,
     rootPath: profile,
     encryption: {
       isEncryptionAvailable: () => false,
@@ -153,8 +153,9 @@ async function prepareFreshProfile(profile: string): Promise<void> {
 export async function createSkillTestRuntime(
   options: { freshStartup?: boolean } = {},
 ): Promise<SkillTestRuntime> {
-  const root = fs.mkdtempSync(
-    path.join(os.tmpdir(), "prompthub-skill-functional-"),
+  // macOS /var is a system alias; target safety tests require a physical parent.
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-skill-functional-")),
   );
   const profile = path.join(root, "profile");
   const isolatedHome = path.join(root, "home");
