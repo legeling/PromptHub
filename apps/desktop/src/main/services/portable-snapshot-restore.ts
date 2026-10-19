@@ -16,6 +16,7 @@ import {
   createStorageInventory,
   normalizeSlug,
   parsePortableLogicalEnvelope,
+  MAX_PORTABLE_LOGICAL_BYTES,
   runJournaledStorageRestore,
   type PortableLogicalEnvelope,
   type PortableSnapshotResult,
@@ -51,7 +52,6 @@ import { readPortableAgentProviderGraphs } from "./portable-agent-provider-snaps
 import { extractPortableSnapshotZip } from "./portable-snapshot-import";
 
 const LOGICAL_FILE_NAME = "import-with-prompthub.json";
-const MAX_LOGICAL_BYTES = 16 * 1024 * 1024;
 const MAX_CANONICAL_CHECKPOINT_MANIFEST_BYTES = 1024 * 1024;
 const COPY_BUFFER_BYTES = 1024 * 1024;
 const CAPACITY_HEADROOM_BYTES = 64 * 1024 * 1024;
@@ -100,7 +100,7 @@ function readLogicalText(snapshot: PortableSnapshotResult): string {
   const entry = snapshot.manifest.entries.find(
     (candidate) => candidate.path === LOGICAL_FILE_NAME,
   );
-  if (!entry || entry.sizeBytes > MAX_LOGICAL_BYTES) {
+  if (!entry || entry.sizeBytes > MAX_PORTABLE_LOGICAL_BYTES) {
     throw new Error("Portable snapshot has no bounded logical envelope");
   }
   return fs.readFileSync(logicalPath, "utf8");
@@ -1023,11 +1023,11 @@ export async function restorePortableLogicalSnapshot(
 ): Promise<PortableSnapshotRestoreResult> {
   const activeRoot = path.resolve(options.activeRoot);
   const logicalBytes = Buffer.byteLength(options.logicalText, "utf8");
-  if (logicalBytes < 1 || logicalBytes > MAX_LOGICAL_BYTES) {
+  if (logicalBytes < 1 || logicalBytes > MAX_PORTABLE_LOGICAL_BYTES) {
     return {
       success: false,
       needsRestart: false,
-      error: `Portable logical snapshot exceeds the ${MAX_LOGICAL_BYTES}-byte compatibility limit`,
+      error: `Portable logical snapshot exceeds the ${MAX_PORTABLE_LOGICAL_BYTES}-byte compatibility limit`,
     };
   }
   const operationId = options.operationId ?? crypto.randomUUID();

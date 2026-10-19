@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { unzipSync } from "fflate";
+import { unzipSync, gzipSync } from "fflate";
+import { File as NodeFile } from "node:buffer";
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
@@ -52,7 +53,24 @@ import { registerGenerationIPC } from "../../src/main/ipc/generation.ipc";
 import { registerAgentProviderProfileIPC } from "../../src/main/ipc/agent-provider-profile.ipc";
 import { ensureCanonicalStorageAuthorityOnStartup } from "../../src/main/services/canonical-storage-startup";
 import { invalidateCustomPathsCache } from "../../src/main/services/skill-installer-utils";
-import { downloadSelectiveExport } from "../../src/renderer/services/database-backup";
+import {
+  downloadSelectiveExport,
+  previewImportFile,
+  restoreFromFile,
+} from "../../src/renderer/services/database-backup";
+import { runFullExportBackup } from "../../src/renderer/services/backup-orchestrator";
+import {
+  legacyExportZip,
+  legacyExportText,
+  legacyExportPayload,
+  legacyExportedAt,
+  legacyPrompt,
+  legacyFolder,
+  legacyVersions,
+  legacySkill,
+  legacyImage,
+  legacyBinary,
+} from "../fixtures/legacy-export";
 import "../../src/preload";
 
 const transport = vi.hoisted(() => ({
@@ -113,7 +131,7 @@ vi.mock("electron", () => ({
   safeStorage: transport.encryption,
   session: { defaultSession: { setProxy: async () => undefined } },
   app: {},
-  webUtils: {},
+  webUtils: { getPathForFile: () => transport.archive },
 }));
 
 let storageWindow: JSDOM;
@@ -439,6 +457,143 @@ afterEach(() => {
   storageWindow?.window.close();
   vi.unstubAllGlobals();
   transport.home = "";
+});
+
+function historicalBackupFile(format: "zip" | "json" | "phub.gz"): File {
+  const text =
+    format === "zip"
+      ? legacyExportText()
+      : JSON.stringify({
+          kind: "prompthub-backup",
+          exportedAt: legacyExportedAt,
+          payload: legacyExportPayload(),
+        });
+  const bytes =
+    format === "zip"
+      ? legacyExportZip()
+      : format === "phub.gz"
+        ? gzipSync(Buffer.from(text))
+        : Buffer.from(text);
+  fs.writeFileSync(transport.archive, bytes);
+  // Node's real Web File supplies streaming APIs absent from jsdom's File.
+  return new NodeFile([bytes], `legacy.${format}`) as unknown as File;
+}
+
+async function assertHistoricalData(format: string): Promise<void> {
+  const prompts = await window.api.prompt.getAll();
+  expect(prompts).toHaveLength(1);
+  expect(prompts[0]).toMatchObject(legacyPrompt);
+  expect(await window.api.folder.getAll()).toEqual([
+    expect.objectContaining(legacyFolder),
+  ]);
+  expect(new PromptDB(database).getVersions(legacyPrompt.id)).toEqual(
+    expect.arrayContaining(
+      legacyVersions.map((version) => expect.objectContaining(version)),
+    ),
+  );
+  const skills = await window.api.skill.getAll();
+  expect(skills).toHaveLength(1);
+  expect(skills[0].id).toBe(legacySkill.id);
+  const directory = skills[0].local_repo_path;
+  if (!directory)
+    throw new Error("Restored legacy Skill has no package directory");
+  expect(
+    fs.readFileSync(path.join(directory, "docs", "nested.md"), "utf8"),
+  ).toBe("Nested original file");
+  if (format === "zip")
+    expect(fs.readFileSync(path.join(directory, "assets", "blob.bin"))).toEqual(
+      legacyBinary,
+    );
+  expect(await window.api.skill.versionGetAll(legacySkill.id)).toEqual([
+    expect.objectContaining({ id: "legacy-skill-version", version: 1 }),
+  ]);
+  expect(fs.readFileSync(path.join(getImagesDir(), "legacy.png"))).toEqual(
+    legacyImage,
+  );
+  expect(persistence().readHydratedStateSync().settings).toMatchObject({
+    themeMode: "dark",
+  });
+  expect(database.get("PRAGMA quick_check")).toEqual({ quick_check: "ok" });
+}
+
+it.each(["zip", "json", "phub.gz"] as const)(
+  "imports historical %s through renderer/preload/IPC and preserves records after two startups",
+  async (format) => {
+    await seedPrompts();
+    const file = historicalBackupFile(format);
+    const bytes = fs.readFileSync(transport.archive);
+    const preview = await previewImportFile(file);
+    expect(preview.summary.counts).toMatchObject({
+      prompts: 1,
+      folders: 1,
+      versions: 2,
+      skills: 1,
+    });
+    await restoreFromFile(file);
+    for (const _startup of ["first", "second"]) {
+      await startProfile(profile);
+      await assertHistoricalData(format);
+    }
+    await restoreFromFile(file);
+    await startProfile(profile);
+    await assertHistoricalData(format);
+    expect(fs.readFileSync(transport.archive)).toEqual(bytes);
+    expect(inventory(path.join(profile, "cache", "portable-imports"))).toEqual(
+      {},
+    );
+    expect(inventory(path.join(profile, "cache", "portable-previews"))).toEqual(
+      {},
+    );
+  },
+);
+
+it("rolls back a failed historical ZIP publication and can import it again", async () => {
+  await seedPrompts();
+  const before = await consumerSnapshot();
+  const file = historicalBackupFile("zip");
+  const rename = fs.renameSync;
+  let failed = false;
+  vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
+    if (
+      !failed &&
+      String(from).includes(".prompthub-restore-stage-") &&
+      String(to) === path.join(profile, "data")
+    ) {
+      failed = true;
+      throw Object.assign(new Error("Legacy restore publication EIO"), {
+        code: "EIO",
+      });
+    }
+    return rename(from, to);
+  });
+  await expect(restoreFromFile(file)).rejects.toThrow(
+    "Legacy restore publication EIO",
+  );
+  expect(failed).toBe(true);
+  vi.restoreAllMocks();
+  await startProfile(profile);
+  expect(await consumerSnapshot()).toEqual(before);
+  await restoreFromFile(file);
+  await startProfile(profile);
+  await assertHistoricalData("zip");
+});
+
+it("full manual export creates a readable ZIP without an extra managed safety point", async () => {
+  await seedPrompts();
+  const backupsBefore = inventory(path.join(profile, "backups"));
+  await runFullExportBackup({
+    currentVersion: "0.6.0",
+    recordManualBackup: false,
+  });
+  expect(fs.existsSync(transport.archive)).toBe(true);
+  expect(inventory(path.join(profile, "backups"))).toEqual(backupsBefore);
+  const preview = await window.electron.previewPortableBackup?.(
+    transport.archive,
+  );
+  expect(preview?.success).toBe(true);
+  await startProfile(profile);
+  const updated = await window.api.prompt.getAll();
+  expect(updated).toHaveLength(2);
 });
 
 function seedMcp(id: string): string {

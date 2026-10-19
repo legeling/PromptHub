@@ -118,7 +118,6 @@ async function downloadExportFile(): Promise<void> {
 export async function runFullExportBackup(
   options: FullExportBackupOptions,
 ): Promise<ManualBackupStatus | null> {
-  await createSnapshotIfPossible(options.currentVersion);
   await downloadExportFile();
 
   if (options.recordManualBackup && options.currentVersion) {

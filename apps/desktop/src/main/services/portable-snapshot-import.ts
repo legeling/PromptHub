@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { migrateLegacyPortableSnapshot } from "@prompthub/core/legacy-portable-snapshot";
 
 import {
   readPortableSnapshot,
@@ -223,7 +224,10 @@ export function extractPortableSnapshotZip(
     if (openDescriptors.size > 0) {
       throw new Error("Portable ZIP ended before all entries completed");
     }
-    return readPortableSnapshot(destinationPath, limits);
+    if (fs.existsSync(path.join(destinationPath, "portable-manifest.json"))) {
+      return readPortableSnapshot(destinationPath, limits);
+    }
+    return migrateLegacyPortableSnapshot(destinationPath, limits);
   } catch (error) {
     for (const descriptor of openDescriptors) fs.closeSync(descriptor);
     openDescriptors.clear();

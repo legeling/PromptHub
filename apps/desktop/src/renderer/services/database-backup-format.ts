@@ -1,4 +1,5 @@
 import { validateEncodedSkillSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
+import type { PortableLogicalScope } from "@prompthub/shared/types/portable-backup";
 import type {
   AgentManagementBackup,
   AgentAssetFilesSnapshot,
@@ -60,20 +61,7 @@ export interface DatabaseBackup {
   agentManagement?: AgentManagementBackup;
 }
 
-export type ExportScope = {
-  prompts?: boolean;
-  folders?: boolean;
-  versions?: boolean;
-  images?: boolean;
-  videos?: boolean;
-  aiConfig?: boolean;
-  settings?: boolean;
-  rules?: boolean;
-  skills?: boolean;
-  mcp?: boolean;
-  plugins?: boolean;
-  agents?: boolean;
-};
+export type ExportScope = Partial<PortableLogicalScope>;
 
 export type PromptHubFile =
   | {

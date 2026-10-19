@@ -16,24 +16,15 @@ import type {
   SkillVersion,
 } from "@prompthub/shared/types";
 import { parseAgentManagementBackup } from "@prompthub/shared/utils/agent-management-backup";
-import { skillSnapshotEnvelopeKind, validateEncodedSkillSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
+import {
+  skillSnapshotEnvelopeKind,
+  validateEncodedSkillSnapshots,
+} from "@prompthub/shared/utils/skill-file-snapshot";
+import type { PortableLogicalScope } from "@prompthub/shared/types/portable-backup";
+export type { PortableLogicalScope } from "@prompthub/shared/types/portable-backup";
 
 const MAX_LOGICAL_RECORDS = 100_000;
-
-export interface PortableLogicalScope {
-  prompts: boolean;
-  folders: boolean;
-  versions: boolean;
-  images: boolean;
-  videos: boolean;
-  aiConfig: boolean;
-  settings: boolean;
-  rules: boolean;
-  skills: boolean;
-  mcp: boolean;
-  plugins: boolean;
-  agents: boolean;
-}
+export const MAX_PORTABLE_LOGICAL_BYTES = 16 * 1024 * 1024;
 
 export interface PortableLogicalSnapshot {
   version: number;

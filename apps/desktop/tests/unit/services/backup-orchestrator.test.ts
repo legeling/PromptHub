@@ -72,7 +72,7 @@ describe("backup-orchestrator", () => {
     vi.clearAllMocks();
   });
 
-  it("runs full backup as a full selective ZIP export with snapshot and manual backup record", async () => {
+  it("exports one full ZIP without a redundant safety snapshot and records the backup", async () => {
     vi.mocked(recordManualBackup).mockResolvedValue({
       lastManualBackupAt: "2026-05-10T00:00:00.000Z",
       lastManualBackupVersion: "0.5.5",
@@ -83,7 +83,7 @@ describe("backup-orchestrator", () => {
       recordManualBackup: true,
     });
 
-    expect(createUpgradeBackup).toHaveBeenCalledWith({ fromVersion: "0.5.5" });
+    expect(createUpgradeBackup).not.toHaveBeenCalled();
     expect(downloadSelectiveExport).toHaveBeenCalledWith({
       prompts: true,
       folders: true,
@@ -108,7 +108,7 @@ describe("backup-orchestrator", () => {
       recordManualBackup: false,
     });
 
-    expect(createUpgradeBackup).toHaveBeenCalledWith(undefined);
+    expect(createUpgradeBackup).not.toHaveBeenCalled();
     expect(downloadSelectiveExport).toHaveBeenCalledTimes(1);
     expect(recordManualBackup).not.toHaveBeenCalled();
     expect(result).toBeNull();
@@ -120,14 +120,14 @@ describe("backup-orchestrator", () => {
       recordManualBackup: false,
     });
 
-    expect(createUpgradeBackup).toHaveBeenCalledWith({ fromVersion: "0.5.5" });
+    expect(createUpgradeBackup).not.toHaveBeenCalled();
     expect(downloadSelectiveExport).toHaveBeenCalledTimes(1);
     expect(downloadBackup).not.toHaveBeenCalled();
     expect(recordManualBackup).not.toHaveBeenCalled();
     expect(result).toBeNull();
   });
 
-  it("runs pre-upgrade backup with legacy JSON backup and status update", async () => {
+  it("keeps the safety snapshot for pre-upgrade backup and exports ZIP", async () => {
     vi.mocked(recordManualBackup).mockResolvedValue({
       lastManualBackupAt: "2026-05-10T00:00:00.000Z",
       lastManualBackupVersion: "0.5.5",
