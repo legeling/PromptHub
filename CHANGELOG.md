@@ -1,12 +1,12 @@
 ## [Unreleased]
 
-### 发布准备 / Release preparation
+### 开发中 / In development
 
-`0.6.1` 正在验证，尚未发布；当前稳定版为 `0.6.0`。
+当前稳定版为 `0.6.1`。后续改动将在此记录。
 
-`0.6.1` is undergoing verification and is not yet published. The current stable release remains `0.6.0`.
+The current stable release is `0.6.1`. Future changes will be recorded here.
 
-## [0.6.1]
+## [0.6.1] - 2026-10-19
 
 ### 新功能 / Features
 

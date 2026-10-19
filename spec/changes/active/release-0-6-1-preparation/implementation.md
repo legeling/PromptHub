@@ -99,3 +99,22 @@ and website release sync (4) passed. One initial pnpm invocation rejected its
 argument syntax before running tests; the corrected exec invocation passed.
 Product source is unchanged since the complete local 40-check success. The
 final pushed workflow and candidate still require complete CI/platform evidence.
+
+## Published candidate (2026-10-19)
+
+Tag v0.6.1 targets 132dfcf177ce0e2b402b897dd15b7e692609de3f. CI run
+39232265152 passed all 40 checks, 16 Electron cases and five platform builds.
+Both macOS architectures passed signed/notarized ZIP and DMG verification;
+Windows x64 passed two packaged upgrade starts. Desktop integration passed
+362 cases with five existing platform/opt-in skips. Seven downloaded manifests
+match GitHub digests, file references, supplied sizes and curated version notes;
+binary SHA512 verification passed in the release job.
+
+GitHub publication at 09:59:50 UTC exposes 20 assets and marks 0.6.1 latest stable.
+The Self-Hosted Web run 39234204977 and release-job-only rerun for Homebrew are
+in progress. R2 publishing has no configured credentials and remains skipped.
+No npm registry, Worker deployment or Mobile store submission is implied.
+
+The release-job-only rerun passed. Homebrew readback confirms version 0.6.1 and
+both DMG SHA256 values match GitHub assets. Public metadata validation passed
+spec governance, five version checks and four website release-sync checks.

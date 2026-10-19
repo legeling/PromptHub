@@ -59,13 +59,13 @@ docs/
 
 ## 版本与更新说明
 
-主线候选为 `0.6.1`，验证与剩余发布门槛见 [0.6.1 发布准备记录](../spec/releases/0.6.1.md)。
+版本范围与验证结果见 [0.6.1 发布记录](../spec/releases/0.6.1.md)。
 
-当前稳定版为 [v0.6.0](https://github.com/legeling/PromptHub/releases/tag/v0.6.0)，于 2026-10-18 正式发布。
+当前稳定版为 [v0.6.1](https://github.com/legeling/PromptHub/releases/tag/v0.6.1)，于 2026-10-19 正式发布。
 
 - [主 README](../README.md) 区分最新稳定下载、已发布预览版和当前开发版本。
 - [CHANGELOG.md 的 Unreleased](../CHANGELOG.md#unreleased) 记录尚未随新发行包发布的主线改动；合并贡献分支不等于发布其版本号。
-- [0.6.0 发布记录](../spec/releases/0.6.0.md) 维护版本线、当前候选身份和发布门禁，历史预览说明不被后续主线改动覆盖。
+- [0.6.1 发布记录](../spec/releases/0.6.1.md) 维护版本线与发布验证结果，历史预览说明不被后续主线改动覆盖。
 
 ## 内部文档入口
 

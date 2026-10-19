@@ -2,7 +2,7 @@
 
 ## Status
 
-Local preparation verified; platform acceptance pending.
+Published stable; downstream distribution synchronization in progress.
 
 ## Scope and authority
 
@@ -83,9 +83,10 @@ Delivery scope expanded on 2026-10-19 to commit, push and deploy 0.6.1. Public
 notes describe user-visible changes only and follow the stable release-note
 contract. The workflow no longer appends generated commit/PR summaries.
 
-- [ ] Submit independently reversible fix, test, release and writing-policy changes.
-- [ ] Push the candidate and run all verification groups plus five platform builds.
-- [ ] Verify artifacts and publish 0.6.1; synchronize public downloads and deployment.
+- [x] Submit independently reversible fix, test, release and writing-policy changes.
+- [x] Push the candidate and run all verification groups plus five platform builds.
+- [x] Verify artifacts and publish 0.6.1.
+- [ ] Synchronize public downloads, Homebrew and self-hosted image deployment.
 
 ## Verification and recovery
 

@@ -108,7 +108,11 @@ test("publishes main-only changes as unreleased and synchronizes website history
     /^## \[Unreleased\]\r?\n([\s\S]*?)(?=^## \[)/m,
   );
   assert.ok(unreleased, "The changelog must separate unreleased main changes");
-  assert.ok(unreleased[1].includes("0.6.0"));
+  assert.ok(
+    unreleased[1].includes(
+      findLatestStableRelease(changelog, readText("spec/releases/README.md")).version,
+    ),
+  );
   assert.ok(unreleased[1].includes("###"));
   assert.equal(readText("website/src/content/docs/changelog.md"), changelog);
 
