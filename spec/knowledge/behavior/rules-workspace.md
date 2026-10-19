@@ -19,6 +19,9 @@
 - `全局规则` 展示由共享平台注册表声明的已知全局规则文件。
 - Claude Code 同时扫描其配置根的 `rules/**/*.md`。每个文件作为独立规则管理，
   原文包含的 YAML `paths` frontmatter 必须在读取、编辑、版本和恢复中完整保留。
+- 平台排序只决定分组顺序，不能把平台 ID 当作文件唯一键。同平台的全局入口和
+  scoped 文件必须全部保留，组内沿用 inventory 顺序；侧栏、搜索结果和选中项均以
+  Rule ID 区分。同名但路径不同的文件也不能合并。
 - `项目规则` 只展示用户手动添加目录的 canonical 项目规则文件。
 
 ### 3. Current Project vs Added Project

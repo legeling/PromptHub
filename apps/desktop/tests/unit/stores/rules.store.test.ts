@@ -68,6 +68,27 @@ describe("rules store", () => {
     });
   });
 
+  it("keeps every same-platform rule in sidebar sections with its own selection", () => {
+    const global = descriptor();
+    const scoped = descriptor({
+      id: "custom:claude-rule:testing",
+      name: "testing.md",
+      path: "/Users/test/.claude/rules/testing.md",
+    });
+    useRulesStore.setState({
+      files: [global, scoped],
+      selectedRuleId: scoped.id,
+    });
+
+    const items = useRulesStore.getState().getSidebarSections()[0]?.items;
+    expect(
+      items?.map((item) => ({ id: item.id, active: item.active })),
+    ).toEqual([
+      { id: global.id, active: false },
+      { id: scoped.id, active: true },
+    ]);
+  });
+
   it("keeps a file-owned global rule visible when its deployment target is missing", async () => {
     const missing = descriptor({ exists: false });
     const recoverable = content({

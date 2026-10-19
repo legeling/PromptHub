@@ -1,5 +1,6 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import type { FormEvent } from "react";
+import type { RuleFileDescriptor } from "@prompthub/shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RulesSidebarPanel } from "../../../src/renderer/components/layout/RulesSidebarPanel";
@@ -75,6 +76,56 @@ describe("RulesSidebarPanel", () => {
       addProjectRule: vi.fn().mockResolvedValue(undefined),
       removeProjectRule: vi.fn().mockResolvedValue(undefined),
     } as Partial<ReturnType<typeof useRulesStore.getState>>);
+  });
+
+  it("lists and selects each Claude rule and retains nested search results", async () => {
+    const global = useRulesStore.getState().files[0];
+    if (!global) throw new Error("Missing global rule fixture");
+    const scoped: RuleFileDescriptor = {
+      ...global,
+      id: "custom:claude-rule:root",
+      name: "coding.md",
+      path: "/Users/test/.claude/rules/coding.md",
+    };
+    const nested: RuleFileDescriptor = {
+      ...global,
+      id: "custom:claude-rule:nested",
+      name: "testing.md",
+      path: "/Users/test/.claude/rules/team/testing.md",
+    };
+    useRulesStore.setState({ files: [global, scoped, nested] });
+    await renderWithI18n(
+      <RulesSidebarPanel currentPage="home" onNavigate={vi.fn()} />,
+      { language: "en" },
+    );
+
+    expect(screen.getAllByRole("button", { name: /Claude Code/ })).toHaveLength(
+      3,
+    );
+    for (const file of [global, scoped, nested]) {
+      fireEvent.click(
+        screen.getByRole("button", { name: `Claude Code ${file.name}` }),
+      );
+      expect(useRulesStore.getState().selectRule).toHaveBeenLastCalledWith(
+        file.id,
+      );
+    }
+
+    act(() => useRulesStore.setState({ searchQuery: "team/testing.md" }));
+    expect(screen.getAllByRole("button", { name: /Claude Code/ })).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByRole("button", { name: "Claude Code testing.md" }),
+    ).toBeVisible();
+    act(() => useRulesStore.setState({ searchQuery: "missing-rule" }));
+    expect(
+      screen.queryByRole("button", { name: /Claude Code/ }),
+    ).not.toBeInTheDocument();
+    act(() => useRulesStore.setState({ searchQuery: "" }));
+    expect(screen.getAllByRole("button", { name: /Claude Code/ })).toHaveLength(
+      3,
+    );
   });
 
   it("keeps rules sidebar actions non-submit with decorative icons hidden", async () => {

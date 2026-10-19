@@ -13,39 +13,38 @@ export function getOrderedGlobalRuleFiles(
   files: RuleFileDescriptor[],
   preferredOrder: string[] = [],
 ): RuleFileDescriptor[] {
-  const globalFiles = files.filter((file) => !file.id.startsWith("project:"));
-  const fileByPlatformId = new Map(
-    globalFiles.map((file) => [file.platformId, file] as const),
-  );
+  const filesByPlatformId = new Map<string, RuleFileDescriptor[]>();
+  for (const file of files) {
+    if (file.id.startsWith("project:")) continue;
+    const platformFiles = filesByPlatformId.get(file.platformId);
+    if (platformFiles) platformFiles.push(file);
+    else filesByPlatformId.set(file.platformId, [file]);
+  }
   const seenPlatformIds = new Set<string>();
   const ordered: RuleFileDescriptor[] = [];
 
   const pushPlatform = (platformId: string) => {
-    if (!platformId || seenPlatformIds.has(platformId) || !isRulePlatformId(platformId)) {
+    if (
+      !platformId ||
+      seenPlatformIds.has(platformId) ||
+      !isRulePlatformId(platformId)
+    ) {
       return;
     }
     seenPlatformIds.add(platformId);
-    const file = fileByPlatformId.get(platformId);
-    if (file) {
-      ordered.push(file);
+    const platformFiles = filesByPlatformId.get(platformId);
+    if (platformFiles) {
+      for (const file of platformFiles) ordered.push(file);
     }
   };
 
-  for (const platformId of preferredOrder) {
+  for (const platformId of [
+    ...preferredOrder,
+    ...DEFAULT_SKILL_PLATFORM_ORDER,
+    ...RULE_PLATFORM_ORDER,
+    ...filesByPlatformId.keys(),
+  ]) {
     pushPlatform(platformId);
-  }
-
-  // Align with Agent management / Skills default order (not Rules-only order).
-  for (const platformId of DEFAULT_SKILL_PLATFORM_ORDER) {
-    pushPlatform(platformId);
-  }
-
-  for (const platformId of RULE_PLATFORM_ORDER) {
-    pushPlatform(platformId);
-  }
-
-  for (const file of globalFiles) {
-    pushPlatform(file.platformId);
   }
 
   return ordered;

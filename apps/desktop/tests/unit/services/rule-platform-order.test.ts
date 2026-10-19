@@ -27,6 +27,35 @@ function ruleFile(
 }
 
 describe("rule platform order", () => {
+  it("retains every file within a platform in inventory order", () => {
+    const global = ruleFile("claude", {
+      id: "claude-global",
+      name: "CLAUDE.md",
+    });
+    const scoped = ruleFile("claude", {
+      id: "custom:claude-rule:root",
+      name: "coding.md",
+      path: "/fixture/.claude/rules/coding.md",
+    });
+    const nested = ruleFile("claude", {
+      id: "custom:claude-rule:nested",
+      name: "coding.md",
+      path: "/fixture/.claude/rules/team/coding.md",
+    });
+    const codex = ruleFile("codex");
+    const project = ruleFile("claude", { id: "project:fixture" });
+    const files = [global, codex, scoped, project, nested];
+
+    expect(
+      getOrderedGlobalRuleFiles(files, ["codex", "claude", "claude"]),
+    ).toEqual([codex, global, scoped, nested]);
+    expect(files).toEqual([global, codex, scoped, project, nested]);
+  });
+
+  it("returns no files for an empty inventory", () => {
+    expect(getOrderedGlobalRuleFiles([], ["claude"])).toEqual([]);
+  });
+
   it("follows skillPlatformOrder before shared default order", () => {
     const files = [
       ruleFile("claude"),
