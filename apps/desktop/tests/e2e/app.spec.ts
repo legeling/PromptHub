@@ -1,6 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { test, expect } from "@playwright/test";
+import {
+  test,
+  expect,
+  type ElectronApplication,
+  type Page,
+} from "@playwright/test";
 import { nativeWindowTestTag } from "./helpers/electron-launch-options";
 import { createWebDAVFixture } from "./helpers/webdav-fixture";
 
@@ -14,6 +19,67 @@ import {
   showAppWindow,
   type LaunchedElectronApp,
 } from "./helpers/electron";
+
+async function createPromptThroughEditor(
+  page: Page,
+  title: string,
+  content: string,
+): Promise<void> {
+  await page.getByRole("button", { name: "Prompts", exact: true }).click();
+  await page.getByRole("button", { name: "New", exact: true }).first().click();
+  const dialog = page.getByRole("dialog", { name: "New Prompt", exact: true });
+  await dialog.getByPlaceholder("Name your Prompt").fill(title);
+  await dialog
+    .getByPlaceholder("Enter your Prompt content", { exact: false })
+    .fill(content);
+  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
+}
+
+test("creates Prompts through the editor before and after a complete restart (#236)", async () => {
+  test.setTimeout(120_000);
+  let launched = await launchPromptHub(null);
+  let app: ElectronApplication | null = launched.app;
+  const profile = launched.userDataDir;
+  const expected = [
+    { title: "Before restart", userPrompt: "First body Ω" },
+    { title: "After restart", userPrompt: "Second body 🚀" },
+  ];
+  try {
+    await setAppSettings(launched.page, {
+      language: "en",
+      autoCheckUpdate: false,
+    });
+    for (const item of expected) {
+      await createPromptThroughEditor(
+        launched.page,
+        item.title,
+        item.userPrompt,
+      );
+      await closePromptHub(app, profile, { preserveUserDataDir: true });
+      app = null;
+      launched = await launchPromptHub(null, { userDataDir: profile });
+      app = launched.app;
+    }
+    const records = await launched.page.evaluate(() =>
+      window.api.prompt.getAll(),
+    );
+    expect(records).toHaveLength(expected.length);
+    for (const item of expected) {
+      expect(records).toContainEqual(expect.objectContaining(item));
+      await expect(
+        launched.page.getByText(item.title, { exact: true }).first(),
+      ).toBeVisible();
+    }
+    await launched.page.screenshot({
+      path: test.info().outputPath("prompts-after-restarts.png"),
+    });
+  } finally {
+    if (app) await closePromptHub(app, profile);
+    else fs.rmSync(profile, { recursive: true, force: true });
+  }
+});
 
 test.describe("E2E: Skill smoke", () => {
   test("launches with isolated test profile and opens the seeded skill workflow", async () => {
