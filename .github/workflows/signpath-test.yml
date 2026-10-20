@@ -1,0 +1,91 @@
+name: Windows test signing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check SignPath configuration
+        shell: pwsh
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+        run: |
+          foreach ($name in @('SIGNPATH_API_TOKEN', 'SIGNPATH_ORGANIZATION_ID', 'SIGNPATH_PROJECT_SLUG', 'SIGNPATH_ARTIFACT_CONFIGURATION_SLUG')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Missing repository configuration: $name"
+            }
+          }
+
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Windows x64 installer
+        working-directory: apps/desktop
+        run: |
+          pnpm exec vite build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm exec electron-builder --config electron-builder.config.cjs --win --x64 --publish never
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload unsigned installer
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-unsigned-signpath-test
+          path: apps/desktop/dist/PromptHub-Setup-*-x64.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Submit test signing request
+        id: signing
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          signing-policy-slug: test-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signpath-signed
+
+      - name: Verify test signature
+        shell: pwsh
+        run: ./scripts/verify-signpath-test.ps1 -UnsignedDirectory apps/desktop/dist -SignedDirectory signpath-signed
+
+      - name: Upload test-signed installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-test-signed-not-for-release
+          path: signpath-signed/PromptHub-Setup-*-x64.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Record signing request
+        shell: pwsh
+        env:
+          SIGNING_REQUEST_URL: ${{ steps.signing.outputs.signing-request-web-url }}
+        run: |
+          "Test signing request: $env:SIGNING_REQUEST_URL" >> $env:GITHUB_STEP_SUMMARY
+          "Test certificate only. This artifact must not be published as a release or update." >> $env:GITHUB_STEP_SUMMARY

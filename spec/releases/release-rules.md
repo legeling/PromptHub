@@ -96,6 +96,35 @@
 - Desktop draft creation and asset upload do not authorize promotion, Homebrew
   updates, or the stable R2 mirror. Their published-release checks remain required.
 
+### 12. Windows SignPath Integration Test
+
+- `.github/workflows/signpath-test.yml` is a manual, non-publishing integration
+  test. It builds one Windows x64 NSIS installer on a GitHub-hosted runner and
+  submits the uploaded ZIP artifact to the fixed `test-signing` policy.
+- Repository variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, and
+  `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG` identify the existing SignPath setup.
+  `SIGNPATH_API_TOKEN` is a repository Actions secret belonging to the SignPath
+  CI submitter. Never store the token in workflow files, logs, or documentation.
+- The selected artifact configuration must accept a ZIP with root-level
+  `PromptHub*.exe` entries. This test signs the outer installer only; it does not
+  establish signing coverage for the installed executable or third-party binaries.
+- `scripts/verify-signpath-test.ps1` checks the returned filename, changed bytes,
+  Authenticode digest validity, and timestamp. The self-signed test certificate
+  is trusted only in the disposable Windows runner's current-user certificate
+  store and removed in `finally`. The reported certificate identity is evidence
+  of the test result, not a publicly trusted publisher or production acceptance.
+- Test artifacts are retained in Actions for seven days with explicit test-only
+  names. They must never enter GitHub Releases, updater manifests, or mirrors.
+  `release.yml` is unchanged; production signing remains a separate integration.
+- Before dispatch, configure the secret and variables, then run
+  `gh workflow run signpath-test.yml --repo legeling/PromptHub --ref main`.
+  Acceptance requires a completed SignPath request plus successful Windows
+  verification and a downloadable test artifact. Workflow syntax checks alone
+  do not establish that acceptance.
+- To withdraw this test, disable its workflow and remove its dedicated
+  repository configuration when no longer used. No product data migration or
+  published artifact rollback is involved.
+
 ## Stable Scenarios
 
 ### Scenario: Contributor prepares a release-impacting change
