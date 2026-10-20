@@ -3,22 +3,21 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-19`
+- Snapshot date: `2026-10-20`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Open issues captured: `36`
+- Open issues captured: `35`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery state is recorded in `local-github-status.md`.
-- The shared capture contains 217 issues, below the requested limit; pull requests are excluded by the issue endpoint.
+- The shared capture contains 218 issues, below the requested limit; pull requests are excluded by the issue endpoint.
 - Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
 
 ## Open Issues
 
 | # | 标题 | 标签 | 创建时间 | 更新时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
-| #243 | [Feature]: 支持第三方插件市场（统一 Claude Code 与 Antigravity 插件的索引及下载） | enhancement, version: 0.6.0 | 2026-10-18 | 2026-10-18 | [#243](https://github.com/legeling/PromptHub/issues/243) |
-| #242 | [Feature]: [Bug / 功能建议] antigravity官方插件商店支持 | enhancement, version: 版本: 0.6.0 · 稳定版通道 | 2026-10-18 | 2026-10-18 | [#242](https://github.com/legeling/PromptHub/issues/242) |
+| #244 | [Bug]: Codex 原生分发无法正常使用：未配置 CLI 报错 not found，配置官方 CLI 后报 marketplace failed | bug, version: 0.6.1 | 2026-10-19 | 2026-10-20 | [#244](https://github.com/legeling/PromptHub/issues/244) |
 | #240 | [Bug]: 「安装我的 Skill」弹窗无法勾选 Skill，确认按钮一直显示安装 0 个 | bug | 2026-10-17 | 2026-10-17 | [#240](https://github.com/legeling/PromptHub/issues/240) |
 | #239 | [Bug]: window系统mcp下载异常 | bug, version: 0.6.0-beta.2 | 2026-10-15 | 2026-10-15 | [#239](https://github.com/legeling/PromptHub/issues/239) |
 | #236 | [Bug]: 新建 Prompt会软件崩溃，再次添加也不能录入 | bug, version: 版本: 0.6.0-beta.2 · 稳定版通道 | 2026-10-14 | 2026-10-14 | [#236](https://github.com/legeling/PromptHub/issues/236) |

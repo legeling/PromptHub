@@ -29,6 +29,21 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Plugin issue follow-up — 2026-10-20
+
+#242/#243 live upstream previews, full-package installations and SQLite reopen
+pass again through the shared Core entrypoint. #244 has local runtime discovery,
+Windows shim execution and safe error diagnostic fixes; Windows 11 acceptance is
+still pending because no test machine is available. The maintainer removed 0.6.1
+for republication; these checks do not establish a new published release.
+User-authorized closure of #242/#243 was verified remotely on 2026-10-20; #244
+remains open. Local commits `58199ef6` and `54575191` have not been pushed. See
+[the follow-up verification](ISS-20260809-001-remaining-open-issues-roadmap.md#marketplace-and-windows-follow-up--2026-10-20).
+
+| Issue | GitHub state | Local status | Target release | Remaining boundary |
+| --- | --- | --- | --- | --- |
+| #244 | open | in_progress | 0.6.1 | Local fixes in `58199ef6` / `54575191` are unpushed; Windows Store/npm native installation, enable/disable and removal on a real Windows 11 machine remain pending. |
+
 ### Published 0.6.0 review — 2026-10-19
 
 Remote snapshot: **36 open / 181 closed / 217 issues**. New since 2026-10-16:
@@ -152,8 +167,8 @@ Closure is not publication, Windows acceptance or complete release acceptance.
 
 | Issue | GitHub state | Local status | Target release | Change                                                                         | Notes                                                                                                                                                                                                                                                                                                                                |
 | ----- | ------------ | ------------ | -------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| #243 | open | local_done |  | `ISS-20260809-001-remaining-open-issues-roadmap.md` | `63189663` 已提交推送 Claude 字符串目录、外部 Git、ref/sha 与原生 manifest；真实 code-review 安装及 SQLite 重开、supabase 固定 revision 预览通过。未发布或做 GUI/Agent 原生加载验收；Git 预览数量仍限 manifest 声明。 |
-| #242 | open | local_done |  | `ISS-20260809-001-remaining-open-issues-roadmap.md` | `63189663` 已提交推送 Antigravity ZIP 下载、SHA-256 校验、安全解包及整包入库；真实 gdocs 安装/重开、异常保全和重试通过。未发布或做 GUI/Agent 原生加载验收。 |
+| #243 | closed | local_done | 0.6.1 | `ISS-20260809-001-remaining-open-issues-roadmap.md` | 2026-10-20 已按授权关闭，0.6.1 待重新发布；真实上游复现再次通过。`63189663` 已提交推送 Claude 字符串目录、外部 Git、ref/sha 与原生 manifest；真实 code-review 安装及 SQLite 重开、supabase 固定 revision 预览通过。未发布或做 GUI/Agent 原生加载验收；Git 预览数量仍限 manifest 声明。 |
+| #242 | closed | local_done | 0.6.1 | `ISS-20260809-001-remaining-open-issues-roadmap.md` | 2026-10-20 已按授权关闭，0.6.1 待重新发布；真实上游复现再次通过。`63189663` 已提交推送 Antigravity ZIP 下载、SHA-256 校验、安全解包及整包入库；真实 gdocs 安装/重开、异常保全和重试通过。未发布或做 GUI/Agent 原生加载验收。 |
 | #241 | closed | released | 0.6.0 | `ISS-20260809-001-remaining-open-issues-roadmap.md` | 修复已发布：Skill 首屏计数/角标不一致。2026-10-19 真实 Electron 复测后，已按用户授权评论 0.6.0 修复说明并关闭；远端状态已核实。 |
 | #240 | open | local_done |  | `ISS-20260809-001-remaining-open-issues-roadmap.md` | `e4461bce` 已提交推送首次 Agent 扫描修复；未就绪或失败不开放安装，失败与空列表分开，可手动刷新恢复。19 项组件回归通过，IPC 使用模拟；未做 Electron/Linux 安装验收或发布。 |
 | #239 | open | released | 0.6.0 | `ISS-20260809-001-remaining-open-issues-roadmap.md` | 市场 ID 与本地目录 ID 已分离；真实 macOS IPC 安装、版本文件、重开通过。Windows 原生复测未完成，保留 open。 |

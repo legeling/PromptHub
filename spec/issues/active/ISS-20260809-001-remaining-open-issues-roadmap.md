@@ -354,6 +354,54 @@ snapshot are removed after diagnosis; no server or native app is retained.
   files successfully. Full release gates, packaged Windows/Linux, GUI and native
   Agent loading are not claimed. No commit, publication or remote issue change.
 
+## Marketplace and Windows Follow-up — 2026-10-20
+
+The maintainer removed the 0.6.1 release and intends to publish it again. This
+verification does not publish a replacement, change tags, or close issues.
+
+- #242: the live Antigravity marketplace's `gdocs` 0.0.6 successfully previews,
+  downloads with digest verification, installs its complete 18-entry tree and
+  survives a real SQLite close/reopen in an isolated profile.
+- #243: the live Claude official marketplace's `code-review` successfully
+  previews, clones and installs its complete 6-entry tree, then survives SQLite
+  close/reopen. The existing fix accepts Claude relative paths and uses the
+  Claude manifest. These live checks use the shared library entrypoint; they
+  do not claim GUI source-entry acceptance or native execution of these packages.
+- #244: both current code and the withdrawn candidate already include the
+  `plugin` command prefix. Confirmed defects were direct `execFile` invocation
+  of Windows `.cmd` shims, absent Windows bundled-runtime discovery, and errors
+  that hid the native failure phase/code. The local fix shares `cross-spawn`
+  between command execution and Codex configuration RPC, recognizes Windows
+  `Path` casing, discovers the registered Store package and active default VS
+  Code extension, and reports sanitized operation/exit codes. Store package ACL
+  failures are not bypassed.
+- Verification: 39 selected checks pass (24 Core regressions, 11 Desktop unit
+  cases, 2 real upstream cases, 1 native Codex lifecycle, 1 native Codex/Claude
+  distribution lifecycle). The Windows shim case is skipped on macOS; two
+  unrelated native integration cases are excluded by the selected test name.
+  Core source and Desktop source/test TypeScript, scoped ESLint and Desktop
+  renderer/main/preload production build pass. The initial Desktop failure was
+  the macOS `/var` symlink test root; canonicalizing the fixture fixed it without
+  relaxing production validation.
+- Windows 11 end-to-end acceptance remains open because no Windows machine is
+  available. Local macOS native tests use disposable homes and harmless fixtures;
+  no account login, model call, MCP call or hook execution is included. Test
+  profiles and processes are cleaned up.
+
+Reproduce upstream checks with `PROMPTHUB_UPSTREAM_PLUGIN_TESTS=1 pnpm --filter
+@prompthub/core exec vitest run tests/plugin-upstream-marketplace.test.ts`.
+If the environment requires its configured HTTP proxy for Node fetch, also set
+`NODE_USE_ENV_PROXY=1`. Native checks remain opt-in via
+`PROMPTHUB_NATIVE_AGENT_TESTS=1`; use an OS temporary path with canonical parents.
+
+Submission and remote follow-up (2026-10-20): the maintainer subsequently
+authorized scoped commits and issue closure without pushing. Local commits
+`58199ef6` and `54575191` separate Codex native management from the Windows
+runtime fix. #242 and #243 were closed with report-specific verification
+comments and their CLOSED state was read back; #244 remains OPEN with the
+Windows acceptance gap. The refreshed remote snapshot has 35 open / 183 closed
+issues. None of these actions establishes a replacement 0.6.1 release.
+
 ## Follow-up Priority
 
 1. Complete native/reporter acceptance of the local #240 repair when authorized. Keep #209/#236 open pending their remaining boundaries, and obtain missing diagnostic data for #221 and the historical data-loss reports. Do not equate a successful general smoke with their original trigger.
