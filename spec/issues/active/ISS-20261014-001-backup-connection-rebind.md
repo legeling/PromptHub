@@ -6,6 +6,21 @@ and locally verified on 2026-10-19. Historical import `2da40ad6` and startup rec
 startup report now has a separate identified conflict path and a locally verified
 recovery implementation. Original-profile/Windows acceptance remains open.
 
+## 2026-10-20: isolated Electron recheck
+
+`apps/desktop/tests/e2e/backup-settings-flow.spec.ts` passed on macOS:
+Settings → Full backup → import preview → cancel (preserves current edits) →
+confirm restore → restart retains original Prompt/Folder identity and content.
+`apps/desktop/tests/e2e/prompt-backup-continuity.spec.ts` also passed export,
+continued edit/create and restart. Only native destination selection is
+substituted; backup creation, restore, IPC and disk storage are real.
+These current checks supersede the historical current-format restore failure
+recorded below, but not the unknown reporter-profile/Windows boundary.
+All 21 current/historical backup integration cases passed in the same recheck.
+Exact rerun commands and the other three reports are recorded in
+[the four-report recheck](ISS-20260809-001-remaining-open-issues-roadmap.md#four-report-recheck--2026-10-20).
+No new backup product change, release or remote closure was made.
+
 ## 2026-10-19: historical workspace startup conflict
 
 The supplied startup screenshot identifies `Historical Prompt workspace conflict`

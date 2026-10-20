@@ -402,9 +402,101 @@ comments and their CLOSED state was read back; #244 remains OPEN with the
 Windows acceptance gap. The refreshed remote snapshot has 35 open / 183 closed
 issues. None of these actions establishes a replacement 0.6.1 release.
 
+## Four-report recheck — 2026-10-20
+
+GitHub readback confirms #240, #239, #236 and #221 remain open, with no
+additional reporter diagnostics. Current checkout `00488b9d` includes the
+earlier fixes and unrelated uncommitted Plugin work; it is not a frozen release
+candidate. The recheck itself made no commit, push, release or remote issue mutation.
+After reviewing the macOS results and remaining platform limits, the maintainer
+authorized separate local commits with automatic closure of all four reports
+when subsequently pushed to the default branch. This is an explicit closure
+decision based on the bounded evidence below, not new Windows/Linux acceptance
+or confirmation of an unknown original crash cause/private archive.
+No push or replacement release is included in the local submission.
+
+The existing commands above selected 48 passing cases: all 19
+`skill-agents-view` cases, both export lifecycle cases, five Core
+`mcp-market-installation` cases, the single `#236` preload/IPC/reopen case,
+and all 21 cases in `legacy-backup-zip-compatibility` plus
+`release-acceptance-data-recovery-portable`. The other 15 Prompt/AI cases
+were excluded by the explicit issue filter, not treated as passed.
+
+No new product failure reproduced at those boundaries. Added regression
+coverage passed: seven picker cases and six MCP cases, bringing this recheck
+to 56 distinct passing cases in seven files. Test-inclusive Desktop TypeScript,
+scoped ESLint and spec governance passed. No application code was changed.
+
+- #240 TC-2/TC-3: `skill-library-import-modal.test.tsx` uses real picker
+  selection/count/disabled state and checks the submitted IDs, target and mode.
+  It covers multiple selections across Copy/Symlink changes and an already
+  installed Skill alongside an available Skill. The modal shell and submission
+  callback are substituted, so this does not prove installation.
+- #239: `mcp-market-installation.test.ts` includes the exact reported
+  `modelcontextprotocol:io-github-54yyyu-zotero-mcp` identifier alongside
+  colon/slash/reserved-name cases. Real SQLite/files/version update/restore/reopen
+  assertions remain unchanged; no remote MCP command is executed.
+
+Run the added coverage from the repository root:
+
+```sh
+pnpm --filter @prompthub/desktop exec vitest run --project unit \
+  tests/unit/components/skill-library-import-modal.test.tsx \
+  --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/core exec vitest run \
+  tests/mcp-market-installation.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop exec vitest run --project unit \
+  tests/unit/components/skill-agents-view.test.tsx \
+  tests/unit/main/canonical-portable-export.test.ts \
+  --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop exec vitest run --project integration \
+  tests/integration/release-acceptance-prompts-ai-workflow.test.ts \
+  -t '#236' --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop exec vitest run --project integration \
+  tests/integration/legacy-backup-zip-compatibility.test.ts \
+  tests/integration/release-acceptance-data-recovery-portable.test.ts \
+  --minWorkers=1 --maxWorkers=1
+```
+
+Native Windows/Linux and original private-profile acceptance remain open.
+This recheck does not diagnose an unspecified Windows crash or assert that
+synthetic historical backups reproduce the reporter's private archive.
+The user subsequently authorized isolated Electron UI automation on 2026-10-20.
+The new `#240` case in `apps/desktop/tests/e2e/agent-skill-lifecycle.spec.ts`
+covers cold empty Agent entry, multi-selection, Copy/Symlink installation,
+already-installed selection state, exact nested text/binary bytes and restart.
+The new `#236` case in `apps/desktop/tests/e2e/app.spec.ts` creates two Prompts
+through the real editor across two complete restarts and checks visible/readback
+content. Both files are selected by the existing release E2E smoke entrypoint.
+Their continuous install/restart/cleanup test bodies can exceed 50 lines to keep
+the same temporary profile and its lifecycle in one failure-safe scope.
+Existing `prompt-lifecycle`, `prompt-backup-continuity` and
+`backup-settings-flow` tests cover editor changes and real backup UI/IPC flows.
+All five selected macOS Electron flows passed: the four existing/new Prompt
+and backup cases passed in the first run; #240 passed separately after correcting
+its fixture. The first Skill fixture incorrectly supplied `files` to
+`skill:create`, which correctly rejects package import; the fixture now uses
+the real `skill:runPackageOperation` local-directory entrypoint. No product
+code changed. This setup failure is not a reproduced selection defect.
+Test-inclusive TypeScript, scoped ESLint and the production build passed.
+The screenshot capture waits for the modal's opacity transition to finish.
+Temporary profiles and owned Electron processes are removed; the existing
+personal app remains untouched. Parallel Plugin commits advanced HEAD during
+this scoped verification; these results are not a frozen full-release gate.
+
+```sh
+pnpm build
+PROMPTHUB_E2E_HEADED=0 pnpm --filter @prompthub/desktop exec playwright test \
+  tests/e2e/app.spec.ts tests/e2e/agent-skill-lifecycle.spec.ts \
+  tests/e2e/prompt-lifecycle.spec.ts \
+  tests/e2e/prompt-backup-continuity.spec.ts \
+  tests/e2e/backup-settings-flow.spec.ts \
+  --grep '#236|#240|creates a folder and prompt|keeps prompt writes available|exports a native ZIP from Settings'
+```
+
 ## Follow-up Priority
 
-1. Complete native/reporter acceptance of the local #240 repair when authorized. Keep #209/#236 open pending their remaining boundaries, and obtain missing diagnostic data for #221 and the historical data-loss reports. Do not equate a successful general smoke with their original trigger.
+1. Complete native/reporter acceptance of the local #240 repair when authorized. Keep #209 open pending its remaining boundaries. The maintainer-approved closure references for #240/#239/#236/#221 await a later default-branch push; their remaining platform and original-profile evidence gaps remain as recorded above. Do not equate a successful general smoke with their original trigger.
 2. Complete native GUI/Agent acceptance and publication of the local #242/#243 repair when authorized. The shared marketplace owner and separate archive-integrity tests define the current local boundary.
 3. For the seven published fixes, review the remaining machine-specific boundary and decide public follow-up separately; this audit does not close issues.
 4. Keep broad contracts (#197/#194/#203/#212), real remote sync (#185/#79), and product backlog distinct from small bug fixes.
