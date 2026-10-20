@@ -4,6 +4,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
+    throw 'Test certificate trust changes are only allowed on a disposable GitHub-hosted runner.'
+}
 $unsignedFiles = @(Get-ChildItem -LiteralPath $UnsignedDirectory -Filter 'PromptHub-Setup-*-x64.exe' -File)
 $signedFiles = @(Get-ChildItem -LiteralPath $SignedDirectory -Filter 'PromptHub-Setup-*-x64.exe' -File)
 if ($unsignedFiles.Count -ne 1 -or $signedFiles.Count -ne 1) {
@@ -26,17 +29,19 @@ if ($null -eq $certificate -or $certificate.Subject -ne $certificate.Issuer) {
     throw 'Expected a self-signed SignPath test certificate.'
 }
 
-# Test certificates are not publicly trusted. Trust this returned certificate only
-# in the disposable runner's current-user store, then require Windows digest validation.
-$store = [System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'CurrentUser')
+# CurrentUser\Root displays an interactive Windows confirmation dialog. Use the
+# disposable runner's machine store so unattended validation can finish.
+$store = [System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
 $added = $false
 try {
     $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
     $existing = $store.Certificates.Find('FindByThumbprint', $certificate.Thumbprint, $false)
     if ($existing.Count -eq 0) {
+        Write-Output "Temporarily trusting test certificate $($certificate.Thumbprint) on the disposable runner."
         $store.Add($certificate)
         $added = $true
     }
+    Write-Output 'Checking Authenticode digest, certificate and timestamp.'
     $verified = Get-AuthenticodeSignature -LiteralPath $signed.FullName
     if ($verified.Status -ne 'Valid') {
         throw "Windows signature verification failed: $($verified.Status): $($verified.StatusMessage)"
@@ -59,6 +64,11 @@ try {
     }
 }
 finally {
-    if ($added) { $store.Remove($certificate) }
-    $store.Close()
+    try {
+        if ($added) { $store.Remove($certificate) }
+    }
+    finally {
+        $store.Close()
+    }
+    Write-Output 'Temporary test certificate trust cleaned up.'
 }

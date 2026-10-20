@@ -105,13 +105,22 @@
   `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG` identify the existing SignPath setup.
   `SIGNPATH_API_TOKEN` is a repository Actions secret belonging to the SignPath
   CI submitter. Never store the token in workflow files, logs, or documentation.
+- The SignPath GitHub App must be installed for `legeling/PromptHub`. Limit the
+  installation to that repository. Its requested permissions are read access
+  to Actions, contents and metadata, plus read/write administration access.
+  The connector rejects submission without the App installation even when the
+  repository is public and a CI submitter token is configured.
 - The selected artifact configuration must accept a ZIP with root-level
   `PromptHub*.exe` entries. This test signs the outer installer only; it does not
   establish signing coverage for the installed executable or third-party binaries.
 - `scripts/verify-signpath-test.ps1` checks the returned filename, changed bytes,
   Authenticode digest validity, and timestamp. The self-signed test certificate
-  is trusted only in the disposable Windows runner's current-user certificate
-  store and removed in `finally`. The reported certificate identity is evidence
+  is trusted only in the disposable Windows runner's machine certificate store
+  and removed in `finally`. The script refuses to run outside GitHub-hosted
+  Actions runners. Using `CurrentUser\Root` is unsuitable for unattended CI
+  because Windows displays an interactive confirmation dialog
+  ([upstream .NET report](https://github.com/dotnet/runtime/issues/24160)).
+  The reported certificate identity is evidence
   of the test result, not a publicly trusted publisher or production acceptance.
 - Test artifacts are retained in Actions for seven days with explicit test-only
   names. They must never enter GitHub Releases, updater manifests, or mirrors.
