@@ -23,6 +23,182 @@ const EXTRA_FILE = "docs/note.txt";
 const EXTRA_FILE_CONTENT = "real file mutation from Electron\n";
 const SKILL_MARKER = "<!-- AGENT_SKILL_LIFECYCLE_UPDATED -->";
 
+function writePickerPackages(root: string) {
+  return ["picker-first", "picker-second", "picker-third"].map(
+    (name) => {
+      const directory = path.join(root, "sources", name);
+      const content = `---\nname: ${name}\ndescription: Picker regression\n---\n\n# ${name}\n`;
+      fs.mkdirSync(path.join(directory, "docs"), { recursive: true });
+      fs.mkdirSync(path.join(directory, "assets"));
+      fs.writeFileSync(path.join(directory, "SKILL.md"), content);
+      fs.writeFileSync(
+        path.join(directory, "docs/note.txt"),
+        `${name} nested content\n`,
+      );
+      fs.writeFileSync(
+        path.join(directory, "assets/data.bin"),
+        Buffer.from("AP+JUE5HDQqA", "base64"),
+      );
+      return { name, directory, content };
+    },
+  );
+}
+
+async function seedPickerLibrary(page: Page, root: string) {
+  const packages = writePickerPackages(root);
+  return page.evaluate(async (inputs) => {
+    const records = [];
+    for (const { name, directory, content } of inputs) {
+      const result = await window.api.skill.runPackageOperation({
+        operation: "install",
+        registrySkill: {
+          slug: name,
+          name,
+          description: "Picker regression",
+          category: "general",
+          author: "Fixture",
+          source_id: name,
+          source_url: directory,
+          tags: [],
+          version: "1.0.0",
+          content,
+        },
+        content,
+        source: { kind: "local-directory", directory },
+      });
+      if (result.status !== "completed")
+        throw new Error(
+          `Fixture package import failed: ${JSON.stringify(result)}`,
+        );
+      const skill = result.skill;
+      if (!skill.local_repo_path)
+        throw new Error("Fixture has no managed package");
+      records.push({ id: skill.id, name, source: skill.local_repo_path });
+    }
+    return records;
+  }, packages);
+}
+
+function assertPickerPackage(target: string, source: string): void {
+  for (const file of ["SKILL.md", "docs/note.txt", "assets/data.bin"]) {
+    expect(fs.readFileSync(path.join(target, file))).toEqual(
+      fs.readFileSync(path.join(source, file)),
+    );
+  }
+  expect(fs.readFileSync(path.join(target, "assets/data.bin"))).toEqual(
+    Buffer.from("AP+JUE5HDQqA", "base64"),
+  );
+}
+
+test("installs multiple library Skills on cold empty Agent entry and preserves installed selection state (#240)", async () => {
+  test.setTimeout(120_000);
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-picker-e2e-")),
+  );
+  const profile = path.join(root, "profile");
+  const home = path.join(root, "home");
+  const target = path.join(home, ".claude", "skills");
+  const emptyBin = path.join(root, "empty-bin");
+  fs.mkdirSync(target, { recursive: true });
+  fs.mkdirSync(emptyBin);
+  const options = {
+    userDataDir: profile,
+    env: { HOME: home, USERPROFILE: home, PATH: emptyBin },
+  };
+  let app: ElectronApplication | null = null;
+  try {
+    let launched = await launchPromptHub(null, options);
+    app = launched.app;
+    let page = launched.page;
+    await setAppSettings(page, {
+      language: "en",
+      autoCheckUpdate: false,
+      skillPlatformOrder: ["claude"],
+    });
+    const skills = await seedPickerLibrary(page, root);
+    await page.reload();
+    await page.getByRole("button", { name: "Skills", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Agent Skills", exact: true })
+      .click();
+    await expect(
+      page.getByText("No Skills in this agent", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Install My Skill", exact: true })
+      .click();
+    let dialog = page.getByRole("dialog", { name: "Install My Skill" });
+    for (const skill of skills.slice(0, 2)) {
+      const row = dialog.getByRole("button", { name: new RegExp(skill.name) });
+      await row.click();
+      await expect(row).toHaveAttribute("aria-pressed", "true");
+    }
+    await dialog.getByRole("button", { name: /Symlink/ }).click();
+    await dialog.getByRole("button", { name: /Copy/ }).click();
+    await page.screenshot({ path: test.info().outputPath("two-selected.png") });
+    await dialog
+      .getByRole("button", { name: "Install 2 selected skill(s)", exact: true })
+      .click();
+    await expect(dialog).not.toBeVisible();
+    for (const skill of skills.slice(0, 2)) {
+      const destination = path.join(target, skill.name);
+      expect(fs.lstatSync(destination).isSymbolicLink()).toBe(false);
+      assertPickerPackage(destination, skill.source);
+    }
+    await page
+      .getByRole("button", { name: "Install My Skill", exact: true })
+      .click();
+    dialog = page.getByRole("dialog", { name: "Install My Skill" });
+    for (const skill of skills.slice(0, 2)) {
+      const row = dialog.getByRole("button", { name: new RegExp(skill.name) });
+      await expect(row).toBeDisabled();
+      await expect(row).toContainText("Already Imported");
+    }
+    await dialog.getByRole("button", { name: /picker-third/ }).click();
+    await dialog.getByRole("button", { name: /Symlink/ }).click();
+    await dialog
+      .getByRole("button", { name: "Install 1 selected skill(s)", exact: true })
+      .click();
+    await expect(dialog).not.toBeVisible();
+    expect(
+      fs.lstatSync(path.join(target, "picker-third")).isSymbolicLink(),
+    ).toBe(true);
+    await closePromptHub(app, profile, { preserveUserDataDir: true });
+    app = null;
+    launched = await launchPromptHub(null, options);
+    app = launched.app;
+    page = launched.page;
+    for (const skill of skills)
+      assertPickerPackage(path.join(target, skill.name), skill.source);
+    await page.getByRole("button", { name: "Skills", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Agent Skills", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Install My Skill", exact: true })
+      .click();
+    dialog = page.getByRole("dialog", { name: "Install My Skill" });
+    for (const skill of skills) {
+      await expect(
+        dialog.getByRole("button", { name: new RegExp(skill.name) }),
+      ).toBeDisabled();
+    }
+    await expect(
+      dialog.getByRole("button", {
+        name: "Install 0 selected skill(s)",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await expect(dialog).toHaveCSS("opacity", "1");
+    await page.screenshot({
+      path: test.info().outputPath("installed-after-restart.png"),
+    });
+  } finally {
+    if (app) await closePromptHub(app, profile);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 async function readSkillState(page: Page, skillId: string) {
   return page.evaluate(async (id) => {
     const [skill, files, versions, installDetails] = await Promise.all([

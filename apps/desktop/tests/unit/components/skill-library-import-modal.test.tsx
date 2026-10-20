@@ -3,7 +3,11 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Skill, SkillProject } from "@prompthub/shared/types";
+import type {
+  ScannedSkill,
+  Skill,
+  SkillProject,
+} from "@prompthub/shared/types";
 import { SkillLibraryImportModal } from "../../../src/renderer/components/skill/SkillLibraryImportModal";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { renderWithI18n } from "../../helpers/i18n";
@@ -52,12 +56,108 @@ const skill: Skill = {
   updated_at: 1,
 };
 
+const agentTarget = "/agents/claude/skills";
+const secondSkill: Skill = {
+  ...skill,
+  id: "skill-2",
+  name: "story-editor",
+  local_repo_path: "/library/story-editor",
+  source_url: "/library/story-editor",
+};
+
+async function renderAgentPicker(scannedSkills: ScannedSkill[] = []) {
+  const onConfirm = vi.fn();
+  await renderWithI18n(
+    <SkillLibraryImportModal
+      isOpen={true}
+      isDeploying={false}
+      onClose={vi.fn()}
+      onConfirm={onConfirm}
+      scannedSkills={scannedSkills}
+      skills={[skill, secondSkill]}
+      fixedTargetDirs={[agentTarget]}
+      showTargetSettings={false}
+      title="Install My Skill"
+      confirmLabel={(count) => `Install ${count} selected skill(s)`}
+    />,
+    { language: "en" },
+  );
+  return onConfirm;
+}
+
 describe("SkillLibraryImportModal", () => {
   beforeEach(() => {
     useSettingsStore.setState({
       projectSkillImportModePreference: "copy",
       projectSkillImportPreferencesByProjectId: {},
     } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+  });
+
+  it("keeps multiple Agent selections and their count across import mode changes (#240 TC-2)", async () => {
+    const user = userEvent.setup();
+    const onConfirm = await renderAgentPicker();
+    const first = screen.getByRole("button", { name: /story-auditor/i });
+    const second = screen.getByRole("button", { name: /story-editor/i });
+
+    await user.click(first);
+    await user.click(second);
+    await user.click(screen.getByRole("button", { name: /Symlink/i }));
+    expect(first).toHaveAttribute("aria-pressed", "true");
+    expect(second).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: "Install 2 selected skill(s)" }),
+    ).toBeEnabled();
+    await user.click(first);
+    expect(
+      screen.getByRole("button", { name: "Install 1 selected skill(s)" }),
+    ).toBeEnabled();
+    await user.click(first);
+    await user.click(
+      screen.getByRole("button", { name: "Install 2 selected skill(s)" }),
+    );
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledWith({
+      skillIds: [secondSkill.id, skill.id],
+      targetDirs: [agentTarget],
+      importMode: "symlink",
+    });
+  });
+
+  it("marks the installed Skill unselectable without blocking another Skill (#240 TC-3)", async () => {
+    const user = userEvent.setup();
+    const onConfirm = await renderAgentPicker([
+      {
+        name: skill.name,
+        description: skill.description,
+        author: skill.author ?? "",
+        tags: skill.tags,
+        instructions: skill.instructions,
+        filePath: `${agentTarget}/${skill.name}/SKILL.md`,
+        localPath: `${agentTarget}/${skill.name}`,
+        symlinkTargetPath: skill.local_repo_path,
+        platforms: ["Claude Code"],
+        installMode: "symlink",
+      },
+    ]);
+    const installed = screen.getByRole("button", { name: /story-auditor/i });
+    expect(installed).toBeDisabled();
+    expect(installed).toHaveTextContent("Already Imported");
+    await user.click(installed);
+    expect(
+      screen.getByRole("button", { name: "Install 0 selected skill(s)" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /story-editor/i }));
+    await user.click(
+      screen.getByRole("button", { name: "Install 1 selected skill(s)" }),
+    );
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledWith({
+      skillIds: [secondSkill.id],
+      targetDirs: [agentTarget],
+      importMode: "copy",
+    });
   });
 
   it("does not overwrite saved project import preferences while closed", async () => {
@@ -175,7 +275,10 @@ describe("SkillLibraryImportModal", () => {
   it("ignores repeated custom target picker clicks while a folder picker is pending", async () => {
     const user = userEvent.setup();
     const onPickCustomTarget = vi.fn(
-      () => new Promise<string>((resolve) => setTimeout(() => resolve("/tmp/custom"), 50)),
+      () =>
+        new Promise<string>((resolve) =>
+          setTimeout(() => resolve("/tmp/custom"), 50),
+        ),
     );
 
     await renderWithI18n(
