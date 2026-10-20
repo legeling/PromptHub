@@ -37,6 +37,7 @@ function template(id: string): McpMarketTemplate {
 }
 
 it.each([
+  "modelcontextprotocol:io-github-54yyyu-zotero-mcp",
   "modelcontextprotocol:io-github-upstash-context7",
   "custom/registry:context7",
   "CON",
