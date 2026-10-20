@@ -514,6 +514,14 @@ describe("plugin store", () => {
     });
   });
 
+  it("refreshes native inventory after Codex distribution", async () => {
+    vi.mocked(window.api.plugin.distributePlugin).mockResolvedValue({
+      plugin: importedSourcePlugin, library, targets: [], failures: [],
+    });
+    await usePluginStore.getState().distributePlugin(importedSourcePlugin.id, ["codex"], "copy");
+    expect(window.api.plugin.getTargetMatrix).toHaveBeenCalledTimes(1);
+  });
+
   it("removes a plugin distribution from selected Agent targets and updates the library", async () => {
     const distributedPlugin: PluginLibraryEntry = {
       ...importedSourcePlugin,

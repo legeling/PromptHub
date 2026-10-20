@@ -195,9 +195,10 @@ export function PluginFullDetailView({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {isAgentDetail && agentContext ? (
               <AgentPluginDetailActions
+                nativeCodex={agentActions?.nativeCodex}
                 isImporting={agentActions?.isImporting}
                 isManaged={agentContext.isManaged}
                 onImport={agentActions?.onImport}

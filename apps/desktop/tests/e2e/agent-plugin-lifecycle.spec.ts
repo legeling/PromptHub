@@ -8,9 +8,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
-import { encodeCanonicalResourceDirectory } from "@prompthub/core/canonical-resource-path";
 import {
   closePromptHub,
   launchPromptHub,
@@ -27,6 +24,15 @@ function writePluginSource(
   commandContent: string,
 ) {
   fs.mkdirSync(path.join(sourcePath, ".codex-plugin"), { recursive: true });
+  fs.writeFileSync(
+    path.join(sourcePath, "plugin.json"),
+    JSON.stringify({
+      $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+      name: PLUGIN_NAME,
+      version,
+      description: "Deterministic Agent Plugin fixture",
+    }),
+  );
   fs.mkdirSync(path.join(sourcePath, "commands"), { recursive: true });
   fs.mkdirSync(path.join(sourcePath, "skills", "reviewer"), {
     recursive: true,
@@ -73,17 +79,12 @@ async function openPluginLibrary(app: ElectronApplication, page: Page) {
   await expect(dialog).not.toBeVisible();
 }
 
-test("imports, distributes, restarts, and deletes a local Plugin", async () => {
+test("imports, distributes, restarts, and deletes a local Plugin", async ({}, testInfo) => {
   test.setTimeout(120_000);
 
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-agent-plugin-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "d".repeat(64),
-    operationId: "agent-plugin-lifecycle-e2e",
-  });
   const homeDir = path.join(userDataDir, "home");
   const sourcePath = path.join(userDataDir, "incoming", PLUGIN_NAME);
   const codexRoot = path.join(homeDir, ".codex");
@@ -138,16 +139,11 @@ test("imports, distributes, restarts, and deletes a local Plugin", async () => {
       name: PLUGIN_NAME,
       version: "1.0.0",
     });
-    const bundlePath = path.join(userDataDir, "data", "plugins", encodeCanonicalResourceDirectory(PLUGIN_ID));
-    expect(fs.existsSync(path.join(bundlePath, "manifest.json"))).toBe(true);
-    expect(
-      fs.readFileSync(path.join(bundlePath, "files", "README.md"), "utf8"),
-    ).toBe("unrelated package file\n");
-    expect(
-      fs.existsSync(
-        path.join(userDataDir, "data", "plugins", "agent-agent-writing-tools"),
-      ),
-    ).toBe(false);
+    const bundlePath = library.plugins[0].localPackagePath;
+    if (!bundlePath) throw new Error("Imported Plugin package path missing");
+    expect(fs.readFileSync(path.join(bundlePath, "README.md"), "utf8")).toBe(
+      "unrelated package file\n",
+    );
 
     const distribution = await page.evaluate(
       (pluginId) =>
@@ -163,15 +159,54 @@ test("imports, distributes, restarts, and deletes a local Plugin", async () => {
     expect(
       fs.readFileSync(path.join(targetPath, "commands", "review.md"), "utf8"),
     ).toBe("review v1\n");
-    const removal = await page.evaluate(
-      (pluginId) =>
-        window.api.plugin.removePluginDistribution({
-          pluginId,
-          targetIds: ["codex"],
-        }),
-      PLUGIN_ID,
+    await page
+      .getByRole("button", { name: "Agent Plugin", exact: true })
+      .click();
+    await page
+      .getByTestId("agent-plugin-target-row")
+      .filter({ hasText: "Codex" })
+      .click();
+    await page
+      .getByTestId("agent-plugin-detail-header")
+      .getByTitle("Refresh", { exact: true })
+      .click();
+    await page.getByTestId("agent-plugin-filter-agent-installed").click();
+    await page
+      .getByTestId("agent-plugin-list")
+      .getByRole("button", { name: /Open Plugin details/ })
+      .click();
+    const actions = page.getByTestId("codex-plugin-actions");
+    await expect(
+      actions.getByRole("button", { name: "Disable", exact: true }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("codex-plugin-actions.png"),
+    });
+    await actions.getByRole("button", { name: "Disable", exact: true }).click();
+    await expect(
+      actions.getByRole("button", { name: "Enable", exact: true }),
+    ).toBeVisible();
+    await actions.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(
+      actions.getByRole("button", { name: "Enable", exact: true }),
+    ).toBeEnabled();
+    await actions.getByRole("button", { name: "Enable", exact: true }).click();
+    await expect(
+      actions.getByRole("button", { name: "Disable", exact: true }),
+    ).toBeVisible();
+    await actions
+      .getByRole("button", { name: "Uninstall", exact: true })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Uninstall", exact: true })
+      .click();
+    await expect(actions).not.toBeVisible();
+    const afterUninstall = await page.evaluate(() =>
+      window.api.plugin.getLibrary(),
     );
-    expect(removal.removedTargetIds).toEqual(["codex"]);
+    expect(afterUninstall.plugins).toHaveLength(1);
+    expect(afterUninstall.plugins[0].distributedTargetIds).toEqual([]);
     expect(fs.existsSync(targetPath)).toBe(false);
     expect(
       fs.readFileSync(path.join(codexRoot, "plugins", "keep.txt"), "utf8"),
@@ -207,10 +242,7 @@ test("imports, distributes, restarts, and deletes a local Plugin", async () => {
     );
     expect(update).toMatchObject({ status: "updated" });
     expect(
-      fs.readFileSync(
-        path.join(bundlePath, "files", "commands", "review.md"),
-        "utf8",
-      ),
+      fs.readFileSync(path.join(bundlePath, "commands", "review.md"), "utf8"),
     ).toBe("review v2\n");
     const versions = await page.evaluate(
       (pluginId) => window.api.plugin.versionGetAll(pluginId),

@@ -6,6 +6,8 @@ import type {
 
 export interface AgentCliDescriptor {
   executableCandidates: string[];
+  /** Desktop-bundled native runtimes, in discovery order. */
+  bundledExecutablePaths?: Partial<Record<SkillPlatformOsKey, string[]>>;
   versionArgs: string[];
   evidence: string;
   update?: AgentCliUpdateDescriptor;

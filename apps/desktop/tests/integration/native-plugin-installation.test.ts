@@ -19,7 +19,10 @@ import { resolveAgentPluginTargetPath } from "../../src/main/ipc/plugin-target-p
 import { invalidateCustomPathsCache } from "../../src/main/services/skill-installer-utils";
 import { createNativeCommandRunner } from "../../src/main/services/native-command";
 import { getPluginNativeMarketplaceName } from "@prompthub/core/plugin-library/shared";
-import { scanInstalledPluginsForTarget } from "../../src/main/ipc/plugin.ipc";
+import { scanInstalledPluginsForTarget } from "../../src/main/ipc/plugin-target-inventory";
+import { mapCodexInstalledPlugins } from "../../src/main/ipc/plugin-codex.ipc";
+import { CodexPluginService } from "@prompthub/core/codex-plugins/service";
+import { createCodexPluginRunner } from "@prompthub/core/codex-plugins/runtime";
 
 vi.mock("electron", () => ({
   ipcMain: { handle: vi.fn() },
@@ -117,7 +120,7 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
         DISABLE_TELEMETRY: "1",
         DISABLE_ERROR_REPORTING: "1",
       };
-      const options = { environment };
+      const options = { environment, beforeMutation: async () => undefined };
       const request = {
         pluginId: plugin.id,
         targetIds: ["codex", "claude-code"],
@@ -144,7 +147,7 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
           path.join(root, "claude", "plugins", "installed_plugins.json"),
         ),
       ).toBe(true);
-      const runner = createNativeCommandRunner();
+      const runner = createCodexPluginRunner();
       for (const platform of ["codex", "claude"]) {
         const command = await runner.resolve(platform);
         if (!command) throw new Error(`Required CLI missing: ${platform}`);
@@ -163,7 +166,7 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
         new CorePluginLibraryService().read().plugins[0].distributedTargetIds,
       ).toEqual(expect.arrayContaining(request.targetIds));
       expect(
-        scanInstalledPluginsForTarget("codex", path.join(root, "codex")),
+        mapCodexInstalledPlugins(await new CodexPluginService({ root: path.join(root, "codex"), backupConfig: async () => undefined }).list(), library.read().plugins),
       ).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

@@ -233,6 +233,7 @@ export function useAgentPluginViewModel(props: AgentPluginViewProps) {
     pending: groups.targetPendingPlugins.length,
   };
   return Object.assign({}, props, state, groups, visible, {
+    selectedTargetPlugin: groups.targetInstalledPlugins.find((plugin) => plugin.id === state.selectedTargetPlugin?.id) ?? state.selectedTargetPlugin,
     selectedTarget,
     importedTargetPluginKeys,
     selectedTargetPluginStillExists,

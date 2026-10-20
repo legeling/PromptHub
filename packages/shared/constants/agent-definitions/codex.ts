@@ -21,6 +21,14 @@ export const codexAgentDefinition = {
     },
     cli: {
       executableCandidates: ["codex"],
+      bundledExecutablePaths: {
+        darwin: [
+          "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+          "~/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+          "/Applications/Codex.app/Contents/Resources/codex",
+          "~/Applications/Codex.app/Contents/Resources/codex",
+        ],
+      },
       versionArgs: ["--version"],
       evidence: "official-codex-cli",
       update: {

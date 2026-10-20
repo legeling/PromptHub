@@ -10,10 +10,8 @@ import {
   writeJsonFileAtomic,
   getPluginNativeMarketplaceName,
 } from "./plugin-library/shared";
-import {
-  createNativeCommandRunner,
-  type NativeCommandRunner,
-} from "./native-command";
+import type { NativeCommandRunner } from "./native-command";
+import { createCodexPluginRunner } from "./codex-plugins/runtime";
 import {
   AGENT_CLI_MUTATION_TIMEOUT_MS,
   AGENT_CLI_MUTATION_OUTPUT_BYTES,
@@ -31,6 +29,7 @@ export interface PluginNativeInstallationOptions {
   runner?: NativeCommandRunner;
   getRoot: (platformId: string) => string;
   environment?: NodeJS.ProcessEnv;
+  beforeMutation?: (targetId: string, root: string) => Promise<void>;
 }
 
 function nativeTarget(
@@ -108,7 +107,9 @@ async function runNative(
   args: string[],
   options: PluginNativeInstallationOptions,
 ): Promise<void> {
-  const runner = options.runner ?? createNativeCommandRunner();
+  const runner =
+    options.runner ??
+    createCodexPluginRunner({ environment: native.environment });
   const command = await runner.resolve(native.command);
   if (!command)
     throw new Error(`Native Plugin CLI not found: ${native.command}`);
@@ -141,6 +142,7 @@ export async function installNativePlugin(
 ): Promise<void> {
   const native = nativeTarget(target.targetId, plugin, options);
   if (!native) return;
+  await options.beforeMutation?.(target.targetId, native.root);
   const marketplaceRoot = path.dirname(target.path);
   const relativeSource = `./${path.basename(target.path)}`;
   const marker =
@@ -193,6 +195,7 @@ export async function uninstallNativePlugin(
 ): Promise<void> {
   const native = nativeTarget(targetId, plugin, options);
   if (!native || nativePluginEntry(native) === undefined) return;
+  await options.beforeMutation?.(targetId, native.root);
   await runNative(
     native,
     [

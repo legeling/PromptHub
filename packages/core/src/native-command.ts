@@ -9,6 +9,7 @@ export interface NativeCommandRunOptions {
   maxBuffer: number;
   env?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
+  cwd?: string;
 }
 
 export interface NativeCommandRunner {
@@ -43,6 +44,7 @@ function execFileAsync(
         timeout: options.timeout,
         maxBuffer: options.maxBuffer,
         signal: options.signal,
+        cwd: options.cwd,
         windowsHide: true,
       },
       (error, stdout, stderr) => {

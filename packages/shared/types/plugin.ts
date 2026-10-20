@@ -188,6 +188,8 @@ export interface PluginTargetInstalledPlugin {
   version?: string;
   sourcePath?: string;
   inventory: PluginInventorySummary;
+  nativeCodex?: import("./codex-plugin").CodexInstalledPlugin;
+  managedPluginId?: string;
 }
 
 export interface PluginTargetCompatibility {
@@ -203,7 +205,12 @@ export interface PluginTargetCompatibility {
   description?: string;
   installedPlugins?: PluginTargetInstalledPlugin[];
   installedInventoryCount?: number;
+  inventoryError?: import("./codex-plugin").CodexPluginErrorCode;
 }
+
+export type PluginNativeMutationResult =
+  | { success: true; target: PluginTargetCompatibility; library: PluginLibraryFile }
+  | { success: false; errorCode: import("./codex-plugin").CodexPluginErrorCode };
 
 export interface PluginInstallResult {
   plugin: PluginLibraryEntry;

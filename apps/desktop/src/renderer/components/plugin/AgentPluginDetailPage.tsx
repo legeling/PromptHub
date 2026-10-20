@@ -36,9 +36,10 @@ export function AgentPluginDetailPage({
   return (
     <PluginFullDetailPage
       agentActions={{
+        nativeCodex: plugin.nativeCodex,
         isImporting,
-        onImport: managedPlugin ? undefined : onImport,
-        onOpenFolder,
+        onImport: managedPlugin || !plugin.sourcePath ? undefined : onImport,
+        onOpenFolder: plugin.sourcePath ? onOpenFolder : undefined,
         onOpenManagedPlugin: managedPlugin ? onOpenManagedPlugin : undefined,
       }}
       agentContext={{

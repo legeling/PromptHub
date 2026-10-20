@@ -4734,7 +4734,21 @@
     "distributeToSelectedAgents": "Distribuir a los Agents seleccionados",
     "distributing": "Distribuyendo...",
     "distributionTargetHint": "PromptHub escribe este paquete Plugin en el directorio Plugin configurado de cada Agent seleccionado.",
-    "distributionSuccess": "Plugin distribuido a {{count}} destino(s) Agent."
+    "distributionSuccess": "Plugin distribuido a {{count}} destino(s) Agent.",
+    "nativeUpdate": "Actualizar",
+    "nativeOperationComplete": "Estado del plugin de Codex actualizado",
+    "nativeAccountManaged": "Gestionado por la cuenta",
+    "nativeUninstallTitle": "Desinstalar plugin de Codex",
+    "nativeUninstallDescription": "¿Desinstalar {{name}} de Codex? Se conservará la copia en Mis plugins.",
+    "nativeRuntimeMissing": "Instala o actualiza la aplicación de escritorio de Codex, o configura una CLI de Codex compatible.",
+    "nativeRuntimeIncompatible": "Este entorno de Codex no admite el formato actual de gestión de plugins. Actualiza Codex y recarga la lista.",
+    "nativeReadFailed": "No se pudieron leer los plugins de Codex. Comprueba la conexión y el inicio de sesión y recarga la lista.",
+    "nativeOperationFailed": "Codex no pudo completar la operación. Comprueba el plugin en Codex y recarga la lista.",
+    "nativeInvalidPlugin": "La identidad del plugin o la operación no es válida.",
+    "nativeNotInstalled": "Este plugin ya no está instalado. Actualiza la lista.",
+    "nativeRemotePolicy": "Tu cuenta de Codex gestiona este plugin. Cambia su estado de activación en Codex.",
+    "nativeConfigConflict": "La configuración de Codex cambió o no se pudo editar de forma segura. Actualiza y vuelve a intentarlo.",
+    "nativeVerificationFailed": "Codex no confirmó el estado solicitado. Actualiza y revisa el plugin antes de volver a intentarlo."
   },
   "generation": {
     "workbench": "Taller de imágenes",

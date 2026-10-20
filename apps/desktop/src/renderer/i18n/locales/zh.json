@@ -4772,7 +4772,21 @@
     "distributeToSelectedAgents": "分发到已选 Agent",
     "distributing": "正在分发...",
     "distributionTargetHint": "PromptHub 会把这个 Plugin 包写入每个已选 Agent 配置的 Plugin 目录。",
-    "distributionSuccess": "已分发到 {{count}} 个 Agent 目标。"
+    "distributionSuccess": "已分发到 {{count}} 个 Agent 目标。",
+    "nativeUpdate": "更新",
+    "nativeOperationComplete": "已刷新 Codex 插件状态",
+    "nativeAccountManaged": "账号管理",
+    "nativeUninstallTitle": "卸载 Codex 插件",
+    "nativeUninstallDescription": "从 Codex 卸载 {{name}}？“我的插件”中的副本会保留。",
+    "nativeRuntimeMissing": "请安装或更新 Codex 桌面应用，或配置受支持的 Codex CLI。",
+    "nativeRuntimeIncompatible": "此 Codex 运行程序不支持当前插件管理格式。请更新 Codex 后刷新。",
+    "nativeReadFailed": "无法读取 Codex 插件。请检查 Codex 的网络和登录状态后刷新。",
+    "nativeOperationFailed": "Codex 未能完成此操作。请在 Codex 中检查插件后刷新。",
+    "nativeInvalidPlugin": "插件标识或操作无效。",
+    "nativeNotInstalled": "此插件已不再安装。请刷新列表。",
+    "nativeRemotePolicy": "此插件由 Codex 账号管理，请在 Codex 中修改启用状态。",
+    "nativeConfigConflict": "Codex 配置已变更或无法安全修改。请刷新后重试。",
+    "nativeVerificationFailed": "Codex 未确认目标状态。请刷新并检查插件后再重试。"
   },
   "generation": {
     "workbench": "生图工作台",

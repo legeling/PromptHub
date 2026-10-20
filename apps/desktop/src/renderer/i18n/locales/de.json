@@ -4734,7 +4734,21 @@
     "distributeToSelectedAgents": "An ausgewählte Agents verteilen",
     "distributing": "Wird verteilt...",
     "distributionTargetHint": "PromptHub schreibt dieses Plugin-Paket in das konfigurierte Plugin-Verzeichnis jedes ausgewählten Agents.",
-    "distributionSuccess": "Plugin an {{count}} Agent-Ziel(e) verteilt."
+    "distributionSuccess": "Plugin an {{count}} Agent-Ziel(e) verteilt.",
+    "nativeUpdate": "Aktualisieren",
+    "nativeOperationComplete": "Codex-Plugin-Status aktualisiert",
+    "nativeAccountManaged": "Kontoverwaltet",
+    "nativeUninstallTitle": "Codex-Plugin deinstallieren",
+    "nativeUninstallDescription": "{{name}} aus Codex deinstallieren? Die Kopie unter Meine Plugins bleibt erhalten.",
+    "nativeRuntimeMissing": "Installieren oder aktualisieren Sie die Codex-Desktop-App oder konfigurieren Sie eine unterstützte Codex-CLI.",
+    "nativeRuntimeIncompatible": "Diese Codex-Laufzeit unterstützt das aktuelle Plugin-Verwaltungsformat nicht. Aktualisieren Sie Codex und laden Sie die Liste neu.",
+    "nativeReadFailed": "Codex-Plugins konnten nicht gelesen werden. Prüfen Sie Verbindung und Anmeldung und laden Sie die Liste neu.",
+    "nativeOperationFailed": "Codex konnte diesen Vorgang nicht abschließen. Prüfen Sie das Plugin in Codex und laden Sie die Liste neu.",
+    "nativeInvalidPlugin": "Die Plugin-Kennung oder der Vorgang ist ungültig.",
+    "nativeNotInstalled": "Dieses Plugin ist nicht mehr installiert. Laden Sie die Liste neu.",
+    "nativeRemotePolicy": "Dieses Plugin wird über Ihr Codex-Konto verwaltet. Ändern Sie den Aktivierungsstatus in Codex.",
+    "nativeConfigConflict": "Die Codex-Konfiguration wurde geändert oder kann nicht sicher bearbeitet werden. Aktualisieren Sie die Ansicht und versuchen Sie es erneut.",
+    "nativeVerificationFailed": "Codex hat den gewünschten Status nicht bestätigt. Prüfen Sie nach dem Aktualisieren das Plugin, bevor Sie es erneut versuchen."
   },
   "generation": {
     "workbench": "Bild-Workbench",

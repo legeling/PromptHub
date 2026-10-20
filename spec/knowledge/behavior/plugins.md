@@ -106,10 +106,61 @@ Official references:
 
 ### 5. Agent Plugin Adapter Contract
 
+#### Local Codex management (2026-10-19)
+
+- Agent Plugin must manage the plugins installed in the selected local Codex home:
+  inspect, install, refresh/update, enable/disable and uninstall. The native
+  `plugin list --json` response owns installed/enabled state; cache directories
+  alone never establish installation. Cached packages absent from that response
+  are not installed rows. Native identities include both plugin and marketplace.
+- Prefer the desktop application's bundled executable when present. The platform
+  registry owns executable locations; standalone Codex is used when no desktop
+  runtime is installed. Unsupported native JSON contracts produce an actionable
+  error, not a guessed alternate response or filesystem-only success.
+- Shared native operations belong to Core; Desktop resolves the configured Codex
+  root and supplies encrypted configuration backups. IPC/preload carry typed
+  mutation requests and sanitized results. Agent refresh is independent of public marketplace requests. Codex distribution/removal refreshes native inventory automatically. Renderer state derives from the same
+  returned inventory for rows, detail, counts and actions. No SQLite schema or
+  durable second installed-plugin registry is added.
+- Installation and update use native marketplace/plugin commands; enabling uses
+  the native `config/value/write` contract with an expected configuration version.
+  Native account-managed plugins retain their account/installation policies;
+  local enable controls must not pretend to change remote workspace policy.
+  OAuth and account authorization remain explicit native setup steps.
+- Before a native mutation, preserve the existing configuration through the
+  established encrypted backup owner. Native failures remain visible; reread
+  after mutations and refresh after errors. Do not restore the entire user
+  configuration over concurrent edits. PromptHub-owned removal also removes its
+  distribution binding/source through the existing ownership transaction; native
+  external removal never deletes the imported My Plugins package.
+- Inspect installed metadata only on list load; do not fetch the public catalog
+  or recursively scan every cached package. The measured native public catalog
+  contains 7,197 available rows / 3,241,738 JSON bytes on this host, whereas the
+  installed list has 18 rows. Installed-list work is linear in installed rows
+  plus their manifests and static package inventory. Existing native process execution budgets
+  apply; no model traffic, additional retry policy or business limit is added.
+- Acceptance: existing desktop import/distribution entrypoints plus native
+  installed-plugin actions, actual cache/config readback, refresh/reopen,
+  unrelated configuration/package preservation, invalid identities, failed
+  mutation and retry. A task-owned harmless plugin is also exercised against the
+  actual local Codex home and removed afterward. GUI control is authorized for
+  the test plugin. Windows/Linux native loaders and remote OAuth are separate
+  acceptance boundaries.
+- The RPC session, IPC mutation orchestration and native action component keep their cohesive lifecycle/render flow in one function beyond 50 lines. Native lifecycle/config-conflict tests and Electron removal/action failure/confirmation tests cover these boundaries.
+- Validation on macOS: Core native lifecycle with real desktop-bundled Codex passed, including disabled upgrades, reopen and concurrent config protection. Focused Core tests (9), Desktop inventory/actions/store/distribution tests (71), Core/Desktop/test TypeScript checks, scoped ESLint and desktop build passed. Electron UI lifecycle passed through import/distribution, refresh, native disable/update/enable, confirmed uninstall, reopen and My Plugins source update/delete. The opt-in `codex-plugin-local-home.spec.ts` also passed against the authorized real Codex home; original native inventory and parsed configuration matched afterward and the disposable plugin was removed. No release or cross-platform acceptance is implied.
+- Acceptance limitation: the computer-control tool disallows the Codex application, so its own plugin-page visual state was not inspected. PromptHub GUI and native Codex readback were exercised. Remote account OAuth/authorization and Windows/Linux were not tested. Desktop component tests retain existing React `act(...)` warnings.
+- Research: [official plugin packaging](https://developers.openai.com/plugins/build/plugins),
+  [native app-server configuration](https://learn.chatgpt.com/docs/app-server),
+  [Codex CLI plugin owner](https://github.com/openai/codex/blob/main/codex-rs/cli/src/plugin_cmd.rs),
+  [Codex++ marketplace owner](https://github.com/qqheling/codexplusplus/blob/main/crates/codex-plus-core/src/plugin_marketplace.rs).
+  Codex++ also patches desktop UI requests; PromptHub uses native management
+  commands and does not patch account policy or desktop application code.
+
 - “Agent 支持 Plugin”在 PromptHub 中表示 PromptHub 能把一个整合包安装为该 Agent 的原生整合包或等价组合，而不是要求该 Agent 直接读取 Codex `.codex-plugin`。
 - 合法 Codex / Claude 原生 manifest 定义 Plugin 身份，单 Skill 也可作为 Plugin 导入。
   Codex portable 根 manifest 按 schema 识别，保留根身份、`com.openai` 覆盖优先级和根 MCP 清单。
-  桌面 Codex / Claude 分发必须调用官方 CLI 注册、安装和启用，不能由复制目录推断安装成功；
+  桌面 Codex 分发与管理优先复用已安装桌面应用自带的原生运行程序；独立 CLI 是另一种安装来源，
+  不要求桌面用户重复安装 CLI。Claude 分发继续调用官方 CLI。不能由复制目录推断安装成功；
   原生配置确认启用后才记为已分发，移除时先卸载。具体合同见 Plugin Management Spec。
   Claude 存在原生安装注册表时，以注册表枚举已安装包，不把卸载后保留的缓存重新显示为
   已安装；独立手动目录仍按既有入口扫描。
@@ -127,6 +178,7 @@ Official references:
 - Antigravity IDE 全局目录来自 platform registry：macOS/Linux 为 `~/.gemini/config/plugins/<name>/`，Windows 为 `%USERPROFILE%\.gemini\config\plugins\<name>\`，不增加版本子目录。Gemini CLI 使用独立的 `~/.gemini/extensions/` 与 `gemini-extension.json`，不能代替 Antigravity 的插件目标。
 - Antigravity 扫描只检查全局 plugins 目录的直接子包；静态 inventory 包括原生 `mcp_config.json`、`hooks.json`，完整包分发保留 `skills/`、`agents/`、`rules/` 和所有资源。采用已有 package copy/symlink 与移除流程；不启动 MCP 或 hooks。
 - 本次没有 DB/schema 变更，也不自动移动先前 Gemini 目标的目录或修改用户配置。本次新导入的原生包可选择 Antigravity 分发；先前误放在 Gemini config/plugins 下的目录保持原状，用户需在原目标中显式处理遗留包。项目级安装与 Antigravity CLI 注册不在此 IDE 全局路径边界内。
+- 2026-10-20 macOS 本机验收：通过 PromptHub CLI 的 `plugin import/distribute/update/redistribute/undistribute` 正式入口，使用隔离的 PromptHub 数据目录向真实 Antigravity App 2.23.0 全局目录分发唯一命名的无害插件。客户端 Installed 页面从 3 个插件变为 4 个，详情显示 1.0.0，并能打开测试 Skill 正文；源包更新并重新分发后，页面自动显示 1.0.1 和新正文；移除后详情提示插件不存在，列表恢复为原有 3 个插件。退出本次启动的客户端后，`~/.gemini/config/` 原有 292 个文件的 SHA-256／符号链接目标清单完全一致，无新增文件，测试包与临时数据已清理。此次证明本机 App 的包发现、内容加载、更新和移除；未调用模型、MCP 或 hooks，不代表这些运行时能力、独立 CLI 注册、Windows/Linux 或发布验收。独立 `agy` 1.2.7 的 `plugin validate` 可识别该类包，但其列表未枚举 App 现有插件，不能用该列表替代 App 验收。
 - 详细目标矩阵和证据源见 `spec/knowledge/reference/plugin-agent-adapter-matrix.md`。
 
 ### 6. Stable Internal Sources
@@ -203,11 +255,11 @@ Plugin 包身份、子资产和原生目标要求仍由本规范定义。
 - Uninstall removes My Plugins metadata and PromptHub-managed plugin package files. Distributed Agent Plugin package copies/symlinks are preserved by default, but single and batch delete confirmations may explicitly remove the resolved Agent Plugin package paths for recorded `distributedTargetIds`. Plugin uninstall never removes imported child Skills/MCP entries, App authorizations, user-owned external source packages, or unrelated Agent folders.
 - Single-skill packages and single runtime hook/module packages fail the Plugin semantic gate and are not installed as Plugin bundles.
 - Plugin Targets render enabled `Native` / `Adapter` targets and disabled `RuntimeOnly` / `Composite` / `Pending` targets. Disabled targets remain visible with an explicit reason.
-- Agent Plugin reads target-native installed Plugin inventory for enabled bundle targets without importing it into My Plugins. Current target-native inventory detection covers Codex `.codex-plugin/plugin.json` cache packages, Claude Code registry/manual packages, Cursor `.cursor-plugin/plugin.json` packages, Gemini CLI extension packages, Antigravity IDE root `plugin.json` packages, Kiro `POWER.md` powers, and GitHub Copilot / VS Code Agent Plugin `plugin.json` packages. Runtime-only, composite, and pending targets remain disabled and are not scanned as separate skill/MCP folders.
+- Agent Plugin reads target-native installed Plugin inventory for enabled bundle targets without importing it into My Plugins. Current target-native inventory detection covers Codex native installed records enriched by confirmed package manifests, Claude Code registry/manual packages, Cursor `.cursor-plugin/plugin.json` packages, Gemini CLI extension packages, Antigravity IDE root `plugin.json` packages, Kiro `POWER.md` powers, and GitHub Copilot / VS Code Agent Plugin `plugin.json` packages. Runtime-only, composite, and pending targets remain disabled and are not scanned as separate skill/MCP folders.
 - Agent Plugin target descriptions are localized UI copy keyed by target ID. Disabled runtime-only or composite targets must clearly say the Agent does not support PromptHub Plugin bundles, instead of surfacing raw adapter metadata or opaque internal status labels.
 - Plugin Store cards do not show child inventory count chips. Source, category, provenance, install state, icon, and description stay on the card; complete child inventory remains visible in detail and preview surfaces.
 - Agent-installed Plugin inventory chips use direct capability counts, such as `1 Skill`, `2 Hooks`, or `1 个 Skill`; they do not prefix the count with `Includes` / `包含`.
-- Agent-installed Plugin cards are clickable read-only detail entries. The detail shows Agent source, description, inventory, local source path, a read-only Files tab, import-to-My-Plugins, and open-folder actions without editing or deleting the external Agent package.
+- Agent-installed Plugin cards open package details. Codex details additionally expose native update, enable/disable and uninstall through the local management contract above; other targets remain read-only. The detail shows Agent source, description, inventory, local source path, a read-only Files tab, import-to-My-Plugins, and open-folder actions without editing package files; Codex uninstall is explicit and confirmed.
 - PromptHub-managed My Plugins entries shown inside Agent Plugin are clickable into the same full installed Plugin detail page used by My Plugins, while still keeping selected-target distribution as a direct paper-plane action.
 - Users can explicitly import a target-native installed Plugin from Agent Plugin into My Plugins. Import copies the Agent package into PromptHub-managed `data/plugins`, records Agent source provenance, leaves the original Agent package untouched, and still rejects packages that fail the Plugin bundle semantic gate.
 - Users can explicitly import a local Plugin package from My Plugins. The desktop folder picker supplies the source path, the same local Plugin import pipeline performs a static manifest/inventory scan, copies valid packages into PromptHub-managed `data/plugins`, and rejects sources that fail the Plugin bundle semantic gate.

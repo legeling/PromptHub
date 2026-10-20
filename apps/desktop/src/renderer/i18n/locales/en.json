@@ -4774,7 +4774,21 @@
     "distributeToSelectedAgents": "Distribute to selected Agents",
     "distributing": "Distributing...",
     "distributionTargetHint": "PromptHub writes this Plugin package into each selected Agent's configured Plugin directory.",
-    "distributionSuccess": "Distributed Plugin to {{count}} Agent target(s)."
+    "distributionSuccess": "Distributed Plugin to {{count}} Agent target(s).",
+    "nativeUpdate": "Update",
+    "nativeOperationComplete": "Codex plugin state refreshed",
+    "nativeAccountManaged": "Account managed",
+    "nativeUninstallTitle": "Uninstall Codex plugin",
+    "nativeUninstallDescription": "Uninstall {{name}} from Codex? The copy in My Plugins will be kept.",
+    "nativeRuntimeMissing": "Install or update the Codex desktop app, or configure a supported Codex CLI.",
+    "nativeRuntimeIncompatible": "This Codex runtime does not support the current plugin management format. Update Codex and refresh.",
+    "nativeReadFailed": "Could not read Codex plugins. Check Codex connectivity and sign-in, then refresh.",
+    "nativeOperationFailed": "Codex could not complete this operation. Check the plugin in Codex and refresh.",
+    "nativeInvalidPlugin": "The plugin identity or operation is invalid.",
+    "nativeNotInstalled": "This plugin is no longer installed. Refresh the list.",
+    "nativeRemotePolicy": "This plugin is managed by your Codex account. Change its enabled state in Codex.",
+    "nativeConfigConflict": "The Codex configuration changed or could not be edited safely. Refresh and try again.",
+    "nativeVerificationFailed": "Codex did not confirm the requested state. Refresh and inspect the plugin before retrying."
   },
   "generation": {
     "workbench": "Image Workbench",

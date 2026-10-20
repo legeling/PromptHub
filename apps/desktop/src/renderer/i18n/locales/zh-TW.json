@@ -4734,7 +4734,21 @@
     "distributeToSelectedAgents": "分發到已選 Agent",
     "distributing": "正在分發...",
     "distributionTargetHint": "PromptHub 會把這個 Plugin 包寫入每個已選 Agent 設定的 Plugin 目錄。",
-    "distributionSuccess": "已分發到 {{count}} 個 Agent 目標。"
+    "distributionSuccess": "已分發到 {{count}} 個 Agent 目標。",
+    "nativeUpdate": "更新",
+    "nativeOperationComplete": "已重新整理 Codex 外掛狀態",
+    "nativeAccountManaged": "帳號管理",
+    "nativeUninstallTitle": "解除安裝 Codex 外掛",
+    "nativeUninstallDescription": "從 Codex 解除安裝 {{name}}？「我的外掛」中的副本會保留。",
+    "nativeRuntimeMissing": "請安裝或更新 Codex 桌面應用程式，或設定支援的 Codex CLI。",
+    "nativeRuntimeIncompatible": "此 Codex 執行程式不支援目前的外掛管理格式。請更新 Codex 後重新整理。",
+    "nativeReadFailed": "無法讀取 Codex 外掛。請檢查 Codex 的網路及登入狀態後重新整理。",
+    "nativeOperationFailed": "Codex 無法完成此操作。請在 Codex 中檢查外掛後重新整理。",
+    "nativeInvalidPlugin": "外掛識別碼或操作無效。",
+    "nativeNotInstalled": "此外掛已不再安裝。請重新整理清單。",
+    "nativeRemotePolicy": "此外掛由 Codex 帳號管理，請在 Codex 中修改啟用狀態。",
+    "nativeConfigConflict": "Codex 設定已變更或無法安全修改。請重新整理後重試。",
+    "nativeVerificationFailed": "Codex 未確認目標狀態。請重新整理並檢查外掛後再重試。"
   },
   "generation": {
     "workbench": "生圖工作台",

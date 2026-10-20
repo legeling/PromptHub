@@ -394,6 +394,7 @@ export const IPC_CHANNELS = {
   PLUGIN_VERSION_DELETE: "plugin:version:delete",
   PLUGIN_DISTRIBUTION_STATUS: "plugin:distribution:status",
   PLUGIN_TARGET_MATRIX: "plugin:target:matrix",
+  PLUGIN_CODEX_MUTATE: "plugin:codex:mutate",
 
   // Data Recovery
   DATA_CHECK_RECOVERY: "data:checkRecovery",

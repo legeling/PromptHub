@@ -22,6 +22,7 @@ import type {
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { AgentPluginDetailPage } from "./AgentPluginDetailPage";
+import { codexPluginErrorText } from "./codex-plugin-errors";
 import {
   AGENT_PLUGIN_HEADER_CLASS,
   type AgentPluginFilter,
@@ -224,6 +225,7 @@ function PluginTargetInstalledRow({
               <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                 {t("plugin.inAgentPluginTarget", "Installed in Agent")}
               </span>
+              {plugin.nativeCodex ? <span className="text-xs text-muted-foreground">{plugin.nativeCodex.marketplaceName} · {t(plugin.nativeCodex.enabled ? "common.enabled" : "common.disabled")}</span> : null}
             </div>
             <div className="mt-1.5 line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
               {plugin.description ||
@@ -337,7 +339,9 @@ export function AgentPluginView(props: AgentPluginViewProps) {
   ) {
     const managedPlugin = installedPlugins.find(
       (plugin) =>
-        plugin.name.toLowerCase() === selectedTargetPlugin.name.toLowerCase(),
+        selectedTargetPlugin.nativeCodex
+          ? plugin.id === selectedTargetPlugin.managedPluginId
+          : plugin.name.toLowerCase() === selectedTargetPlugin.name.toLowerCase(),
     );
     return (
       <>
@@ -507,6 +511,7 @@ export function AgentPluginView(props: AgentPluginViewProps) {
                     {selectedTarget?.displayName ??
                       t("plugin.pluginTargets", "Agent Plugin")}
                   </h3>
+                  {selectedTarget?.inventoryError ? <p role="alert" className="mt-2 text-sm text-destructive">{codexPluginErrorText(selectedTarget.inventoryError, t)}</p> : null}
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                     {selectedTarget
                       ? selectedTarget.enabled

@@ -20,7 +20,7 @@ export function buildAgentDetailPlugin(params: {
   const now = Date.now();
 
   return {
-    id: `agent:${target.id}:${plugin.name.toLowerCase()}`,
+    id: `agent:${target.id}:${plugin.id}`,
     name: plugin.name,
     displayName: plugin.displayName,
     description:

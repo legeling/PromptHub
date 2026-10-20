@@ -88,6 +88,7 @@ export interface PluginFullDetailPageProps {
     sourcePath: string;
   } | null;
   agentActions?: {
+    nativeCodex?: import("@prompthub/shared/types/codex-plugin").CodexInstalledPlugin;
     isImporting?: boolean;
     onImport?: () => void | Promise<void>;
     onOpenFolder?: () => void | Promise<void>;

@@ -72,6 +72,7 @@ interface PluginState {
   targetInventoryError: string | null;
   load: (options?: { force?: boolean }) => Promise<void>;
   loadTargetInventory: (options?: { force?: boolean }) => Promise<void>;
+  mutateCodexPlugin: (request: import("@prompthub/shared/types/codex-plugin").CodexPluginMutation) => Promise<void>;
   setSelectedTab: (tab: PluginState["selectedTab"]) => void;
   setSelectedMarketSourceId: (sourceId: string) => void;
   setLibraryViewMode: (mode: PluginLibraryViewMode) => void;
@@ -348,6 +349,23 @@ export const usePluginStore = create<PluginState>()(
       hasLoadedTargetInventory: false,
       isLoadingTargetInventory: false,
       targetInventoryError: null,
+
+      mutateCodexPlugin: async (request) => {
+        const result = await window.api.plugin.mutateCodexPlugin(request);
+        if (result.success === false) {
+          try {
+            await get().loadTargetInventory({ force: true });
+          } catch (error) {
+            console.warn("Codex plugin inventory refresh failed", error);
+          }
+          throw new Error(`codex-plugin:${result.errorCode}`);
+        }
+        set((state) => ({
+          library: result.library,
+          targetMatrix: state.targetMatrix.map((target) => target.id === "codex" ? result.target : target),
+        }));
+        await get().refreshDistributionStatus();
+      },
 
       loadTargetInventory: (options) => {
         if (pluginTargetInventoryInFlight) {
@@ -725,6 +743,7 @@ export const usePluginStore = create<PluginState>()(
         });
         set({ library: result.library });
         await get().refreshDistributionStatus(pluginId);
+        if (targetIds.includes("codex")) await get().loadTargetInventory({ force: true });
         if (result.failures?.length)
           throw new Error(
             result.failures
@@ -741,6 +760,7 @@ export const usePluginStore = create<PluginState>()(
         });
         set({ library: result.library });
         await get().refreshDistributionStatus(pluginId);
+        if (targetIds.includes("codex")) await get().loadTargetInventory({ force: true });
         if (result.failures?.length)
           throw new Error(
             result.failures

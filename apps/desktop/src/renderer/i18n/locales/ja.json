@@ -4734,7 +4734,21 @@
     "distributeToSelectedAgents": "選択した Agent に配布",
     "distributing": "配布中...",
     "distributionTargetHint": "PromptHub はこの Plugin パッケージを、選択した各 Agent の設定済み Plugin ディレクトリへ書き込みます。",
-    "distributionSuccess": "{{count}} 個の Agent ターゲットへ Plugin を配布しました。"
+    "distributionSuccess": "{{count}} 個の Agent ターゲットへ Plugin を配布しました。",
+    "nativeUpdate": "更新",
+    "nativeOperationComplete": "Codex プラグインの状態を更新しました",
+    "nativeAccountManaged": "アカウント管理",
+    "nativeUninstallTitle": "Codex プラグインをアンインストール",
+    "nativeUninstallDescription": "Codex から {{name}} をアンインストールしますか？マイプラグインのコピーは保持されます。",
+    "nativeRuntimeMissing": "Codex デスクトップアプリをインストールまたは更新するか、対応する Codex CLI を設定してください。",
+    "nativeRuntimeIncompatible": "この Codex ランタイムは現在のプラグイン管理形式に対応していません。Codex を更新して再読み込みしてください。",
+    "nativeReadFailed": "Codex プラグインを読み取れません。接続とログイン状態を確認して再読み込みしてください。",
+    "nativeOperationFailed": "Codex は操作を完了できませんでした。Codex でプラグインを確認して再読み込みしてください。",
+    "nativeInvalidPlugin": "プラグインの識別子または操作が無効です。",
+    "nativeNotInstalled": "このプラグインはインストールされていません。一覧を再読み込みしてください。",
+    "nativeRemotePolicy": "このプラグインは Codex アカウントで管理されています。有効状態は Codex で変更してください。",
+    "nativeConfigConflict": "Codex の設定が変更されたか、安全に編集できません。再読み込みして再試行してください。",
+    "nativeVerificationFailed": "Codex で目的の状態を確認できませんでした。再読み込みしてプラグインを確認してから再試行してください。"
   },
   "generation": {
     "workbench": "画像生成ワークベンチ",

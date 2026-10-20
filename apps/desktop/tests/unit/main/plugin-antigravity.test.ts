@@ -14,10 +14,8 @@ import {
 } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
-import {
-  registerPluginIPC,
-  scanInstalledPluginsForTarget,
-} from "../../../src/main/ipc/plugin.ipc";
+import { registerPluginIPC } from "../../../src/main/ipc/plugin.ipc";
+import { scanInstalledPluginsForTarget } from "../../../src/main/ipc/plugin-target-inventory";
 import { createMcpTestStorage } from "../../../../../packages/core/tests/helpers/mcp-storage";
 
 let mcpStorage: ReturnType<typeof createMcpTestStorage>;

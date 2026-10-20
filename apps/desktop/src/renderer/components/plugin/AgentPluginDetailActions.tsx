@@ -1,7 +1,10 @@
 import type { TFunction } from "i18next";
 import { DownloadIcon, FolderOpenIcon, Loader2Icon } from "lucide-react";
+import type { CodexInstalledPlugin } from "@prompthub/shared/types/codex-plugin";
+import { CodexPluginActions } from "./CodexPluginActions";
 
 interface AgentPluginDetailActionsProps {
+  nativeCodex?: CodexInstalledPlugin;
   isImporting?: boolean;
   isManaged?: boolean;
   onImport?: () => void | Promise<void>;
@@ -17,9 +20,11 @@ export function AgentPluginDetailActions({
   onOpenFolder,
   onOpenManagedPlugin,
   t,
+  nativeCodex,
 }: AgentPluginDetailActionsProps) {
   return (
     <>
+      {nativeCodex ? <CodexPluginActions plugin={nativeCodex} /> : null}
       {isManaged ? (
         <button
           type="button"
@@ -46,7 +51,7 @@ export function AgentPluginDetailActions({
           {t("plugin.importToMyPlugins", "Import to My Plugins")}
         </button>
       ) : null}
-      <button
+      {onOpenFolder ? <button
         type="button"
         aria-label={t("plugin.openPluginFolder", "Open Plugin folder")}
         onClick={() => void onOpenFolder?.()}
@@ -55,7 +60,7 @@ export function AgentPluginDetailActions({
       >
         <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
         {t("common.open", "Open")}
-      </button>
+      </button> : null}
     </>
   );
 }

@@ -327,7 +327,7 @@ export function PluginManagerView({ model }: PluginManagerViewProps) {
           isLoading={isLoading}
           importingTargetPluginId={importingTargetPluginId}
           removingLibraryPluginId={removingLibraryPluginId}
-          onRefresh={() => void load({ force: true })}
+          onRefresh={() => void model.loadTargetInventory({ force: true })}
           onDistributeLibraryPlugin={(plugin, target) =>
             setAgentTargetPicker({ plugins: [plugin], targetIds: [target.id] })
           }

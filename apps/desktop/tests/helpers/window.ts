@@ -426,6 +426,7 @@ function createWindowApiDefaults() {
       importEnv: vi.fn(),
     },
     plugin: {
+      mutateCodexPlugin: vi.fn(),
       getDistributionStatus: vi.fn().mockResolvedValue({}),
       removePluginDistribution: vi.fn(),
       checkInstalledPluginPackage: vi.fn(),

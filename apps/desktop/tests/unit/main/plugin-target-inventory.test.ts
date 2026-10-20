@@ -5,7 +5,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { scanInstalledPluginsForTarget } from "../../../src/main/ipc/plugin.ipc";
+import { scanInstalledPluginsForTarget } from "../../../src/main/ipc/plugin-target-inventory";
+import { mapCodexInstalledPlugins } from "../../../src/main/ipc/plugin-codex.ipc";
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -34,7 +35,7 @@ describe("Agent Plugin target inventory scan", () => {
     fs.rmSync(agentRoot, { recursive: true, force: true });
   });
 
-  it("reads Codex plugin cache packages", () => {
+  it("only enriches Codex packages confirmed by native installed inventory", () => {
     const cachedPlugin = path.join(
       agentRoot,
       "plugins",
@@ -53,13 +54,19 @@ describe("Agent Plugin target inventory scan", () => {
     touch(path.join(cachedPlugin, "skills", "control-browser", "SKILL.md"));
     touch(path.join(cachedPlugin, "scripts", "probe.js"));
 
-    const plugins = scanInstalledPluginsForTarget("codex", agentRoot);
+    expect(scanInstalledPluginsForTarget("codex", agentRoot)).toEqual([]);
+    const plugins = mapCodexInstalledPlugins([{
+      pluginId: "browser@openai", name: "browser", marketplaceName: "openai",
+      version: "26.0.0", enabled: false, sourceType: "local", sourcePath: cachedPlugin,
+      installPolicy: "AVAILABLE",
+    }], []);
 
     expect(plugins).toHaveLength(1);
     expect(plugins[0]).toMatchObject({
       name: "browser",
       displayName: "Browser",
       inventory: { skills: 1, mcpServers: 1, scripts: 1 },
+      nativeCodex: { enabled: false, pluginId: "browser@openai" },
     });
   });
 

@@ -10,6 +10,7 @@ import {
   type PluginNativeInstallationOptions as CoreOptions,
 } from "@prompthub/core/plugin-native-installation";
 import { getPlatformRootDir } from "./skill-installer-utils";
+import { backupCodexPluginConfig } from "./codex-plugin-service";
 
 export type PluginNativeInstallationOptions = Omit<CoreOptions, "getRoot"> & {
   getRoot?: CoreOptions["getRoot"];
@@ -18,6 +19,9 @@ export type PluginNativeInstallationOptions = Omit<CoreOptions, "getRoot"> & {
 function coreOptions(options: PluginNativeInstallationOptions): CoreOptions {
   return {
     ...options,
+    beforeMutation: options.beforeMutation ?? (async (targetId, root) => {
+      if (targetId === "codex") await backupCodexPluginConfig(root);
+    }),
     getRoot:
       options.getRoot ??
       ((id) => {

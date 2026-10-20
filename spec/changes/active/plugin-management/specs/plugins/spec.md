@@ -424,7 +424,7 @@ PromptHub MUST model Plugin support as an adapter matrix across agent-native bun
 
 #### Scenario: Agent Plugin shows target-native installed plugins
 
-- **GIVEN** a supported Agent already has Plugin packages installed outside PromptHub, such as Codex cache packages, Claude Code packages recorded in `~/.claude/plugins/installed_plugins.json`, Cursor plugin packages, Gemini CLI extensions, Kiro powers, or GitHub Copilot / VS Code Agent Plugin packages
+- **GIVEN** a supported Agent already has Plugin packages installed outside PromptHub, such as Codex native installed records, Claude Code packages recorded in `~/.claude/plugins/installed_plugins.json`, Cursor plugin packages, Gemini CLI extensions, Kiro powers, or GitHub Copilot / VS Code Agent Plugin packages
 - **WHEN** the user opens that Agent in Agent Plugin
 - **THEN** PromptHub reads the target-native installed package metadata and static capability folders without executing plugin code
 - **AND** the selected Agent detail shows those Agent-installed Plugin packages and their inventory counts
@@ -499,3 +499,7 @@ PromptHub MUST read and migrate the local Plugin library independently of whethe
 - `[待确认]` Whether App/connector entries should be managed as PromptHub-local metadata first, or only as links to Codex/ChatGPT app authorization flows.
 - Plugin package history remains independent of child Skill versions. Manual snapshots, rollback safety snapshots and automatic pre-source-update snapshots retain their existing semantics; version records and package snapshots follow the current storage owner. Future synchronization changes remain outside this resource-interface convergence scope.
 - First adapter package marker generation is implemented for Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot / VS Code. `[待确认]` remains for deeper target-specific installer semantics beyond static marker generation.
+
+### Local Codex management
+
+The confirmed local management and native runtime contract is owned by `spec/knowledge/behavior/plugins.md` (Local Codex management). Desktop-bundled Codex is sufficient; a separate CLI installation is not required. Installed state comes from the native inventory; Codex details support update, enable/disable and confirmed uninstall.

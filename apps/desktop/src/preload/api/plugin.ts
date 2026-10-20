@@ -19,6 +19,7 @@ import type {
   PluginSourceUpdateCheck,
   PluginSourceUpdateResult,
   PluginTargetCompatibility,
+  PluginNativeMutationResult,
   PluginUndistributeRequest,
   PluginUndistributeResult,
   PluginVersion,
@@ -27,6 +28,8 @@ import type {
 import type { AgentAssetFileSnapshot } from "@prompthub/shared/types/sync";
 
 export const pluginApi = {
+  mutateCodexPlugin: (request: import("@prompthub/shared/types/codex-plugin").CodexPluginMutation): Promise<PluginNativeMutationResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_CODEX_MUTATE, request),
   getDistributionStatus: (
     pluginId?: string,
   ): Promise<ResourceDistributionSnapshot> =>
