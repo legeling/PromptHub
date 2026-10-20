@@ -18,7 +18,9 @@ import type { NativeCommandRunner } from "../../../src/main/services/native-comm
 
 let root: string;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-native-install-"));
+  root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "plugin-native-install-")),
+  );
   configureRuntimePaths({ userDataPath: path.join(root, "userdata") });
   initDatabase();
   fs.mkdirSync(path.join(root, "source", ".claude-plugin"), {
@@ -57,7 +59,10 @@ it("does not publish a successful distribution if the native install fails and p
   const run = vi
     .fn()
     .mockRejectedValue(
-      new Error("synthetic account data that must not reach UI"),
+      Object.assign(
+        new Error("synthetic account data that must not reach UI"),
+        { code: "EINVAL" },
+      ),
     );
   const runner: NativeCommandRunner = { resolve: async () => "claude", run };
   const request = {
@@ -71,7 +76,9 @@ it("does not publish a successful distribution if the native install fails and p
   expect(failed.failures).toEqual([
     {
       targetId: "claude-code",
-      error: expect.stringContaining("Native Plugin marketplace failed"),
+      error: expect.stringContaining(
+        "Native Plugin marketplace add failed (EINVAL)",
+      ),
     },
   ]);
   expect(JSON.stringify(failed.failures)).not.toContain(

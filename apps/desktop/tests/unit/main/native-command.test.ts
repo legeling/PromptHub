@@ -65,7 +65,7 @@ describe("native command resolution", () => {
     const runner = createRunner({
       platform: "win32",
       env: {
-        PATH: "C:\\Missing;C:\\Tools",
+        Path: "C:\\Missing;C:\\Tools",
         PATHEXT: ".EXE;.CMD",
         USERPROFILE: "C:\\Users\\test",
       },

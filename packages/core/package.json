@@ -24,12 +24,14 @@
     "yaml": "^2.9.0",
     "http-proxy-agent": "^7.0.2",
     "https-proxy-agent": "^7.0.6",
-    "socks-proxy-agent": "^7.0.0"
+    "socks-proxy-agent": "^7.0.0",
+    "cross-spawn": "7.0.6"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^2.0.0",
     "typescript": "5.9.3",
-    "vitest": "^2.0.0"
+    "vitest": "^2.0.0",
+    "@types/cross-spawn": "^6.0.6"
   }
 }

@@ -29,6 +29,28 @@ export const codexAgentDefinition = {
           "~/Applications/Codex.app/Contents/Resources/codex",
         ],
       },
+      windowsAppPackage: {
+        name: "OpenAI.Codex",
+        executableRelativePath: "app/resources/codex.exe",
+      },
+      vscodeExtensionRuntime: {
+        id: "openai.chatgpt",
+        extensionsRelativePath: ".vscode/extensions",
+        executablePaths: {
+          darwin: {
+            arm64: "bin/macos-aarch64/codex",
+            x64: "bin/macos-x86_64/codex",
+          },
+          win32: {
+            arm64: "bin/windows-aarch64/codex.exe",
+            x64: "bin/windows-x86_64/codex.exe",
+          },
+          linux: {
+            arm64: "bin/linux-aarch64/codex",
+            x64: "bin/linux-x86_64/codex",
+          },
+        },
+      },
       versionArgs: ["--version"],
       evidence: "official-codex-cli",
       update: {

@@ -8,6 +8,14 @@ export interface AgentCliDescriptor {
   executableCandidates: string[];
   /** Desktop-bundled native runtimes, in discovery order. */
   bundledExecutablePaths?: Partial<Record<SkillPlatformOsKey, string[]>>;
+  windowsAppPackage?: { name: string; executableRelativePath: string };
+  vscodeExtensionRuntime?: {
+    id: string;
+    extensionsRelativePath: string;
+    executablePaths: Partial<
+      Record<SkillPlatformOsKey, Partial<Record<"x64" | "arm64", string>>>
+    >;
+  };
   versionArgs: string[];
   evidence: string;
   update?: AgentCliUpdateDescriptor;

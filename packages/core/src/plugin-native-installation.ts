@@ -119,9 +119,20 @@ async function runNative(
       timeout: AGENT_CLI_MUTATION_TIMEOUT_MS,
       maxBuffer: AGENT_CLI_MUTATION_OUTPUT_BYTES,
     });
-  } catch {
-    // CLI output can include account/configuration data; expose only the failed operation.
-    throw new Error(`Native Plugin ${args[0]} failed: ${native.selector}`);
+  } catch (error) {
+    // Never expose native stderr: it can contain account/configuration data.
+    const code =
+      error instanceof Error ? Reflect.get(error, "code") : undefined;
+    const diagnostic =
+      typeof code === "number" ||
+      (typeof code === "string" && /^[A-Z_]+$/.test(code))
+        ? ` (${code})`
+        : "";
+    const operation =
+      args[0] === "marketplace" ? `marketplace ${args[1]}` : args[0];
+    throw new Error(
+      `Native Plugin ${operation} failed${diagnostic}: ${native.selector}`,
+    );
   }
 }
 

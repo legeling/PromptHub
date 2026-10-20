@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { runNativeCommand } from "./native-process";
 import { constants as fsConstants } from "node:fs";
 import { access, realpath } from "node:fs/promises";
 import os from "node:os";
@@ -30,37 +30,6 @@ export interface NativeCommandResolverOptions {
 
 const MAX_SEARCH_DIRECTORIES = 256;
 
-function execFileAsync(
-  command: string,
-  args: string[],
-  options: NativeCommandRunOptions,
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      command,
-      args,
-      {
-        env: options.env ?? process.env,
-        timeout: options.timeout,
-        maxBuffer: options.maxBuffer,
-        signal: options.signal,
-        cwd: options.cwd,
-        windowsHide: true,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve({
-          stdout,
-          stderr,
-        });
-      },
-    );
-  });
-}
-
 function homeDirectoryForEnvironment(
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
@@ -78,7 +47,13 @@ function searchDirectories(
   const pathApi = platform === "win32" ? path.win32 : path.posix;
   const delimiter = platform === "win32" ? ";" : ":";
   const home = homeDirectoryForEnvironment(platform, env);
-  const configured = (env.PATH || "")
+  const configured = (
+    env.PATH ||
+    (platform === "win32"
+      ? Object.entries(env).find(([key]) => key.toLowerCase() === "path")?.[1]
+      : undefined) ||
+    ""
+  )
     .split(delimiter)
     .map((item) => item.trim().replace(/^"|"$/g, ""))
     .filter(Boolean);
@@ -171,6 +146,6 @@ export function createNativeCommandRunner(
       }
       return resolveFromSearchPath(command, options);
     },
-    run: execFileAsync,
+    run: runNativeCommand,
   };
 }

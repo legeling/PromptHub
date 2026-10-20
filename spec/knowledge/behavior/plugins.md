@@ -320,3 +320,28 @@ Report-specific revalidation (2026-10-14, isolated `cd80eb1f` plus new tests):
 - `pnpm --filter @prompthub/desktop build` then `pnpm --filter @prompthub/desktop exec playwright test tests/e2e/antigravity-plugin.spec.ts --workers=1 --retries=0`: build and 1 Electron test passed. A fresh isolated profile imports the reported native manifest, distributes through the real target picker, preserves manifest/image bytes at the flat default IDE path, and retains library and target inventory after process restart. Fixtures and Electron processes are cleaned on completion.
 - Desktop `typecheck:tests`, ESLint on both added test files, scoped Prettier and `git diff --check` passed. The previously run native Plugin unit suite remains 10/10; unchanged product source was not retested merely for this documentation update.
 - This closes the reported IDE global-directory/manifest defect, originally fixed in `37a20820`. It does not claim execution of Zotero, a Windows Antigravity loader, CLI Plugin registration, project-level Plugin support or a published release; those are distinct acceptance boundaries, not evidence that the reported configuration remains broken.
+
+### Windows native runtime discovery (#244)
+
+Plugin commands retain the native `plugin` prefix. The runtime resolver uses the
+registered `OpenAI.Codex` Windows Store package's `app/resources/codex.exe`, or
+an active `openai.chatgpt` extension from the default VS Code `extensions.json`,
+before standalone PATH discovery. Package identity and executable layouts belong
+to the shared Agent definition; Store version directories are never guessed.
+Custom VS Code extension directories are not discovered. Store ACL failures are
+reported as native command failures; discovery does not alter package permissions.
+
+Native commands and Codex configuration RPC use `cross-spawn` for Windows npm
+shims and argument quoting. This promotes the existing MIT-licensed 7.0.6
+transitive dependency to a direct core dependency; no additional runtime is
+introduced. Output limits and execution timeouts retain the existing command
+policy. Termination on Windows targets only the owned process tree. The command
+collector keeps its lifecycle in one closure (over 50 lines) so output, abort,
+timeout and close share one completion state; process regression tests cover
+output budgets, exit codes and argument boundaries. Native installation errors
+include the operation and a safe exit/system code, never raw stderr.
+
+Windows Store discovery and extension selection are covered with deterministic
+fixtures. The npm shim execution case runs only on Windows. No Windows test
+machine was available for the 2026-10-20 verification; Windows 11 installation,
+enable/disable and removal remain an explicit release acceptance gap.

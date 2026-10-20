@@ -592,6 +592,9 @@ importers:
       '@prompthub/shared':
         specifier: workspace:*
         version: link:../shared
+      cross-spawn:
+        specifier: 7.0.6
+        version: 7.0.6
       fflate:
         specifier: ^0.8.2
         version: 0.8.2
@@ -614,6 +617,9 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
     devDependencies:
+      '@types/cross-spawn':
+        specifier: ^6.0.6
+        version: 6.0.6
       '@types/node':
         specifier: ^24.0.0
         version: 24.12.4
@@ -3410,6 +3416,9 @@ packages:
 
   '@types/cacheable-request@6.0.3':
     resolution: {integrity: sha512-IQ3EbTzGxIigb1I3qPZc1rWJnH0BmSKv5QYTalEwweFvyBDLSAe24zP0le/hyi7ecGfZVlIVAg4BZqb8WBwKqw==}
+
+  '@types/cross-spawn@6.0.6':
+    resolution: {integrity: sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==}
 
   '@types/d3-force@3.0.10':
     resolution: {integrity: sha512-ZYeSaCF3p73RdOKcjj+swRlZfnYpK1EbaDiYICEEp5Q6sUiqFaFQ9qgoshp5CzIyyb/yD09kD9o2zEltCexlgw==}
@@ -11785,6 +11794,10 @@ snapshots:
       '@types/keyv': 3.1.4
       '@types/node': 24.12.4
       '@types/responselike': 1.0.3
+
+  '@types/cross-spawn@6.0.6':
+    dependencies:
+      '@types/node': 24.12.4
 
   '@types/d3-force@3.0.10': {}
 

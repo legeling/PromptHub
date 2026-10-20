@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import type { spawn } from "node:child_process";
+import { spawnNativeCommand, stopNativeCommand } from "../native-process";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -44,7 +45,7 @@ export function writeCodexPluginEnabled(
   options: CodexConfigWriteOptions,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = (options.launch ?? spawn)(
+    const child = (options.launch ?? spawnNativeCommand)(
       options.command,
       ["app-server", "--listen", "stdio://"],
       {
@@ -61,7 +62,7 @@ export function writeCodexPluginEnabled(
     const stop = (error?: CodexPluginError) => {
       failure ??= error ?? null;
       child.stdin?.end();
-      child.kill(error ? "SIGKILL" : "SIGTERM");
+      stopNativeCommand(child);
     };
     const timer = setTimeout(
       () => stop(new CodexPluginError("operation-failed")),
