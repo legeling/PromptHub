@@ -1,4 +1,5 @@
 import { SyncReviewHost } from "./components/ui/SyncReviewHost";
+import { StartupErrorPage } from "./components/app/StartupErrorPage";
 import { useApplicationNotificationFeedback } from "./components/app/application-notification-feedback";
 import { ConfirmationHost } from "./components/ui/ConfirmationHost";
 import { getShortcutKey } from "./services/shortcut-key";
@@ -1152,23 +1153,7 @@ function App() {
   }, [applyTheme, inferUpdateChannel]);
 
   if (startupError) {
-    return (
-      <main
-        role="alert"
-        className="flex h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-foreground"
-      >
-        <h1 className="text-xl font-semibold">
-          {t("common.storageInitializationFailed")}
-        </h1>
-        <p>{t("common.storageInitializationFailedDescription")}</p>
-        <button
-          className="rounded bg-primary px-4 py-2 text-primary-foreground"
-          onClick={() => window.location.reload()}
-        >
-          {t("common.reloadPromptHub")}
-        </button>
-      </main>
-    );
+    return <StartupErrorPage error={startupError} />;
   }
 
   if (isLoading) {

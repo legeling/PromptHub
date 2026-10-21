@@ -6,6 +6,7 @@ import {
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
+import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import { nativeWindowTestTag } from "./helpers/electron-launch-options";
 import { createWebDAVFixture } from "./helpers/webdav-fixture";
 
@@ -82,6 +83,69 @@ test("creates Prompts through the editor before and after a complete restart (#2
 });
 
 test.describe("E2E: Skill smoke", () => {
+  test("copies redacted startup failure diagnostics and keeps reload usable", async () => {
+    const { app, page, userDataDir } = await launchPromptHub(null);
+    const clipboardBackup = await app.evaluate(({ clipboard }) =>
+      clipboard.availableFormats().map((format) => ({
+        format,
+        data: clipboard.readBuffer(format).toString("base64"),
+      })),
+    );
+    try {
+      await setAppLanguage(page, "en");
+      // A migration failure occurs before saved-language hydration; fix the browser locale too.
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, "language", { value: "en-US" });
+      });
+      // Inject only the failed storage response; real preload, startup UI and clipboard remain active.
+      await app.evaluate(({ ipcMain }, channel) => {
+        ipcMain.removeHandler(channel);
+        ipcMain.handle(channel, () => {
+          throw new Error(
+            "Synthetic startup storage failure password=fixture-secret",
+          );
+        });
+      }, IPC_CHANNELS.SETTINGS_RENDERER_PERSISTENCE_MIGRATE);
+      await page.reload();
+      await expect(
+        page.getByRole("heading", { name: "Unable to initialize local data" }),
+      ).toBeVisible();
+      await page.getByText("Error details", { exact: true }).click();
+      const details = page.getByTestId("startup-error-log");
+      await expect(details).toContainText("Synthetic startup storage failure");
+      await expect(details).not.toContainText("fixture-secret");
+      await page
+        .getByRole("button", { name: "Copy error log", exact: true })
+        .click();
+      await expect(page.getByRole("status")).toHaveText("Error log copied");
+      expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
+        await details.textContent(),
+      );
+      await Promise.all([
+        page.waitForEvent("domcontentloaded"),
+        page
+          .getByRole("button", { name: "Reload PromptHub", exact: true })
+          .click(),
+      ]);
+      await expect(
+        page.getByRole("button", { name: "Copy error log", exact: true }),
+      ).toBeVisible();
+    } finally {
+      try {
+        await app.evaluate(({ clipboard }, previous) => {
+          clipboard.clear();
+          for (const item of previous)
+            clipboard.writeBuffer(
+              item.format,
+              Buffer.from(item.data, "base64"),
+            );
+        }, clipboardBackup);
+      } finally {
+        await closePromptHub(app, userDataDir);
+      }
+    }
+  });
+
   test("launches with isolated test profile and opens the seeded skill workflow", async () => {
     const { app, page, userDataDir } = await launchPromptHub(
       "skills-smoke.seed.json",

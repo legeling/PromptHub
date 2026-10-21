@@ -8,6 +8,34 @@
 
 ### 1. Recovery Safety
 
+#### Startup failure diagnostics (2026-10-19)
+
+The renderer startup-failure page exposes Copy error log, selectable error
+details, and the existing Reload action. The captured startup error remains the
+authority for its message, stack and Error/string cause chain; diagnostics add
+the packaged version, capture time and runtime user agent. No settings, database
+content, source files or full historical log are read. Common credential fields,
+authorization/cookie headers, URL credentials and home usernames are redacted
+before both display and clipboard export; users should review details before
+sharing. This is a diagnostic of the caught failure, not a complete main-process log.
+
+Copy uses the existing clipboard utility, works independently of database/settings
+readiness, reports success/failure inline, and permits manual selection and retry
+after clipboard denial. The page does not claim every startup failure is a migration
+failure or that all source data is intact. It neither bypasses failed initialization
+nor changes recovery, migrations or persistence. Work and memory are O(error text
+size); no network request, polling, new IPC or dependency is added.
+
+Verification: startup-error-page, renderer-error-boundary, settings-startup-readiness
+and i18n-init passed 23 tests. Clipboard transport is substituted; the real page,
+formatter and clipboard utility cover copied text, redaction, failure/retry and
+reload delegation. Desktop test-inclusive typecheck, focused ESLint, file-size
+gate and main/preload/renderer production build passed. Subsequent authorized
+isolated Electron acceptance passed the real startup page, redacted OS clipboard
+copy and reload after an injected storage IPC failure. Clipboard formats were
+restored and the temporary profile removed; no installed bundle or user data
+was changed. This UI check does not replace disk migration/reopen coverage.
+
 #### Prompt workspace upgrade recovery (2026-10-19)
 
 - Confirmed requirement: historical Prompt workspaces must converge once into SQLite;
@@ -329,7 +357,7 @@
 
 ### 3. Stable Internal Sources
 
-- 目录迁移与数据布局事实见 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。
+- 目录迁移与数据布局事实见 `spec/knowledge/structure/storage-architecture.md`。
 - 历史恢复/迁移计划和事故收敛记录保存在 `spec/changes/legacy/docs-08-todo/`。
 
 ## Stable Scenarios
@@ -338,8 +366,8 @@
 
 When backup, restore, migration, or recovery behavior changes materially:
 
-- they create a delta spec under `spec/changes/active/<change-key>/specs/data-recovery/spec.md`
-- they sync durable recovery guarantees back into this stable spec after implementation
+- they update this owning topic when requirements change, marking implementation gaps
+- they keep a plan only when needed under the documentation routing rule
 
 ### Scenario: User encounters upgrade-risking data operations
 
