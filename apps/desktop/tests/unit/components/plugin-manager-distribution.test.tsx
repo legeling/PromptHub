@@ -833,6 +833,90 @@ describe("PluginManager", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows progress and closes after committed distribution while inventory is pending", async () => {
+    installPluginApiMock({
+      ...installedLibrary,
+      plugins: [{ ...installedGmailPlugin, distributedTargetIds: [] }],
+    });
+    usePluginStore.setState({ selectedTab: "library" });
+    await renderPluginManager();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select Agent targets for Gmail",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Select Agent targets",
+    });
+    await waitFor(() =>
+      expect(usePluginStore.getState().isLoadingTargetInventory).toBe(false),
+    );
+    const inventory = createDeferred<PluginTargetCompatibility[]>();
+    vi.mocked(window.api.plugin.getTargetMatrix).mockReturnValue(
+      inventory.promise,
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Codex" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Apply changes" }),
+    );
+    try {
+      expect(screen.getByRole("status")).toHaveTextContent("Distributing...");
+      await screen.findByText("Distributed Plugin to 1 Agent target(s).");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Select Agent targets" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        usePluginStore.getState().library?.plugins[0].distributedTargetIds,
+      ).toEqual(["codex"]);
+    } finally {
+      await act(async () => {
+        inventory.resolve(targetMatrix);
+      });
+    }
+  });
+
+  it("keeps the target picker on failure and allows an explicit successful retry", async () => {
+    installPluginApiMock({
+      ...installedLibrary,
+      plugins: [{ ...installedGmailPlugin, distributedTargetIds: [] }],
+    });
+    usePluginStore.setState({ selectedTab: "library" });
+    await renderPluginManager();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select Agent targets for Gmail",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Select Agent targets",
+    });
+    vi.mocked(window.api.plugin.distributePlugin).mockRejectedValueOnce(
+      new Error("Native install failed"),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Codex" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Apply changes" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Native install failed",
+    );
+    expect(dialog).toBeInTheDocument();
+    expect(
+      usePluginStore.getState().library?.plugins[0].distributedTargetIds,
+    ).toEqual([]);
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Apply changes" }),
+    );
+    await screen.findByText("Distributed Plugin to 1 Agent target(s).");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Select Agent targets" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
   it("batch distributes selected My Plugins to Agent targets", async () => {
     const calendarPlugin: PluginLibraryEntry = {
       ...installedGmailPlugin,

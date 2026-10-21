@@ -849,6 +849,44 @@ describe("PluginManager", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows install progress and closes the store detail only on success", async () => {
+    await renderPluginManager();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open Plugin details Linear" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Linear" });
+    await waitFor(() =>
+      expect(usePluginStore.getState().isLoadingMarkets).toBe(false),
+    );
+    vi.mocked(window.api.plugin.installMarketPlugin).mockRejectedValueOnce(
+      new Error("install failed"),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Install" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Installing...");
+    await screen.findByRole("alert");
+    expect(dialog).toBeInTheDocument();
+    const plugin = {
+      ...installedGmailPlugin,
+      id: "linear",
+      name: "linear",
+      displayName: "Linear",
+      distributedTargetIds: [],
+    };
+    vi.mocked(window.api.plugin.installMarketPlugin).mockResolvedValueOnce({
+      plugin,
+      library: { ...library, plugins: [plugin] },
+      warnings: [],
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Install" }));
+    await screen.findByText("Installed Linear");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Linear" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(usePluginStore.getState().library?.plugins[0].id).toBe("linear");
+  });
+
   it("installs selected store plugins from batch mode", async () => {
     await renderPluginManager();
 

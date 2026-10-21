@@ -346,36 +346,38 @@ function PluginPickerFooter({
   const { t } = useTranslation();
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={onConfirm}
-        disabled={selectedCount === 0 || isDistributing}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <SendIcon aria-hidden="true" className="h-4 w-4" />
-        {isDistributing
-          ? t("plugin.distributing", "Distributing...")
-          : t("skill.distribution.applyChanges")}
-      </button>
-      {redistributeCount > 0 && (
+    <div className="space-y-3 border-t border-border pt-4">
+      <div className="flex items-stretch gap-3">
         <button
           type="button"
-          onClick={onRedistribute}
-          disabled={isDistributing}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+          onClick={onConfirm}
+          disabled={selectedCount === 0 || isDistributing}
+          className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <SendIcon aria-hidden="true" className="h-4 w-4" />
-          {t("skill.distribution.redistribute")}
+          {isDistributing
+            ? t("plugin.distributing", "Distributing...")
+            : t("skill.distribution.applyChanges")}
         </button>
-      )}
+        {redistributeCount > 0 && (
+          <button
+            type="button"
+            onClick={onRedistribute}
+            disabled={isDistributing}
+            className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-border px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+          >
+            <SendIcon aria-hidden="true" className="h-4 w-4" />
+            {t("skill.distribution.redistribute")}
+          </button>
+        )}
+      </div>
       <p className="text-xs leading-5 text-muted-foreground">
         {t(
           "plugin.distributionTargetHint",
           "PromptHub writes this Plugin package into each selected Agent's configured Plugin directory.",
         )}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -482,6 +484,7 @@ export function PluginAgentTargetPicker({
     }
     isDistributingRef.current = true;
     setIsDistributing(true);
+    showToast(t("plugin.distributing"), "info");
     const targetIds = Array.from(selectedTargetIds);
     let succeeded = 0;
     let completedTargets = 0;

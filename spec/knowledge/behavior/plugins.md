@@ -263,6 +263,45 @@ Plugin 包身份、子资产和原生目标要求仍由本规范定义。
 - My Plugins stores user-facing personal metadata separately from source metadata. `isFavorite`, `userTags`, and `userNotes` are PromptHub-owned user metadata and must be preserved across source refresh or source-update operations. Manifest/source `tags` remain read-only package metadata; My Plugins filtering, searching, and card chips may combine source tags and user tags for discoverability, but write actions must only modify PromptHub-owned metadata.
 - My Plugins batch mode supports Skill-style favorite/unfavorite actions. If every selected Plugin is already favorited, the batch favorite action removes favorite state; otherwise it favorites every selected Plugin.
 - My Plugins batch mode includes a paper-plane distribute action. Selected Plugin packages share one Agent target picker; confirming the picker distributes each selected Plugin package to the chosen Agent Plugin targets through the same copy/symlink Plugin package distribution flow as single-Plugin distribution.
+- Desktop operation feedback: installation and distribution show an immediate
+  informational Toast plus the existing busy button. Confirmed success shows a
+  success Toast and closes the originating store-detail/target-picker modal;
+  failure preserves the dialog for retry. Completion follows the mutation IPC,
+  not marketplace reload or Agent inventory refresh. Distribution results update
+  the shared observation immediately; background refresh errors remain visible
+  through the existing inventory/status error state, not as installation failure.
+  Apply changes and Redistribute share one horizontal footer row, with the hint
+  below, separated from the scrolling content. Locally implemented 2026-10-21.
+  No storage, IPC, acquisition, timeout or retry contract changes are involved.
+- Feedback regression acceptance (2026-10-21): four focused assertions failed
+  before correction (missing start Toast, installation result replaced by a
+  reload, and two blocked-completion refresh cases). The real PluginManager,
+  Zustand store and Toast provider tests replace preload I/O, covering store
+  install success/failed retry, distribution success/failed retry, and slow or
+  failed native inventory refresh. Eight focused unit files pass 91 cases.
+  `tests/e2e/plugin-operation-feedback.spec.ts` passes headed macOS Electron
+  through the real picker, IPC and filesystem: start/success Toast visibility,
+  automatic close, copy bytes, redistributing, horizontal button bounds, reload
+  persistence, and light/dark screenshots. The single E2E scenario exceeds 50
+  lines to keep one owned fixture and its complete observable lifecycle together.
+  It uses an isolated shared Plugin target, not the user's Codex configuration;
+  Codex refresh failure/latency is tested at the component/store boundary.
+  The public marketplace download and native Codex installer were not rerun in
+  this UI follow-up. Source/test TypeScript and scoped ESLint pass. No full
+  release-harness or cross-platform acceptance is claimed.
+
+  Reproduction from `apps/desktop` (all commands use pnpm):
+
+  ```sh
+  pnpm exec vitest run --project unit tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-manager-distribution.test.tsx tests/unit/components/plugin-manager-store.test.tsx tests/unit/components/plugin-agent-target-picker.test.tsx tests/unit/components/plugin-shared-target.test.tsx tests/unit/components/toast.test.tsx tests/unit/components/plugin-manager-library.test.tsx tests/unit/components/plugin-manager-detail.test.tsx --maxWorkers=2 --minWorkers=1
+  # Against the existing dev server; omit VITE_DEV_SERVER_URL to use built renderer assets.
+  VITE_DEV_SERVER_URL=http://127.0.0.1:5173 PROMPTHUB_E2E_HEADED=1 pnpm exec playwright test tests/e2e/plugin-operation-feedback.spec.ts --workers=1
+  ```
+
+  The E2E is also selected by the normal Desktop E2E command and the built smoke
+  script consumed by the root release harness. Earlier visual-capture attempts
+  used the wrong theme setting and counted an unrelated status element; the
+  corrected test asserts `themeMode`/actual dark class and only operation Toasts.
 - My Plugins distribution preserves Codex native package copy/symlink behavior for Codex targets, and generates target-native package markers for enabled adapter targets before recording `distributedTargetIds`.
 - A Plugin package may contain more than one target-native manifest. PromptHub
   records native support per recognized target, preserves the exact manifest

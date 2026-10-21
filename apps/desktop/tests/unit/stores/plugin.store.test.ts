@@ -14,6 +14,7 @@ import type {
 import { createWindowApiMock, installWindowMocks } from "../../helpers/window";
 
 import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
+import type { ResourceDistributionSnapshot } from "@prompthub/shared/types/resource-observation";
 
 const library: PluginLibraryFile = {
   kind: "prompthub-plugin-library",
@@ -521,6 +522,85 @@ describe("plugin store", () => {
     await usePluginStore.getState().distributePlugin(importedSourcePlugin.id, ["codex"], "copy");
     expect(window.api.plugin.getTargetMatrix).toHaveBeenCalledTimes(1);
   });
+
+  it("publishes an installation result without reloading remote marketplaces", async () => {
+    const result = {
+      plugin: importedSourcePlugin,
+      library: { ...library, plugins: [importedSourcePlugin] },
+      warnings: [],
+    };
+    vi.mocked(window.api.plugin.installMarketPlugin).mockResolvedValue(result);
+    await expect(
+      usePluginStore.getState().installMarketPlugin("assist-kit"),
+    ).resolves.toEqual(result);
+    expect(usePluginStore.getState().library).toEqual(result.library);
+    expect(usePluginStore.getState().selectedTab).toBe("library");
+    expect(window.api.plugin.listMarketSources).not.toHaveBeenCalled();
+    expect(window.api.plugin.getLibrary).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    "finishes distribution before inventory refresh (refresh failure: %s)",
+    async (failRefresh) => {
+      const inventory = createDeferred<PluginTargetCompatibility[]>();
+      const observation = createDeferred<ResourceDistributionSnapshot>();
+      const plugin = {
+        ...importedSourcePlugin,
+        distributedTargetIds: ["codex"],
+      };
+      const result = {
+        plugin,
+        library: { ...library, plugins: [plugin] },
+        targets: [
+          {
+            targetId: "codex",
+            path: "/tmp/codex/assist-kit",
+            mode: "copy" as const,
+          },
+        ],
+      };
+      usePluginStore.setState({
+        distributionSnapshot: {
+          [plugin.id]: { codex: { installed: false, checkedAt: 1 } },
+        },
+      });
+      vi.mocked(window.api.plugin.distributePlugin).mockResolvedValue(result);
+      vi.mocked(window.api.plugin.getDistributionStatus).mockReturnValue(
+        observation.promise,
+      );
+      vi.mocked(window.api.plugin.getTargetMatrix).mockReturnValue(
+        inventory.promise,
+      );
+      let completed = false;
+      const operation = usePluginStore
+        .getState()
+        .distributePlugin(plugin.id, ["codex"], "copy")
+        .then(() => {
+          completed = true;
+        });
+      try {
+        await waitFor(() => expect(completed).toBe(true));
+        expect(
+          usePluginStore.getState().distributionSnapshot[plugin.id]?.codex
+            .installed,
+        ).toBe(true);
+        expect(usePluginStore.getState().library).toEqual(result.library);
+      } finally {
+        observation.resolve({});
+        if (failRefresh) inventory.reject(new Error("inventory unavailable"));
+        else inventory.resolve(targetMatrix);
+        await operation.catch(() => undefined);
+        await waitFor(() =>
+          expect(usePluginStore.getState().isLoadingTargetInventory).toBe(
+            false,
+          ),
+        );
+      }
+      expect(usePluginStore.getState().targetInventoryError).toBe(
+        failRefresh ? "inventory unavailable" : null,
+      );
+    },
+  );
 
   it("removes a plugin distribution from selected Agent targets and updates the library", async () => {
     const distributedPlugin: PluginLibraryEntry = {

@@ -47,7 +47,7 @@
     "test:perf": "pnpm perf:budget",
     "test:e2e": "pnpm build && playwright test",
     "test:e2e:smoke": "pnpm build && pnpm test:e2e:smoke:built",
-    "test:e2e:smoke:built": "playwright test tests/e2e/app.spec.ts tests/e2e/self-hosted-sync.spec.ts tests/e2e/agent-skill-lifecycle.spec.ts tests/e2e/causal-sync.spec.ts tests/e2e/prompt-view-preference.spec.ts tests/e2e/prompt-view-edit-restore.spec.ts tests/e2e/prompt-selection-mode.spec.ts",
+    "test:e2e:smoke:built": "playwright test tests/e2e/app.spec.ts tests/e2e/self-hosted-sync.spec.ts tests/e2e/agent-skill-lifecycle.spec.ts tests/e2e/causal-sync.spec.ts tests/e2e/prompt-view-preference.spec.ts tests/e2e/prompt-view-edit-restore.spec.ts tests/e2e/prompt-selection-mode.spec.ts tests/e2e/plugin-operation-feedback.spec.ts",
     "test:release": "pnpm lint && pnpm typecheck && pnpm test:run && pnpm test:e2e:smoke",
     "typecheck": "tsc --noEmit",
     "perf:large-data": "node --experimental-strip-types scripts/profile-large-datasets.mts",

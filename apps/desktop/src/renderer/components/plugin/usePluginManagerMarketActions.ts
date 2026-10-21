@@ -24,6 +24,7 @@ function useMarketInstallAction(options: PluginManagerMarketActionOptions) {
   const { bindings, showToast, state, t } = options;
   return async (entry: PluginMarketEntry) => {
     state.setInstallingId(entry.id);
+    showToast(t("skill.installing"), "info");
     try {
       const result = await bindings.pluginStore.installMarketPlugin(entry.id);
       showToast(
@@ -31,6 +32,9 @@ function useMarketInstallAction(options: PluginManagerMarketActionOptions) {
           defaultValue: "Installed {{name}}",
           name: result.plugin.displayName,
         }),
+      );
+      state.setDetailMarketEntry((current) =>
+        current?.id === entry.id ? null : current,
       );
     } catch (error) {
       showToast(getPluginInstallErrorMessage(error, t), "error");

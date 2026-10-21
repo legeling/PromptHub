@@ -654,8 +654,7 @@ export const usePluginStore = create<PluginState>()(
           entryId,
           get().marketSources,
         );
-        await get().load();
-        set({ selectedTab: "library" });
+        set({ library: result.library, selectedTab: "library" });
         return result;
       },
 
@@ -741,9 +740,31 @@ export const usePluginStore = create<PluginState>()(
           targetIds,
           mode,
         });
-        set({ library: result.library });
-        await get().refreshDistributionStatus(pluginId);
-        if (targetIds.includes("codex")) await get().loadTargetInventory({ force: true });
+        // The mutation confirms publication; inventory reads must not delay its feedback.
+        set((state) => ({
+          library: result.library,
+          distributionSnapshot: {
+            ...state.distributionSnapshot,
+            [pluginId]: {
+              ...state.distributionSnapshot[pluginId],
+              ...Object.fromEntries(
+                result.targets.map((target) => [
+                  target.targetId,
+                  { installed: true, checkedAt: Date.now() },
+                ]),
+              ),
+            },
+          },
+        }));
+        void get().refreshDistributionStatus(pluginId);
+        if (targetIds.includes("codex")) {
+          void get()
+            .loadTargetInventory({ force: true })
+            .catch((error) => {
+              // loadTargetInventory owns the visible refresh error, separate from publication.
+              console.warn("Plugin target inventory refresh failed:", error);
+            });
+        }
         if (result.failures?.length)
           throw new Error(
             result.failures
