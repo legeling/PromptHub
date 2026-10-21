@@ -76,7 +76,7 @@ it("keeps Tab focus inside the version dialog and returns it after cancellation"
   await user.click(last);
   const confirmation = await screen.findByRole("alertdialog");
   const cancel = within(confirmation).getByRole("button", { name: "Cancel" });
-  cancel.focus();
+  await waitFor(() => expect(cancel).toHaveFocus());
   await user.tab();
   expect(
     within(confirmation).getByRole("button", { name: "Confirm" }),
