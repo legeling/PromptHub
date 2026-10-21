@@ -1,15 +1,80 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { parse } from "smol-toml";
 import { CodexPluginService } from "../src/codex-plugins/service";
 import { createCodexPluginRunner } from "../src/codex-plugins/runtime";
 import { writeCodexPluginEnabled } from "../src/codex-plugins/config-rpc";
+import * as nativeProcess from "../src/native-process";
 import {
   AGENT_CLI_MUTATION_OUTPUT_BYTES,
   AGENT_CLI_MUTATION_TIMEOUT_MS,
 } from "../src/agent-native-command-policy";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function layerNames(result: unknown): unknown {
+  if (!isRecord(result) || !Array.isArray(result.layers)) return null;
+  return result.layers.map((layer: unknown) => {
+    if (!isRecord(layer) || !isRecord(layer.name)) return null;
+    return {
+      type: layer.name.type,
+      file: layer.name.file,
+      versionType: typeof layer.version,
+    };
+  });
+}
+
+function observeLayerNames(
+  child: ReturnType<typeof nativeProcess.spawnNativeCommand>,
+  observe: (layers: unknown) => void,
+): void {
+  let buffer = "";
+  child.stdout?.on("data", (chunk: Buffer | string) => {
+    buffer += chunk.toString();
+    let end: number;
+    while ((end = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, end);
+      buffer = buffer.slice(end + 1);
+      const message: unknown = JSON.parse(line);
+      if (!isRecord(message) || message.id !== 2) continue;
+      // Only isolated fixture layer identities, never configuration values.
+      observe(layerNames(message.result));
+    }
+  });
+}
+
+const writeWithDiagnostics: typeof writeCodexPluginEnabled = async (
+  options,
+) => {
+  let layers: unknown;
+  const originalSpawn = nativeProcess.spawnNativeCommand;
+  const launch = vi
+    .spyOn(nativeProcess, "spawnNativeCommand")
+    .mockImplementation((command, args, spawnOptions) => {
+      const child = originalSpawn(command, args, spawnOptions);
+      observeLayerNames(child, (value) => {
+        layers = value;
+      });
+      return child;
+    });
+  try {
+    await writeCodexPluginEnabled(options);
+  } catch (error) {
+    throw new Error(
+      `Native config write failed: ${JSON.stringify({
+        expectedFile: path.join(options.root, "config.toml"),
+        layers,
+      })}`,
+      { cause: error },
+    );
+  } finally {
+    launch.mockRestore();
+  }
+};
 
 it.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
   "native install, update while disabled, reopen, enable, uninstall and concurrent config protection",
@@ -29,6 +94,7 @@ it.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
     const options = {
       root: home,
       environment,
+      writeEnabled: writeWithDiagnostics,
       backupConfig: async (content: string | null) => {
         backups.push(content);
       },

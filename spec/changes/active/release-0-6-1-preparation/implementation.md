@@ -7,6 +7,17 @@ as well as native disable: `realpath` preserves the namespace prefix. Both
 resolved paths are therefore compared in the same Windows namespace. Directory
 alias, wrong-file and concurrent-edit cases already passed on that runner.
 
+The same run exposed an existing MCP focus test race: manually focusing Cancel
+before the dialog's delayed initial focus allowed that timer to overwrite the
+subsequent Tab result. The test now waits for actual initial focus before checking
+keyboard cycling and cancellation restoration; product focus behavior is unchanged.
+The focused case and test typecheck passed. At `e5fae446`, all 40 release harness
+checks, including 20 Electron smoke cases, passed in run 39565251039. The added
+Windows native gate passed all four config path cases but still failed the real
+config layer selection. Its isolated test now captures layer identities on failure
+without configuration values. The diagnostic wrapper passed the real macOS
+lifecycle and test typecheck; Windows diagnosis remains pending.
+
 Candidate `9656c60cf6f573620e2ee9c689c2bf3004d304e4`, run
 [39563236040](https://github.com/legeling/PromptHub/actions/runs/39563236040),
 did not pass and must not be published. Windows x64 native Plugin disable failed
