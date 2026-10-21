@@ -22,6 +22,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function findUserConfigLayer(
+  layers: unknown,
+  filePath: string,
+): { filePath: string; version: string } | null {
+  if (!Array.isArray(layers)) return null;
+  const expected = fs.statSync(filePath, { bigint: true });
+  for (const layer of layers) {
+    if (
+      !isRecord(layer) ||
+      !isRecord(layer.name) ||
+      layer.name.type !== "user" ||
+      typeof layer.name.file !== "string" ||
+      typeof layer.version !== "string"
+    )
+      continue;
+    // Windows short names and native long paths can name the same file.
+    const actual = fs.statSync(layer.name.file, { bigint: true });
+    if (actual.dev === expected.dev && actual.ino === expected.ino) {
+      return { filePath: layer.name.file, version: layer.version };
+    }
+  }
+  return null;
+}
+
 function configRequest(
   options: CodexConfigWriteOptions,
   version: string,
@@ -84,22 +108,11 @@ export function writeCodexPluginEnabled(
         const layers = isRecord(message.result)
           ? message.result.layers
           : undefined;
-        const layer: unknown = Array.isArray(layers)
-          ? layers.find(
-              (value: unknown) =>
-                isRecord(value) &&
-                isRecord(value.name) &&
-                value.name.type === "user" &&
-                typeof value.name.file === "string" &&
-                path.toNamespacedPath(fs.realpathSync(value.name.file)) ===
-                  path.toNamespacedPath(filePath),
-            )
-          : undefined;
-        if (!isRecord(layer) || typeof layer.version !== "string")
-          return stop(new CodexPluginError("runtime-incompatible"));
+        const layer = findUserConfigLayer(layers, filePath);
+        if (!layer) return stop(new CodexPluginError("runtime-incompatible"));
         if (fs.readFileSync(filePath, "utf8") !== options.originalConfig)
           return stop(new CodexPluginError("config-conflict"));
-        send(configRequest(options, layer.version, filePath));
+        send(configRequest(options, layer.version, layer.filePath));
       } else if (message.id === 3) {
         if (!isRecord(message.result) || message.result.status !== "ok")
           return stop(new CodexPluginError("config-conflict"));

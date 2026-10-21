@@ -42,7 +42,7 @@ input.on('line', (line) => {
   }] };
   if (request.id === 3) {
     const p = request.params;
-    if (p.filePath !== process.argv[2] || p.expectedVersion !== 'fixture-version'
+    if (p.filePath !== process.argv[3] || p.expectedVersion !== 'fixture-version'
         || p.keyPath !== 'plugins."probe@fixture".enabled' || p.value !== false) {
       process.exit(2);
     }
@@ -110,6 +110,15 @@ it.runIf(process.platform === "win32")(
   "accepts the Windows extended-length file identity",
   async () => {
     fixtureServer(path.toNamespacedPath(config));
+    await writeEnabled();
+    expect(fs.readFileSync(config, "utf8")).toContain("enabled = false");
+  },
+);
+
+it.runIf(process.platform === "win32")(
+  "matches Windows short directory aliases to the native long path",
+  async () => {
+    fixtureServer(fs.realpathSync.native(config));
     await writeEnabled();
     expect(fs.readFileSync(config, "utf8")).toContain("enabled = false");
   },

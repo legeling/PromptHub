@@ -409,13 +409,13 @@ enable/disable and removal remain an explicit release acceptance gap.
 
 The replacement release gate runs the native lifecycle with Codex 0.163.0 on
 Windows x64. Its first run exposed user-config layer recognition during disable.
-Configuration RPC now compares canonical filesystem identities, including Windows
-extended-length paths and directory aliases, rather than raw path spelling.
-Windows CI regression confirmed that `realpath` alone preserves the extended
-prefix; both resolved paths use the same native namespace before comparison. A
-different config file is still rejected; original bytes and the native expected
-version protect concurrent edits. Regression coverage uses a real stdio child
-process. Windows native lifecycle acceptance remains pending the corrected gate;
+Configuration RPC compares the filesystem volume and file identity using bigint
+stats, including directory aliases, Windows extended paths and DOS short names.
+The native diagnostic confirmed a short temporary directory name versus Codex's
+long directory name for the same file. Writes use the verified native layer path
+and expected version; original bytes still protect concurrent edits. A different
+config file remains rejected. Regression coverage uses a real stdio child process.
+Windows native lifecycle acceptance remains pending the corrected gate;
 this CLI check does not claim Windows Store GUI acceptance.
 
 `native-codex.yml` provides a manual Windows-only verification entrypoint while

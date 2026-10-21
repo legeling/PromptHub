@@ -1,5 +1,15 @@
 # 0.6.1 preparation evidence
 
+## Windows file identity correction (2026-10-21)
+
+Native-only run 39566915923 identified DOS short temporary directory names versus
+Codex’s native long path. Namespace normalization alone could not resolve this.
+Layer selection now compares bigint volume/file identities and uses the verified
+native layer path for the versioned write, retaining original-byte conflict
+protection. A Windows native-handle path regression covers the short-name case.
+The preceding diagnostic full run 39566295756 was cancelled after collecting its
+Windows result to avoid unrelated platform builds. Corrected acceptance is pending.
+
 ## First replacement CI and corrections (2026-10-21)
 
 The next Windows run at `c93e7cbe` reproduced the new extended-length regression
