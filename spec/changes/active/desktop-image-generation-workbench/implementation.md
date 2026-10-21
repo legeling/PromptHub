@@ -1,9 +1,13 @@
 # Desktop Image Generation Workbench Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-- Phase: implement
-- Status: in-progress
+in progress. The first Desktop slice exists; broader performance, recovery and release acceptance remain open.
+
 - Production implementation: first Desktop vertical slice implemented; broader
   performance, backup/recovery, sync exclusion, and release-harness work remains.
 

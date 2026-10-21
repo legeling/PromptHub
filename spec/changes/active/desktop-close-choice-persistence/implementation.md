@@ -1,9 +1,12 @@
 # Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-Status: local implementation and focused verification complete. Packaged
-Windows acceptance remains pending.
+review-pending. Packaged Windows acceptance remains open.
 
 ## Reported Evidence
 

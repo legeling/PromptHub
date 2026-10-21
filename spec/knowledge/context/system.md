@@ -15,15 +15,14 @@
 ### 2. Stable Documentation Structure
 
 - 项目级稳定文档必须存放在 `spec/workflow/*`、`spec/knowledge/*`、`spec/rules/`、`spec/releases/`、`spec/adr/`。
-- 活跃变更必须使用 `spec/changes/active/<change-key>/specs/<domain>/spec.md` 表达 delta specs。
-- 变更完成后必须进入 `spec/changes/archive/`，而不是直接删除。
+- 现行需求原位维护；是否需要独立变更目录及其文件数量由 [文档规则](../../rules/document-routing-rules.md) 决定。
+- 完成或被替代的计划更新终态并从 active 移入 completed，合并有效设计、修正引用和索引；较早日期归档保留原位。
 - 历史内部文档若暂不适合改写为稳定规格，必须保存在 `spec/changes/legacy/`。
 - `spec/issues/active/` 必须保存当前仍在跟踪的问题记录，`spec/issues/archive/` 必须保存已关闭或仅保留历史参考价值的问题记录。
 
 ### 3. Internal Workflow
 
-- 非 trivial 变更应先创建变更目录。
-- 变更目录至少包含 `proposal.md`、`design.md`、`tasks.md`、`implementation.md` 与一个 delta spec。
+- 按风险更新受影响的权威主题；跨会话工作按需保留一份计划，不要求五文件骨架或逐阶段登记。
 - 真实落地后，稳定结果同步回 `spec/workflow/*`、`spec/knowledge/*`、`spec/rules/`、`spec/releases/` 或 `spec/adr/`。
 
 ### 4. Content Preservation

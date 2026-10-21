@@ -1,5 +1,13 @@
 # Implementation
 
+## Product
+
+Desktop
+
+## Status
+
+review-pending. Real redesigned-dialog and packaged beta-to-stable upgrade acceptance remain open in tasks.md.
+
 ## Shipped
 
 - Refactored `apps/desktop/src/main/updater.ts` to remove the broken `preview.yml` path.

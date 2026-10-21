@@ -11,3 +11,5 @@
 - [提交规则](submission-traceability-rules.md)：授权、原子提交及验证记录。
 
 旧的 bug/clarification/change/doc-sync/done/archive/agent-boundary 流程说明已合并到上述所有者；TDD 并入测试标准。历史文档中旧规则路径仅用于追溯，不再作为现行门禁。
+
+有效规则持续保留；完成的实施/迁移记录和失效规则进入 [规则与设计历史](../archive/README.md)，不能与现行要求混排。

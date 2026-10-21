@@ -1,11 +1,12 @@
 # Legacy Upgrade Recovery Audit Implementation
 
+## Product
+
+Shared
+
 ## Status
 
-Design and repository-history audit are complete. The database portion of the
-historical fixture catalog is implemented; path, browser-storage, portable JSON,
-and upgrade-snapshot fixtures remain pending. The shared migration and managed
-safety-point remediations remain owned by `database-migration-safety`.
+in progress. Historical path, browser-storage, portable JSON and upgrade-snapshot fixtures remain open.
 
 ## Completed Evidence Work
 

@@ -1,9 +1,12 @@
 # Implementation
 
+## Product
+
+Shared
+
 ## Status
 
-- Phase: implement
-- Status: compatibility-gated
+blocked. Experimental shared-target compatibility and ownership acceptance remain gated by tasks.md.
 
 ## Shipped
 

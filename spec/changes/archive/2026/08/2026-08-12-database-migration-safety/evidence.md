@@ -83,7 +83,7 @@
   separate `agent-secrets.json` store with atomic temporary-file publication.
 - Desktop and self-hosted Web currently resolve Agent secret/config paths
   differently, so a blanket `config/` backup rule is not sufficient.
-- Stable `spec/knowledge/structure/data-layout-v0.5.5-zh.md` still presents
+- Stable `spec/knowledge/structure/storage-architecture.md` still presents
   planned `settings.json`/`ai-providers.json`, a single `data/assets` media tree,
   and Electron browser storage as never migrated; current code and active
   generation storage do not fully match those statements.

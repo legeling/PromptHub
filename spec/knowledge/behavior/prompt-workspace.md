@@ -702,6 +702,16 @@ pnpm --filter @prompthub/desktop typecheck:tests
 pnpm --filter @prompthub/desktop build
 ```
 
+### 2.11 Desktop empty states and tag management
+
+- 卡片、表格和画廊的空列表复用相同筛选归因：存在搜索、标签或目录筛选时，清除操作同时重置这三个源；无筛选且库为空时，新建操作进入既有创建入口。不能把筛选无结果误报成丢失数据，也不改变当前布局。
+- 标签管理支持用量升降序和名称排序，默认按用量降序，搜索与排序共存。Prompt 标签的“查看”动作关闭弹窗并使用该标签筛选，当前标签显示筛选中；Skill 标签用量及候选仍由 Skill 域所有。
+- 批量选择与操作只服从本页 2.5 节的当前合同。旧 change 中的常驻文字栏、二级批量菜单和各视图独立 Set 方案已被替代，不得重新复制到实现。
+
+### 2.12 Tokenized Prompt search
+
+共享 DB 搜索将非空查询拆成独立字词，以经过转义的 FTS5 字面值进行 AND 匹配；词不必相邻。空白或无有效词的输入等同无关键词过滤，操作符与引号不能成为 SQL/FTS 指令。其余标签、目录及排序语义不变，不新增 schema 或第二套搜索索引。现有回归为 `prompt-fts-query.test.ts` 与 `prompt-db.test.ts`。
+
 ### 3. Stable Internal Sources
 
 - 桌面 Prompt 普通增删改、版本、关系、输出格式及文件夹写入，由 Core 的现有
@@ -727,7 +737,7 @@ pnpm --filter @prompthub/desktop build
 - 表格和画廊继续使用当前摘要列表、按需详情缓存及虚拟化；编辑和复制必须先获取正文，不得用摘要覆盖完整内容。
 
 - Prompt 协议设计见 `spec/knowledge/structure/prompt-protocols-zh.md`。
-- 数据布局事实见 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。
+- 数据布局事实见 `spec/knowledge/structure/storage-architecture.md`。
 
 ## Stable Scenarios
 
@@ -735,8 +745,8 @@ pnpm --filter @prompthub/desktop build
 
 When prompt file layout, metadata contract, or versioning semantics change materially:
 
-- they create a delta spec under `spec/changes/active/<change-key>/specs/prompt-workspace/spec.md`
-- they sync durable behavior back into this stable spec after implementation
+- they update this owning topic when requirements change and mark implementation gaps
+- they retain an activity plan only when needed under the documentation routing rule
 
 ### Scenario: Internal tools need prompt truth source
 

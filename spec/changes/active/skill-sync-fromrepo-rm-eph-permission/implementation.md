@@ -1,8 +1,14 @@
 # Implementation — canonical skill workspace replacement (EPERM-safe, main-branch structure)
 
+## Product
+
+Shared
+
+## Status
+
+review-pending. Windows transient-file acceptance remains open.
+
 Branch: feat/my-skills-tag-search（同一 commit 内含本 change 的存档与源码实现）
-Status: implemented, verified (typecheck + core tests); Windows transient-file
-acceptance runs on-device.
 
 ## 现象 / 根因
 

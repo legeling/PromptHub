@@ -1,10 +1,12 @@
 # Infistar Sponsor Promotion Implementation
 
+## Product
+
+Delivery
+
 ## Status
 
-The sponsor-provided creative has replaced the earlier rewritten tables. Local
-implementation and focused verification are complete; publication and change
-archival remain pending.
+release-pending. Local creative and layout work is recorded; public website acceptance remains unconfirmed.
 
 ## Traceability
 

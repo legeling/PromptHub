@@ -1,5 +1,13 @@
 # Implementation log
 
+## Product
+
+Delivery
+
+## Status
+
+blocked. Publisher credentials, mirror contents and public readback are still required; GitHub remains the download source.
+
 ## What shipped
 
 - `prompthub-releases` R2 bucket created in account

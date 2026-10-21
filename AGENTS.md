@@ -27,6 +27,8 @@ instruction files.
 Use [document-routing-rules.md](spec/rules/document-routing-rules.md) as the
 single authority for documentation scope, current requirements, plans, and
 history. Update the existing topic in place; documentation volume follows risk.
+At delivery, follow its product classification, design consolidation, and
+active-to-completed/archive lifecycle.
 A non-trivial code change does not by itself require a new change folder.
 
 ### 0.3 Existing-Feature Modification Rule
@@ -138,7 +140,7 @@ Before any commit, split commit, history rewrite, or push operation:
 
 - **Type:** Local-first monorepo with desktop, CLI, web, and worker distributions
 - **License:** AGPL-3.0
-- **Version:** 0.6.1 (unpublished candidate)
+- **Version:** 0.6.1 (replacement candidate in verification; latest available stable: 0.6.0)
 
 ### Tech Stack
 

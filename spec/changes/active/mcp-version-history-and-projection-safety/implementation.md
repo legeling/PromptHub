@@ -1,9 +1,13 @@
 # Implementation
 
+## Product
+
+Shared
+
 ## Status
 
-- Phase: implement
-- Status: in-progress
+in progress. Version history and projection safety are partly delivered; conflict workflows, legacy recovery and acceptance remain open.
+
 - Completed scope: external target projection safety, `backupPath` deprecation,
   My MCP version history and shared Desktop/CLI SQLite adoption (#234).
 - Remaining scope: #203 conflict workflows, legacy-sidecar cleanup and convergence;

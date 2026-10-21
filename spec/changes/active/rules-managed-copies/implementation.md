@@ -1,20 +1,12 @@
 # Implementation
 
+## Product
+
+Shared
+
 ## Status
 
-Needs convergence. Core implementation is present, but the remaining Rules
-sync-status and deployment-action copy/test follow-up is tracked as
-`T-RULES-COPY-019`. The #210 backup-import defect is fixed locally under
-`T-RULES-COPY-023A`; #209's exact reopen trigger remains under
-`T-RULES-COPY-023B`, so this change is not archive-eligible.
-
-`importRuleBackupRecords()` now publishes only PromptHub-managed state and
-derives target status by inspection; it no longer calls the external target
-writer. The selected recoverability policy is a content-deduplicated bounded
-merge that captures the pre-import managed body and imported current body inside
-the existing 20-version Rule history. Per-Rule publication failures restore the
-previous managed body, metadata, version files, and rebuilt SQLite projection.
-The reopen-time trigger reported by #209 still requires focused reproduction.
+needs-convergence. T-RULES-COPY-019 and the exact #209 external-edit/restart acceptance remain open.
 
 ## `TEST-RULES-COPY-023` Restore Regression
 
@@ -23,6 +15,14 @@ implementation batch. Coverage includes divergent, empty, symlink, and missing
 targets; bounded and identity-stable history merge; managed/version/metadata/DB
 rollback; delayed replace cleanup; direct CLI Rules import; and CLI workspace
 sync pull. The #209 reopen sequence remains outside this completed #210 batch.
+
+`importRuleBackupRecords()` now publishes only PromptHub-managed state and
+derives target status by inspection; it no longer calls the external target
+writer. The selected recoverability policy is a content-deduplicated bounded
+merge that captures the pre-import managed body and imported current body inside
+the existing 20-version Rule history. Per-Rule publication failures restore the
+previous managed body, metadata, version files, and rebuilt SQLite projection.
+The reopen-time trigger reported by #209 still requires focused reproduction.
 
 ## Shipped
 

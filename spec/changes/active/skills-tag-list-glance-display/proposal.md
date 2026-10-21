@@ -1,8 +1,7 @@
 # Imported Skill carries tags (metadata) but the list hides them until detail opens
 
-Status: recorded — not implemented. Related area overlap with the in-flight
-`feat/my-skills-tag-search` work (frontmatter-label settings), but treated as a
-separate concern to keep commits atomic.
+Current delivery status and remaining acceptance: [implementation](implementation.md).
+The problem description below records the original report.
 
 ## Problem
 

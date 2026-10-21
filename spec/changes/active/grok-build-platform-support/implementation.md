@@ -1,9 +1,12 @@
 # Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-- Phase: implement
-- Status: in-progress
+review-pending. T-GROK-010 verification remains unchecked.
 
 ## Shipped
 

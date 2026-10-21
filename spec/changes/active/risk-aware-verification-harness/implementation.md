@@ -1,12 +1,12 @@
 # Implementation
 
+## Product
+
+Delivery
+
 ## Status
 
-Implementation is locally complete for the registry, selection, executor,
-reporting, CI command ownership, built-artifact smoke boundary, traceability
-validation, self-hosted Web SQLite fixture optimization, and repository-scoped
-Playwright Test Agents. Release and platform package execution remain
-CI/release-candidate gates.
+review-pending. Cold/warm measurements and remaining fixture/release acceptance remain open.
 
 ## Delivered
 

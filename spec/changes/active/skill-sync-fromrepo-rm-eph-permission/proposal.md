@@ -1,8 +1,7 @@
 # EPERM on syncFromRepo when replacing the canonical skill workspace
 
-Status: recorded — not implemented. Filed separately from the
-`skill-canonical-prompthub-bundle-recovery` fix (already committed as
-98c97881 on feat/my-skills-tag-search).
+Current delivery status and remaining acceptance: [implementation](implementation.md).
+The problem description below records the original report.
 
 ## Problem
 

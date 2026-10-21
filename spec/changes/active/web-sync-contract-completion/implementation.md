@@ -1,11 +1,12 @@
 # Implementation Record
 
+## Product
+
+Shared
+
 ## Status
 
-Active. Governance has been corrected, the P0 follow-up fixes and the integrity
-and freshness follow-up tranche are implemented, and the release harness passes
-against the latest state. Final convergence still requires the unavailable
-Docker container smoke or an equivalent CI result.
+in progress. Native restore, tombstones/conflicts, freshness and sensitive-data work remain open; P0 evidence does not close the plan.
 
 ## Current baseline
 

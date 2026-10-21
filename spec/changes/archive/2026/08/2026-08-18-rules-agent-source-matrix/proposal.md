@@ -43,4 +43,4 @@ represent confirmed sources such as Claude's `.claude/rules`.
 
 - `spec/knowledge/behavior/rules-workspace.md`
 - `spec/knowledge/reference/agent-platforms.md`
-- `spec/changes/active/rules-issue-193-missing-project-reconciliation/`
+- `spec/changes/completed/rules-issue-193-missing-project-reconciliation/`

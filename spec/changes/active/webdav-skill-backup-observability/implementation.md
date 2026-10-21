@@ -1,8 +1,12 @@
 # Implementation: WebDAV Skill 备份可观测性
 
+## Product
+
+Desktop
+
 ## Status
 
-实现和本地验证已完成，等待维护者复核。当前 change 保持 active，直到提交、发布和真实 WebDAV 验收完成。
+review-pending. Local implementation is verified; real WebDAV server acceptance remains open.
 
 ## Implemented
 

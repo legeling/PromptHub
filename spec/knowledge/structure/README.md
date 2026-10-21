@@ -9,6 +9,8 @@ PromptHub 当前是一个多入口单仓库：
 - `apps/desktop`：Electron 桌面应用
 - `apps/web`：自部署 Web 版本
 - `apps/cli`：CLI
+- `apps/web-cloudflare`：Cloudflare Worker
+- `apps/mobile`：移动端
 - `packages/*`：共享核心能力、数据库层、共享类型与常量
 
 ## 桌面端结构
@@ -42,7 +44,9 @@ PromptHub 当前采用 topology 路由到 `spec/`，而不是默认的 `docs/`�
 
 ## 共享与边界原则
 
-- [Skill / MCP / Plugin 公共资源架构](resource-library-architecture.md)：统一契约、领域多态、修改范围与验收；当前待实施。
+- [存储架构](storage-architecture.md)：当前数据所有权、按产品分界及领域设计入口；旧文件优先方案已归档。
+
+- [Skill / MCP / Plugin 公共资源架构](resource-library-architecture.md)：统一契约、领域多态、修改范围与验收；实施与验收状态见该权威主题。
 
 - `packages/*` 承担跨 desktop / web / cli 共享的核心能力与类型
 - desktop 和 web 可以共享语义，但不能混淆运行时边界

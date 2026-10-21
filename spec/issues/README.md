@@ -27,7 +27,7 @@
 
 | ID                 | Title                            | Status | Path                                                                      | Related change/issue                      | Updated    |
 | ------------------ | -------------------------------- | ------ | ------------------------------------------------------------------------- | ----------------------------------------- | ---------- |
-| `ISS-20260710-001` | Spec Governance Debt             | open   | `spec/issues/active/ISS-20260710-001-spec-governance-debt.md`             | `2026-07-10-spec-init-upstream-alignment` | 2026-07-10 |
+| `ISS-20260710-001` | Spec Governance Debt | open | `spec/issues/active/ISS-20260710-001-spec-governance-debt.md` | Current status/entrypoint audit; remaining attribution and historical-text debt | 2026-10-21 |
 | `ISS-20260809-001` | Remaining Open Issues Roadmap | open | `active/ISS-20260809-001-remaining-open-issues-roadmap.md` | 42 reports reviewed; 6 closed, 36 remain open | 2026-10-19 |
 | `ISS-20260820-001` | Rules Restore Conflict Data Loss | open   | `spec/issues/active/ISS-20260820-001-rules-restore-conflict-data-loss.md` | `rules-managed-copies`, #209, #210        | 2026-08-20 |
 | `ISS-20260902-001` | Git Transport Resilience Parity  | open   | `spec/issues/active/ISS-20260902-001-git-transport-resilience-parity.md`  | `skills-issue-211-git-http-fallback`      | 2026-09-02 |

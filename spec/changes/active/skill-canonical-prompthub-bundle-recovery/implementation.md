@@ -1,5 +1,13 @@
 # Implementation
 
+## Product
+
+Shared
+
+## Status
+
+review-pending. The post-merge recovery contract supersedes early skip/delete behavior; final verification still leaves release acceptance open.
+
 分支：`feat/my-skills-tag-search`（用户指定在本分支修复；该修复与 tag-search
 功能无关，属本分支既有功能缺陷的收敛修复）。
 

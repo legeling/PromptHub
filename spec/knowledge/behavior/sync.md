@@ -142,7 +142,7 @@ preflight`. Legacy `static` values normalize to `preflight`; an unknown
 ### 3. Stable Internal Sources
 
 - Web 与数据布局演进的历史资料保存在 `spec/changes/legacy/docs-08-todo/`。
-- 稳定数据布局事实见 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。
+- 稳定数据布局事实见 `spec/knowledge/structure/storage-architecture.md`。
 
 ## Stable Scenarios
 
@@ -150,8 +150,8 @@ preflight`. Legacy `static` values normalize to `preflight`; an unknown
 
 When sync semantics, backup format, or restore logic changes materially:
 
-- they create a delta spec under `spec/changes/active/<change-key>/specs/sync/spec.md`
-- they sync durable behavior back into this stable spec after implementation
+- they update this owning topic when requirements change, marking implementation gaps
+- they keep a plan only when needed under the documentation routing rule
 
 ### Scenario: Contributor adds sync route behavior
 

@@ -1,9 +1,12 @@
 # Backup Safety Point Coordination Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-Local implementation, verification, and the bounded cleanup of the current live
-user-data root are complete. Release publication remains pending.
+release-pending. Local implementation and scoped verification are recorded below; publication attribution remains to be reconciled.
 
 ## Traceability
 

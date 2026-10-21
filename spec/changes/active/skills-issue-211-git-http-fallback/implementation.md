@@ -1,6 +1,13 @@
 # Implementation
 
-Status: review-pending — real Windows packaged UI acceptance remains
+## Product
+
+Desktop
+
+## Status
+
+review-pending. Real Windows packaged UI acceptance remains open.
+
 
 ## Implemented Changes
 

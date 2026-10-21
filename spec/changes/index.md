@@ -7,316 +7,351 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 46 |
-| Recorded complete (original path) | 3 |
+| Active | 37 |
+| Completed | 12 |
 | Archived | 235 |
 | Legacy | 1 |
 
 ## Active
 
-| Change | Recorded status | Path |
-| --- | --- | --- |
-| `agent-management-workbench` | active | `spec/changes/active/agent-management-workbench/` |
-| `agent-provider-protocol-bridge` | active | `spec/changes/active/agent-provider-protocol-bridge/` |
-| `backup-safety-point-coordination` | active | `spec/changes/active/backup-safety-point-coordination/` |
-| `cloud-account-store-client` | active | `spec/changes/active/cloud-account-store-client/` |
-| `db-prompt-fts-tokenized-search` | active | `spec/changes/active/db-prompt-fts-tokenized-search/` |
-| `desktop-backup-guidance-card` | active | `spec/changes/active/desktop-backup-guidance-card/` |
-| `desktop-close-choice-persistence` | active | `spec/changes/active/desktop-close-choice-persistence/` |
-| `desktop-editor-media-visibility` | active | `spec/changes/active/desktop-editor-media-visibility/` |
-| `desktop-error-copy-humanization` | active | `spec/changes/active/desktop-error-copy-humanization/` |
-| `desktop-image-generation-workbench` | active | `spec/changes/active/desktop-image-generation-workbench/` |
-| `desktop-list-empty-state-guidance` | active | `spec/changes/active/desktop-list-empty-state-guidance/` |
-| `desktop-prompt-batch-ux-hardening` | active | `spec/changes/active/desktop-prompt-batch-ux-hardening/` |
-| `desktop-prompt-editor-section-collapse` | active | `spec/changes/active/desktop-prompt-editor-section-collapse/` |
-| `desktop-prompt-list-projection` | active | `spec/changes/active/desktop-prompt-list-projection/` |
-| `desktop-search-focus-shortcut` | active | `spec/changes/active/desktop-search-focus-shortcut/` |
-| `desktop-settings-authority-convergence` | active | `spec/changes/active/desktop-settings-authority-convergence/` |
-| `desktop-startup-folder-restore` | active | `spec/changes/active/desktop-startup-folder-restore/` |
-| `desktop-tag-manager-usability` | active | `spec/changes/active/desktop-tag-manager-usability/` |
-| `desktop-upgrade-snapshot-lock-recovery` | active | `spec/changes/active/desktop-upgrade-snapshot-lock-recovery/` |
-| `existing-feature-release-acceptance` | active | `spec/changes/active/existing-feature-release-acceptance/` |
-| `foundation-integrity-redesign` | in progress | `spec/changes/active/foundation-integrity-redesign/` |
-| `grok-build-platform-support` | active | `spec/changes/active/grok-build-platform-support/` |
-| `infistar-sponsor-promotion` | active | `spec/changes/active/infistar-sponsor-promotion/` |
-| `legacy-upgrade-recovery-audit` | active | `spec/changes/active/legacy-upgrade-recovery-audit/` |
-| `mcp-version-history-and-projection-safety` | active | `spec/changes/active/mcp-version-history-and-projection-safety/` |
-| `mobile-prompt-persistence-hardening` | release-pending | `spec/changes/active/mobile-prompt-persistence-hardening/` |
-| `pi-agent-separation` | release-pending | `spec/changes/active/pi-agent-separation/` |
-| `plugin-issue-190-multi-native-manifests` | active | `spec/changes/active/plugin-issue-190-multi-native-manifests/` |
-| `plugin-management` | active | `spec/changes/active/plugin-management/` |
-| `prompt-current-version-missing-self-heal` | active | `spec/changes/active/prompt-current-version-missing-self-heal/` |
-| `r2-direct-downloads` | active | `spec/changes/active/r2-direct-downloads/` |
-| `release-0-6-0-version-alignment` | active | `spec/changes/active/release-0-6-0-version-alignment/` |
-| `risk-aware-verification-harness` | active | `spec/changes/active/risk-aware-verification-harness/` |
-| `rules-managed-copies` | active | `spec/changes/active/rules-managed-copies/` |
-| `self-hosted-skill-sync-reliability` | active | `spec/changes/active/self-hosted-skill-sync-reliability/` |
-| `skill-canonical-prompthub-bundle-recovery` | active | `spec/changes/active/skill-canonical-prompthub-bundle-recovery/` |
-| `skill-sync-fromrepo-rm-eph-permission` | active | `spec/changes/active/skill-sync-fromrepo-rm-eph-permission/` |
-| `skills-issue-194-shared-global-target` | active | `spec/changes/active/skills-issue-194-shared-global-target/` |
-| `skills-issue-211-git-http-fallback` | active | `spec/changes/active/skills-issue-211-git-http-fallback/` |
-| `skills-my-skills-tag-search` | active | `spec/changes/active/skills-my-skills-tag-search/` |
-| `skills-tag-list-glance-display` | active | `spec/changes/active/skills-tag-list-glance-display/` |
-| `sync-issue-191-safety-report-contract` | active | `spec/changes/active/sync-issue-191-safety-report-contract/` |
-| `update-channel-hardening` | active | `spec/changes/active/update-channel-hardening/` |
-| `web-agent-service-parity` | active | `spec/changes/active/web-agent-service-parity/` |
-| `web-sync-contract-completion` | active | `spec/changes/active/web-sync-contract-completion/` |
-| `webdav-skill-backup-observability` | active | `spec/changes/active/webdav-skill-backup-observability/` |
-
-## Recorded complete
-
-These records keep their original paths for compatibility and are not active
-work. Recorded status alone does not prove release or acceptance. Historical
-rules are superseded by [current documentation policy](../rules/document-routing-rules.md).
+### Shared
 
 | Change | Recorded status | Path |
 | --- | --- | --- |
-| `desktop-issue-192-copy-action-parity` | completed | `spec/changes/active/desktop-issue-192-copy-action-parity/` |
-| `release-0-6-1-preparation` | completed | `spec/changes/active/release-0-6-1-preparation/` |
-| `rules-issue-193-missing-project-reconciliation` | completed | `spec/changes/active/rules-issue-193-missing-project-reconciliation/` |
+| `foundation-integrity-redesign` | in progress | [spec/changes/active/foundation-integrity-redesign/](active/foundation-integrity-redesign/) |
+| `legacy-upgrade-recovery-audit` | in progress | [spec/changes/active/legacy-upgrade-recovery-audit/](active/legacy-upgrade-recovery-audit/) |
+| `mcp-version-history-and-projection-safety` | in progress | [spec/changes/active/mcp-version-history-and-projection-safety/](active/mcp-version-history-and-projection-safety/) |
+| `plugin-issue-190-multi-native-manifests` | review-pending | [spec/changes/active/plugin-issue-190-multi-native-manifests/](active/plugin-issue-190-multi-native-manifests/) |
+| `plugin-management` | in progress | [spec/changes/active/plugin-management/](active/plugin-management/) |
+| `prompt-current-version-missing-self-heal` | review-pending | [spec/changes/active/prompt-current-version-missing-self-heal/](active/prompt-current-version-missing-self-heal/) |
+| `rules-managed-copies` | needs-convergence | [spec/changes/active/rules-managed-copies/](active/rules-managed-copies/) |
+| `skill-canonical-prompthub-bundle-recovery` | review-pending | [spec/changes/active/skill-canonical-prompthub-bundle-recovery/](active/skill-canonical-prompthub-bundle-recovery/) |
+| `skill-sync-fromrepo-rm-eph-permission` | review-pending | [spec/changes/active/skill-sync-fromrepo-rm-eph-permission/](active/skill-sync-fromrepo-rm-eph-permission/) |
+| `skills-issue-194-shared-global-target` | blocked | [spec/changes/active/skills-issue-194-shared-global-target/](active/skills-issue-194-shared-global-target/) |
+| `sync-issue-191-safety-report-contract` | review-pending | [spec/changes/active/sync-issue-191-safety-report-contract/](active/sync-issue-191-safety-report-contract/) |
+| `web-sync-contract-completion` | in progress | [spec/changes/active/web-sync-contract-completion/](active/web-sync-contract-completion/) |
+
+### Desktop
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+| `agent-management-workbench` | in progress | [spec/changes/active/agent-management-workbench/](active/agent-management-workbench/) |
+| `agent-provider-protocol-bridge` | in progress | [spec/changes/active/agent-provider-protocol-bridge/](active/agent-provider-protocol-bridge/) |
+| `backup-safety-point-coordination` | release-pending | [spec/changes/active/backup-safety-point-coordination/](active/backup-safety-point-coordination/) |
+| `cloud-account-store-client` | review-pending | [spec/changes/active/cloud-account-store-client/](active/cloud-account-store-client/) |
+| `desktop-close-choice-persistence` | review-pending | [spec/changes/active/desktop-close-choice-persistence/](active/desktop-close-choice-persistence/) |
+| `desktop-image-generation-workbench` | in progress | [spec/changes/active/desktop-image-generation-workbench/](active/desktop-image-generation-workbench/) |
+| `desktop-prompt-list-projection` | in progress | [spec/changes/active/desktop-prompt-list-projection/](active/desktop-prompt-list-projection/) |
+| `desktop-search-focus-shortcut` | review-pending | [spec/changes/active/desktop-search-focus-shortcut/](active/desktop-search-focus-shortcut/) |
+| `desktop-settings-authority-convergence` | active | [spec/changes/active/desktop-settings-authority-convergence/](active/desktop-settings-authority-convergence/) |
+| `desktop-upgrade-snapshot-lock-recovery` | release-pending | [spec/changes/active/desktop-upgrade-snapshot-lock-recovery/](active/desktop-upgrade-snapshot-lock-recovery/) |
+| `grok-build-platform-support` | review-pending | [spec/changes/active/grok-build-platform-support/](active/grok-build-platform-support/) |
+| `pi-agent-separation` | release-pending | [spec/changes/active/pi-agent-separation/](active/pi-agent-separation/) |
+| `skills-issue-211-git-http-fallback` | review-pending | [spec/changes/active/skills-issue-211-git-http-fallback/](active/skills-issue-211-git-http-fallback/) |
+| `skills-my-skills-tag-search` | review-pending | [spec/changes/active/skills-my-skills-tag-search/](active/skills-my-skills-tag-search/) |
+| `skills-tag-list-glance-display` | review-pending | [spec/changes/active/skills-tag-list-glance-display/](active/skills-tag-list-glance-display/) |
+| `update-channel-hardening` | review-pending | [spec/changes/active/update-channel-hardening/](active/update-channel-hardening/) |
+| `webdav-skill-backup-observability` | review-pending | [spec/changes/active/webdav-skill-backup-observability/](active/webdav-skill-backup-observability/) |
+
+### CLI
+
+No independent active change. Cross-product work is listed under Shared.
+
+### Web
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+| `self-hosted-skill-sync-reliability` | release-pending | [spec/changes/active/self-hosted-skill-sync-reliability/](active/self-hosted-skill-sync-reliability/) |
+| `web-agent-service-parity` | in progress | [spec/changes/active/web-agent-service-parity/](active/web-agent-service-parity/) |
+
+### Cloudflare
+
+No independent active change. Cross-product work is listed under Shared.
+
+### Mobile
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+| `mobile-prompt-persistence-hardening` | release-pending | [spec/changes/active/mobile-prompt-persistence-hardening/](active/mobile-prompt-persistence-hardening/) |
+
+### Delivery
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+| `existing-feature-release-acceptance` | active | [spec/changes/active/existing-feature-release-acceptance/](active/existing-feature-release-acceptance/) |
+| `infistar-sponsor-promotion` | release-pending | [spec/changes/active/infistar-sponsor-promotion/](active/infistar-sponsor-promotion/) |
+| `r2-direct-downloads` | blocked | [spec/changes/active/r2-direct-downloads/](active/r2-direct-downloads/) |
+| `release-0-6-1-preparation` | active | [spec/changes/active/release-0-6-1-preparation/](active/release-0-6-1-preparation/) |
+| `risk-aware-verification-harness` | review-pending | [spec/changes/active/risk-aware-verification-harness/](active/risk-aware-verification-harness/) |
+
+## Completed
+
+Completed implementation records live in completed/ and are historical evidence.
+Their product requirements belong in the current topic linked from each record.
+Completion is scoped; it does not itself establish publication.
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+| `db-prompt-fts-tokenized-search` | completed | [spec/changes/completed/db-prompt-fts-tokenized-search/](completed/db-prompt-fts-tokenized-search/) |
+| `desktop-backup-guidance-card` | completed | [spec/changes/completed/desktop-backup-guidance-card/](completed/desktop-backup-guidance-card/) |
+| `desktop-editor-media-visibility` | completed | [spec/changes/completed/desktop-editor-media-visibility/](completed/desktop-editor-media-visibility/) |
+| `desktop-error-copy-humanization` | completed | [spec/changes/completed/desktop-error-copy-humanization/](completed/desktop-error-copy-humanization/) |
+| `desktop-issue-192-copy-action-parity` | completed | [spec/changes/completed/desktop-issue-192-copy-action-parity/](completed/desktop-issue-192-copy-action-parity/) |
+| `desktop-list-empty-state-guidance` | completed | [spec/changes/completed/desktop-list-empty-state-guidance/](completed/desktop-list-empty-state-guidance/) |
+| `desktop-prompt-batch-ux-hardening` | completed | [spec/changes/completed/desktop-prompt-batch-ux-hardening/](completed/desktop-prompt-batch-ux-hardening/) |
+| `desktop-prompt-editor-section-collapse` | completed | [spec/changes/completed/desktop-prompt-editor-section-collapse/](completed/desktop-prompt-editor-section-collapse/) |
+| `desktop-startup-folder-restore` | completed | [spec/changes/completed/desktop-startup-folder-restore/](completed/desktop-startup-folder-restore/) |
+| `desktop-tag-manager-usability` | completed | [spec/changes/completed/desktop-tag-manager-usability/](completed/desktop-tag-manager-usability/) |
+| `release-0-6-0-version-alignment` | completed | [spec/changes/completed/release-0-6-0-version-alignment/](completed/release-0-6-0-version-alignment/) |
+| `rules-issue-193-missing-project-reconciliation` | completed | [spec/changes/completed/rules-issue-193-missing-project-reconciliation/](completed/rules-issue-193-missing-project-reconciliation/) |
 
 ## Archived
 
+<details>
+<summary>Historical changes (235); expand only for traceability</summary>
+
 | Change | Recorded status | Path |
 | --- | --- | --- |
-| `2026-03-12-yolo-evolution` | archived | `spec/changes/archive/2026/03/2026-03-12-yolo-evolution/` |
-| `2026-03-14-test-infrastructure-evolution` | archived | `spec/changes/archive/2026/03/2026-03-14-test-infrastructure-evolution/` |
-| `2026-04-11-monorepo-migration` | archived | `spec/changes/archive/2026/04/2026-04-11-monorepo-migration/` |
-| `2026-04-12-server-api-design` | archived | `spec/changes/archive/2026/04/2026-04-12-server-api-design/` |
-| `2026-04-17-web-data-layout-migration` | archived | `spec/changes/archive/2026/04/2026-04-17-web-data-layout-migration/` |
-| `2026-04-17-web-self-hosted-plan` | archived | `spec/changes/archive/2026/04/2026-04-17-web-self-hosted-plan/` |
-| `2026-05-10-unified-sync-abstraction` | archived | `spec/changes/archive/2026/05/2026-05-10-unified-sync-abstraction/` |
-| `2026-07-06-agent-boundary-guardrails` | archived | `spec/changes/archive/2026/07/2026-07-06-agent-boundary-guardrails/` |
-| `2026-07-06-agent-skill-management` | archived | `spec/changes/archive/2026/07/2026-07-06-agent-skill-management/` |
-| `2026-07-06-ai-local-model-test-latency` | archived | `spec/changes/archive/2026/07/2026-07-06-ai-local-model-test-latency/` |
-| `2026-07-06-ai-protocol-first` | archived | `spec/changes/archive/2026/07/2026-07-06-ai-protocol-first/` |
-| `2026-07-06-ai-provider-api-assets` | archived | `spec/changes/archive/2026/07/2026-07-06-ai-provider-api-assets/` |
-| `2026-07-06-card-detail-inline-edit` | archived | `spec/changes/archive/2026/07/2026-07-06-card-detail-inline-edit/` |
-| `2026-07-06-cherry-studio-skill-platform` | archived | `spec/changes/archive/2026/07/2026-07-06-cherry-studio-skill-platform/` |
-| `2026-07-06-cli-cwd-ergonomics` | archived | `spec/changes/archive/2026/07/2026-07-06-cli-cwd-ergonomics/` |
-| `2026-07-06-cli-project-skill-install` | archived | `spec/changes/archive/2026/07/2026-07-06-cli-project-skill-install/` |
-| `2026-07-06-cli-rules-home-isolation` | archived | `spec/changes/archive/2026/07/2026-07-06-cli-rules-home-isolation/` |
-| `2026-07-06-cli-rules-shared-service` | archived | `spec/changes/archive/2026/07/2026-07-06-cli-rules-shared-service/` |
-| `2026-07-06-cli-standalone-product` | archived | `spec/changes/archive/2026/07/2026-07-06-cli-standalone-product/` |
-| `2026-07-06-cli-sync-snapshot-alignment` | archived | `spec/changes/archive/2026/07/2026-07-06-cli-sync-snapshot-alignment/` |
-| `2026-07-06-cloudflare-worker-hardening` | archived | `spec/changes/archive/2026/07/2026-07-06-cloudflare-worker-hardening/` |
-| `2026-07-06-core-rules-workspace-atomic-writes` | archived | `spec/changes/archive/2026/07/2026-07-06-core-rules-workspace-atomic-writes/` |
-| `2026-07-06-core-rules-workspace-path-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-core-rules-workspace-path-boundary/` |
-| `2026-07-06-desktop-agent-assistant-and-git-import-ergonomics` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-agent-assistant-and-git-import-ergonomics/` |
-| `2026-07-06-desktop-backup-drop-restore` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-backup-drop-restore/` |
-| `2026-07-06-desktop-issue-113-edit-surface` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-113-edit-surface/` |
-| `2026-07-06-desktop-issue-119-usability` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-119-usability/` |
-| `2026-07-06-desktop-issue-131-skill-frontmatter-dedupe` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-131-skill-frontmatter-dedupe/` |
-| `2026-07-06-desktop-issue-133-skill-view-tags` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-133-skill-view-tags/` |
-| `2026-07-06-desktop-issue-134-custom-store-rename` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-134-custom-store-rename/` |
-| `2026-07-06-desktop-issue-161-skill-store-batch` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-161-skill-store-batch/` |
-| `2026-07-06-desktop-issue-163-skill-user-notes` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-163-skill-user-notes/` |
-| `2026-07-06-desktop-issue-165-large-github-skill-store` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-165-large-github-skill-store/` |
-| `2026-07-06-desktop-issue-166-skill-store-scroll` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-166-skill-store-scroll/` |
-| `2026-07-06-desktop-issue-178-hermes-localappdata` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-178-hermes-localappdata/` |
-| `2026-07-06-desktop-issue-51-tag-management` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-issue-51-tag-management/` |
-| `2026-07-06-desktop-local-skill-source-refresh` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-local-skill-source-refresh/` |
-| `2026-07-06-desktop-prompt-relationship-tree` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-prompt-relationship-tree/` |
-| `2026-07-06-desktop-restore-last-module` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-restore-last-module/` |
-| `2026-07-06-desktop-rules-platform-tracking` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-rules-platform-tracking/` |
-| `2026-07-06-desktop-settings-boundary-fixes` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-settings-boundary-fixes/` |
-| `2026-07-06-desktop-settings-media-export` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-settings-media-export/` |
-| `2026-07-06-desktop-skill-drop-import` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-skill-drop-import/` |
-| `2026-07-06-desktop-skill-platform-directory-install` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-skill-platform-directory-install/` |
-| `2026-07-06-desktop-skill-project-flow` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-skill-project-flow/` |
-| `2026-07-06-desktop-skill-store-branch-selection` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-skill-store-branch-selection/` |
-| `2026-07-06-desktop-skill-store-name-collision` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-skill-store-name-collision/` |
-| `2026-07-06-desktop-sync-observability` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-sync-observability/` |
-| `2026-07-06-desktop-tag-management-preferences` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-tag-management-preferences/` |
-| `2026-07-06-desktop-tag-quick-actions` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-tag-quick-actions/` |
-| `2026-07-06-desktop-unify-user-data-layout` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-unify-user-data-layout/` |
-| `2026-07-06-desktop-unit-regression-hardening` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-unit-regression-hardening/` |
-| `2026-07-06-desktop-window-selection-restore` | archived | `spec/changes/archive/2026/07/2026-07-06-desktop-window-selection-restore/` |
-| `2026-07-06-export-backup-sync-consistency` | archived | `spec/changes/archive/2026/07/2026-07-06-export-backup-sync-consistency/` |
-| `2026-07-06-github-issue-tracking-sync` | archived | `spec/changes/archive/2026/07/2026-07-06-github-issue-tracking-sync/` |
-| `2026-07-06-google-openai-compat-auth` | archived | `spec/changes/archive/2026/07/2026-07-06-google-openai-compat-auth/` |
-| `2026-07-06-homebrew-update-routing` | archived | `spec/changes/archive/2026/07/2026-07-06-homebrew-update-routing/` |
-| `2026-07-06-issue-160-prompt-detail-usability` | archived | `spec/changes/archive/2026/07/2026-07-06-issue-160-prompt-detail-usability/` |
-| `2026-07-06-mcp-management` | archived | `spec/changes/archive/2026/07/2026-07-06-mcp-management/` |
-| `2026-07-06-my-skill-source-filter` | archived | `spec/changes/archive/2026/07/2026-07-06-my-skill-source-filter/` |
-| `2026-07-06-my-skill-source-update` | archived | `spec/changes/archive/2026/07/2026-07-06-my-skill-source-update/` |
-| `2026-07-06-my-skills-store-update-indicator` | archived | `spec/changes/archive/2026/07/2026-07-06-my-skills-store-update-indicator/` |
-| `2026-07-06-network-proxy-settings` | archived | `spec/changes/archive/2026/07/2026-07-06-network-proxy-settings/` |
-| `2026-07-06-preview-update-channel` | archived | `spec/changes/archive/2026/07/2026-07-06-preview-update-channel/` |
-| `2026-07-06-prompt-ai-rewrite` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-ai-rewrite/` |
-| `2026-07-06-prompt-ai-test-image-attachments` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-ai-test-image-attachments/` |
-| `2026-07-06-prompt-copy-variable-fallback` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-copy-variable-fallback/` |
-| `2026-07-06-prompt-feedback-fixes` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-feedback-fixes/` |
-| `2026-07-06-prompt-image-reverse` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-image-reverse/` |
-| `2026-07-06-prompt-media-workbench-polish` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-media-workbench-polish/` |
-| `2026-07-06-prompt-quick-add-ai-generate` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-quick-add-ai-generate/` |
-| `2026-07-06-prompt-version-table-view` | archived | `spec/changes/archive/2026/07/2026-07-06-prompt-version-table-view/` |
-| `2026-07-06-readme-contributor-refresh` | archived | `spec/changes/archive/2026/07/2026-07-06-readme-contributor-refresh/` |
-| `2026-07-06-recovery-residual-skill-restore` | archived | `spec/changes/archive/2026/07/2026-07-06-recovery-residual-skill-restore/` |
-| `2026-07-06-restore-spec-lowercase` | archived | `spec/changes/archive/2026/07/2026-07-06-restore-spec-lowercase/` |
-| `2026-07-06-rules-ai-regression-fixes` | archived | `spec/changes/archive/2026/07/2026-07-06-rules-ai-regression-fixes/` |
-| `2026-07-06-rules-selection-stability` | archived | `spec/changes/archive/2026/07/2026-07-06-rules-selection-stability/` |
-| `2026-07-06-rules-version-preview` | archived | `spec/changes/archive/2026/07/2026-07-06-rules-version-preview/` |
-| `2026-07-06-safe-data-path-change` | archived | `spec/changes/archive/2026/07/2026-07-06-safe-data-path-change/` |
-| `2026-07-06-settings-information-architecture` | archived | `spec/changes/archive/2026/07/2026-07-06-settings-information-architecture/` |
-| `2026-07-06-skill-batch-sync-install-mode` | archived | `spec/changes/archive/2026/07/2026-07-06-skill-batch-sync-install-mode/` |
-| `2026-07-06-skill-file-syntax-highlighting` | archived | `spec/changes/archive/2026/07/2026-07-06-skill-file-syntax-highlighting/` |
-| `2026-07-06-skill-package-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-skill-package-boundary/` |
-| `2026-07-06-skill-regression-tdd-guardrails` | archived | `spec/changes/archive/2026/07/2026-07-06-skill-regression-tdd-guardrails/` |
-| `2026-07-06-skill-store-preconfigured-sources` | archived | `spec/changes/archive/2026/07/2026-07-06-skill-store-preconfigured-sources/` |
-| `2026-07-06-skill-translation-persistence` | archived | `spec/changes/archive/2026/07/2026-07-06-skill-translation-persistence/` |
-| `2026-07-06-spec-init-doc-system-integration` | archived | `spec/changes/archive/2026/07/2026-07-06-spec-init-doc-system-integration/` |
-| `2026-07-06-spec-init-rule-sync` | archived | `spec/changes/archive/2026/07/2026-07-06-spec-init-rule-sync/` |
-| `2026-07-06-spec-init-skill-refresh` | archived | `spec/changes/archive/2026/07/2026-07-06-spec-init-skill-refresh/` |
-| `2026-07-06-startup-log-noise` | archived | `spec/changes/archive/2026/07/2026-07-06-startup-log-noise/` |
-| `2026-07-06-store-error-ui-polish` | archived | `spec/changes/archive/2026/07/2026-07-06-store-error-ui-polish/` |
-| `2026-07-06-submission-traceability-rules` | archived | `spec/changes/archive/2026/07/2026-07-06-submission-traceability-rules/` |
-| `2026-07-06-sync-webdav-contract-fixes` | archived | `spec/changes/archive/2026/07/2026-07-06-sync-webdav-contract-fixes/` |
-| `2026-07-06-verification-acceptance-hardening` | archived | `spec/changes/archive/2026/07/2026-07-06-verification-acceptance-hardening/` |
-| `2026-07-06-web-ai-stream-header-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-ai-stream-header-boundary/` |
-| `2026-07-06-web-auth-captcha` | archived | `spec/changes/archive/2026/07/2026-07-06-web-auth-captcha/` |
-| `2026-07-06-web-auth-captcha-env` | archived | `spec/changes/archive/2026/07/2026-07-06-web-auth-captcha-env/` |
-| `2026-07-06-web-auth-optional-body-size-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-auth-optional-body-size-boundary/` |
-| `2026-07-06-web-auth-rate-limit-client-identity` | archived | `spec/changes/archive/2026/07/2026-07-06-web-auth-rate-limit-client-identity/` |
-| `2026-07-06-web-client-folder-api-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-client-folder-api-boundary/` |
-| `2026-07-06-web-client-i18n-chunk-split` | archived | `spec/changes/archive/2026/07/2026-07-06-web-client-i18n-chunk-split/` |
-| `2026-07-06-web-client-path-segment-encoding` | archived | `spec/changes/archive/2026/07/2026-07-06-web-client-path-segment-encoding/` |
-| `2026-07-06-web-desktop-workspace-chunk-split` | archived | `spec/changes/archive/2026/07/2026-07-06-web-desktop-workspace-chunk-split/` |
-| `2026-07-06-web-device-heartbeat-resilience` | archived | `spec/changes/archive/2026/07/2026-07-06-web-device-heartbeat-resilience/` |
-| `2026-07-06-web-device-heartbeat-size-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-device-heartbeat-size-boundary/` |
-| `2026-07-06-web-env-data-root-example` | archived | `spec/changes/archive/2026/07/2026-07-06-web-env-data-root-example/` |
-| `2026-07-06-web-folder-cycle-guard` | archived | `spec/changes/archive/2026/07/2026-07-06-web-folder-cycle-guard/` |
-| `2026-07-06-web-folder-legacy-visibility-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-folder-legacy-visibility-boundary/` |
-| `2026-07-06-web-folder-list-query-efficiency` | archived | `spec/changes/archive/2026/07/2026-07-06-web-folder-list-query-efficiency/` |
-| `2026-07-06-web-folder-reorder-duplicate-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-folder-reorder-duplicate-boundary/` |
-| `2026-07-06-web-import-atomicity` | archived | `spec/changes/archive/2026/07/2026-07-06-web-import-atomicity/` |
-| `2026-07-06-web-import-size-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-import-size-boundary/` |
-| `2026-07-06-web-json-atomic-write` | archived | `spec/changes/archive/2026/07/2026-07-06-web-json-atomic-write/` |
-| `2026-07-06-web-json-body-stream-size-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-json-body-stream-size-boundary/` |
-| `2026-07-06-web-login-copy-fix` | archived | `spec/changes/archive/2026/07/2026-07-06-web-login-copy-fix/` |
-| `2026-07-06-web-media-filename-length-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-media-filename-length-boundary/` |
-| `2026-07-06-web-media-upload-fixes` | archived | `spec/changes/archive/2026/07/2026-07-06-web-media-upload-fixes/` |
-| `2026-07-06-web-prompt-clipboard-copy` | archived | `spec/changes/archive/2026/07/2026-07-06-web-prompt-clipboard-copy/` |
-| `2026-07-06-web-prompt-folder-ownership` | archived | `spec/changes/archive/2026/07/2026-07-06-web-prompt-folder-ownership/` |
-| `2026-07-06-web-prompt-list-pagination-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-prompt-list-pagination-boundary/` |
-| `2026-07-06-web-prompt-list-query-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-prompt-list-query-boundary/` |
-| `2026-07-06-web-prompt-tag-mutation-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-prompt-tag-mutation-boundary/` |
-| `2026-07-06-web-prompt-workspace-atomic-export` | archived | `spec/changes/archive/2026/07/2026-07-06-web-prompt-workspace-atomic-export/` |
-| `2026-07-06-web-proxy-secure-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-proxy-secure-boundary/` |
-| `2026-07-06-web-remote-http-hop-by-hop-headers` | archived | `spec/changes/archive/2026/07/2026-07-06-web-remote-http-hop-by-hop-headers/` |
-| `2026-07-06-web-remote-http-stream-size-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-remote-http-stream-size-boundary/` |
-| `2026-07-06-web-rule-input-validation-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-rule-input-validation-boundary/` |
-| `2026-07-06-web-rule-workspace-atomic-versions` | archived | `spec/changes/archive/2026/07/2026-07-06-web-rule-workspace-atomic-versions/` |
-| `2026-07-06-web-runtime-capability-sync` | archived | `spec/changes/archive/2026/07/2026-07-06-web-runtime-capability-sync/` |
-| `2026-07-06-web-settings-custom-agent-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-settings-custom-agent-boundary/` |
-| `2026-07-06-web-settings-nested-merge-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-settings-nested-merge-boundary/` |
-| `2026-07-06-web-settings-platform-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-settings-platform-boundary/` |
-| `2026-07-06-web-settings-security-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-settings-security-boundary/` |
-| `2026-07-06-web-settings-skill-project-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-settings-skill-project-boundary/` |
-| `2026-07-06-web-settings-tag-catalog-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-settings-tag-catalog-boundary/` |
-| `2026-07-06-web-skill-list-query-efficiency` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-list-query-efficiency/` |
-| `2026-07-06-web-skill-metadata-array-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-metadata-array-boundary/` |
-| `2026-07-06-web-skill-remote-fetch-https` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-remote-fetch-https/` |
-| `2026-07-06-web-skill-safety-report-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-safety-report-boundary/` |
-| `2026-07-06-web-skill-safety-scan-json-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-safety-scan-json-boundary/` |
-| `2026-07-06-web-skill-url-protocol-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-url-protocol-boundary/` |
-| `2026-07-06-web-skill-version-counter-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-version-counter-boundary/` |
-| `2026-07-06-web-skill-workspace-atomic-export` | archived | `spec/changes/archive/2026/07/2026-07-06-web-skill-workspace-atomic-export/` |
-| `2026-07-06-web-sync-data-size-boundary` | archived | `spec/changes/archive/2026/07/2026-07-06-web-sync-data-size-boundary/` |
-| `2026-07-07-desktop-platform-brand-icons` | archived | `spec/changes/archive/2026/07/2026-07-07-desktop-platform-brand-icons/` |
-| `2026-07-10-cli-desktop-database-concurrency` | archived | `spec/changes/archive/2026/07/2026-07-10-cli-desktop-database-concurrency/` |
-| `2026-07-10-desktop-legacy-lock-recovery` | archived | `spec/changes/archive/2026/07/2026-07-10-desktop-legacy-lock-recovery/` |
-| `2026-07-10-spec-governance-single-source-cleanup` | archived | `spec/changes/archive/2026/07/2026-07-10-spec-governance-single-source-cleanup/` |
-| `2026-07-10-spec-init-submission-gate` | archived | `spec/changes/archive/2026/07/2026-07-10-spec-init-submission-gate/` |
-| `2026-07-10-spec-init-upstream-alignment` | archived | `spec/changes/archive/2026/07/2026-07-10-spec-init-upstream-alignment/` |
-| `2026-07-10-spec-structure-rename` | archived | `spec/changes/archive/2026/07/2026-07-10-spec-structure-rename/` |
-| `2026-07-11-desktop-release-portability-repair` | archived | `spec/changes/archive/2026/07/2026-07-11-desktop-release-portability-repair/` |
-| `2026-07-11-project-module-boundary-hardening` | archived | `spec/changes/archive/2026/07/2026-07-11-project-module-boundary-hardening/` |
-| `2026-07-11-readme-desktop-module-screenshots-v0-5-9` | archived | `spec/changes/archive/2026/07/2026-07-11-readme-desktop-module-screenshots-v0-5-9/` |
-| `2026-07-11-release-verification-harness` | archived | `spec/changes/archive/2026/07/2026-07-11-release-verification-harness/` |
-| `2026-07-11-skill-frontmatter-yaml-parser` | archived | `spec/changes/archive/2026/07/2026-07-11-skill-frontmatter-yaml-parser/` |
-| `2026-07-11-skill-module-boundary-refactor` | archived | `spec/changes/archive/2026/07/2026-07-11-skill-module-boundary-refactor/` |
-| `2026-07-11-skill-source-update-trust-review` | archived | `spec/changes/archive/2026/07/2026-07-11-skill-source-update-trust-review/` |
-| `2026-07-11-web-release-version-alignment` | archived | `spec/changes/archive/2026/07/2026-07-11-web-release-version-alignment/` |
-| `2026-07-11-web-workspace-capability-alignment` | archived | `spec/changes/archive/2026/07/2026-07-11-web-workspace-capability-alignment/` |
-| `2026-07-13-agent-platform-kimi-reasonix-augment` | archived | `spec/changes/archive/2026/07/2026-07-13-agent-platform-kimi-reasonix-augment/` |
-| `2026-07-13-desktop-issue-186-zcode-agent-support` | archived | `spec/changes/archive/2026/07/2026-07-13-desktop-issue-186-zcode-agent-support/` |
-| `2026-07-13-self-hosted-web-database-lock-recovery` | archived | `spec/changes/archive/2026/07/2026-07-13-self-hosted-web-database-lock-recovery/` |
-| `2026-07-13-skill-install-update-lifecycle-contract` | archived | `spec/changes/archive/2026/07/2026-07-13-skill-install-update-lifecycle-contract/` |
-| `2026-07-16-cli-skill-automation-hardening` | archived | `spec/changes/archive/2026/07/2026-07-16-cli-skill-automation-hardening/` |
-| `2026-07-16-self-hosted-backup-only-automation` | archived | `spec/changes/archive/2026/07/2026-07-16-self-hosted-backup-only-automation/` |
-| `2026-07-21-prompt-image-preview-gallery` | archived | `spec/changes/archive/2026/07/2026-07-21-prompt-image-preview-gallery/` |
-| `2026-07-21-prompt-media-upload-reliability` | archived | `spec/changes/archive/2026/07/2026-07-21-prompt-media-upload-reliability/` |
-| `2026-07-28-cli-test-runtime-optimization` | archived | `spec/changes/archive/2026/07/2026-07-28-cli-test-runtime-optimization/` |
-| `2026-07-28-data-safety-hardening` | archived | `spec/changes/archive/2026/07/2026-07-28-data-safety-hardening/` |
-| `2026-07-28-database-integrity-repair` | archived | `spec/changes/archive/2026/07/2026-07-28-database-integrity-repair/` |
-| `2026-07-28-desktop-agent-asset-tray-actions` | archived | `spec/changes/archive/2026/07/2026-07-28-desktop-agent-asset-tray-actions/` |
-| `2026-07-28-desktop-sqlite-backup-drag-recovery` | archived | `spec/changes/archive/2026/07/2026-07-28-desktop-sqlite-backup-drag-recovery/` |
-| `2026-07-28-macos-menu-bar-template-icon` | archived | `spec/changes/archive/2026/07/2026-07-28-macos-menu-bar-template-icon/` |
-| `2026-07-28-mcp-env-sync-reapply` | archived | `spec/changes/archive/2026/07/2026-07-28-mcp-env-sync-reapply/` |
-| `2026-07-28-repository-quality-gates-and-change-convergence` | archived | `spec/changes/archive/2026/07/2026-07-28-repository-quality-gates-and-change-convergence/` |
-| `2026-07-28-skill-install-safety-resilience` | archived | `spec/changes/archive/2026/07/2026-07-28-skill-install-safety-resilience/` |
-| `2026-07-28-skill-safety-policy-controls` | archived | `spec/changes/archive/2026/07/2026-07-28-skill-safety-policy-controls/` |
-| `2026-07-28-skill-source-update-reconciliation` | archived | `spec/changes/archive/2026/07/2026-07-28-skill-source-update-reconciliation/` |
-| `2026-07-28-source-trust-and-mcp-market-updates` | archived | `spec/changes/archive/2026/07/2026-07-28-source-trust-and-mcp-market-updates/` |
-| `2026-07-28-unified-custom-store-sources` | archived | `spec/changes/archive/2026/07/2026-07-28-unified-custom-store-sources/` |
-| `2026-07-30-website-release-metadata-stable-boundary` | archived | `spec/changes/archive/2026/07/2026-07-30-website-release-metadata-stable-boundary/` |
-| `2026-08-01-web-agent-management` | archived | `spec/changes/archive/2026/08/2026-08-01-web-agent-management/` |
-| `2026-08-06-mcp-issues-200-202-analysis` | archived | `spec/changes/archive/2026/08/2026-08-06-mcp-issues-200-202-analysis/` |
-| `2026-08-06-mcp-issues-200-202-implementation` | archived | `spec/changes/archive/2026/08/2026-08-06-mcp-issues-200-202-implementation/` |
-| `2026-08-10-desktop-language-startup-persistence` | archived | `spec/changes/archive/2026/08/2026-08-10-desktop-language-startup-persistence/` |
-| `2026-08-12-database-migration-safety` | archived | `spec/changes/archive/2026/08/2026-08-12-database-migration-safety/` |
-| `2026-08-12-storage-recovery-review-fixes` | archived | `spec/changes/archive/2026/08/2026-08-12-storage-recovery-review-fixes/` |
-| `2026-08-13-release-0-6-0-beta-1-readiness` | archived | `spec/changes/archive/2026/08/2026-08-13-release-0-6-0-beta-1-readiness/` |
-| `2026-08-18-active-change-lifecycle-and-line-limit-convergence` | archived | `spec/changes/archive/2026/08/2026-08-18-active-change-lifecycle-and-line-limit-convergence/` |
-| `2026-08-18-app-shell-left-rail` | archived | `spec/changes/archive/2026/08/2026-08-18-app-shell-left-rail/` |
-| `2026-08-18-cli-agent-management` | archived | `spec/changes/archive/2026/08/2026-08-18-cli-agent-management/` |
-| `2026-08-18-cli-feature-completeness` | archived | `spec/changes/archive/2026/08/2026-08-18-cli-feature-completeness/` |
-| `2026-08-18-cli-install-manual-fallback` | archived | `spec/changes/archive/2026/08/2026-08-18-cli-install-manual-fallback/` |
-| `2026-08-18-cloud-collaborative-prompt-sharing` | archived | `spec/changes/archive/2026/08/2026-08-18-cloud-collaborative-prompt-sharing/` |
-| `2026-08-18-desktop-dev-server-loopback-isolation` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-dev-server-loopback-isolation/` |
-| `2026-08-18-desktop-frontend-animation-system` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-frontend-animation-system/` |
-| `2026-08-18-desktop-frontend-perf-tuneup` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-frontend-perf-tuneup/` |
-| `2026-08-18-desktop-home-layout-controls` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-home-layout-controls/` |
-| `2026-08-18-desktop-issue-179-configured-skill-targets` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-issue-179-configured-skill-targets/` |
-| `2026-08-18-desktop-prompt-context-move` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-prompt-context-move/` |
-| `2026-08-18-desktop-renderer-ui-test-coverage` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-renderer-ui-test-coverage/` |
-| `2026-08-18-desktop-skill-ui-size-performance` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-skill-ui-size-performance/` |
-| `2026-08-18-desktop-update-dialog-polish` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-update-dialog-polish/` |
-| `2026-08-18-desktop-workspace-live-refresh` | archived | `spec/changes/archive/2026/08/2026-08-18-desktop-workspace-live-refresh/` |
-| `2026-08-18-git-backup-transports` | archived | `spec/changes/archive/2026/08/2026-08-18-git-backup-transports/` |
-| `2026-08-18-homepage-changelog-route-retirement` | archived | `spec/changes/archive/2026/08/2026-08-18-homepage-changelog-route-retirement/` |
-| `2026-08-18-local-resource-device-identity` | archived | `spec/changes/archive/2026/08/2026-08-18-local-resource-device-identity/` |
-| `2026-08-18-macos-developer-id-signing` | archived | `spec/changes/archive/2026/08/2026-08-18-macos-developer-id-signing/` |
-| `2026-08-18-macos-timestamp-retry` | archived | `spec/changes/archive/2026/08/2026-08-18-macos-timestamp-retry/` |
-| `2026-08-18-marketplace-expansion` | archived | `spec/changes/archive/2026/08/2026-08-18-marketplace-expansion/` |
-| `2026-08-18-mobile-app-shell` | archived | `spec/changes/archive/2026/08/2026-08-18-mobile-app-shell/` |
-| `2026-08-18-mobile-webdav-distribution` | archived | `spec/changes/archive/2026/08/2026-08-18-mobile-webdav-distribution/` |
-| `2026-08-18-official-cloud-backup-and-saas-platform` | archived | `spec/changes/archive/2026/08/2026-08-18-official-cloud-backup-and-saas-platform/` |
-| `2026-08-18-platform-workbench-prototype` | archived | `spec/changes/archive/2026/08/2026-08-18-platform-workbench-prototype/` |
-| `2026-08-18-project-skill-management` | archived | `spec/changes/archive/2026/08/2026-08-18-project-skill-management/` |
-| `2026-08-18-prompt-output-format-contribution` | archived | `spec/changes/archive/2026/08/2026-08-18-prompt-output-format-contribution/` |
-| `2026-08-18-prompt-workspace-completion` | archived | `spec/changes/archive/2026/08/2026-08-18-prompt-workspace-completion/` |
-| `2026-08-18-react-type-workspace-boundary` | archived | `spec/changes/archive/2026/08/2026-08-18-react-type-workspace-boundary/` |
-| `2026-08-18-readme-screenshots-v0-5-6` | archived | `spec/changes/archive/2026/08/2026-08-18-readme-screenshots-v0-5-6/` |
-| `2026-08-18-rules-agent-source-matrix` | archived | `spec/changes/archive/2026/08/2026-08-18-rules-agent-source-matrix/` |
-| `2026-08-18-skill-uninstall-lifecycle` | archived | `spec/changes/archive/2026/08/2026-08-18-skill-uninstall-lifecycle/` |
-| `2026-08-18-windows-code-signing-and-reputation` | archived | `spec/changes/archive/2026/08/2026-08-18-windows-code-signing-and-reputation/` |
-| `2026-08-19-macos-notary-ticket-propagation-retry` | archived | `spec/changes/archive/2026/08/2026-08-19-macos-notary-ticket-propagation-retry/` |
-| `2026-08-19-republish-0-5-9-20260714` | archived | `spec/changes/archive/2026/08/2026-08-19-republish-0-5-9-20260714/` |
-| `2026-08-19-windows-packaged-upgrade-startup-gate` | archived | `spec/changes/archive/2026/08/2026-08-19-windows-packaged-upgrade-startup-gate/` |
-| `2026-08-20-database-resource-lifecycle-hardening` | archived | `spec/changes/archive/2026/08/2026-08-20-database-resource-lifecycle-hardening/` |
-| `2026-08-20-windows-canonical-authority-second-launch` | archived | `spec/changes/archive/2026/08/2026-08-20-windows-canonical-authority-second-launch/` |
-| `2026-08-21-skill-package-canonical-finalization` | archived | `spec/changes/archive/2026/08/2026-08-21-skill-package-canonical-finalization/` |
-| `2026-08-31-apimart-sponsor-readme` | archived | `spec/changes/archive/2026/08/2026-08-31-apimart-sponsor-readme/` |
-| `2026-09-03-release-0-6-0-beta-2-readiness` | archived | `spec/changes/archive/2026/09/2026-09-03-release-0-6-0-beta-2-readiness/` |
-| `2026-09-08-ai-request-timeout-unification` | archived | `spec/changes/archive/2026/09/2026-09-08-ai-request-timeout-unification/` |
-| `2026-09-08-skill-package-durability-lossless-snapshots` | archived | `spec/changes/archive/2026/09/2026-09-08-skill-package-durability-lossless-snapshots/` |
-| `2026-09-08-skill-translation-long-request-timeout` | archived | `spec/changes/archive/2026/09/2026-09-08-skill-translation-long-request-timeout/` |
-| `2026-09-09-skill-content-scan-separation` | archived | `spec/changes/archive/2026/09/2026-09-09-skill-content-scan-separation/` |
+| `2026-03-12-yolo-evolution` | archived | [spec/changes/archive/2026/03/2026-03-12-yolo-evolution/](archive/2026/03/2026-03-12-yolo-evolution/) |
+| `2026-03-14-test-infrastructure-evolution` | archived | [spec/changes/archive/2026/03/2026-03-14-test-infrastructure-evolution/](archive/2026/03/2026-03-14-test-infrastructure-evolution/) |
+| `2026-04-11-monorepo-migration` | archived | [spec/changes/archive/2026/04/2026-04-11-monorepo-migration/](archive/2026/04/2026-04-11-monorepo-migration/) |
+| `2026-04-12-server-api-design` | archived | [spec/changes/archive/2026/04/2026-04-12-server-api-design/](archive/2026/04/2026-04-12-server-api-design/) |
+| `2026-04-17-web-data-layout-migration` | archived | [spec/changes/archive/2026/04/2026-04-17-web-data-layout-migration/](archive/2026/04/2026-04-17-web-data-layout-migration/) |
+| `2026-04-17-web-self-hosted-plan` | archived | [spec/changes/archive/2026/04/2026-04-17-web-self-hosted-plan/](archive/2026/04/2026-04-17-web-self-hosted-plan/) |
+| `2026-05-10-unified-sync-abstraction` | archived | [spec/changes/archive/2026/05/2026-05-10-unified-sync-abstraction/](archive/2026/05/2026-05-10-unified-sync-abstraction/) |
+| `2026-07-06-agent-boundary-guardrails` | archived | [spec/changes/archive/2026/07/2026-07-06-agent-boundary-guardrails/](archive/2026/07/2026-07-06-agent-boundary-guardrails/) |
+| `2026-07-06-agent-skill-management` | archived | [spec/changes/archive/2026/07/2026-07-06-agent-skill-management/](archive/2026/07/2026-07-06-agent-skill-management/) |
+| `2026-07-06-ai-local-model-test-latency` | archived | [spec/changes/archive/2026/07/2026-07-06-ai-local-model-test-latency/](archive/2026/07/2026-07-06-ai-local-model-test-latency/) |
+| `2026-07-06-ai-protocol-first` | archived | [spec/changes/archive/2026/07/2026-07-06-ai-protocol-first/](archive/2026/07/2026-07-06-ai-protocol-first/) |
+| `2026-07-06-ai-provider-api-assets` | archived | [spec/changes/archive/2026/07/2026-07-06-ai-provider-api-assets/](archive/2026/07/2026-07-06-ai-provider-api-assets/) |
+| `2026-07-06-card-detail-inline-edit` | archived | [spec/changes/archive/2026/07/2026-07-06-card-detail-inline-edit/](archive/2026/07/2026-07-06-card-detail-inline-edit/) |
+| `2026-07-06-cherry-studio-skill-platform` | archived | [spec/changes/archive/2026/07/2026-07-06-cherry-studio-skill-platform/](archive/2026/07/2026-07-06-cherry-studio-skill-platform/) |
+| `2026-07-06-cli-cwd-ergonomics` | archived | [spec/changes/archive/2026/07/2026-07-06-cli-cwd-ergonomics/](archive/2026/07/2026-07-06-cli-cwd-ergonomics/) |
+| `2026-07-06-cli-project-skill-install` | archived | [spec/changes/archive/2026/07/2026-07-06-cli-project-skill-install/](archive/2026/07/2026-07-06-cli-project-skill-install/) |
+| `2026-07-06-cli-rules-home-isolation` | archived | [spec/changes/archive/2026/07/2026-07-06-cli-rules-home-isolation/](archive/2026/07/2026-07-06-cli-rules-home-isolation/) |
+| `2026-07-06-cli-rules-shared-service` | archived | [spec/changes/archive/2026/07/2026-07-06-cli-rules-shared-service/](archive/2026/07/2026-07-06-cli-rules-shared-service/) |
+| `2026-07-06-cli-standalone-product` | archived | [spec/changes/archive/2026/07/2026-07-06-cli-standalone-product/](archive/2026/07/2026-07-06-cli-standalone-product/) |
+| `2026-07-06-cli-sync-snapshot-alignment` | archived | [spec/changes/archive/2026/07/2026-07-06-cli-sync-snapshot-alignment/](archive/2026/07/2026-07-06-cli-sync-snapshot-alignment/) |
+| `2026-07-06-cloudflare-worker-hardening` | archived | [spec/changes/archive/2026/07/2026-07-06-cloudflare-worker-hardening/](archive/2026/07/2026-07-06-cloudflare-worker-hardening/) |
+| `2026-07-06-core-rules-workspace-atomic-writes` | archived | [spec/changes/archive/2026/07/2026-07-06-core-rules-workspace-atomic-writes/](archive/2026/07/2026-07-06-core-rules-workspace-atomic-writes/) |
+| `2026-07-06-core-rules-workspace-path-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-core-rules-workspace-path-boundary/](archive/2026/07/2026-07-06-core-rules-workspace-path-boundary/) |
+| `2026-07-06-desktop-agent-assistant-and-git-import-ergonomics` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-agent-assistant-and-git-import-ergonomics/](archive/2026/07/2026-07-06-desktop-agent-assistant-and-git-import-ergonomics/) |
+| `2026-07-06-desktop-backup-drop-restore` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-backup-drop-restore/](archive/2026/07/2026-07-06-desktop-backup-drop-restore/) |
+| `2026-07-06-desktop-issue-113-edit-surface` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-113-edit-surface/](archive/2026/07/2026-07-06-desktop-issue-113-edit-surface/) |
+| `2026-07-06-desktop-issue-119-usability` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-119-usability/](archive/2026/07/2026-07-06-desktop-issue-119-usability/) |
+| `2026-07-06-desktop-issue-131-skill-frontmatter-dedupe` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-131-skill-frontmatter-dedupe/](archive/2026/07/2026-07-06-desktop-issue-131-skill-frontmatter-dedupe/) |
+| `2026-07-06-desktop-issue-133-skill-view-tags` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-133-skill-view-tags/](archive/2026/07/2026-07-06-desktop-issue-133-skill-view-tags/) |
+| `2026-07-06-desktop-issue-134-custom-store-rename` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-134-custom-store-rename/](archive/2026/07/2026-07-06-desktop-issue-134-custom-store-rename/) |
+| `2026-07-06-desktop-issue-161-skill-store-batch` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-161-skill-store-batch/](archive/2026/07/2026-07-06-desktop-issue-161-skill-store-batch/) |
+| `2026-07-06-desktop-issue-163-skill-user-notes` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-163-skill-user-notes/](archive/2026/07/2026-07-06-desktop-issue-163-skill-user-notes/) |
+| `2026-07-06-desktop-issue-165-large-github-skill-store` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-165-large-github-skill-store/](archive/2026/07/2026-07-06-desktop-issue-165-large-github-skill-store/) |
+| `2026-07-06-desktop-issue-166-skill-store-scroll` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-166-skill-store-scroll/](archive/2026/07/2026-07-06-desktop-issue-166-skill-store-scroll/) |
+| `2026-07-06-desktop-issue-178-hermes-localappdata` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-178-hermes-localappdata/](archive/2026/07/2026-07-06-desktop-issue-178-hermes-localappdata/) |
+| `2026-07-06-desktop-issue-51-tag-management` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-issue-51-tag-management/](archive/2026/07/2026-07-06-desktop-issue-51-tag-management/) |
+| `2026-07-06-desktop-local-skill-source-refresh` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-local-skill-source-refresh/](archive/2026/07/2026-07-06-desktop-local-skill-source-refresh/) |
+| `2026-07-06-desktop-prompt-relationship-tree` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-prompt-relationship-tree/](archive/2026/07/2026-07-06-desktop-prompt-relationship-tree/) |
+| `2026-07-06-desktop-restore-last-module` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-restore-last-module/](archive/2026/07/2026-07-06-desktop-restore-last-module/) |
+| `2026-07-06-desktop-rules-platform-tracking` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-rules-platform-tracking/](archive/2026/07/2026-07-06-desktop-rules-platform-tracking/) |
+| `2026-07-06-desktop-settings-boundary-fixes` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-settings-boundary-fixes/](archive/2026/07/2026-07-06-desktop-settings-boundary-fixes/) |
+| `2026-07-06-desktop-settings-media-export` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-settings-media-export/](archive/2026/07/2026-07-06-desktop-settings-media-export/) |
+| `2026-07-06-desktop-skill-drop-import` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-skill-drop-import/](archive/2026/07/2026-07-06-desktop-skill-drop-import/) |
+| `2026-07-06-desktop-skill-platform-directory-install` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-skill-platform-directory-install/](archive/2026/07/2026-07-06-desktop-skill-platform-directory-install/) |
+| `2026-07-06-desktop-skill-project-flow` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-skill-project-flow/](archive/2026/07/2026-07-06-desktop-skill-project-flow/) |
+| `2026-07-06-desktop-skill-store-branch-selection` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-skill-store-branch-selection/](archive/2026/07/2026-07-06-desktop-skill-store-branch-selection/) |
+| `2026-07-06-desktop-skill-store-name-collision` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-skill-store-name-collision/](archive/2026/07/2026-07-06-desktop-skill-store-name-collision/) |
+| `2026-07-06-desktop-sync-observability` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-sync-observability/](archive/2026/07/2026-07-06-desktop-sync-observability/) |
+| `2026-07-06-desktop-tag-management-preferences` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-tag-management-preferences/](archive/2026/07/2026-07-06-desktop-tag-management-preferences/) |
+| `2026-07-06-desktop-tag-quick-actions` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-tag-quick-actions/](archive/2026/07/2026-07-06-desktop-tag-quick-actions/) |
+| `2026-07-06-desktop-unify-user-data-layout` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-unify-user-data-layout/](archive/2026/07/2026-07-06-desktop-unify-user-data-layout/) |
+| `2026-07-06-desktop-unit-regression-hardening` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-unit-regression-hardening/](archive/2026/07/2026-07-06-desktop-unit-regression-hardening/) |
+| `2026-07-06-desktop-window-selection-restore` | archived | [spec/changes/archive/2026/07/2026-07-06-desktop-window-selection-restore/](archive/2026/07/2026-07-06-desktop-window-selection-restore/) |
+| `2026-07-06-export-backup-sync-consistency` | archived | [spec/changes/archive/2026/07/2026-07-06-export-backup-sync-consistency/](archive/2026/07/2026-07-06-export-backup-sync-consistency/) |
+| `2026-07-06-github-issue-tracking-sync` | archived | [spec/changes/archive/2026/07/2026-07-06-github-issue-tracking-sync/](archive/2026/07/2026-07-06-github-issue-tracking-sync/) |
+| `2026-07-06-google-openai-compat-auth` | archived | [spec/changes/archive/2026/07/2026-07-06-google-openai-compat-auth/](archive/2026/07/2026-07-06-google-openai-compat-auth/) |
+| `2026-07-06-homebrew-update-routing` | archived | [spec/changes/archive/2026/07/2026-07-06-homebrew-update-routing/](archive/2026/07/2026-07-06-homebrew-update-routing/) |
+| `2026-07-06-issue-160-prompt-detail-usability` | archived | [spec/changes/archive/2026/07/2026-07-06-issue-160-prompt-detail-usability/](archive/2026/07/2026-07-06-issue-160-prompt-detail-usability/) |
+| `2026-07-06-mcp-management` | archived | [spec/changes/archive/2026/07/2026-07-06-mcp-management/](archive/2026/07/2026-07-06-mcp-management/) |
+| `2026-07-06-my-skill-source-filter` | archived | [spec/changes/archive/2026/07/2026-07-06-my-skill-source-filter/](archive/2026/07/2026-07-06-my-skill-source-filter/) |
+| `2026-07-06-my-skill-source-update` | archived | [spec/changes/archive/2026/07/2026-07-06-my-skill-source-update/](archive/2026/07/2026-07-06-my-skill-source-update/) |
+| `2026-07-06-my-skills-store-update-indicator` | archived | [spec/changes/archive/2026/07/2026-07-06-my-skills-store-update-indicator/](archive/2026/07/2026-07-06-my-skills-store-update-indicator/) |
+| `2026-07-06-network-proxy-settings` | archived | [spec/changes/archive/2026/07/2026-07-06-network-proxy-settings/](archive/2026/07/2026-07-06-network-proxy-settings/) |
+| `2026-07-06-preview-update-channel` | archived | [spec/changes/archive/2026/07/2026-07-06-preview-update-channel/](archive/2026/07/2026-07-06-preview-update-channel/) |
+| `2026-07-06-prompt-ai-rewrite` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-ai-rewrite/](archive/2026/07/2026-07-06-prompt-ai-rewrite/) |
+| `2026-07-06-prompt-ai-test-image-attachments` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-ai-test-image-attachments/](archive/2026/07/2026-07-06-prompt-ai-test-image-attachments/) |
+| `2026-07-06-prompt-copy-variable-fallback` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-copy-variable-fallback/](archive/2026/07/2026-07-06-prompt-copy-variable-fallback/) |
+| `2026-07-06-prompt-feedback-fixes` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-feedback-fixes/](archive/2026/07/2026-07-06-prompt-feedback-fixes/) |
+| `2026-07-06-prompt-image-reverse` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-image-reverse/](archive/2026/07/2026-07-06-prompt-image-reverse/) |
+| `2026-07-06-prompt-media-workbench-polish` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-media-workbench-polish/](archive/2026/07/2026-07-06-prompt-media-workbench-polish/) |
+| `2026-07-06-prompt-quick-add-ai-generate` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-quick-add-ai-generate/](archive/2026/07/2026-07-06-prompt-quick-add-ai-generate/) |
+| `2026-07-06-prompt-version-table-view` | archived | [spec/changes/archive/2026/07/2026-07-06-prompt-version-table-view/](archive/2026/07/2026-07-06-prompt-version-table-view/) |
+| `2026-07-06-readme-contributor-refresh` | archived | [spec/changes/archive/2026/07/2026-07-06-readme-contributor-refresh/](archive/2026/07/2026-07-06-readme-contributor-refresh/) |
+| `2026-07-06-recovery-residual-skill-restore` | archived | [spec/changes/archive/2026/07/2026-07-06-recovery-residual-skill-restore/](archive/2026/07/2026-07-06-recovery-residual-skill-restore/) |
+| `2026-07-06-restore-spec-lowercase` | archived | [spec/changes/archive/2026/07/2026-07-06-restore-spec-lowercase/](archive/2026/07/2026-07-06-restore-spec-lowercase/) |
+| `2026-07-06-rules-ai-regression-fixes` | archived | [spec/changes/archive/2026/07/2026-07-06-rules-ai-regression-fixes/](archive/2026/07/2026-07-06-rules-ai-regression-fixes/) |
+| `2026-07-06-rules-selection-stability` | archived | [spec/changes/archive/2026/07/2026-07-06-rules-selection-stability/](archive/2026/07/2026-07-06-rules-selection-stability/) |
+| `2026-07-06-rules-version-preview` | archived | [spec/changes/archive/2026/07/2026-07-06-rules-version-preview/](archive/2026/07/2026-07-06-rules-version-preview/) |
+| `2026-07-06-safe-data-path-change` | archived | [spec/changes/archive/2026/07/2026-07-06-safe-data-path-change/](archive/2026/07/2026-07-06-safe-data-path-change/) |
+| `2026-07-06-settings-information-architecture` | archived | [spec/changes/archive/2026/07/2026-07-06-settings-information-architecture/](archive/2026/07/2026-07-06-settings-information-architecture/) |
+| `2026-07-06-skill-batch-sync-install-mode` | archived | [spec/changes/archive/2026/07/2026-07-06-skill-batch-sync-install-mode/](archive/2026/07/2026-07-06-skill-batch-sync-install-mode/) |
+| `2026-07-06-skill-file-syntax-highlighting` | archived | [spec/changes/archive/2026/07/2026-07-06-skill-file-syntax-highlighting/](archive/2026/07/2026-07-06-skill-file-syntax-highlighting/) |
+| `2026-07-06-skill-package-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-skill-package-boundary/](archive/2026/07/2026-07-06-skill-package-boundary/) |
+| `2026-07-06-skill-regression-tdd-guardrails` | archived | [spec/changes/archive/2026/07/2026-07-06-skill-regression-tdd-guardrails/](archive/2026/07/2026-07-06-skill-regression-tdd-guardrails/) |
+| `2026-07-06-skill-store-preconfigured-sources` | archived | [spec/changes/archive/2026/07/2026-07-06-skill-store-preconfigured-sources/](archive/2026/07/2026-07-06-skill-store-preconfigured-sources/) |
+| `2026-07-06-skill-translation-persistence` | archived | [spec/changes/archive/2026/07/2026-07-06-skill-translation-persistence/](archive/2026/07/2026-07-06-skill-translation-persistence/) |
+| `2026-07-06-spec-init-doc-system-integration` | archived | [spec/changes/archive/2026/07/2026-07-06-spec-init-doc-system-integration/](archive/2026/07/2026-07-06-spec-init-doc-system-integration/) |
+| `2026-07-06-spec-init-rule-sync` | archived | [spec/changes/archive/2026/07/2026-07-06-spec-init-rule-sync/](archive/2026/07/2026-07-06-spec-init-rule-sync/) |
+| `2026-07-06-spec-init-skill-refresh` | archived | [spec/changes/archive/2026/07/2026-07-06-spec-init-skill-refresh/](archive/2026/07/2026-07-06-spec-init-skill-refresh/) |
+| `2026-07-06-startup-log-noise` | archived | [spec/changes/archive/2026/07/2026-07-06-startup-log-noise/](archive/2026/07/2026-07-06-startup-log-noise/) |
+| `2026-07-06-store-error-ui-polish` | archived | [spec/changes/archive/2026/07/2026-07-06-store-error-ui-polish/](archive/2026/07/2026-07-06-store-error-ui-polish/) |
+| `2026-07-06-submission-traceability-rules` | archived | [spec/changes/archive/2026/07/2026-07-06-submission-traceability-rules/](archive/2026/07/2026-07-06-submission-traceability-rules/) |
+| `2026-07-06-sync-webdav-contract-fixes` | archived | [spec/changes/archive/2026/07/2026-07-06-sync-webdav-contract-fixes/](archive/2026/07/2026-07-06-sync-webdav-contract-fixes/) |
+| `2026-07-06-verification-acceptance-hardening` | archived | [spec/changes/archive/2026/07/2026-07-06-verification-acceptance-hardening/](archive/2026/07/2026-07-06-verification-acceptance-hardening/) |
+| `2026-07-06-web-ai-stream-header-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-ai-stream-header-boundary/](archive/2026/07/2026-07-06-web-ai-stream-header-boundary/) |
+| `2026-07-06-web-auth-captcha` | archived | [spec/changes/archive/2026/07/2026-07-06-web-auth-captcha/](archive/2026/07/2026-07-06-web-auth-captcha/) |
+| `2026-07-06-web-auth-captcha-env` | archived | [spec/changes/archive/2026/07/2026-07-06-web-auth-captcha-env/](archive/2026/07/2026-07-06-web-auth-captcha-env/) |
+| `2026-07-06-web-auth-optional-body-size-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-auth-optional-body-size-boundary/](archive/2026/07/2026-07-06-web-auth-optional-body-size-boundary/) |
+| `2026-07-06-web-auth-rate-limit-client-identity` | archived | [spec/changes/archive/2026/07/2026-07-06-web-auth-rate-limit-client-identity/](archive/2026/07/2026-07-06-web-auth-rate-limit-client-identity/) |
+| `2026-07-06-web-client-folder-api-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-client-folder-api-boundary/](archive/2026/07/2026-07-06-web-client-folder-api-boundary/) |
+| `2026-07-06-web-client-i18n-chunk-split` | archived | [spec/changes/archive/2026/07/2026-07-06-web-client-i18n-chunk-split/](archive/2026/07/2026-07-06-web-client-i18n-chunk-split/) |
+| `2026-07-06-web-client-path-segment-encoding` | archived | [spec/changes/archive/2026/07/2026-07-06-web-client-path-segment-encoding/](archive/2026/07/2026-07-06-web-client-path-segment-encoding/) |
+| `2026-07-06-web-desktop-workspace-chunk-split` | archived | [spec/changes/archive/2026/07/2026-07-06-web-desktop-workspace-chunk-split/](archive/2026/07/2026-07-06-web-desktop-workspace-chunk-split/) |
+| `2026-07-06-web-device-heartbeat-resilience` | archived | [spec/changes/archive/2026/07/2026-07-06-web-device-heartbeat-resilience/](archive/2026/07/2026-07-06-web-device-heartbeat-resilience/) |
+| `2026-07-06-web-device-heartbeat-size-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-device-heartbeat-size-boundary/](archive/2026/07/2026-07-06-web-device-heartbeat-size-boundary/) |
+| `2026-07-06-web-env-data-root-example` | archived | [spec/changes/archive/2026/07/2026-07-06-web-env-data-root-example/](archive/2026/07/2026-07-06-web-env-data-root-example/) |
+| `2026-07-06-web-folder-cycle-guard` | archived | [spec/changes/archive/2026/07/2026-07-06-web-folder-cycle-guard/](archive/2026/07/2026-07-06-web-folder-cycle-guard/) |
+| `2026-07-06-web-folder-legacy-visibility-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-folder-legacy-visibility-boundary/](archive/2026/07/2026-07-06-web-folder-legacy-visibility-boundary/) |
+| `2026-07-06-web-folder-list-query-efficiency` | archived | [spec/changes/archive/2026/07/2026-07-06-web-folder-list-query-efficiency/](archive/2026/07/2026-07-06-web-folder-list-query-efficiency/) |
+| `2026-07-06-web-folder-reorder-duplicate-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-folder-reorder-duplicate-boundary/](archive/2026/07/2026-07-06-web-folder-reorder-duplicate-boundary/) |
+| `2026-07-06-web-import-atomicity` | archived | [spec/changes/archive/2026/07/2026-07-06-web-import-atomicity/](archive/2026/07/2026-07-06-web-import-atomicity/) |
+| `2026-07-06-web-import-size-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-import-size-boundary/](archive/2026/07/2026-07-06-web-import-size-boundary/) |
+| `2026-07-06-web-json-atomic-write` | archived | [spec/changes/archive/2026/07/2026-07-06-web-json-atomic-write/](archive/2026/07/2026-07-06-web-json-atomic-write/) |
+| `2026-07-06-web-json-body-stream-size-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-json-body-stream-size-boundary/](archive/2026/07/2026-07-06-web-json-body-stream-size-boundary/) |
+| `2026-07-06-web-login-copy-fix` | archived | [spec/changes/archive/2026/07/2026-07-06-web-login-copy-fix/](archive/2026/07/2026-07-06-web-login-copy-fix/) |
+| `2026-07-06-web-media-filename-length-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-media-filename-length-boundary/](archive/2026/07/2026-07-06-web-media-filename-length-boundary/) |
+| `2026-07-06-web-media-upload-fixes` | archived | [spec/changes/archive/2026/07/2026-07-06-web-media-upload-fixes/](archive/2026/07/2026-07-06-web-media-upload-fixes/) |
+| `2026-07-06-web-prompt-clipboard-copy` | archived | [spec/changes/archive/2026/07/2026-07-06-web-prompt-clipboard-copy/](archive/2026/07/2026-07-06-web-prompt-clipboard-copy/) |
+| `2026-07-06-web-prompt-folder-ownership` | archived | [spec/changes/archive/2026/07/2026-07-06-web-prompt-folder-ownership/](archive/2026/07/2026-07-06-web-prompt-folder-ownership/) |
+| `2026-07-06-web-prompt-list-pagination-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-prompt-list-pagination-boundary/](archive/2026/07/2026-07-06-web-prompt-list-pagination-boundary/) |
+| `2026-07-06-web-prompt-list-query-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-prompt-list-query-boundary/](archive/2026/07/2026-07-06-web-prompt-list-query-boundary/) |
+| `2026-07-06-web-prompt-tag-mutation-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-prompt-tag-mutation-boundary/](archive/2026/07/2026-07-06-web-prompt-tag-mutation-boundary/) |
+| `2026-07-06-web-prompt-workspace-atomic-export` | archived | [spec/changes/archive/2026/07/2026-07-06-web-prompt-workspace-atomic-export/](archive/2026/07/2026-07-06-web-prompt-workspace-atomic-export/) |
+| `2026-07-06-web-proxy-secure-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-proxy-secure-boundary/](archive/2026/07/2026-07-06-web-proxy-secure-boundary/) |
+| `2026-07-06-web-remote-http-hop-by-hop-headers` | archived | [spec/changes/archive/2026/07/2026-07-06-web-remote-http-hop-by-hop-headers/](archive/2026/07/2026-07-06-web-remote-http-hop-by-hop-headers/) |
+| `2026-07-06-web-remote-http-stream-size-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-remote-http-stream-size-boundary/](archive/2026/07/2026-07-06-web-remote-http-stream-size-boundary/) |
+| `2026-07-06-web-rule-input-validation-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-rule-input-validation-boundary/](archive/2026/07/2026-07-06-web-rule-input-validation-boundary/) |
+| `2026-07-06-web-rule-workspace-atomic-versions` | archived | [spec/changes/archive/2026/07/2026-07-06-web-rule-workspace-atomic-versions/](archive/2026/07/2026-07-06-web-rule-workspace-atomic-versions/) |
+| `2026-07-06-web-runtime-capability-sync` | archived | [spec/changes/archive/2026/07/2026-07-06-web-runtime-capability-sync/](archive/2026/07/2026-07-06-web-runtime-capability-sync/) |
+| `2026-07-06-web-settings-custom-agent-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-settings-custom-agent-boundary/](archive/2026/07/2026-07-06-web-settings-custom-agent-boundary/) |
+| `2026-07-06-web-settings-nested-merge-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-settings-nested-merge-boundary/](archive/2026/07/2026-07-06-web-settings-nested-merge-boundary/) |
+| `2026-07-06-web-settings-platform-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-settings-platform-boundary/](archive/2026/07/2026-07-06-web-settings-platform-boundary/) |
+| `2026-07-06-web-settings-security-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-settings-security-boundary/](archive/2026/07/2026-07-06-web-settings-security-boundary/) |
+| `2026-07-06-web-settings-skill-project-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-settings-skill-project-boundary/](archive/2026/07/2026-07-06-web-settings-skill-project-boundary/) |
+| `2026-07-06-web-settings-tag-catalog-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-settings-tag-catalog-boundary/](archive/2026/07/2026-07-06-web-settings-tag-catalog-boundary/) |
+| `2026-07-06-web-skill-list-query-efficiency` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-list-query-efficiency/](archive/2026/07/2026-07-06-web-skill-list-query-efficiency/) |
+| `2026-07-06-web-skill-metadata-array-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-metadata-array-boundary/](archive/2026/07/2026-07-06-web-skill-metadata-array-boundary/) |
+| `2026-07-06-web-skill-remote-fetch-https` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-remote-fetch-https/](archive/2026/07/2026-07-06-web-skill-remote-fetch-https/) |
+| `2026-07-06-web-skill-safety-report-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-safety-report-boundary/](archive/2026/07/2026-07-06-web-skill-safety-report-boundary/) |
+| `2026-07-06-web-skill-safety-scan-json-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-safety-scan-json-boundary/](archive/2026/07/2026-07-06-web-skill-safety-scan-json-boundary/) |
+| `2026-07-06-web-skill-url-protocol-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-url-protocol-boundary/](archive/2026/07/2026-07-06-web-skill-url-protocol-boundary/) |
+| `2026-07-06-web-skill-version-counter-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-version-counter-boundary/](archive/2026/07/2026-07-06-web-skill-version-counter-boundary/) |
+| `2026-07-06-web-skill-workspace-atomic-export` | archived | [spec/changes/archive/2026/07/2026-07-06-web-skill-workspace-atomic-export/](archive/2026/07/2026-07-06-web-skill-workspace-atomic-export/) |
+| `2026-07-06-web-sync-data-size-boundary` | archived | [spec/changes/archive/2026/07/2026-07-06-web-sync-data-size-boundary/](archive/2026/07/2026-07-06-web-sync-data-size-boundary/) |
+| `2026-07-07-desktop-platform-brand-icons` | archived | [spec/changes/archive/2026/07/2026-07-07-desktop-platform-brand-icons/](archive/2026/07/2026-07-07-desktop-platform-brand-icons/) |
+| `2026-07-10-cli-desktop-database-concurrency` | archived | [spec/changes/archive/2026/07/2026-07-10-cli-desktop-database-concurrency/](archive/2026/07/2026-07-10-cli-desktop-database-concurrency/) |
+| `2026-07-10-desktop-legacy-lock-recovery` | archived | [spec/changes/archive/2026/07/2026-07-10-desktop-legacy-lock-recovery/](archive/2026/07/2026-07-10-desktop-legacy-lock-recovery/) |
+| `2026-07-10-spec-governance-single-source-cleanup` | archived | [spec/changes/archive/2026/07/2026-07-10-spec-governance-single-source-cleanup/](archive/2026/07/2026-07-10-spec-governance-single-source-cleanup/) |
+| `2026-07-10-spec-init-submission-gate` | archived | [spec/changes/archive/2026/07/2026-07-10-spec-init-submission-gate/](archive/2026/07/2026-07-10-spec-init-submission-gate/) |
+| `2026-07-10-spec-init-upstream-alignment` | archived | [spec/changes/archive/2026/07/2026-07-10-spec-init-upstream-alignment/](archive/2026/07/2026-07-10-spec-init-upstream-alignment/) |
+| `2026-07-10-spec-structure-rename` | archived | [spec/changes/archive/2026/07/2026-07-10-spec-structure-rename/](archive/2026/07/2026-07-10-spec-structure-rename/) |
+| `2026-07-11-desktop-release-portability-repair` | archived | [spec/changes/archive/2026/07/2026-07-11-desktop-release-portability-repair/](archive/2026/07/2026-07-11-desktop-release-portability-repair/) |
+| `2026-07-11-project-module-boundary-hardening` | archived | [spec/changes/archive/2026/07/2026-07-11-project-module-boundary-hardening/](archive/2026/07/2026-07-11-project-module-boundary-hardening/) |
+| `2026-07-11-readme-desktop-module-screenshots-v0-5-9` | archived | [spec/changes/archive/2026/07/2026-07-11-readme-desktop-module-screenshots-v0-5-9/](archive/2026/07/2026-07-11-readme-desktop-module-screenshots-v0-5-9/) |
+| `2026-07-11-release-verification-harness` | archived | [spec/changes/archive/2026/07/2026-07-11-release-verification-harness/](archive/2026/07/2026-07-11-release-verification-harness/) |
+| `2026-07-11-skill-frontmatter-yaml-parser` | archived | [spec/changes/archive/2026/07/2026-07-11-skill-frontmatter-yaml-parser/](archive/2026/07/2026-07-11-skill-frontmatter-yaml-parser/) |
+| `2026-07-11-skill-module-boundary-refactor` | archived | [spec/changes/archive/2026/07/2026-07-11-skill-module-boundary-refactor/](archive/2026/07/2026-07-11-skill-module-boundary-refactor/) |
+| `2026-07-11-skill-source-update-trust-review` | archived | [spec/changes/archive/2026/07/2026-07-11-skill-source-update-trust-review/](archive/2026/07/2026-07-11-skill-source-update-trust-review/) |
+| `2026-07-11-web-release-version-alignment` | archived | [spec/changes/archive/2026/07/2026-07-11-web-release-version-alignment/](archive/2026/07/2026-07-11-web-release-version-alignment/) |
+| `2026-07-11-web-workspace-capability-alignment` | archived | [spec/changes/archive/2026/07/2026-07-11-web-workspace-capability-alignment/](archive/2026/07/2026-07-11-web-workspace-capability-alignment/) |
+| `2026-07-13-agent-platform-kimi-reasonix-augment` | archived | [spec/changes/archive/2026/07/2026-07-13-agent-platform-kimi-reasonix-augment/](archive/2026/07/2026-07-13-agent-platform-kimi-reasonix-augment/) |
+| `2026-07-13-desktop-issue-186-zcode-agent-support` | archived | [spec/changes/archive/2026/07/2026-07-13-desktop-issue-186-zcode-agent-support/](archive/2026/07/2026-07-13-desktop-issue-186-zcode-agent-support/) |
+| `2026-07-13-self-hosted-web-database-lock-recovery` | archived | [spec/changes/archive/2026/07/2026-07-13-self-hosted-web-database-lock-recovery/](archive/2026/07/2026-07-13-self-hosted-web-database-lock-recovery/) |
+| `2026-07-13-skill-install-update-lifecycle-contract` | archived | [spec/changes/archive/2026/07/2026-07-13-skill-install-update-lifecycle-contract/](archive/2026/07/2026-07-13-skill-install-update-lifecycle-contract/) |
+| `2026-07-16-cli-skill-automation-hardening` | archived | [spec/changes/archive/2026/07/2026-07-16-cli-skill-automation-hardening/](archive/2026/07/2026-07-16-cli-skill-automation-hardening/) |
+| `2026-07-16-self-hosted-backup-only-automation` | archived | [spec/changes/archive/2026/07/2026-07-16-self-hosted-backup-only-automation/](archive/2026/07/2026-07-16-self-hosted-backup-only-automation/) |
+| `2026-07-21-prompt-image-preview-gallery` | archived | [spec/changes/archive/2026/07/2026-07-21-prompt-image-preview-gallery/](archive/2026/07/2026-07-21-prompt-image-preview-gallery/) |
+| `2026-07-21-prompt-media-upload-reliability` | archived | [spec/changes/archive/2026/07/2026-07-21-prompt-media-upload-reliability/](archive/2026/07/2026-07-21-prompt-media-upload-reliability/) |
+| `2026-07-28-cli-test-runtime-optimization` | archived | [spec/changes/archive/2026/07/2026-07-28-cli-test-runtime-optimization/](archive/2026/07/2026-07-28-cli-test-runtime-optimization/) |
+| `2026-07-28-data-safety-hardening` | archived | [spec/changes/archive/2026/07/2026-07-28-data-safety-hardening/](archive/2026/07/2026-07-28-data-safety-hardening/) |
+| `2026-07-28-database-integrity-repair` | archived | [spec/changes/archive/2026/07/2026-07-28-database-integrity-repair/](archive/2026/07/2026-07-28-database-integrity-repair/) |
+| `2026-07-28-desktop-agent-asset-tray-actions` | archived | [spec/changes/archive/2026/07/2026-07-28-desktop-agent-asset-tray-actions/](archive/2026/07/2026-07-28-desktop-agent-asset-tray-actions/) |
+| `2026-07-28-desktop-sqlite-backup-drag-recovery` | archived | [spec/changes/archive/2026/07/2026-07-28-desktop-sqlite-backup-drag-recovery/](archive/2026/07/2026-07-28-desktop-sqlite-backup-drag-recovery/) |
+| `2026-07-28-macos-menu-bar-template-icon` | archived | [spec/changes/archive/2026/07/2026-07-28-macos-menu-bar-template-icon/](archive/2026/07/2026-07-28-macos-menu-bar-template-icon/) |
+| `2026-07-28-mcp-env-sync-reapply` | archived | [spec/changes/archive/2026/07/2026-07-28-mcp-env-sync-reapply/](archive/2026/07/2026-07-28-mcp-env-sync-reapply/) |
+| `2026-07-28-repository-quality-gates-and-change-convergence` | archived | [spec/changes/archive/2026/07/2026-07-28-repository-quality-gates-and-change-convergence/](archive/2026/07/2026-07-28-repository-quality-gates-and-change-convergence/) |
+| `2026-07-28-skill-install-safety-resilience` | archived | [spec/changes/archive/2026/07/2026-07-28-skill-install-safety-resilience/](archive/2026/07/2026-07-28-skill-install-safety-resilience/) |
+| `2026-07-28-skill-safety-policy-controls` | archived | [spec/changes/archive/2026/07/2026-07-28-skill-safety-policy-controls/](archive/2026/07/2026-07-28-skill-safety-policy-controls/) |
+| `2026-07-28-skill-source-update-reconciliation` | archived | [spec/changes/archive/2026/07/2026-07-28-skill-source-update-reconciliation/](archive/2026/07/2026-07-28-skill-source-update-reconciliation/) |
+| `2026-07-28-source-trust-and-mcp-market-updates` | archived | [spec/changes/archive/2026/07/2026-07-28-source-trust-and-mcp-market-updates/](archive/2026/07/2026-07-28-source-trust-and-mcp-market-updates/) |
+| `2026-07-28-unified-custom-store-sources` | archived | [spec/changes/archive/2026/07/2026-07-28-unified-custom-store-sources/](archive/2026/07/2026-07-28-unified-custom-store-sources/) |
+| `2026-07-30-website-release-metadata-stable-boundary` | archived | [spec/changes/archive/2026/07/2026-07-30-website-release-metadata-stable-boundary/](archive/2026/07/2026-07-30-website-release-metadata-stable-boundary/) |
+| `2026-08-01-web-agent-management` | archived | [spec/changes/archive/2026/08/2026-08-01-web-agent-management/](archive/2026/08/2026-08-01-web-agent-management/) |
+| `2026-08-06-mcp-issues-200-202-analysis` | archived | [spec/changes/archive/2026/08/2026-08-06-mcp-issues-200-202-analysis/](archive/2026/08/2026-08-06-mcp-issues-200-202-analysis/) |
+| `2026-08-06-mcp-issues-200-202-implementation` | archived | [spec/changes/archive/2026/08/2026-08-06-mcp-issues-200-202-implementation/](archive/2026/08/2026-08-06-mcp-issues-200-202-implementation/) |
+| `2026-08-10-desktop-language-startup-persistence` | archived | [spec/changes/archive/2026/08/2026-08-10-desktop-language-startup-persistence/](archive/2026/08/2026-08-10-desktop-language-startup-persistence/) |
+| `2026-08-12-database-migration-safety` | archived | [spec/changes/archive/2026/08/2026-08-12-database-migration-safety/](archive/2026/08/2026-08-12-database-migration-safety/) |
+| `2026-08-12-storage-recovery-review-fixes` | archived | [spec/changes/archive/2026/08/2026-08-12-storage-recovery-review-fixes/](archive/2026/08/2026-08-12-storage-recovery-review-fixes/) |
+| `2026-08-13-release-0-6-0-beta-1-readiness` | archived | [spec/changes/archive/2026/08/2026-08-13-release-0-6-0-beta-1-readiness/](archive/2026/08/2026-08-13-release-0-6-0-beta-1-readiness/) |
+| `2026-08-18-active-change-lifecycle-and-line-limit-convergence` | archived | [spec/changes/archive/2026/08/2026-08-18-active-change-lifecycle-and-line-limit-convergence/](archive/2026/08/2026-08-18-active-change-lifecycle-and-line-limit-convergence/) |
+| `2026-08-18-app-shell-left-rail` | archived | [spec/changes/archive/2026/08/2026-08-18-app-shell-left-rail/](archive/2026/08/2026-08-18-app-shell-left-rail/) |
+| `2026-08-18-cli-agent-management` | archived | [spec/changes/archive/2026/08/2026-08-18-cli-agent-management/](archive/2026/08/2026-08-18-cli-agent-management/) |
+| `2026-08-18-cli-feature-completeness` | archived | [spec/changes/archive/2026/08/2026-08-18-cli-feature-completeness/](archive/2026/08/2026-08-18-cli-feature-completeness/) |
+| `2026-08-18-cli-install-manual-fallback` | archived | [spec/changes/archive/2026/08/2026-08-18-cli-install-manual-fallback/](archive/2026/08/2026-08-18-cli-install-manual-fallback/) |
+| `2026-08-18-cloud-collaborative-prompt-sharing` | archived | [spec/changes/archive/2026/08/2026-08-18-cloud-collaborative-prompt-sharing/](archive/2026/08/2026-08-18-cloud-collaborative-prompt-sharing/) |
+| `2026-08-18-desktop-dev-server-loopback-isolation` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-dev-server-loopback-isolation/](archive/2026/08/2026-08-18-desktop-dev-server-loopback-isolation/) |
+| `2026-08-18-desktop-frontend-animation-system` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-frontend-animation-system/](archive/2026/08/2026-08-18-desktop-frontend-animation-system/) |
+| `2026-08-18-desktop-frontend-perf-tuneup` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-frontend-perf-tuneup/](archive/2026/08/2026-08-18-desktop-frontend-perf-tuneup/) |
+| `2026-08-18-desktop-home-layout-controls` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-home-layout-controls/](archive/2026/08/2026-08-18-desktop-home-layout-controls/) |
+| `2026-08-18-desktop-issue-179-configured-skill-targets` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-issue-179-configured-skill-targets/](archive/2026/08/2026-08-18-desktop-issue-179-configured-skill-targets/) |
+| `2026-08-18-desktop-prompt-context-move` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-prompt-context-move/](archive/2026/08/2026-08-18-desktop-prompt-context-move/) |
+| `2026-08-18-desktop-renderer-ui-test-coverage` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-renderer-ui-test-coverage/](archive/2026/08/2026-08-18-desktop-renderer-ui-test-coverage/) |
+| `2026-08-18-desktop-skill-ui-size-performance` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-skill-ui-size-performance/](archive/2026/08/2026-08-18-desktop-skill-ui-size-performance/) |
+| `2026-08-18-desktop-update-dialog-polish` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-update-dialog-polish/](archive/2026/08/2026-08-18-desktop-update-dialog-polish/) |
+| `2026-08-18-desktop-workspace-live-refresh` | archived | [spec/changes/archive/2026/08/2026-08-18-desktop-workspace-live-refresh/](archive/2026/08/2026-08-18-desktop-workspace-live-refresh/) |
+| `2026-08-18-git-backup-transports` | archived | [spec/changes/archive/2026/08/2026-08-18-git-backup-transports/](archive/2026/08/2026-08-18-git-backup-transports/) |
+| `2026-08-18-homepage-changelog-route-retirement` | archived | [spec/changes/archive/2026/08/2026-08-18-homepage-changelog-route-retirement/](archive/2026/08/2026-08-18-homepage-changelog-route-retirement/) |
+| `2026-08-18-local-resource-device-identity` | archived | [spec/changes/archive/2026/08/2026-08-18-local-resource-device-identity/](archive/2026/08/2026-08-18-local-resource-device-identity/) |
+| `2026-08-18-macos-developer-id-signing` | archived | [spec/changes/archive/2026/08/2026-08-18-macos-developer-id-signing/](archive/2026/08/2026-08-18-macos-developer-id-signing/) |
+| `2026-08-18-macos-timestamp-retry` | archived | [spec/changes/archive/2026/08/2026-08-18-macos-timestamp-retry/](archive/2026/08/2026-08-18-macos-timestamp-retry/) |
+| `2026-08-18-marketplace-expansion` | archived | [spec/changes/archive/2026/08/2026-08-18-marketplace-expansion/](archive/2026/08/2026-08-18-marketplace-expansion/) |
+| `2026-08-18-mobile-app-shell` | archived | [spec/changes/archive/2026/08/2026-08-18-mobile-app-shell/](archive/2026/08/2026-08-18-mobile-app-shell/) |
+| `2026-08-18-mobile-webdav-distribution` | archived | [spec/changes/archive/2026/08/2026-08-18-mobile-webdav-distribution/](archive/2026/08/2026-08-18-mobile-webdav-distribution/) |
+| `2026-08-18-official-cloud-backup-and-saas-platform` | archived | [spec/changes/archive/2026/08/2026-08-18-official-cloud-backup-and-saas-platform/](archive/2026/08/2026-08-18-official-cloud-backup-and-saas-platform/) |
+| `2026-08-18-platform-workbench-prototype` | archived | [spec/changes/archive/2026/08/2026-08-18-platform-workbench-prototype/](archive/2026/08/2026-08-18-platform-workbench-prototype/) |
+| `2026-08-18-project-skill-management` | archived | [spec/changes/archive/2026/08/2026-08-18-project-skill-management/](archive/2026/08/2026-08-18-project-skill-management/) |
+| `2026-08-18-prompt-output-format-contribution` | archived | [spec/changes/archive/2026/08/2026-08-18-prompt-output-format-contribution/](archive/2026/08/2026-08-18-prompt-output-format-contribution/) |
+| `2026-08-18-prompt-workspace-completion` | archived | [spec/changes/archive/2026/08/2026-08-18-prompt-workspace-completion/](archive/2026/08/2026-08-18-prompt-workspace-completion/) |
+| `2026-08-18-react-type-workspace-boundary` | archived | [spec/changes/archive/2026/08/2026-08-18-react-type-workspace-boundary/](archive/2026/08/2026-08-18-react-type-workspace-boundary/) |
+| `2026-08-18-readme-screenshots-v0-5-6` | archived | [spec/changes/archive/2026/08/2026-08-18-readme-screenshots-v0-5-6/](archive/2026/08/2026-08-18-readme-screenshots-v0-5-6/) |
+| `2026-08-18-rules-agent-source-matrix` | archived | [spec/changes/archive/2026/08/2026-08-18-rules-agent-source-matrix/](archive/2026/08/2026-08-18-rules-agent-source-matrix/) |
+| `2026-08-18-skill-uninstall-lifecycle` | archived | [spec/changes/archive/2026/08/2026-08-18-skill-uninstall-lifecycle/](archive/2026/08/2026-08-18-skill-uninstall-lifecycle/) |
+| `2026-08-18-windows-code-signing-and-reputation` | archived | [spec/changes/archive/2026/08/2026-08-18-windows-code-signing-and-reputation/](archive/2026/08/2026-08-18-windows-code-signing-and-reputation/) |
+| `2026-08-19-macos-notary-ticket-propagation-retry` | archived | [spec/changes/archive/2026/08/2026-08-19-macos-notary-ticket-propagation-retry/](archive/2026/08/2026-08-19-macos-notary-ticket-propagation-retry/) |
+| `2026-08-19-republish-0-5-9-20260714` | archived | [spec/changes/archive/2026/08/2026-08-19-republish-0-5-9-20260714/](archive/2026/08/2026-08-19-republish-0-5-9-20260714/) |
+| `2026-08-19-windows-packaged-upgrade-startup-gate` | archived | [spec/changes/archive/2026/08/2026-08-19-windows-packaged-upgrade-startup-gate/](archive/2026/08/2026-08-19-windows-packaged-upgrade-startup-gate/) |
+| `2026-08-20-database-resource-lifecycle-hardening` | archived | [spec/changes/archive/2026/08/2026-08-20-database-resource-lifecycle-hardening/](archive/2026/08/2026-08-20-database-resource-lifecycle-hardening/) |
+| `2026-08-20-windows-canonical-authority-second-launch` | archived | [spec/changes/archive/2026/08/2026-08-20-windows-canonical-authority-second-launch/](archive/2026/08/2026-08-20-windows-canonical-authority-second-launch/) |
+| `2026-08-21-skill-package-canonical-finalization` | archived | [spec/changes/archive/2026/08/2026-08-21-skill-package-canonical-finalization/](archive/2026/08/2026-08-21-skill-package-canonical-finalization/) |
+| `2026-08-31-apimart-sponsor-readme` | archived | [spec/changes/archive/2026/08/2026-08-31-apimart-sponsor-readme/](archive/2026/08/2026-08-31-apimart-sponsor-readme/) |
+| `2026-09-03-release-0-6-0-beta-2-readiness` | archived | [spec/changes/archive/2026/09/2026-09-03-release-0-6-0-beta-2-readiness/](archive/2026/09/2026-09-03-release-0-6-0-beta-2-readiness/) |
+| `2026-09-08-ai-request-timeout-unification` | archived | [spec/changes/archive/2026/09/2026-09-08-ai-request-timeout-unification/](archive/2026/09/2026-09-08-ai-request-timeout-unification/) |
+| `2026-09-08-skill-package-durability-lossless-snapshots` | archived | [spec/changes/archive/2026/09/2026-09-08-skill-package-durability-lossless-snapshots/](archive/2026/09/2026-09-08-skill-package-durability-lossless-snapshots/) |
+| `2026-09-08-skill-translation-long-request-timeout` | archived | [spec/changes/archive/2026/09/2026-09-08-skill-translation-long-request-timeout/](archive/2026/09/2026-09-08-skill-translation-long-request-timeout/) |
+| `2026-09-09-skill-content-scan-separation` | archived | [spec/changes/archive/2026/09/2026-09-09-skill-content-scan-separation/](archive/2026/09/2026-09-09-skill-content-scan-separation/) |
+
+</details>
 
 ## Legacy
 
 | Change | Recorded status | Path |
 | --- | --- | --- |
-| `docs-08-todo` | legacy | `spec/changes/legacy/docs-08-todo/` |
+| `docs-08-todo` | legacy | [spec/changes/legacy/docs-08-todo/](legacy/docs-08-todo/) |

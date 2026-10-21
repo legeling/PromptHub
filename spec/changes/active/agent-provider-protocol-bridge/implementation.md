@@ -1,9 +1,12 @@
 # Agent Provider Protocol Bridge Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-- Phase: implement
-- Status: in progress
+in progress. Routing contracts, codecs, lifecycle and UI remain open.
 
 ## Shipped
 

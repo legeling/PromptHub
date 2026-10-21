@@ -1,9 +1,12 @@
 # Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-- Phase: converge
-- Status: release-pending
+release-pending. Scoped verification is recorded below; publication attribution remains to be reconciled.
 
 ## Shipped
 

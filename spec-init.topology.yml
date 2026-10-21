@@ -30,4 +30,4 @@ routes:
 notes:
   - "Routes describe existing locations, not required scaffolding."
   - "Documentation scope is owned by spec/rules/document-routing-rules.md."
-  - "One authoritative topic; an optional plan links to it. Existing paths remain compatible."
+  - "One authoritative topic; an optional plan links to it. Completed changes move out of active; references follow the move."

@@ -214,7 +214,7 @@ verified stage and bounded safety point.
 
 ## Related Stable Records
 
-- `spec/knowledge/structure/data-layout-v0.5.5-zh.md`
+- `spec/knowledge/structure/storage-architecture.md`
 - `spec/knowledge/behavior/database-concurrency.md`
 - `spec/knowledge/behavior/data-recovery.md`
 - `spec/knowledge/behavior/sync.md`

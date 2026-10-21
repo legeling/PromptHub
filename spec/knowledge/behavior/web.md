@@ -18,7 +18,7 @@
 
 ### 3. Stable Internal Sources
 
-- Web 的架构与数据布局参考 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。
+- Web 的架构与数据布局参考 `spec/knowledge/structure/storage-architecture.md`。
 - Web 的长期实施规划与布局迁移历史保存在 `spec/changes/legacy/docs-08-todo/`。
 
 ### 4. Self-Hosted Runtime Packaging
@@ -28,10 +28,7 @@
 
 ### 5. Cloudflare Worker Packaging
 
-- `apps/web-cloudflare` 是独立于 `apps/web` 的 Cloudflare Workers 自部署实现，但它仍必须作为 monorepo 内可重复安装、可重复 typecheck、可重复 lint、可重复测试的 workspace package 存在。
-- Cloudflare worker 若通过 `wrangler` 生成运行时类型，应优先使用生成的 `worker-configuration.d.ts`，避免长期维护与真实平台 API 漂移的手写声明。
-- Cloudflare worker 的辅助脚本只能调用仓库内真实存在的构建命令；公开同步脚本不得依赖失效命令名。
-- Cloudflare worker 的 500 响应不得向客户端透传内部异常 message；详细异常仅记录在服务端日志。
+独立 Worker 的运行时、打包与验收已归入 [Cloudflare](cloudflare.md)；本文件只维护自托管 Web。
 
 ### 6. Web Auth Client Identity
 
@@ -256,9 +253,8 @@
 
 When a contributor changes web data layout, sync semantics, or deployment model:
 
-- they update an active change under `spec/changes/active/`
-- they encode behavioral delta in `specs/web/spec.md` inside that change
-- they sync long-lived truth back into `spec/knowledge/behavior/web.md` and `spec/knowledge/structure/`
+- they update the owning Web or shared topic, explicitly identifying implementation gaps
+- they keep an activity plan only when needed under the documentation routing rule
 
 ### Scenario: User wants self-hosting help
 
@@ -266,14 +262,6 @@ When a user needs deployment instructions:
 
 - the public entry remains `docs/web-self-hosted.md`
 - internal planning and migration detail stays in `spec/`
-
-### Scenario: Contributor updates Cloudflare worker integration
-
-When a contributor changes `apps/web-cloudflare` runtime bindings, scripts, or shared package imports:
-
-- they keep the package installable from the monorepo root
-- they rerun Cloudflare type generation after wrangler binding changes
-- they verify `typecheck`, `lint`, `test`, and `build:web:cf`
 
 ## Current Verification Gap (2026-10-12)
 

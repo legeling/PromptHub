@@ -1,5 +1,13 @@
 # Implementation — prompt-current-version-missing-self-heal
 
+## Product
+
+Shared
+
+## Status
+
+review-pending. The real affected user database startup check remains open in T-PCV-008.
+
 ## What actually shipped
 
 Root cause（已由用户本机日志定位）: 首次 canonical authority 发布会因某个 prompt 的

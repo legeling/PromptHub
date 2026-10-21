@@ -1,5 +1,13 @@
 # Implementation: desktop-search-focus-shortcut
 
+## Product
+
+Desktop
+
+## Status
+
+review-pending. TopBar regressions passed; tasks.md still records real Ctrl/Cmd+F acceptance as pending.
+
 ## 实际落地
 - `App.tsx` handleKeyDown：localShortcuts 匹配循环加 `matchedUserShortcut` 标记；未命中时 Ctrl/Cmd+F（无 Shift/Alt）→ preventDefault + dispatch 既有 `shortcut:search`。用户若已把任意动作配到 Ctrl+F，兜底让位。
 - `TopBar.tsx`：`handleSearch` 追加 `select()`（聚焦即全选可改词）；prompt 上下文 placeholder 换 `header.searchWithShortcut`（{{key}} 按平台 ⌘F/Ctrl+F）。

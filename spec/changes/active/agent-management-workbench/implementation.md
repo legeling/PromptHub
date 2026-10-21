@@ -1,9 +1,13 @@
 # Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-- Phase: implement
-- Status: in-progress
+in progress. Platform adapters and acceptance tasks remain in tasks.md.
+
 - Code changes: registry, core Managed Agent query, shared workspace shell, allowlisted native config, bounded read-only session adapters, Provider Profile persistence, Provider adapter registry, three-way reconciliation and asset aggregation foundations, complete Claude/Codex/Gemini/Kimi/Qwen/OpenCode/Grok Provider adapters, current Oh My Pi compatibility, and the Codex Appearance adapter implemented
 
 ## Doubao Work Skill target (2026-09-02)

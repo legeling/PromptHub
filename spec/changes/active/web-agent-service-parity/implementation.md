@@ -1,11 +1,12 @@
 # Implementation
 
+## Product
+
+Web
+
 ## Status
 
-- Phase: implement
-- Status: shared services, Config/Provider management, and indexed Session
-  browsing implemented; native transcript/usage/appearance adapters remain
-  active work
+in progress. Native transcript, usage and appearance adapters and their acceptance remain open.
 
 ## Implemented
 

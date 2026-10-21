@@ -1,5 +1,13 @@
 # Implementation
 
+## Product
+
+Shared
+
+## Status
+
+in progress. Agent Assistant actions and remaining regression coverage are still open.
+
 ## Shipped
 
 - Added a Plugin management active change with proposal, design, delta spec, tasks, and implementation record.

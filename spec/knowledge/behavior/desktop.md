@@ -27,32 +27,7 @@
 
 ### 2.1 Standalone CLI Boundary
 
-- 2026-10-17 CLI 持久缓存验证：7 个 CLI 定向测试文件共 54 项通过，覆盖临时文件缓存重开、24 小时过期、环境变化、手动刷新、并发去重、损坏恢复、写入失败与保留成功快照，以及已安装检测不等待远程发布。`typecheck:tests`、受影响模块 ESLint 和差异空白检查通过。未执行真实全局安装，桌面页面交互仍由用户验收。
-
-- CLI 状态属于本机观察结果。renderer 会话缓存负责页面切换和并发去重；主进程在 `getCacheDir()/cli-status.json` 原子保存版本 1 的成功检测结果与检查时间，跨重启最多复用 24 小时，并匹配本机平台、用户目录和 PATH/PNPM_HOME 指纹。页面显示上次检查时间，缓存不是永久安装事实。首次无缓存、缓存过期/损坏/环境变化、手动刷新或安装完成后才重新检测；失败不覆盖成功快照，读取损坏或写入失败记录日志并继续本机检测。文件是可删除重建的派生缓存，不进 SQLite、备份或同步，无数据迁移，回退旧版本可忽略该文件。安装动作从不依据缓存执行，开始安装时清除快照。
-
-- 检查 CLI 必须先解析命令路径，再识别旧 Desktop wrapper 和 Windows `PromptHub.exe`，不得直接执行未解析的 `prompthub --version`；旧 wrapper 即使在迁移前的数据目录也不能执行。包管理器探测和独立 CLI 版本探测继续在隐藏子进程中运行，不关闭主窗口。状态 IPC 在既有 startup.log 中记录开始、完成或失败及耗时/结果标记，不记录原始诊断、完整命令或凭据；异常继续由现有页面捕获，允许重试。
-
-- 桌面应用不再把 Electron 主进程作为 CLI runtime；旧 `PromptHub ... --cli` 调用必须在
-  updater、数据库初始化、workspace migration 和窗口创建之前退出，并提示安装独立 CLI。
-- CLI 设置页检测到 userData `bin/` 下旧版 Desktop wrapper 时，只能有界读取并识别该
-  普通文件，不能执行它做版本探测。只有 pnpm/npm 安装独立 CLI 成功后，才可再次确认并
-  删除完全匹配的旧 wrapper；安装失败或文件已被替换时必须保留。
-
-- CLI 安装时保留用户选择的包管理器；pnpm 读取现有 global-bin-dir、PNPM_HOME 与 `pnpm bin -g`，仅在安装/探测子进程环境补齐 PATH，不写系统/用户环境变量，不运行 pnpm setup 或修改包管理器配置。发现 pnpm 全局目录中的命令时使用同一环境探测版本，并提示终端找不到命令时如何配置 PATH。
-- 安装失败沿用现有 IPC 返回，并新增可选 errorCode 分类环境、权限、超时、下载与其他错误；保留有界 stdout/stderr 详情。页面显示本地化简短提示与可展开诊断，重试时清空旧错误；不会在失败时删除旧 wrapper，不自动改用其他包管理器。无数据库或持久化设置变更；旧客户端仍可读取原 error 字段。后端探测/安装异常均进入结构化失败结果。
-- CLI 版本独立于桌面应用，开发和生产环境默认安装最新已发布的稳定 CLI。已安装 CLI 的状态检测只执行本地探测，不查询远程发布；未安装时为生成手动安装命令查询发布，实际安装始终重新查询。发布解析通过 Electron 网络栈查询 GitHub Releases，按由新到旧的发布顺序选择实际包含 CLI tgz 的正式发布，跳过草稿、预发布及不含 CLI 的发布；有界查询最多三页，每页 100 条、每请求 10 秒。安装和手动命令共用该次解析出的下载地址，校验下载域名和路径；不拼接桌面版本，不自动构建本地 CLI。查询失败保留本地安装状态、展示诊断并允许刷新，不生成猜测的安装命令。发布结果随成功观察快照缓存，仅供显示手动命令；实际安装重新解析。既有 CLI_STATUS IPC 增加可选 boolean force 参数，旧调用兼容；本地观察增加 checkedAt/fromCache 元数据，无新增通道或数据库 schema。命令定位及 npm 配置探测使用 3 秒超时，避免沿用安装的 120 秒上限。
-
-- 2026-10-17 安装回归：`pnpm --dir apps/desktop run test:unit tests/unit/main/cli-installer.test.ts tests/unit/main/cli-install-environment.test.ts tests/unit/main/cli-install-error.test.ts tests/unit/components/cli-settings.test.tsx --minWorkers=1 --maxWorkers=1` 共 28 项通过。覆盖子进程 PATH/Path 合并、配置目录与 PNPM_HOME/bin、安装后目录探测、失败保留 wrapper、stderr/超时分类、页面诊断/重试/IPC 拒绝。安装编排保留原探测→执行→清理的完整函数，允许超过 50 行；环境构造和错误分类独立，测试替换包管理器进程与 Electron 运输层，未证明联网安装。
-- 本机真实只读验证：原环境 `pnpm bin -g` 复现 global bin directory not in PATH；调用实际 `preparePnpmEnvironment` 后同一探测成功且父进程 PATH 未改变。未全局安装软件、未修改包管理器配置或系统环境，未执行 GUI。受影响模块 ESLint 与七语言 49 条文案校验通过。最终 `typecheck:tests` 被同期 Prompt 测试历史（响应判别、DB 查询类型与 window fixture）及 Skill catalogComplete 字段错误阻塞；未更改这些模块，CLI 修改未出现在错误列表中。
-
-- 2026-10-17 CLI 独立版本安装验证：`cli-installer`、`cli-install-source`、`cli-install-environment`、`cli-install-error` 与 `cli-settings` 五个定向测试文件共 39 项通过，源码类型检查、受影响模块 ESLint 和差异空白检查通过。覆盖桌面 0.6.0 使用已发布 CLI 0.5.9、pnpm/npm 共用解析地址、跳过无 CLI 的发布、分页、查询失败保留状态并禁止安装、非预期下载地址拒绝。实际只读调用解析器得到 v0.5.9，下载地址 HEAD 返回 200；未执行真实全局安装或桌面 GUI 操作。
-
-- 同批 `typecheck:tests` 未通过：`tests/e2e/prompt-test-streaming.spec.ts:80` 的既有调用缺少参数（TS2554），本次 CLI 文件无类型报错，未修改该 E2E 文件。
-
-- 2026-10-17 CLI 检查退出排查：六个 CLI 单元/组件测试文件共 44 项通过，`typecheck:tests`、受影响模块 ESLint 与差异空白检查通过。无窗口 Electron 33 实测连续两次状态检查，并在查询超时周期之后确认进程仍存活；以临时 PATH 放置旧 Desktop wrapper 和独立 CLI stub，验证旧 wrapper 未执行、独立版本 0.5.9 被识别，GitHub 发布查询正常。另验证 Electron 网络请求超时可捕获。测试未操作用户桌面窗口或全局安装；用户报告的整个应用退出尚未复现，开发启动日志存在短时间多次启动记录，不能据此确定闪退原因。新增 IPC 诊断用于区分检查中断、检查失败及正常完成。
-
-- 2026-10-17 CLI 会话缓存验证：`cli-settings.test.tsx` 10 项通过，使用真实会话 store 和 IPC 替身，覆盖返回页面保留安装结果、StrictMode/未完成请求重挂载去重、失败不自动重试及手动恢复、安装成功后更新缓存；`typecheck:tests`、受影响模块 ESLint 和差异空白检查通过。未操作桌面 GUI，不改变主进程检测或联网安装策略。
+CLI 分发、检测、安装及 Desktop 集成统一见 [独立 CLI](cli.md)。Desktop 保留设置入口，不在此复制 CLI 合同。
 
 ### 2.2 Desktop Application Shell
 
@@ -126,7 +101,7 @@
 ### 3. Stable Internal Sources
 
 - 长期工程边界和代码结构治理见 `spec/knowledge/structure/code-structure-guidelines.md`。
-- 数据布局与迁移事实见 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。
+- 数据布局与迁移事实见 `spec/knowledge/structure/storage-architecture.md`。
 - Rules 工作台稳定逻辑见 `spec/knowledge/behavior/rules-workspace.md`。
 - 历史 desktop 相关演进记录保存在 `spec/changes/legacy/docs-08-todo/`。
 
@@ -263,11 +238,13 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - 新建 Prompt 首屏不应再额外显示“Basic Info”分组标题，也不应展示仅用于解释类型的冗余说明文案；变量使用说明应作为用户提示词附近的轻量提示存在。
 - 新建 Prompt 的描述、system prompt、参考媒体，以及文件夹、标签、来源、备注等扩展信息必须默认收纳在 `More Settings` 折叠区内，避免干扰主要创作流程。
 - 桌面端编辑 Prompt 弹窗必须保留更强的已有内容上下文：`Basic Info` 中继续展示描述、Prompt 类型，以及 image Prompt 的参考媒体。
-- 文本 Prompt 的参考媒体在编辑场景中仍应收纳在 `More Settings` 中，不挤占基础编辑区。
+- 编辑文本 Prompt 时，参考媒体位于主编辑流程内，不依赖展开 `More Settings`；新建场景沿用上文默认收纳的层级。
 - Prompt 参考媒体的原始字节必须由 runtime path helper 管理在 `userData/data/assets/images/` 与 `userData/data/assets/videos/`；SQLite `prompts.images` / `prompts.videos` 只保存托管文件名数组，renderer 通过本地媒体协议读取，不能把任意来源绝对路径持久化到 Prompt。
 - 新建、编辑和独立 Prompt 编辑器的参考图片缩略图均可通过鼠标或键盘打开共享大图预览，保留当前图片顺序和独立移除动作。预览提供放大、缩小、滚轮缩放与重置；缩放范围为适应视口尺寸的 25%–400%，缩放保持当前视野中心，放大后可拖动或使用滚动条查看细节。换图或重新打开后恢复 100%。Escape 只关闭最上层图片预览，关闭后焦点回到触发缩略图，不能关闭或提交下层表单。缩放与当前预览仅由 renderer 临时状态持有，不改写原图、Prompt 记录、IPC 或存储布局，无迁移。
 - Prompt 异步界面的 mounted 标记必须在 effect setup 中恢复，兼容 StrictMode 清理后重放；导入、快速创建、图片反推、快速改写、编辑弹窗和独立编辑器在正常打开期间接受异步结果，实际关闭/卸载及已有 session 失效后继续丢弃迟到结果。AI 服务和持久化所有权不变。
 - 桌面端参考媒体选择器必须绑定发起 IPC 的 PromptHub 窗口，避免原生对话框被其他窗口遮挡；用户取消选择保持静默，picker/bridge/托管复制失败必须显示本地化错误提示，不能只写控制台。
+
+- 来源与备注等次要字段使用可键盘操作的折叠容器，暴露 `aria-expanded` / `aria-controls`。折叠仅隐藏内容，不卸载表单，字段值与保存结果保持一致；关闭后不持久化该折叠状态。
 
 ### 8. Quick Add Prompt Creation
 
@@ -505,7 +482,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 ### Local integration of PR #222 / #223 (2026-10-03)
 
-- #223 includes #222. Integration targets the current `main` contracts, not the fork's release configuration: version `0.6.0-beta.2`, signed macOS packaging, release asset completeness checks, current database entrypoints and existing recovery workflows remain unchanged.
+- Historical integration baseline (2026-10-12): #223 includes #222. Integration targeted the then-current `main` contracts rather than the fork's release configuration: version `0.6.0-beta.2`, signed macOS packaging, release asset completeness checks, current database entrypoints and existing recovery workflows remain unchanged.
 - Prompt list/card projections remain `PromptSummary`; full content is loaded through the current detail boundary. Subtree folder moves use one recursive SQLite update inside the existing move transaction, including rollback on failure.
 - Startup-folder and backup-guidance preferences use the main-process SQLite settings API. Neither renderer local storage nor the canonical renderer-settings subscription stores a second copy. Folder restoration waits for workspace initialization.
 - The fork's rules-backup implementation is superseded by the current import workflow: backup import must not write external Agent/project targets. Fork-only release scripts and obsolete IndexedDB fallbacks are not introduced.
@@ -517,8 +494,8 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 When a contributor changes desktop runtime behavior materially:
 
-- they create a delta spec under `spec/changes/active/<change-key>/specs/desktop/spec.md`
-- they sync durable behavior back into `spec/knowledge/behavior/desktop.md` after implementation
+- they update this owning topic immediately when a requirement is confirmed, marking implementation gaps
+- they maintain a plan only when needed, following the documentation routing rule
 
 ### Scenario: User needs public desktop usage information
 
@@ -558,3 +535,15 @@ SQLite `settings`，键分别为 `marketplaceSources`、`recoveryPaths`、
 桌面端完成一次升级，再通过 CLI 使用。普通设置接口不得读取或修改主密码验证材料。
 显式清空模型或设置在重开后保持；升级备份不能在普通读取时补回删除内容。
 回退需恢复升级前数据库、原始配置与 vault，并保全升级后的 SQL 修改。
+
+## Settings guidance and startup navigation
+
+- 数据设置的备份面板提供可折叠的导出、安装/换设备、导入指引；复用原有导入导出操作，不创建第二条备份流程。折叠偏好通过应用设置所有者保存；恢复与回退的安全条件以 [Data recovery](data-recovery.md) 为准。
+- 启动目录支持默认、上次目录和固定目录。默认保持普通启动行为；有效目标通过既有目录选择动作恢复一次，目标消失时提示并回到默认范围；固定目录下拉保留失效目标提示以便重选。恢复成功与缺失反馈使用本地化文案，不能凭旧目录 ID 绕过访问权限。
+- [设置权威主题](../../changes/active/desktop-settings-authority-convergence/specs/desktop-settings/spec.md) 拥有当前持久化与迁移边界；早期 change 中的 localStorage 描述是历史实现，不再定义目标架构。
+
+## Security error copy
+
+安全设置将已知服务端错误映射为本地化提示；未知错误显示通用失败文案并保留排障信息。不得把原始英文异常直接作为 toast，也不改变加密、鉴权和 IPC 合同。
+
+上述合并的完成记录见 [Completed](../../changes/index.md#completed)，其既有测试和实现差异保留在对应记录中；本次合并不补称新的产品验收。

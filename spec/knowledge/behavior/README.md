@@ -1,64 +1,28 @@
-# PromptHub Knowledge Behavior
+# 当前行为合同
 
-`spec/knowledge/behavior/` 对齐最新 `spec-init` 的 knowledge/behavior 边界，用于沉淀 PromptHub 长期稳定的关键流程、状态流转、规则与异常路径。
+按产品进入 [文档首页](../../README.md#按产品进入)。这里只路由现行合同，不复制存储规则或要求每次改动创建 change。
 
-## 长期稳定行为示例
+## 产品特有行为
 
-### 1. Rules 是工作区，不是平台探测器
+| 产品 | 权威主题 |
+| --- | --- |
+| Desktop | [桌面进程、界面与原生集成](desktop.md) |
+| CLI | [独立入口与分发](cli.md)、[Agent 子命令](cli-agent-management.md) |
+| Web | [自托管服务与浏览器](web.md) |
+| Cloudflare | [Worker 运行时与部署验收](cloudflare.md) |
+| Mobile | [移动应用](mobile.md) |
 
-PromptHub 的 `Rules` 模块是一个集中管理规则文件的工作区：
+## 共享模块
 
-- 左侧分为全局规则和项目规则
-- 不以“识别到哪些平台”为主要产品心智
-- 规则正文真相源位于文件系统工作区，而不是只存在数据库里
+| 模块 | 权威主题 |
+| --- | --- |
+| Prompt、Folder、版本、搜索和复制 | [Prompt workspace](prompt-workspace.md)；其中界面条款明确属于 Desktop，CLI 选择条款属于命令入口 |
+| Skill 完整包与分发 | [Skills](skills.md) |
+| Rules 工作区与外部文件 | [Rules workspace](rules-workspace.md) |
+| Plugin 与子资产 | [Plugins](plugins.md) |
+| MCP 配置、版本与投影 | [MCP 主题](../../changes/active/mcp-version-history-and-projection-safety/specs/mcp/spec.md) |
+| 备份与同步 | [Sync](sync.md) |
+| 数据恢复 | [Data recovery](data-recovery.md) |
+| SQLite 并发与根所有权 | [Database concurrency](database-concurrency.md) |
 
-### 2. Skill 以目录为单位，而不是单文件错觉
-
-PromptHub 当前对 Skill 的长期行为约束是：
-
-- Skill 的正文契约以 `SKILL.md` + frontmatter 为核心
-- 安装、分发、项目级部署的单位应是包含 `SKILL.md` 的 skill 目录
-- GitHub 仓库安装不能默认把整个 repo 根误当成一个 skill
-
-### 3. 同步语义必须以可恢复对象为中心
-
-PromptHub 的同步不应围绕临时 UI 状态，而应围绕可恢复的数据对象与稳定数据布局：
-
-- 支持上传、下载、恢复、周期同步
-- 桌面端可启用多个手动备份目标
-- 自动同步同一时刻只允许一个 provider 驱动
-
-### 4. 变更必须先进 change，再回写稳定层
-
-非 trivial 变更的长期行为规则是：
-
-- 先进入 `spec/changes/active/<change-key>/`
-- 完成后再同步回长期稳定真相源
-- 历史变更进入 archive 或 legacy，而不是删除
-
-### 5. 项目级文档与单次变更必须分层
-
-PromptHub 在接入 `spec-init` 后，项目级 workflow / knowledge 文档与单次 change 工作区必须分层：
-
-- `spec/workflow/*` 与 `spec/knowledge/*` 用来表达项目级持续真相
-- `spec/changes/active/<change-key>/` 用来表达单次改动的原因、设计调整、验证和任务
-- 不应把单次 patch 说明直接写进长期 knowledge 层
-
-### 6. Plugin 是插件级能力包，不是单个 Skill
-
-PromptHub 对 Plugin 的长期行为约束是：
-
-- Plugin 是可安装分发单位，可以包含 Skills、MCP servers、Apps/connectors、commands、hooks、assets 等子能力
-- Skill 是可复用工作流说明；MCP 是工具/上下文；App/connector 是外部服务连接；这些可以被 Plugin 打包，但不能互相替代
-- Plugin 安装必须先静态扫描和预览 inventory，不得在扫描阶段执行代码、安装依赖或启动 MCP server
-- Plugin 安装不等于自动把子能力分发到 agent 目标，也不等于自动授权外部 App
-
-## 主要映射来源
-
-- `spec/knowledge/context/system.md`
-- `spec/knowledge/behavior/database-concurrency.md`
-- `spec/knowledge/behavior/skills.md`
-- `spec/knowledge/behavior/plugins.md`
-- `spec/knowledge/behavior/mobile.md`
-- `spec/knowledge/behavior/sync.md`
-- `spec/knowledge/behavior/rules-workspace.md`
+模块设计变更原位合并，计划链接需求；完成计划移入 completed，失效设计归档。唯一流程要求见 [文档规则](../../rules/document-routing-rules.md)。

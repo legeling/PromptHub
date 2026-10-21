@@ -1,5 +1,9 @@
 # Implementation — skills-my-skills-tag-search
 
+## Product
+
+Desktop
+
 ## What shipped
 
 在“我的 Skill”主内容头部新增可键入搜索的多选标签过滤（OR）交互；选中状态与
@@ -15,7 +19,11 @@ New/changed files：
 - spec 记录：`spec/changes/active/skills-my-skills-tag-search/*`。
 - 分支：`feat/my-skills-tag-search`（基于 upstream `main` @ `d62134bc` 创建）。
 
-## Status（当前真实状态/日期戳）
+## Status
+
+review-pending. PRs #213/#214 are merged; the post-merge verification boundary below still leaves release acceptance open.
+
+Historical pre-merge status (superseded by the post-merge record below):
 
 - 分支 `feat/my-skills-tag-search` 已推送到 `origin`（fork `Siborne/PromptHub`）。
 - Commits（按时间序，push 远端均同步）：

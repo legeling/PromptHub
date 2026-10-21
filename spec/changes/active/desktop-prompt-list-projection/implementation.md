@@ -1,5 +1,13 @@
 # Implementation
 
+## Product
+
+Desktop
+
+## Status
+
+in progress. Renderer summary/detail migration and its acceptance remain open in tasks.md.
+
 > 本文件随阶段推进实时更新。当前状态：**Stage 1 已完成并本地验证；Stage 2+ 按 tasks.md 推进。**
 
 ## Stage 1 — 契约与数据层（已完成）

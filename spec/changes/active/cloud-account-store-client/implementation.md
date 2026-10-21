@@ -1,5 +1,13 @@
 # Implementation
 
+## Product
+
+Desktop
+
+## Status
+
+review-pending. Production endpoint and external-service acceptance remain open.
+
 ## 当前状态
 
 2026-07-12：已完成 Cloud desktop 账号与 Store 的首段闭环；本轮继续补齐桌面账号自助操作、公开 package 检查摘要和 Web 版本预览，保留生产环境与外部服务证据作为明确残余。

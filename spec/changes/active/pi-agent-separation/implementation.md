@@ -1,5 +1,9 @@
 # Pi Agent Separation Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
 Status: release-pending. Implementation and scoped verification are complete.

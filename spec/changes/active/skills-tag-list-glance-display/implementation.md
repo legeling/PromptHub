@@ -1,5 +1,13 @@
 # Implementation — skill tag governed by the frontmatter-filter setting
 
+## Product
+
+Desktop
+
+## Status
+
+review-pending. Local implementation exists; the on-device frontmatter setting check remains open.
+
 Branch: feat/my-skills-tag-search（分阶段提交；归档随各阶段实现一并提交）。
 
 > 此 change 经历了两个阶段：先在列表行把 `original_tags` 与 `tags` 并集展示

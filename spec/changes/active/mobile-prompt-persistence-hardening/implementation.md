@@ -1,5 +1,9 @@
 # Mobile Prompt Persistence Hardening Implementation
 
+## Product
+
+Mobile
+
 ## Status
 
 Release-pending. Mobile Prompt persistence now has an explicit schema version

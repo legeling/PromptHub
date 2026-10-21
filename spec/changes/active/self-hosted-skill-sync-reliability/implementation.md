@@ -1,5 +1,13 @@
 # Implementation
 
+## Product
+
+Web
+
+## Status
+
+release-pending. Local verification is complete; publication attribution remains to be reconciled.
+
 Status: implementation complete; release pending
 
 - Added a desktop Web-sync sanitizer that removes machine-local repository and non-portable URL metadata while preserving HTTP(S) sources and the same safe base64 image data URLs accepted by Web.

@@ -1,9 +1,12 @@
 # Implementation
 
+## Product
+
+Shared
+
 ## Status
 
-- Phase: implement
-- Status: verification-pending
+review-pending. The issue is closed, but restored-authorization and bounded-inventory acceptance remain open in this broader plan.
 
 ## Shipped
 
@@ -56,7 +59,8 @@
 ## Converge
 
 - Stable sync behavior and local issue overlay synced: yes.
-- GitHub issue remains open until the containing release is published.
+- GitHub #191 was closed on 2026-10-19; closure does not complete the broader
+  restored-authorization and capacity acceptance tasks in this plan.
 - Final change destination: active until release assignment.
 
 ## Synced Docs

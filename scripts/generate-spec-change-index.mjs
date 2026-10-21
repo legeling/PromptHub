@@ -33,6 +33,16 @@ const options = parseArguments(process.argv.slice(2));
 const ROOT_DIR = options.rootDir;
 const CHANGES_DIR = path.join(ROOT_DIR, "spec", "changes");
 const OUTPUT_PATH = path.join(CHANGES_DIR, "index.md");
+const TERMINAL_STATUSES = new Set(["completed", "shipped", "superseded"]);
+const PRODUCTS = [
+  "Shared",
+  "Desktop",
+  "CLI",
+  "Web",
+  "Cloudflare",
+  "Mobile",
+  "Delivery",
+];
 
 function listDirectories(directoryPath) {
   if (!fs.existsSync(directoryPath)) return [];
@@ -47,16 +57,19 @@ function toRepoPath(absolutePath) {
   return path.relative(ROOT_DIR, absolutePath).split(path.sep).join("/");
 }
 
-function readActiveStatus(changePath) {
-  let statusLine;
+function readRecordField(changePath, field) {
   for (const name of ["plan.md", "tasks.md", "implementation.md"]) {
     const file = path.join(changePath, name);
     if (!fs.existsSync(file)) continue;
-    statusLine = fs
+    const value = fs
       .readFileSync(file, "utf8")
-      .match(/^## Status\s*\n+\s*([^\n]+)/im)?.[1];
-    if (statusLine) break;
+      .match(new RegExp(`^## ${field}\\s*\\n+\\s*([^\\n]+)`, "im"))?.[1];
+    if (value) return value.trim();
   }
+}
+
+function readActiveStatus(changePath) {
+  const statusLine = readRecordField(changePath, "Status");
   if (!statusLine) return "active";
   if (
     /\b(?:not|never)\s+(?:implemented|completed|shipped)\b/i.test(statusLine) ||
@@ -70,14 +83,27 @@ function readActiveStatus(changePath) {
   return knownStatus?.[1].toLowerCase() || "active";
 }
 
-function collectActiveChanges() {
-  const activeDir = path.join(CHANGES_DIR, "active");
-  return listDirectories(activeDir).map((name) => {
-    const changePath = path.join(activeDir, name);
+function collectChanges(state) {
+  const directory = path.join(CHANGES_DIR, state);
+  return listDirectories(directory).map((name) => {
+    const changePath = path.join(directory, name);
+    const status = readActiveStatus(changePath);
+    if (TERMINAL_STATUSES.has(status) !== (state === "completed")) {
+      throw new Error(
+        `${toRepoPath(changePath)}: ${status} does not belong in ${state}; move the record and update references`,
+      );
+    }
+    const product = readRecordField(changePath, "Product");
+    if (product && !PRODUCTS.includes(product)) {
+      throw new Error(
+        `Unknown product ${product} in ${toRepoPath(changePath)}`,
+      );
+    }
     return {
       name,
       path: toRepoPath(changePath),
-      status: readActiveStatus(changePath),
+      status,
+      product: product || "Unclassified",
     };
   });
 }
@@ -109,16 +135,29 @@ function renderRows(records, status) {
   return records
     .map(
       (record) =>
-        `| \`${record.name}\` | ${record.status || status} | \`${record.path}/\` |`,
+        `| \`${record.name}\` | ${record.status || status} | [${record.path}/](${path.posix.relative("spec/changes", record.path)}/) |`,
     )
     .join("\n");
 }
 
+function renderActiveGroups(records) {
+  return [...PRODUCTS, "Unclassified"]
+    .map((product) => {
+      const group = records.filter((record) => record.product === product);
+      if (!group.length) {
+        return product === "Unclassified"
+          ? ""
+          : `### ${product}\n\nNo independent active change. Cross-product work is listed under Shared.`;
+      }
+      return `### ${product}\n\n| Change | Recorded status | Path |\n| --- | --- | --- |\n${renderRows(group, "active")}`;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 function renderIndex() {
-  const inventory = collectActiveChanges();
-  const terminal = new Set(["completed", "shipped", "superseded"]);
-  const active = inventory.filter((record) => !terminal.has(record.status));
-  const complete = inventory.filter((record) => terminal.has(record.status));
+  const active = collectChanges("active");
+  const complete = collectChanges("completed");
   const archived = collectArchivedChanges();
   const legacy = collectLegacyChanges();
   return `# PromptHub Change Inventory
@@ -131,21 +170,19 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | State | Count |
 | --- | ---: |
 | Active | ${active.length} |
-| Recorded complete (original path) | ${complete.length} |
+| Completed | ${complete.length} |
 | Archived | ${archived.length} |
 | Legacy | ${legacy.length} |
 
 ## Active
 
-| Change | Recorded status | Path |
-| --- | --- | --- |
-${renderRows(active, "active")}
+${renderActiveGroups(active)}
 
-## Recorded complete
+## Completed
 
-These records keep their original paths for compatibility and are not active
-work. Recorded status alone does not prove release or acceptance. Historical
-rules are superseded by [current documentation policy](../rules/document-routing-rules.md).
+Completed implementation records live in completed/ and are historical evidence.
+Their product requirements belong in the current topic linked from each record.
+Completion is scoped; it does not itself establish publication.
 
 | Change | Recorded status | Path |
 | --- | --- | --- |
@@ -153,9 +190,14 @@ ${renderRows(complete, "completed")}
 
 ## Archived
 
+<details>
+<summary>Historical changes (${archived.length}); expand only for traceability</summary>
+
 | Change | Recorded status | Path |
 | --- | --- | --- |
 ${renderRows(archived, "archived")}
+
+</details>
 
 ## Legacy
 

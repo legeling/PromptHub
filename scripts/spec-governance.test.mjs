@@ -67,13 +67,65 @@ test("index accepts a single plan and legacy implementation without imposing art
   assert.equal(run(dir, "--check").status, 0);
   write(dir, "spec/changes/active/single/plan.md", "## Status\n\ncompleted\n");
   assert.equal(run(dir, "--check").status, 1);
+  assert.equal(run(dir).status, 1);
+  fs.mkdirSync(path.join(dir, "spec/changes/completed"));
+  fs.renameSync(
+    path.join(dir, "spec/changes/active/single"),
+    path.join(dir, "spec/changes/completed/single"),
+  );
   assert.equal(run(dir).status, 0);
   const updated = fs.readFileSync(
     path.join(dir, "spec/changes/index.md"),
     "utf8",
   );
-  assert.ok(!updated.split("## Recorded complete")[0].includes("| `single` |"));
+  assert.ok(!updated.split("## Completed")[0].includes("| `single` |"));
   assert.match(updated, /\| `single` \| completed \|/);
+});
+
+test("groups active work by its declared product and preserves completed evidence", (t) => {
+  const dir = fixture(t);
+  write(
+    dir,
+    "spec/changes/active/window/plan.md",
+    "## Status\n\nreview-pending\n\n## Product\n\nDesktop\n",
+  );
+  write(
+    dir,
+    "spec/changes/active/storage/implementation.md",
+    "## Status\n\nin progress\n\n## Product\n\nShared\n",
+  );
+  write(
+    dir,
+    "spec/changes/completed/search/implementation.md",
+    "## Status\n\ncompleted\n\n## Product\n\nShared\n",
+  );
+  assert.equal(run(dir).status, 0);
+  const text = fs.readFileSync(path.join(dir, "spec/changes/index.md"), "utf8");
+  const active = text.split("## Completed")[0];
+  assert.match(active, /### Shared[\s\S]*`storage`/);
+  assert.match(active, /### Desktop[\s\S]*`window`/);
+  assert.ok(!active.includes("`search`"));
+  assert.match(text, /\| Completed \| 1 \|/);
+  assert.ok(text.includes("completed/search/"));
+  assert.equal(run(dir, "--check").status, 0);
+  write(
+    dir,
+    "spec/changes/completed/search/implementation.md",
+    "## Status\n\nreview-pending\n",
+  );
+  assert.equal(run(dir).status, 1);
+});
+
+test("rejects an unknown product rather than hiding work in another product", (t) => {
+  const dir = fixture(t);
+  write(
+    dir,
+    "spec/changes/active/topic/plan.md",
+    "## Status\n\nactive\n\n## Product\n\nDesktpo\n",
+  );
+  const result = run(dir);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown product/);
 });
 
 test("empty inventory and archived evidence remain readable", (t) => {
@@ -139,6 +191,12 @@ test("project topology and entry links resolve without embedded Skill test scrip
     "spec/README.md",
     "spec/rules/README.md",
     "spec/changes/README.md",
+    "spec/changes/completed/README.md",
+    "spec/archive/README.md",
+    "spec/knowledge/behavior/README.md",
+    "spec/knowledge/behavior/cli.md",
+    "spec/knowledge/behavior/cloudflare.md",
+    "spec/knowledge/structure/storage-architecture.md",
     "spec/changes/_templates/README.md",
     "spec/workflow/04-verification/README.md",
   ]) {
@@ -157,6 +215,14 @@ test("project topology and entry links resolve without embedded Skill test scrip
     fs.readFileSync(path.join(root, "package.json"), "utf8"),
   ).scripts;
   assert.ok(!scripts["spec:test"].includes(".agents/skills/"));
+  const inventory = fs.readFileSync(
+    path.join(root, "spec/changes/index.md"),
+    "utf8",
+  );
+  assert.ok(
+    !inventory.includes("### Unclassified"),
+    "classify current work by product",
+  );
 });
 
 test("default traceability checks only explicitly opted-in work", (t) => {

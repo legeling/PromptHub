@@ -1,9 +1,12 @@
 # Implementation
 
+## Product
+
+Shared
+
 ## Status
 
-- Phase: implement
-- Status: verification-pending
+review-pending. Matrix, capacity and native lifecycle acceptance tasks remain open.
 
 ## Shipped
 

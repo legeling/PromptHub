@@ -102,5 +102,6 @@ layout epoch.
 - Rule: `spec/rules/storage-evolution-rules.md`
 - Issue: none
 - Supersedes / superseded by: refines the target beyond
-  `spec/knowledge/structure/data-layout-v0.5.5-zh.md`; that stable document now
-  records the converged local behavior.
+  [the former file-first layout](../archive/designs/2026-10-21-file-first-storage.md).
+  Current ownership and remaining migration work are routed by
+  [storage architecture](../knowledge/structure/storage-architecture.md).
