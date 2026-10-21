@@ -80,6 +80,7 @@ export interface SkillFileEditorSource {
 
 interface SkillFileEditorProps {
   skillId: string;
+  currentVersion?: number;
   localPath?: string;
   fileSource?: SkillFileEditorSource;
   /** Human-readable skill name shown in the modal header. Falls back to a
@@ -176,6 +177,7 @@ function retainLoadedFiles(
 
 export function SkillFileEditor({
   skillId,
+  currentVersion,
   localPath,
   fileSource,
   skillName,
@@ -231,6 +233,7 @@ export function SkillFileEditor({
   >(null);
 
   const activeSourceKeyRef = useRef<string | null>(null);
+  const loadedVersionRef = useRef(currentVersion);
   const inventorySourceKeyRef = useRef<string | null>(null);
   const sourceGenerationRef = useRef(0);
   const isPathMode = Boolean(localPath || fileSource);
@@ -431,24 +434,27 @@ export function SkillFileEditor({
       return;
     }
 
-    // Re-run file bootstrap only when the editor opens or switches to a
-    // different skill/path source. Callback identity changes (for example from
-    // i18n updates) must not wipe in-progress edits.
-    if (activeSourceKeyRef.current === sourceKey) {
+    // A published package invalidates cached files, not unsaved editor drafts.
+    // Metadata-only updates and callback changes must not reload the package.
+    const sourceChanged = activeSourceKeyRef.current !== sourceKey;
+    if (!sourceChanged && loadedVersionRef.current === currentVersion) {
       return;
     }
 
     const generation = sourceGenerationRef.current + 1;
     sourceGenerationRef.current = generation;
     activeSourceKeyRef.current = sourceKey;
+    loadedVersionRef.current = currentVersion;
     inventorySourceKeyRef.current = null;
-    setFiles([]);
     setLoadedFiles({});
-    setSelectedFile(null);
     setLoadingFilePath(null);
-    setModifiedFiles({});
+    if (sourceChanged) {
+      setFiles([]);
+      setSelectedFile(null);
+      setModifiedFiles({});
+    }
     void loadFiles(sourceKey, generation);
-  }, [isOpen, loadFiles, sourceKey]);
+  }, [currentVersion, isOpen, loadFiles, sourceKey]);
 
   useEffect(() => {
     onUnsavedChange?.(hasAnyUnsaved);

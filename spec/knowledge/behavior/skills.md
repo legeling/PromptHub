@@ -235,6 +235,37 @@ runtime or full release harness is claimed. Publication remains pending.
 
 #### Convergence regression acceptance — 2026-10-21
 
+Real Electron follow-up: an open Files tab must invalidate its directory and
+loaded file cache when the same managed Skill publishes a new `currentVersion`.
+Metadata-only updates do not reload files. Refresh preserves the selected file
+when still present and unsaved drafts, reusing the editor's request generation
+to reject stale reads. No watcher, polling, extra package acquisition or separate
+revision state is introduced. GUI acceptance exposed the stale cache after a
+successful source update; `skill-detail-package-refresh.test.tsx` reproduced it
+with two failing regressions before correction. The renderer refresh fix passes
+30 distinct focused component regressions (package refresh, file editor and
+detail platform selection), Desktop source/test TypeScript and scoped ESLint.
+
+Headed macOS Electron acceptance used the existing Vite server with an isolated
+profile/keyring and a controlled local Git repository (SSH-form URL rewritten
+by Git for the test process only). Actual UI actions scanned and imported two
+nested packages from one repository, opened companion files, favorited a Skill,
+reviewed and applied whole-package source updates, restarted the application,
+and rescanned to confirm both packages are marked imported and cannot be
+duplicated. Internal, dangling and external-directory symlinks were absent from
+the published package; the external target was unchanged. A temporary SQLite
+trigger injected update failure through the UI: all 12 existing package/history
+files retained exact hashes, metadata stayed at v1 with the favorite intact,
+and no operation journal/staging files remained. Removing the trigger allowed
+the same review dialog to retry successfully. After the renderer fix, a further
+update to v3 immediately showed the added file and revised selected-file content;
+restart preserved all 25 package/history files and the favorite. This exercises
+real Electron, IPC, Git, SQLite and filesystem publication, not public-network
+transport, Windows, the full release harness or every legacy IPC through UI.
+Evidence screenshots remain under the task-specific OS temporary directory
+`/tmp/prompthub-real-app-Mm50Q5/artifacts/`; disposable profiles and Git fixtures
+are removed after acceptance. No product-repository commit or push was made.
+
 - `apps/desktop/tests/integration/skill-git-acquisition-convergence.test.ts`
   adds nine real-storage cases. All nine failed against the reviewed code and
   pass after correction: Git/ZIP legacy save, SQL failure rollback and retry,

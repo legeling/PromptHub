@@ -119,6 +119,7 @@ export function SkillDetailContent({
             >
               <LazySkillFileEditor
                 skillId={selectedSkill.id}
+                currentVersion={selectedSkill.currentVersion}
                 localPath={
                   isExternalDetail ? selectedSkill.local_repo_path : undefined
                 }
