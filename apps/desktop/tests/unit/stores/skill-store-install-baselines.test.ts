@@ -138,11 +138,13 @@ describe("skill store", () => {
     );
   });
 
-  it("blocks installing official registry skills when only placeholder frontmatter is available", async () => {
+  it("preserves acquisition failures without creating a placeholder registry skill", async () => {
     const create = vi.fn();
-    const getRemoteGitPackageSnapshot = vi
+    const runPackageOperation = vi
       .fn()
-      .mockRejectedValue(new Error("network down"));
+      .mockRejectedValue(new Error("Package acquisition failed"));
+    window.api.skill.runPackageOperation = runPackageOperation;
+    const getRemoteGitPackageSnapshot = vi.fn();
 
     (window as any).api.skill.create = create;
     (window as any).api.skill.getRemoteGitPackageSnapshot =
@@ -166,12 +168,25 @@ description: Use this skill for PDF tasks.
 ---`,
         compatibility: ["claude"],
       }),
-    ).rejects.toThrow(/full SKILL\.md/i);
+    ).rejects.toThrow("Package acquisition failed");
 
     expect(create).not.toHaveBeenCalled();
+    expect(useSkillStore.getState().skills).toEqual([]);
+    expect(getRemoteGitPackageSnapshot).not.toHaveBeenCalled();
+    expect(runPackageOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "install",
+        source: {
+          kind: "remote-git",
+          repoUrl: "https://github.com/anthropics/skills",
+          branch: "main",
+          directory: "skills/pdf",
+        },
+      }),
+    );
   });
 
-  it("stores install fingerprints for registry skills and uses them for update checks", async () => {
+  it("retains the canonical install fingerprint without a second renderer acquisition", async () => {
     const installedHash = "a".repeat(64);
     const runPackageOperation = mockCompletedPackageOperation(
       createSkillFixture({
@@ -221,14 +236,16 @@ description: Use this skill for PDF tasks.
     expect(runPackageOperation).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: "install",
-        content: "# Writer\n\nOriginal\n",
+        content: "# Writer\n",
+        source: {
+          kind: "remote-git",
+          repoUrl: "https://github.com/example/skills",
+          branch: "main",
+          directory: "writer",
+        },
       }),
     );
-    expect(getRemoteGitPackageSnapshot).toHaveBeenCalledWith({
-      repoUrl: "https://github.com/example/skills",
-      branch: "main",
-      directory: "writer",
-    });
+    expect(getRemoteGitPackageSnapshot).not.toHaveBeenCalled();
     expect(fetchRemoteContent).not.toHaveBeenCalled();
   });
 
@@ -335,7 +352,7 @@ description: Use this skill for PDF tasks.
     ]);
   });
 
-  it("syncs binary GitHub repo assets into the managed local repo", async () => {
+  it("delegates complete nested GitHub package acquisition to the package owner", async () => {
     const runPackageOperation = mockCompletedPackageOperation(
       createSkillFixture({
         id: "skill-binary",
@@ -399,14 +416,14 @@ description: Use this skill for PDF tasks.
         },
       }),
     );
-    expect(getRemoteGitPackageSnapshot).toHaveBeenCalled();
+    expect(getRemoteGitPackageSnapshot).not.toHaveBeenCalled();
     expect(fetchRemoteContent).not.toHaveBeenCalled();
     expect(fetchRemoteContentBytes).not.toHaveBeenCalled();
     expect(writeLocalFile).not.toHaveBeenCalled();
     expect(writeLocalFileBufferByPath).not.toHaveBeenCalled();
   });
 
-  it("syncs root GitHub skill packages instead of writing only SKILL.md", async () => {
+  it("delegates complete root GitHub packages without renderer file writes", async () => {
     const runPackageOperation = mockCompletedPackageOperation(
       createSkillFixture({
         id: "skill-html-ppt",
@@ -476,7 +493,7 @@ description: Use this skill for PDF tasks.
         },
       }),
     );
-    expect(getRemoteGitPackageSnapshot).toHaveBeenCalled();
+    expect(getRemoteGitPackageSnapshot).not.toHaveBeenCalled();
     expect(fetchRemoteContent).not.toHaveBeenCalled();
     expect(fetchRemoteContentBytes).not.toHaveBeenCalled();
     expect(writeLocalFile).not.toHaveBeenCalled();
