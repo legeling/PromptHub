@@ -5,7 +5,9 @@
 - Repository: `legeling/PromptHub`
 - Snapshot date: `2026-10-20`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Open issues captured: `35`
+- Open issues captured: `34`
+
+- Targeted refresh: #215 verified CLOSED on `2026-10-21T05:02:04Z` using `gh issue view 215 --repo legeling/PromptHub --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; other rows retain the full snapshot date above.
 
 ## Notes
 
@@ -22,7 +24,6 @@
 | #239 | [Bug]: window系统mcp下载异常 | bug, version: 0.6.0-beta.2 | 2026-10-15 | 2026-10-15 | [#239](https://github.com/legeling/PromptHub/issues/239) |
 | #236 | [Bug]: 新建 Prompt会软件崩溃，再次添加也不能录入 | bug, version: 版本: 0.6.0-beta.2 · 稳定版通道 | 2026-10-14 | 2026-10-14 | [#236](https://github.com/legeling/PromptHub/issues/236) |
 | #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-14 | [#221](https://github.com/legeling/PromptHub/issues/221) |
-| #215 | [Feature]: 使用部分克隆、稀疏检出减少克隆内容 | enhancement, version: new release | 2026-09-07 | 2026-09-07 | [#215](https://github.com/legeling/PromptHub/issues/215) |
 | #212 | [Feature]: 建议将现有 Rules 模块调整为 Instructions，并新增真正的 Scoped Rules 模块 | enhancement, version: Next release | 2026-09-03 | 2026-10-12 | [#212](https://github.com/legeling/PromptHub/issues/212) |
 | #209 | [Bug]: 本地 ~/.claude/CLAUDE.md 变更后，会被 PromptHub 自动恢复 | bug, version: 0.5.8 | 2026-08-19 | 2026-08-20 | [#209](https://github.com/legeling/PromptHub/issues/209) |
 | #205 | Would you take a pull-request security scan workflow? | question | 2026-08-14 | 2026-08-20 | [#205](https://github.com/legeling/PromptHub/issues/205) |

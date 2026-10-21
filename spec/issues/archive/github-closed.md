@@ -5,7 +5,9 @@
 - Repository: `legeling/PromptHub`
 - Snapshot date: `2026-10-20`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Closed issues captured: `183`
+- Closed issues captured: `184`
+
+- Targeted refresh: #215 verified CLOSED on `2026-10-21T05:02:04Z` using `gh issue view 215 --repo legeling/PromptHub --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; other rows retain the full snapshot date above.
 
 ## Notes
 
@@ -39,6 +41,7 @@
 | #218 | [Bug]: 手动添加github项目非根目录下的skill，导入成功后点击更新，报错 | bug, version: 0.6.0-beta.2 | 2026-09-16 | 2026-10-14 | [#218](https://github.com/legeling/PromptHub/issues/218) |
 | #217 | [Feature]: MCP Registry | enhancement, version: 0.5.9 | 2026-09-12 | 2026-10-14 | [#217](https://github.com/legeling/PromptHub/issues/217) |
 | #216 | [Bug]: 更新新版之后开启APP就显示Loading一直卡着 | bug, version: 0.6.0-beta.2 (0.6.0-beta.2) | 2026-09-11 | 2026-10-19 | [#216](https://github.com/legeling/PromptHub/issues/216) |
+| #215 | [Feature]: 使用部分克隆、稀疏检出减少克隆内容 | enhancement, version: new release | 2026-09-07 | 2026-10-21 | [#215](https://github.com/legeling/PromptHub/issues/215) |
 | #211 | [Bug]: git仓库和skill商店安装skill失败 | bug, version: 0.5.9 | 2026-09-01 | 2026-09-01 | [#211](https://github.com/legeling/PromptHub/issues/211) |
 | #210 | [Bug]: 导入备份/快照时无条件覆盖用户的真实规则文件并删除版本历史（绕过 rules 冲突保护） | bug | 2026-08-19 | 2026-10-19 | [#210](https://github.com/legeling/PromptHub/issues/210) |
 | #207 | Submit IdeaHunter for the tools/resources list | wontfix | 2026-08-16 | 2026-08-20 | [#207](https://github.com/legeling/PromptHub/issues/207) |
