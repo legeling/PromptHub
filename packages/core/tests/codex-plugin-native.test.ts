@@ -64,13 +64,13 @@ const writeWithDiagnostics: typeof writeCodexPluginEnabled = async (
   try {
     await writeCodexPluginEnabled(options);
   } catch (error) {
-    throw new Error(
+    console.error(
       `Native config write failed: ${JSON.stringify({
         expectedFile: path.join(options.root, "config.toml"),
         layers,
       })}`,
-      { cause: error },
     );
+    throw error;
   } finally {
     launch.mockRestore();
   }

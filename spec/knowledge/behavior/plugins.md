@@ -417,3 +417,8 @@ different config file is still rejected; original bytes and the native expected
 version protect concurrent edits. Regression coverage uses a real stdio child
 process. Windows native lifecycle acceptance remains pending the corrected gate;
 this CLI check does not claim Windows Store GUI acceptance.
+
+`native-codex.yml` provides a manual Windows-only verification entrypoint while
+diagnosing native failures. It and the full release job execute the same
+`scripts/verify-windows-native-codex.ps1` fixture. This avoids repeated unrelated
+platform builds during diagnosis; it never replaces the complete release gate.
