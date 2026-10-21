@@ -14,7 +14,7 @@ Earlier publication evidence below applies only to the original candidate.
 
 ## Replacement acceptance (2026-10-19)
 
-- [ ] Submit the credential migration and startup diagnostic changes separately.
+- [x] Submit the credential migration and startup diagnostic changes separately.
 - [ ] Synchronize curated release notes, localized manual replacement guidance and website metadata.
 - [ ] Pass current full verification, isolated startup UI checks and platform packaging/signing gates.
 - [ ] Update v0.6.1 using an expected-old-value lease, verify uploaded artifacts, then publish.
@@ -44,7 +44,8 @@ not a new migration scenario; disk migration/reopen/rollback remains Core covera
 
 Prepare the current main branch for stable 0.6.1. Release policy is owned by
 `spec/releases/release-rules.md`; package/distribution behavior remains owned by
-the Skills and resource-library topics. Published stable downloads now select 0.6.1. Delivery scope now includes submission, push and deployment;
+the Skills and resource-library topics. Published stable downloads remain on
+0.6.0 until the replacement is public. Delivery scope includes submission, push and deployment;
 publication requires successful candidate and platform gates.
 
 ## Work

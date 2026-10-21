@@ -1,5 +1,33 @@
 # 0.6.1 preparation evidence
 
+## First replacement CI and corrections (2026-10-21)
+
+Candidate `9656c60cf6f573620e2ee9c689c2bf3004d304e4`, run
+[39563236040](https://github.com/legeling/PromptHub/actions/runs/39563236040),
+did not pass and must not be published. Windows x64 native Plugin disable failed
+to recognize its user-config layer. The correction resolves both paths through
+the filesystem and retains config conflict checks, with alias, wrong-file,
+concurrent-edit and Windows extended-path regressions.
+
+Two Desktop unit groups contained five obsolete expectations: the Git clone
+signal argument and renderer acquisition assertions predated the main-owned
+whole-package install path. Assertions now check the canonical request,
+propagated acquisition failure and returned installed fingerprint. Existing
+whole-package integration coverage remains in place.
+
+The built Desktop smoke ran 20 scenarios: 18 passed; two completed their restart,
+data and interaction assertions but timed out in Chromium's screenshot command.
+Failure artifacts show the persisted Prompts. Those two evidence captures now
+use the current Electron BrowserWindow's native capture, rejecting empty images;
+no assertion or screenshot requirement is removed. Corrected CI acceptance is
+still required.
+
+Focused repair validation passed 12 Core cases (including the real macOS native
+Codex lifecycle; one Windows-only path case skipped) and 57 Desktop/workflow
+cases, Core source and Desktop test typechecks, Desktop lint and specification
+governance. All six checks passed in 49.5 seconds. Electron capture and Windows
+path acceptance remain assigned to the isolated CI runners.
+
 ## Replacement publication resumed (2026-10-21)
 
 Maintainer authorization now includes scoped submission, push, final candidate
