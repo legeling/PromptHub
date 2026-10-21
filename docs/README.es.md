@@ -9,11 +9,11 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 
 [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
-[![Version](https://img.shields.io/badge/release-v0.6.0_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
+[![Version](https://img.shields.io/badge/release-v0.6.1_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Desarrollo](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-La versión estable actual es `0.6.0`.
+La versión estable actual es `0.6.1`.
 
   <br/>
 
@@ -104,18 +104,18 @@ Pago por uso, sin cuota mensual — [regístrate aquí](https://go.apimart.ai/gh
 
 ## 📥 Descarga
 
-Última estable: **v0.6.0**. Los enlaces directos apuntan a los assets estables de GitHub Latest; volverán a nombres fijos del CDN cuando el mirror esté sincronizado:
+Última estable: **v0.6.1**. Los enlaces directos apuntan a los assets estables de GitHub Latest; volverán a nombres fijos del CDN cuando el mirror esté sincronizado:
 
-El paquete de reemplazo de `0.6.1` aún no está publicado. Si instalaste la versión anterior, conserva el directorio de datos y espera a la publicación para instalarlo manualmente; la misma versión no activa una actualización automática.
+El paquete de reemplazo de `0.6.1` está disponible. Si instalaste la anterior `0.6.1`, descárgalo e instálalo manualmente conservando el directorio de datos; la misma versión no activa una actualización automática.
 
 - **Descarga directa** — apunta a los assets estables de GitHub Latest para evitar un mirror CDN vacío; volverá a nombres fijos del CDN cuando el mirror esté sincronizado.
 - **GitHub Releases** — página oficial de releases con archivos de versiones, firmas y notas completas.
 
 | Plataforma   | Descarga directa                                                                                                                                                                                                                                                                                                                                                                                                                        | GitHub Releases                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows      | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.0-arm64.exe) |
-| macOS        | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.dmg)     |
-| Linux        | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.0-amd64.deb)              |
+| Windows      | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-arm64.exe) |
+| macOS        | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.dmg)     |
+| Linux        | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-amd64.deb)              |
 
 > **Apple Silicon o Intel?** M1/M2/M3/M4 → `arm64`. Macs Intel → `x64`.
 > **Windows arch?** La mayoría → `x64`. Solo en hardware ARM tipo Surface Pro X → `arm64`.
@@ -147,7 +147,7 @@ Vuelve a abrir la app. Sustituye la ruta si la instalaste en otro sitio.
 
 ### Canal de vista previa
 
-Active el canal de vista previa en _Ajustes → Acerca de_. Las próximas versiones buscarán versiones estables y preliminares y ofrecerán la más reciente, por ejemplo `0.6.0` para `0.6.0-beta.2`. Al desactivarlo solo se ofrecen versiones estables, sin retrocesos automáticos. Si una versión preliminar antigua no detecta `0.6.0`, desactive el canal y vuelva a buscar.
+Active el canal de vista previa en _Ajustes → Acerca de_. La aplicación busca versiones estables y preliminares y ofrece la más reciente, por ejemplo `0.6.0` para `0.6.0-beta.2`. Al desactivarlo solo se ofrecen versiones estables, sin retrocesos automáticos. Si una versión preliminar antigua no detecta `0.6.0`, desactive el canal y vuelva a buscar.
 
 <div id="screenshots"></div>
 
@@ -290,7 +290,7 @@ Para conectar el escritorio: _Ajustes → Datos → Self-Hosted PromptHub_. Comp
 
 Notas detalladas de despliegue / actualización / backup / imagen GHCR / desarrollo en [`web-self-hosted.md`](./web-self-hosted.md).
 
-Rama principal sin publicar (no incluida en 0.6.0): Desktop y CLI comparten los procesos Core de Skills, MCP y Plugins. La Web autoalojada y Cloudflare permiten guardar, editar, gestionar versiones, importar/exportar paquetes completos y sincronizar. No distribuyen a Agents, exploran directorios del servidor ni instalan mediante SSH. La CLI se empaqueta e instala por separado.
+En 0.6.1: Desktop y CLI comparten los procesos Core de Skills, MCP y Plugins. La Web autoalojada y Cloudflare permiten guardar, editar, gestionar versiones, importar/exportar paquetes completos y sincronizar. No distribuyen a Agents, exploran directorios del servidor ni instalan mediante SSH. La CLI se empaqueta e instala por separado.
 
 <div id="cli"></div>
 
@@ -365,13 +365,13 @@ Flags globales habituales:
 
 Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### v0.6.1 (reemplazo pendiente)
+### v0.6.1 (2026-10-21, estable)
 
-Nuevas fuentes de mercado de Plugins y gestión de recursos entre plataformas, mejoras en el diálogo de actualización y correcciones en la distribución y el cambio de nombre de Skills y la recuperación de datos antiguos.
+Nuevas fuentes de mercado de Plugins, gestión nativa de plugins Codex y recursos entre plataformas. Mejoras en la información de instalación, el diálogo de actualización y la actualización de archivos Skill; corrección del inicio al migrar credenciales antiguas y registros de errores de inicio que se pueden copiar.
 
 ### v0.6.0 (2026-10-18, estable)
 
-`0.6.0` se publicó el 2026-10-18 con paquetes para Windows, macOS, Linux y la CLI independiente. Los cambios posteriores están en Unreleased del CHANGELOG.
+`0.6.0` se publicó el 2026-10-18 con paquetes para Windows, macOS, Linux y la CLI independiente.
 
 - **Almacenamiento, sincronización y actualizaciones**: SQLite gestiona los datos estructurados y conserva paquetes e historiales recuperables. La sincronización automática WebDAV/S3 incorpora bases comunes y revisión de conflictos, con correcciones en la migración de datos antiguos al iniciar.
 
@@ -480,9 +480,9 @@ Nuevas fuentes de mercado de Plugins y gestión de recursos entre plataformas, m
 
 ## Hoja de ruta
 
-### v0.6.0 ← estable
+### v0.6.1 ← estable
 
-`0.6.0` se publicó el 2026-10-18 con paquetes para Windows, macOS, Linux y la CLI independiente. Los cambios posteriores están en Unreleased del CHANGELOG.
+Nuevas fuentes de mercado de Plugins, gestión nativa de plugins Codex y recursos entre plataformas. Mejoras en la información de instalación, el diálogo de actualización y la actualización de archivos Skill; corrección del inicio al migrar credenciales antiguas y registros de errores de inicio que se pueden copiar.
 
 ### v0.5.9
 

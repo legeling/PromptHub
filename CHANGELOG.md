@@ -2,11 +2,11 @@
 
 ### 开发中 / In development
 
-当前可下载的稳定版为 `0.6.0`。`0.6.1` 替换包尚未发布，下方版本章节包含待发布修复。
+当前稳定版为 `0.6.1`。尚无后续未发布条目。
 
-The currently available stable release is `0.6.0`. The `0.6.1` replacement is not yet published; its section below includes pending fixes.
+The current stable release is `0.6.1`. No subsequent unreleased entries yet.
 
-## [0.6.1]
+## [0.6.1] - 2026-10-21
 
 ### 新功能 / Features
 

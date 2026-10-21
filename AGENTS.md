@@ -140,7 +140,7 @@ Before any commit, split commit, history rewrite, or push operation:
 
 - **Type:** Local-first monorepo with desktop, CLI, web, and worker distributions
 - **License:** AGPL-3.0
-- **Version:** 0.6.1 (replacement candidate in verification; latest available stable: 0.6.0)
+- **Version:** 0.6.1 (stable replacement published)
 
 ### Tech Stack
 

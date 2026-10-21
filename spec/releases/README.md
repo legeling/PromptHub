@@ -10,14 +10,14 @@
 - `docs/README.*`
 - `website/src/content/docs/changelog.md`
 
-2026-10-21 只读核对：GitHub latest 为 `v0.6.0`；`v0.6.1` 不在公开发行列表中。
-同版本替换已恢复准备，尚未发布，详见对应记录。
+2026-10-21 发布核对：GitHub latest 为 `v0.6.1`；同版本替换包已公开。
+已安装旧 0.6.1 的用户需手动覆盖安装并保留应用数据目录。
 
 ## Release Index
 
 | Version        | Status                                            | Path                            | Updated    |
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
-| `0.6.1` | replacement in verification; original release unavailable | `spec/releases/0.6.1.md` | 2026-10-21 |
+| `0.6.1` | stable record | `spec/releases/0.6.1.md` | 2026-10-21 |
 | `0.6.0-beta.2` | published prerelease                              | `spec/releases/0.6.0-beta.2.md` | 2026-09-03 |
 | `0.6.0-beta.1` | published prerelease; Skill mutation fix replaced | `spec/releases/0.6.0-beta.1.md` | 2026-08-21 |
 | `0.6.0`        | stable record                                     | `spec/releases/0.6.0.md`        | 2026-10-18 |
