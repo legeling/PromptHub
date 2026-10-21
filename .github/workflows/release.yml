@@ -216,7 +216,7 @@ jobs:
             codex --version
             if ($LASTEXITCODE -ne 0) { throw 'Native Codex fixture could not start' }
             $env:PROMPTHUB_NATIVE_AGENT_TESTS = '1'
-            pnpm --filter @prompthub/core exec vitest run tests/native-command-process.test.ts tests/codex-plugin-runtime.test.ts tests/codex-plugin-native.test.ts --minWorkers=1 --maxWorkers=1
+            pnpm --filter @prompthub/core exec vitest run tests/native-command-process.test.ts tests/codex-plugin-runtime.test.ts tests/codex-plugin-config-path.test.ts tests/codex-plugin-native.test.ts --minWorkers=1 --maxWorkers=1
             if ($LASTEXITCODE -ne 0) { throw 'Native Windows Codex plugin acceptance failed' }
           } finally {
             Remove-Item Env:PROMPTHUB_NATIVE_AGENT_TESTS -ErrorAction SilentlyContinue

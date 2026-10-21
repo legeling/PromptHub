@@ -406,3 +406,12 @@ Windows Store discovery and extension selection are covered with deterministic
 fixtures. The npm shim execution case runs only on Windows. No Windows test
 machine was available for the 2026-10-20 verification; Windows 11 installation,
 enable/disable and removal remain an explicit release acceptance gap.
+
+The replacement release gate runs the native lifecycle with Codex 0.163.0 on
+Windows x64. Its first run exposed user-config layer recognition during disable.
+Configuration RPC now compares canonical filesystem identities, including Windows
+extended-length paths and directory aliases, rather than raw path spelling. A
+different config file is still rejected; original bytes and the native expected
+version protect concurrent edits. Regression coverage uses a real stdio child
+process. Windows native lifecycle acceptance remains pending the corrected gate;
+this CLI check does not claim Windows Store GUI acceptance.

@@ -90,7 +90,8 @@ export function writeCodexPluginEnabled(
                 isRecord(value) &&
                 isRecord(value.name) &&
                 value.name.type === "user" &&
-                value.name.file === filePath,
+                typeof value.name.file === "string" &&
+                fs.realpathSync(value.name.file) === filePath,
             )
           : undefined;
         if (!isRecord(layer) || typeof layer.version !== "string")
