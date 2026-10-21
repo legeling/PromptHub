@@ -31,6 +31,23 @@ Regression entrypoints: CLI `agent-root-distribution`, `mcp-command-credentials`
 
 CLI integration tests share an in-memory master-key-store boundary so fixture credentials do not persist in the user's OS keychain. Workspace sync workflows use the suite's shared per-test timeout rather than a separate shorter override. The total suite runtime budget remains unchanged.
 
+Normal CLI fixture roots resolve the OS temporary directory's aliases before
+constructing profile and target paths. This keeps macOS `/var` aliases out of
+normal Plugin workflows without weakening production symlink protection or
+requiring a special `TMPDIR`. Seeded and unseeded fixture regression cases use
+a real directory alias and verify the physical root and database presence.
+The independent-process Plugin fixture follows the same physical-path boundary.
+
+Verification on 2026-10-19: the four affected fixture/Plugin files passed nine
+cases using the default macOS temporary directory; CLI lint and typecheck passed.
+All 38 files / 177 cases subsequently passed the normal
+`pnpm --filter @prompthub/cli test` entrypoint in 57.7 seconds after the shared DB no-op write
+repair documented in [Database Concurrency](database-concurrency.md#current-schema-reopen-idempotency-2026-10-19).
+Neither worker counts nor the 75-second suite budget changed. A two-worker
+diagnostic did not improve overall time and was not adopted; direct `pnpm exec`
+also lacked the script environment required by the README-entrypoint case,
+so that diagnostic is not acceptance evidence.
+
 Verified on 2026-10-14 in an isolated source snapshot with existing dependencies: `pnpm --filter @prompthub/cli test` passed 31 files / 159 tests in 68.9 seconds; CLI typecheck, lint and build passed. `pnpm --filter @prompthub/cli verify:package` passed the extracted-tarball bin workflow on macOS. Related Core MCP projection/history/env/sync-policy and Plugin tests passed 36 cases; Desktop native-command/Plugin adapter tests passed 26 cases, and Desktop typecheck passed. The verification-harness suite passed 23 cases. This evidence does not establish GUI, Windows/Linux package, OS keychain or live vendor CLI acceptance.
 
 ## Safety And Ownership

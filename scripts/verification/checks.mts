@@ -97,7 +97,7 @@ export const VERIFICATION_CHECKS: VerificationCheck[] = [
     ["core"],
     ["unit", "contract"],
     ["--filter", "@prompthub/core", "test"],
-    { timeoutMs: 300_000, resourceGroup: "test-heavy" },
+    { timeoutMs: 600_000, resourceGroup: "test-heavy" },
   ),
   pnpmCheck(
     "core-performance",

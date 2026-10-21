@@ -145,7 +145,9 @@ function versionInventory(value: unknown): Record<string, string> {
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-cross-plugin-"));
+  root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-cross-plugin-")),
+  );
   profile = path.join(root, "profile");
 });
 afterEach(() => {
