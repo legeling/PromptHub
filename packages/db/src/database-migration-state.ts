@@ -527,7 +527,9 @@ export function recordCurrentDatabaseMigration(
       Math.max(0, Math.trunc(durationMs)),
     );
   }
-  database.pragma(`user_version = ${CURRENT_DATABASE_SCHEMA_VERSION}`);
+  // Even assigning the same SQLite header value causes a durable write on reopen.
+  if (readUserVersion(database) !== CURRENT_DATABASE_SCHEMA_VERSION)
+    database.pragma(`user_version = ${CURRENT_DATABASE_SCHEMA_VERSION}`);
 }
 
 export function recordCurrentLegacySchemaMigrations(

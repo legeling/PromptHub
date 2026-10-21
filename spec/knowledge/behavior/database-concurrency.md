@@ -90,6 +90,41 @@
 - Desktop 的 Skill 本机仓库发现属于 host reconciliation，不属于共享 schema
   migration。CLI 或 Web 先打开数据库不得把 Desktop 后续 reconciliation 标记为已完成。
 
+#### Current-schema reopen idempotency (2026-10-19)
+
+The DB-owned migration finalizer checks the current `user_version` before writing
+it. Assigning an identical SQLite header value otherwise causes a redundant
+durable write on every CLI/database reopen. History checksum validation, migration
+transactions, intent/lease ownership, integrity checks and real upgrade writes
+remain unchanged. No schema, historical migration identity/checksum, storage
+layout or compatibility branch changes; rollback only restores the redundant
+write. The additional version read is constant-time and uses the existing parser.
+
+`database-startup-idempotency.test.ts` opens a populated current database twice
+and checks exact database bytes, migration history, Prompt content, schema version,
+integrity and foreign keys. Existing populated schema-upgrade, rollback/retry and
+migration-lock tests remain required alongside CLI suite timing.
+
+Verification on 2026-10-19: the six Core regression files passed 23 cases;
+Desktop migration-lock and historical-fixture tests passed 27 cases. DB/Core/CLI
+types and the three Core storage-performance cases passed. The unchanged
+four-worker CLI suite passed all 177 cases in 57.7 seconds, below its original
+75-second suite budget (the preceding run took 75.9 seconds by the budget timer).
+Timing is local evidence, not a cross-machine performance guarantee.
+
+An isolated DB source copy restored only the unconditional header assignment.
+The new reopen regression exited 1 at the exact-byte equality assertion; the
+working source passed. An initial dependency-link failure selected zero tests
+and is not regression evidence. No historical migration manifest was edited,
+and full release/platform acceptance remains paused and incomplete.
+
+The final DB change also passed 48 Core credential/codec/vault cases and 47
+Desktop settings/proxy cases through the existing registered-IPC workflow.
+Changed-file lint, test-inclusive Desktop typecheck (including Core tests),
+file-size and spec governance checks passed. The shared checkout contains
+parallel Plugin work outside this repair; these results do not establish a
+frozen full-repository candidate or acceptance of that separate work.
+
 ### 7. Task-Owned Databases And External Stores
 
 - PromptHub 自有临时 SQLite 必须使用 `packages/db` 的有界 label + full UUID
