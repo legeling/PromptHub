@@ -12,6 +12,11 @@ import {
   type LegacySettingsEncryption,
 } from "./migrations/settings-sqlite-v1";
 import {
+  planSettingsCredentialsUpgrade,
+  mergeSettingsCredentialUpgradeSecrets,
+  commitSettingsCredentialsUpgrade,
+} from "./migrations/settings-credentials-v1";
+import {
   decodeRendererSettings,
   encodeRendererSettings,
   RENDERER_SETTING_KEYS,
@@ -81,6 +86,26 @@ export class CoreSettingsStore {
             .run(SETTINGS_SQLITE_MIGRATION, Date.now()),
       });
     }
+    this.migrateCredentials();
+  }
+
+  private migrateCredentials(): void {
+    const plan = planSettingsCredentialsUpgrade(this.database);
+    if (plan === null) return;
+    const entries: CanonicalEntryMutation[] = [];
+    if (Object.keys(plan.secrets).length || plan.protectedSecrets.length) {
+      const previous = this.readVault();
+      const current = previous === null ? {} : decryptSettingsVault(previous, this.keyStore);
+      const secrets = mergeSettingsCredentialUpgradeSecrets(plan, current);
+      if (Object.keys(plan.secrets).some((ref) => !Object.prototype.hasOwnProperty.call(current, ref))) {
+        entries.push(settingsJsonEntry(this.root, SETTINGS_VAULT_PATH,
+          encryptSettingsVault(secrets, previous, this.root, this.keyStore)));
+      }
+    }
+    this.publishPrepared({
+      entries,
+      commit: () => commitSettingsCredentialsUpgrade(this.database, plan),
+    }, {});
   }
 
   private readVault(): SettingsVaultDocument | null {

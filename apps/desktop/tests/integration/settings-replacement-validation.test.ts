@@ -1,4 +1,5 @@
 import path from "node:path";
+import { SettingsDB } from "@prompthub/db";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   createRendererPersistenceStore,
@@ -14,6 +15,7 @@ import {
 import { getDatabase } from "../../src/main/database";
 import { registerSettingsIPC } from "../../src/main/ipc/settings.ipc";
 import { settingsApi } from "../../src/preload/api/settings";
+import { SETTINGS_CREDENTIALS_MIGRATION } from "@prompthub/core/migrations/settings-credentials-v1";
 
 let runtime: SkillTestRuntime | undefined;
 afterEach(() => {
@@ -64,6 +66,55 @@ async function openSettings(): Promise<SkillTestRuntime> {
 }
 
 describe("settings replacement validation through registered IPC", () => {
+  it.each(["", "fixture-legacy-secret"])("upgrades inline AI and flat credentials (%j) through preload, saves and reopens", async (secret) => {
+    const current = await openSettings();
+    await settingsApi.rendererPersistence.migrate({});
+    const oldSettings = {
+      githubToken: secret,
+      webdavPassword: secret,
+      s3SecretAccessKey: secret,
+      aiProviders: [{ id: "legacy-provider", name: "Local provider", apiKey: secret }],
+      aiModels: [{ id: "legacy-model", model: "local-model", apiKey: secret }],
+      sync: { enabled: false, username: secret, password: secret },
+    };
+    new SettingsDB(getDatabase()).set(oldSettings);
+    getDatabase().prepare("DELETE FROM schema_migrations WHERE name = ?").run(SETTINGS_CREDENTIALS_MIGRATION);
+    const launchCount = 2;
+    for (let launch = 0; launch < launchCount; launch += 1) {
+      await current.reopen();
+      registerSettings(current.profile);
+      const hydrated = await settingsApi.rendererPersistence.get();
+      expect(hydrated.migrationComplete).toBe(true);
+      expect(hydrated.settings.aiModels).toEqual([{ id: "legacy-model", model: "local-model", ...(secret ? { apiKey: secret } : {}) }]);
+      expect(hydrated.settings.githubToken).toBe(secret || undefined);
+      expect(hydrated.settings.s3SecretAccessKey).toBe(secret || undefined);
+      expect(hydrated.marketplaceSources.skill).toEqual([source(current.source)]);
+      expect((await settingsApi.get()).aiProviders).toEqual([{ id: "legacy-provider", name: "Local provider", ...(secret ? { apiKey: secret } : {}) }]);
+      await settingsApi.rendererPersistence.replaceSettings({ ...hydrated.settings, language: "en" });
+      expect(new SettingsDB(getDatabase()).get("aiModels")).toEqual([{ id: "legacy-model", model: "local-model", ...(secret ? { apiKeyRef: "renderer:ai-model:legacy-model:api-key" } : {}) }]);
+    }
+    expect((await settingsApi.get()).language).toBe("en");
+  });
+
+  it("hydrates an already-migrated profile with legacy empty proxy fields through preload after two reopens", async () => {
+    const current = await openSettings();
+    await settingsApi.rendererPersistence.migrate({});
+    getDatabase().prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+      .run("networkProxy", JSON.stringify({ mode: "direct", username: "", password: "" }));
+    getDatabase().prepare("DELETE FROM schema_migrations WHERE name = ?").run(SETTINGS_CREDENTIALS_MIGRATION);
+    const launchCount = 2;
+    for (let launch = 0; launch < launchCount; launch += 1) {
+      await current.reopen();
+      registerSettings(current.profile);
+      expect(await settingsApi.rendererPersistence.migrate({})).toMatchObject({ status: "already-complete" });
+      expect(await settingsApi.rendererPersistence.get()).toMatchObject({
+        migrationComplete: true, settings: { language: "fr", networkProxy: { mode: "direct" } },
+        marketplaceSources: { skill: [source(current.source)] },
+      });
+      expect(await settingsApi.get()).toMatchObject({ language: "fr", networkProxy: { mode: "direct" } });
+    }
+  });
+
   it("keeps auxiliary state behind its dedicated entrypoints", async () => {
     const current = await openSettings();
     expect(await settingsApi.get()).not.toHaveProperty("recoveryPaths");

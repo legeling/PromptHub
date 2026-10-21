@@ -58,5 +58,5 @@ Rollback must never reactivate newer-wins dual authority.
 
 - ADR: `spec/adr/ADR-20260820-001-desktop-settings-authority.md`
 - Parent ADR: `spec/adr/ADR-20260811-001-storage-authority-and-evolution.md`
-- Stable structure: `spec/knowledge/structure/data-layout-v0.5.5-zh.md`
+- Stable structure: `spec/knowledge/structure/storage-architecture.md`
 - Related fix: `spec/changes/active/desktop-close-choice-persistence/`

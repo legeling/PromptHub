@@ -1,9 +1,12 @@
 # Desktop Settings Authority Convergence Implementation
 
+## Product
+
+Desktop
+
 ## Status
 
-- Phase: plan
-- Status: implementation pending
+active. Authority convergence and migration acceptance remain open; current local credential work does not close the whole plan.
 
 ## Shipped
 

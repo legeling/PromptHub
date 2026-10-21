@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRendererPersistenceStore } from "@prompthub/core";
 import { closeDatabase, type Database } from "@prompthub/db";
 import { DEFAULT_NETWORK_PROXY_SETTINGS } from "@prompthub/shared/types/settings";
+import { SETTINGS_CREDENTIALS_MIGRATION } from "@prompthub/core/migrations/settings-credentials-v1";
 
 import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
 import { resetRuntimePaths } from "../../../src/main/runtime-paths";
@@ -82,6 +83,39 @@ async function reopenAndApply(): Promise<void> {
 }
 
 describe("startup network proxy settings from actual persisted sources", () => {
+  it("protects and applies issued plaintext proxy credentials before renderer hydration", async () => {
+    await rendererStore().migrate({ settings: { language: "zh" } });
+    const authenticated = { ...manualProxy, username: "fixture-user", password: "fixture-password" };
+    storeDatabaseValue(JSON.stringify(authenticated));
+    database.prepare("DELETE FROM schema_migrations WHERE name = ?").run(SETTINGS_CREDENTIALS_MIGRATION);
+    const launchCount = 2;
+    for (let launch = 0; launch < launchCount; launch += 1) {
+      await reopenAndApply();
+      expect(getActiveNetworkProxySettings()).toEqual(authenticated);
+      expect(rendererStore().readHydratedStateSync().settings.networkProxy).toEqual(authenticated);
+      const persisted = database.prepare("SELECT value FROM settings WHERE key = ?").get("networkProxy");
+      expect(JSON.stringify(persisted)).not.toContain("fixture-password");
+      expect(JSON.stringify(persisted)).not.toContain("fixture-user");
+    }
+  });
+
+  it("repairs historical empty credentials after the original settings upgrade and hydrates on two starts", async () => {
+    await rendererStore().migrate({ settings: { language: "zh" } });
+    storeDatabaseValue(JSON.stringify(manualProxy));
+    database.prepare("DELETE FROM schema_migrations WHERE name = ?").run(SETTINGS_CREDENTIALS_MIGRATION);
+    const launchCount = 2;
+    for (let launch = 0; launch < launchCount; launch += 1) {
+      await reopenAndApply();
+      expect(getActiveNetworkProxySettings()).toEqual(manualProxy);
+      expect(rendererStore().readHydratedStateSync()).toMatchObject({
+        migrationComplete: true,
+        settings: { language: "zh", networkProxy: { mode: "manual", host: "localhost", port: 18081 } },
+      });
+      const persisted = database.prepare("SELECT value FROM settings WHERE key = ?").get("networkProxy");
+      expect(persisted).toEqual({ value: JSON.stringify({ mode: manualProxy.mode, protocol: manualProxy.protocol, host: manualProxy.host, port: manualProxy.port, bypass: manualProxy.bypass }) });
+    }
+  });
+
   it("persists the renderer proxy in the shared SQL owner after reopening", async () => {
     storeDatabaseValue(JSON.stringify(manualProxy));
     await rendererStore().migrate({
