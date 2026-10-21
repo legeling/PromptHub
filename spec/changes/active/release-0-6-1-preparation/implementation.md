@@ -2,6 +2,11 @@
 
 ## First replacement CI and corrections (2026-10-21)
 
+The next Windows run at `c93e7cbe` reproduced the new extended-length regression
+as well as native disable: `realpath` preserves the namespace prefix. Both
+resolved paths are therefore compared in the same Windows namespace. Directory
+alias, wrong-file and concurrent-edit cases already passed on that runner.
+
 Candidate `9656c60cf6f573620e2ee9c689c2bf3004d304e4`, run
 [39563236040](https://github.com/legeling/PromptHub/actions/runs/39563236040),
 did not pass and must not be published. Windows x64 native Plugin disable failed

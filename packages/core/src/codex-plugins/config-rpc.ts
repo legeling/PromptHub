@@ -91,7 +91,8 @@ export function writeCodexPluginEnabled(
                 isRecord(value.name) &&
                 value.name.type === "user" &&
                 typeof value.name.file === "string" &&
-                fs.realpathSync(value.name.file) === filePath,
+                path.toNamespacedPath(fs.realpathSync(value.name.file)) ===
+                  path.toNamespacedPath(filePath),
             )
           : undefined;
         if (!isRecord(layer) || typeof layer.version !== "string")
