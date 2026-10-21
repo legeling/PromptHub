@@ -171,6 +171,23 @@ export async function closePromptHub(
   }
 }
 
+export async function captureAppPage(
+  app: ElectronApplication,
+  page: Page,
+  outputPath: string,
+): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  // Capture the current Electron window directly after a full process restart.
+  // Chromium's page screenshot command can stall across these CI relaunches.
+  const window = await app.browserWindow(page);
+  const png = await window.evaluate(async (browserWindow) => {
+    const image = await browserWindow.webContents.capturePage();
+    if (image.isEmpty()) throw new Error("Electron returned an empty capture");
+    return image.toPNG().toString("base64");
+  });
+  fs.writeFileSync(outputPath, Buffer.from(png, "base64"));
+}
+
 export async function getE2EStats(page: Page) {
   return page.evaluate(() => window.electron?.e2e?.getStats?.());
 }

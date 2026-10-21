@@ -11,6 +11,7 @@ import { nativeWindowTestTag } from "./helpers/electron-launch-options";
 import { createWebDAVFixture } from "./helpers/webdav-fixture";
 
 import {
+  captureAppPage,
   closePromptHub,
   isAppWindowVisible,
   launchPromptHub,
@@ -73,9 +74,11 @@ test("creates Prompts through the editor before and after a complete restart (#2
         launched.page.getByText(item.title, { exact: true }).first(),
       ).toBeVisible();
     }
-    await launched.page.screenshot({
-      path: test.info().outputPath("prompts-after-restarts.png"),
-    });
+    await captureAppPage(
+      app,
+      launched.page,
+      test.info().outputPath("prompts-after-restarts.png"),
+    );
   } finally {
     if (app) await closePromptHub(app, profile);
     else fs.rmSync(profile, { recursive: true, force: true });

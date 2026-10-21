@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  captureAppPage,
   closePromptHub,
   launchPromptHub,
   setAppSettings,
@@ -190,9 +191,11 @@ test("installs multiple library Skills on cold empty Agent entry and preserves i
       }),
     ).toBeDisabled();
     await expect(dialog).toHaveCSS("opacity", "1");
-    await page.screenshot({
-      path: test.info().outputPath("installed-after-restart.png"),
-    });
+    await captureAppPage(
+      app,
+      page,
+      test.info().outputPath("installed-after-restart.png"),
+    );
   } finally {
     if (app) await closePromptHub(app, profile);
     fs.rmSync(root, { recursive: true, force: true });
