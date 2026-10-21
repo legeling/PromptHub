@@ -112,9 +112,6 @@ describe("SkillInstaller.installFromGithub", () => {
         );
       },
     );
-    vi.spyOn(SkillInstaller, "resolveSingleSkillDirFromRepo").mockResolvedValue(
-      path.join(managedSkillsDir(), "icelemon-skills"),
-    );
 
     const skillId = await SkillInstaller.installFromGithub(
       "https://gitea.example.com/icelemon/skills",
@@ -124,11 +121,13 @@ describe("SkillInstaller.installFromGithub", () => {
     expect(skillId).toBe("skill-gitea");
     expect(skillInstallerUtils.gitClone).toHaveBeenCalledWith(
       "https://gitea.example.com/icelemon/skills",
-      path.join(managedSkillsDir(), "icelemon-skills"),
+      expect.any(String),
+      undefined,
+      undefined,
     );
   });
 
-  it("removes the temporary clone after moving a GitHub install into the managed repo", async () => {
+  it("cleans acquisition after delegating publication once to canonical storage", async () => {
     await SkillInstaller.init();
 
     const dbMock = {
@@ -163,23 +162,21 @@ describe("SkillInstaller.installFromGithub", () => {
     expect(fsSync.existsSync(path.join(managedSkillsDir(), "owner-repo"))).toBe(
       false,
     );
-    const managedRepoPath = dbMock.update.mock.calls[0]?.[1]?.local_repo_path;
-    expect(typeof managedRepoPath).toBe("string");
-    expect(
-      fsSync.existsSync(path.join(String(managedRepoPath), "SKILL.md")),
-    ).toBe(true);
+    expect(dbMock.create).toHaveBeenCalledTimes(1);
+    expect(dbMock.update).not.toHaveBeenCalled();
+    expect(dbMock.delete).not.toHaveBeenCalled();
+    const checkout = vi.mocked(skillInstallerUtils.gitClone).mock.calls[0]?.[1];
+    expect(checkout).toBeTruthy();
+    expect(fsSync.existsSync(checkout!)).toBe(false);
   });
 
-  it("rolls back the created DB row when post-create persistence fails", async () => {
+  it("preserves canonical publication failure without a second rollback owner", async () => {
     await SkillInstaller.init();
 
     const dbMock = {
       getByName: vi.fn().mockReturnValue(null),
-      create: vi.fn().mockReturnValue({
-        id: "skill-rollback",
-        name: "repo",
-        source_id: "source-repo-main",
-        local_repo_path: path.join(managedSkillsDir(), "owner-repo"),
+      create: vi.fn().mockImplementation(() => {
+        throw new Error("publication failed");
       }),
       update: vi.fn().mockImplementation(() => {
         throw new Error("update failed");
@@ -203,16 +200,23 @@ describe("SkillInstaller.installFromGithub", () => {
     ).mockImplementation(async (installDir) => installDir);
     await expect(
       SkillInstaller.installFromGithub("https://github.com/owner/repo", mockDb),
-    ).rejects.toThrow("update failed");
+    ).rejects.toThrow("publication failed");
 
-    expect(dbMock.delete).toHaveBeenCalledWith("skill-rollback");
+    expect(dbMock.update).not.toHaveBeenCalled();
+    expect(dbMock.delete).not.toHaveBeenCalled();
     expect(fsSync.existsSync(path.join(managedSkillsDir(), "owner-repo"))).toBe(
       false,
     );
   });
 
-  it("rejects when a skill with the derived repo name already exists in DB", async () => {
+  it("rejects a conflict on the selected package name after discovery", async () => {
     await SkillInstaller.init();
+    vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
+      async (_url, destDir) => {
+        await fs.mkdir(destDir, { recursive: true });
+        await fs.writeFile(path.join(destDir, "SKILL.md"), "# Repo\n");
+      },
+    );
 
     // Create a fake DB that reports the skill already exists
     const mockDb = {
@@ -250,9 +254,6 @@ describe("SkillInstaller.installFromGithub", () => {
         );
       },
     );
-    vi.spyOn(SkillInstaller, "resolveSingleSkillDirFromRepo").mockResolvedValue(
-      path.join(managedSkillsDir(), "owner-repo"),
-    );
 
     const skillId = await SkillInstaller.installFromGithub(
       "git@github.com:owner/repo.git",
@@ -262,7 +263,9 @@ describe("SkillInstaller.installFromGithub", () => {
     expect(skillId).toBe("skill-1");
     expect(skillInstallerUtils.gitClone).toHaveBeenCalledWith(
       "git@github.com:owner/repo.git",
-      path.join(managedSkillsDir(), "owner-repo"),
+      expect.any(String),
+      undefined,
+      undefined,
     );
   });
 });

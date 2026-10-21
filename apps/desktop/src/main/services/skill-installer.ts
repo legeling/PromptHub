@@ -31,6 +31,14 @@ import {
   SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
 } from "@prompthub/shared/utils/skill-source-update";
 import { installSkillFromSource } from "../../../../../packages/core/src/skills/install-flow";
+import { materializeRemoteGitRepository } from "@prompthub/core/skills/git-materialize";
+import {
+  resolveSkillGitSource,
+  resolveSelectedSkillDirectory,
+  type SkillSourceInstallOptions,
+} from "@prompthub/core/skills/git-source";
+import { getOperationsDir } from "../runtime-paths";
+import { validateMaterializedSkillPackage } from "./skill-package-validation";
 import { initDatabase } from "@/main/database";
 import { SkillDB } from "@/main/database/skill";
 import { readGithubTokenSetting } from "@/main/settings/settings-readers";
@@ -215,7 +223,6 @@ function buildRemoteGitStoreUrls(
 // ---- sub-module re-imports (used inside facade methods) ----
 import {
   fileExists,
-  getErrorCode,
   getErrorMessage,
   getSkillsDirAccessor,
   initSkillsDir,
@@ -309,6 +316,7 @@ import {
 } from "./skill-installer-export";
 import {
   getRemoteGitSkillPackageFingerprint,
+  materializeRemoteGitSkillPackage,
   getRemoteGitSkillPackageSnapshot,
   getRemoteZipSkillPackageSnapshot,
   saveRemoteGitSkillPackage,
@@ -317,6 +325,7 @@ import {
   type RemotePackageSkill,
   type RemoteZipPackageOptions,
 } from "./skill-installer-remote-package";
+import { cleanupSkillAcquisitionDirectory } from "@prompthub/core/skills/acquisition-cleanup";
 import { readValidatedSkillPackageSnapshot } from "./skill-package-snapshot";
 
 // ========================================================================
@@ -420,121 +429,79 @@ export class SkillInstaller {
 
   // ---- Install methods (orchestrating across sub-modules) ----
 
-  static async installFromGithub(url: string, db: SkillDB): Promise<string> {
+  static async installFromGithub(
+    url: string,
+    db: SkillDB,
+    options: SkillSourceInstallOptions = {},
+  ): Promise<string> {
     await this.init();
 
-    const parsedRepo = parseGitRepo(url);
-    if (!parsedRepo) {
+    const source = resolveSkillGitSource(url, options);
+    const parsedRepo = source && parseGitRepo(source.cloneUrl);
+    if (!parsedRepo || !source) {
       throw new Error(
         "Invalid git repository URL: must be https://<host>/{owner}/{repo} or git@<host>:{owner}/{repo}.git",
       );
     }
     const userDir = parsedRepo.owner;
     const repoName = parsedRepo.repo;
-    const installDir = path.join(this.skillsDir, `${userDir}-${repoName}`);
 
-    // Validate installDir is inside skillsDir before writing to DB
-    const skillsDirResolved = path.resolve(this.skillsDir);
-    const installDirResolved = path.resolve(installDir);
-    const installRelative = path.relative(
-      skillsDirResolved,
-      installDirResolved,
+    await fs.mkdir(getOperationsDir(), { recursive: true });
+    const stagingRoot = await fs.mkdtemp(
+      path.join(getOperationsDir(), "skill-git-"),
     );
-    if (installRelative.startsWith("..") || path.isAbsolute(installRelative)) {
-      throw new Error(
-        "Path traversal detected: installDir is outside skills directory",
-      );
-    }
-
-    // Check if skill already installed (by directory existence)
-    try {
-      await fs.access(installDir);
-      throw new Error(
-        `Skill ${userDir}/${repoName} already exists. Please delete it first.`,
-      );
-    } catch (error: unknown) {
-      if (getErrorCode(error) !== "ENOENT") throw error;
-    }
-
-    // Also check if a skill with the same repo-derived name exists in DB
-    // to provide a clear error before attempting git clone.
-    const derivedName = repoName;
-    const existingByName = db.getByName(derivedName);
-    if (existingByName) {
-      throw new Error(
-        `A skill named "${derivedName}" already exists in the library (id: ${existingByName.id}). ` +
-          `Delete it first or use a different repository.`,
-      );
-    }
-
-    let createdSkill: {
-      id: string;
-      name: string;
-      source_id?: string | null;
-      variant_key?: string | null;
-      local_repo_path?: string | null;
-    } | null = null;
-    let managedRepoPath: string | null = null;
 
     try {
-      console.log(`Cloning ${parsedRepo.cloneUrl} to ${installDir}`);
-      await gitClone(parsedRepo.cloneUrl, installDir);
-      const skillDir = await this.resolveSingleSkillDirFromRepo(installDir);
+      const installDir = await materializeRemoteGitRepository(
+        parsedRepo,
+        source.branch,
+        stagingRoot,
+        (archiveUrl) =>
+          fetchSkillPackageBytes(archiveUrl, this.fetchRemoteBytes),
+        source.directory,
+        gitClone,
+      );
+      const skillDir = source.directory
+        ? await resolveSelectedSkillDirectory(installDir, source.directory)
+        : await this.resolveSingleSkillDirFromRepo(installDir);
+      await validateMaterializedSkillPackage(skillDir);
 
       // Parse metadata
       const manifest = await this.readManifest(skillDir);
-
-      // Load instructions from SKILL.md if not in manifest
-      if (!manifest.instructions) {
-        try {
-          manifest.instructions = await fs.readFile(
-            path.join(skillDir, "SKILL.md"),
-            "utf-8",
-          );
-        } catch (e) {
-          console.error("Failed to read SKILL.md:", e);
-        }
-      }
-
-      // If still no instructions, maybe README.md?
-      if (!manifest.instructions) {
-        try {
-          manifest.instructions = await fs.readFile(
-            path.join(installDir, "README.md"),
-            "utf-8",
-          );
-        } catch (e) {
-          console.error("Failed to read README.md:", e);
-        }
-      }
-
-      if (!manifest.instructions) {
-        console.warn(
-          `No SKILL.md, README.md, or manifest instructions found in ${installDir}. ` +
-            `Skill will be created with empty content.`,
+      const name = options.name?.trim() || manifest.name || repoName;
+      const existingByName = db.getByName(name);
+      if (existingByName) {
+        throw new Error(
+          `A skill named "${name}" already exists in the library (id: ${existingByName.id}). Choose a different skill name.`,
         );
       }
 
-      // Create Skill in DB first, then move the cloned repo into the managed
-      // variant container so all My Skills entries share one disk layout.
+      const instructions = await fs.readFile(
+        path.join(skillDir, "SKILL.md"),
+        "utf8",
+      );
+
+      // Canonical storage publishes the selected package and owns rollback.
       const repoFiles = await this.readLocalRepoFileBuffersByPath(skillDir);
       const sourceDirectory =
-        path.relative(installDir, skillDir).replace(/\\/g, "/") || undefined;
+        path
+          .relative(await fs.realpath(installDir), await fs.realpath(skillDir))
+          .replace(/\\/g, "/") || ".";
       const skill = db.create({
-        name: manifest.name || repoName,
+        name,
         description: manifest.description || `Installed from ${url}`,
         version: manifest.version || "1.0.0",
         author: manifest.author || userDir,
-        content: manifest.instructions || "",
-        instructions: manifest.instructions || "",
+        content: instructions,
+        instructions,
         protocol_type: "skill",
         source_url: url,
         source_label: `${userDir}/${repoName}`,
+        source_branch: source.branch,
         source_directory: sourceDirectory,
-        canonical_skill_path: sourceDirectory
-          ? `${sourceDirectory}/SKILL.md`
-          : "SKILL.md",
-        local_repo_path: installDir,
+        canonical_skill_path:
+          sourceDirectory !== "." ? `${sourceDirectory}/SKILL.md` : "SKILL.md",
+        local_repo_path: skillDir,
         ...buildSkillFingerprintFields(
           computePackageDirectoryFingerprint(repoFiles),
         ),
@@ -542,55 +509,16 @@ export class SkillInstaller {
         tags: [],
         original_tags: manifest.tags || ["github"],
       });
-      createdSkill = skill;
-
-      managedRepoPath = await saveToLocalRepoBySkillId(skill, skillDir);
-      if (managedRepoPath !== skill.local_repo_path) {
-        db.update(skill.id, { local_repo_path: managedRepoPath });
-      }
-
-      const managedRepoResolved = path.resolve(managedRepoPath);
-      if (
-        managedRepoResolved !== installDirResolved &&
-        !isPathWithin(installDirResolved, managedRepoResolved)
-      ) {
-        await fs.rm(installDir, { recursive: true, force: true }).catch((e) => {
-          console.error("Failed to clean up temporary clone directory:", e);
-        });
-      }
-
       return skill.id;
-    } catch (error) {
-      console.error("Installation failed:", error);
-      if (createdSkill) {
-        try {
-          await deleteManagedVariantContainer(createdSkill);
-        } catch (cleanupError) {
-          console.error("Failed to clean up managed skill repo:", cleanupError);
-        }
-        try {
-          db.delete(createdSkill.id);
-        } catch (rollbackError) {
-          console.error(
-            "Failed to roll back created skill row:",
-            rollbackError,
-          );
-        }
-      }
-      // Clean up
-      try {
-        await fs.rm(installDir, { recursive: true, force: true });
-      } catch (e) {
-        console.error("Failed to clean up install directory:", e);
-      }
-      throw error;
+    } finally {
+      await cleanupSkillAcquisitionDirectory(stagingRoot);
     }
   }
 
   static async installFromSource(
     source: string,
     db: SkillDB,
-    options?: { name?: string },
+    options?: SkillSourceInstallOptions,
   ): Promise<string> {
     return installSkillFromSource(
       source,
@@ -763,6 +691,19 @@ export class SkillInstaller {
   ): Promise<string> {
     return saveRemoteGitSkillPackage(skill, options, (url) =>
       fetchSkillPackageBytes(url, this.fetchRemoteBytes),
+    );
+  }
+
+  static materializeRemoteGitSkillPackage(
+    skill: RemotePackageSkill,
+    options: RemoteGitPackageOptions,
+    stagingRoot: string,
+  ): Promise<{ repoPath: string; resolvedDirectory: string }> {
+    return materializeRemoteGitSkillPackage(
+      skill,
+      options,
+      stagingRoot,
+      (url) => fetchSkillPackageBytes(url, this.fetchRemoteBytes),
     );
   }
 
@@ -981,7 +922,7 @@ export class SkillInstaller {
     );
 
     try {
-      await gitClone(parsedRepo.cloneUrl, repoDir, branch);
+      await gitClone(parsedRepo.cloneUrl, repoDir, branch, directory);
 
       const normalizedBranch =
         branch?.trim() || (await gitGetCurrentBranch(repoDir)) || "main";
@@ -1092,7 +1033,7 @@ export class SkillInstaller {
         (skill): skill is RegistrySkill => skill !== null,
       );
     } finally {
-      await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+      await cleanupSkillAcquisitionDirectory(tempRoot);
     }
   }
 

@@ -1039,7 +1039,13 @@ describe("skill-installer-utils", () => {
           "http://192.168.31.12:3000/team/skills",
           "/tmp/dest",
         ],
-        { stdio: ["ignore", "pipe", "pipe"] },
+        {
+          stdio: ["ignore", "pipe", "pipe"],
+          env: undefined,
+          cwd: undefined,
+          windowsHide: true,
+          detached: process.platform !== "win32",
+        },
       );
     });
 

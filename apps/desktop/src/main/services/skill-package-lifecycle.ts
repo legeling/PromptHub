@@ -45,6 +45,7 @@ type LifecycleDatabase = {
 
 export type StagedSkillPackage = {
   repoPath: string;
+  resolvedDirectory?: string;
   content: string;
   contentHash: string;
   directoryFingerprint: string;
@@ -433,7 +434,7 @@ export class SkillPackageLifecycleService {
   ): CreateSkillParams {
     return {
       ...buildStoreInstallSkillData({
-        registrySkill: request.registrySkill,
+        registrySkill: this.resolvedRegistrySkill(request, staged),
         content: staged.content,
         contentHash: staged.contentHash,
         directoryFingerprint: staged.directoryFingerprint,
@@ -613,7 +614,7 @@ export class SkillPackageLifecycleService {
     return {
       ...buildStoreUpdateSkillData({
         installedSkill: installed,
-        registrySkill: request.registrySkill,
+        registrySkill: this.resolvedRegistrySkill(request, staged),
         content: staged.content,
         contentHash: staged.contentHash,
         directoryFingerprint: staged.directoryFingerprint,
@@ -623,6 +624,21 @@ export class SkillPackageLifecycleService {
       }),
       local_repo_path: replacement.repoPath,
     };
+  }
+
+  private resolvedRegistrySkill(
+    request: SkillPackageOperationRequest,
+    staged: StagedSkillPackage,
+  ): SkillPackageOperationRequest["registrySkill"] {
+    const directory = staged.resolvedDirectory;
+    return directory === undefined
+      ? request.registrySkill
+      : {
+          ...request.registrySkill,
+          source_directory: directory,
+          canonical_skill_path:
+            directory === "." ? "SKILL.md" : `${directory}/SKILL.md`,
+        };
   }
 
   private async rollbackUpdate(

@@ -1,4 +1,5 @@
 import { materializeRemoteGitRepository as materializeRepository } from "@prompthub/core/skills/git-materialize";
+import { cleanupSkillAcquisitionDirectory } from "@prompthub/core/skills/acquisition-cleanup";
 import * as fs from "fs/promises";
 import * as path from "path";
 import type {
@@ -79,7 +80,7 @@ function parseRequiredGitRepo(repoUrl: string) {
 }
 
 function normalizeDirectory(value?: string | null): string | undefined {
-  return value?.trim().replace(/^\/+|\/+$/g, "") || undefined;
+  return value?.trim() || undefined;
 }
 
 async function resolveExplicitSkillDirectory(
@@ -148,39 +149,59 @@ async function materializeRemoteGitRepository(
   );
 }
 
-/** Clone, validate, review, and materialize one Git-backed Skill package. */
+/** The caller owns stagingRoot until publication and must clean it on every exit. */
+export async function materializeRemoteGitSkillPackage(
+  skill: RemotePackageSkill,
+  options: RemoteGitPackageOptions,
+  stagingRoot: string,
+  fetchArchive: FetchArchive = fetchRemoteBytes,
+): Promise<{ repoPath: string; resolvedDirectory: string }> {
+  const requestedDirectory =
+    normalizeDirectory(options.directory) ??
+    normalizeDirectory(skill.source_directory);
+  const repoDir = await materializeRemoteGitRepository(
+    parseRequiredGitRepo(options.repoUrl),
+    options.branch,
+    stagingRoot,
+    fetchArchive,
+    requestedDirectory,
+  );
+  const repoPath = await resolveGitSkillDirectory(
+    repoDir,
+    skill,
+    requestedDirectory,
+    options.skillName,
+  );
+  await validateMaterializedSkillPackage(repoPath);
+  return {
+    repoPath,
+    resolvedDirectory:
+      path.relative(repoDir, repoPath).split(path.sep).join("/") || ".",
+  };
+}
+
+/** Clone, validate, and publish one Git-backed Skill package for standalone callers. */
 export async function saveRemoteGitSkillPackage(
   skill: RemotePackageSkill,
   options: RemoteGitPackageOptions,
   fetchArchive: FetchArchive = fetchRemoteBytes,
 ): Promise<string> {
   await initSkillsDir();
-  const parsedRepo = parseRequiredGitRepo(options.repoUrl);
+  parseRequiredGitRepo(options.repoUrl);
   const tempRoot = await fs.mkdtemp(
     path.join(getSkillsDirAccessor(), ".remote-import-"),
   );
 
   try {
-    const requestedDirectory =
-      normalizeDirectory(options.directory) ??
-      normalizeDirectory(skill.source_directory);
-    const repoDir = await materializeRemoteGitRepository(
-      parsedRepo,
-      options.branch,
+    const { repoPath } = await materializeRemoteGitSkillPackage(
+      skill,
+      options,
       tempRoot,
       fetchArchive,
-      requestedDirectory,
     );
-    const skillDir = await resolveGitSkillDirectory(
-      repoDir,
-      skill,
-      requestedDirectory,
-      options.skillName,
-    );
-    await validateMaterializedSkillPackage(skillDir);
-    return await persistStagedPackage(skill, skillDir, options.targetRootDir);
+    return await persistStagedPackage(skill, repoPath, options.targetRootDir);
   } finally {
-    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    await cleanupSkillAcquisitionDirectory(tempRoot);
   }
 }
 
@@ -241,7 +262,7 @@ async function withRemoteGitSkillPackage<T>(
     await validateMaterializedSkillPackage(skillDir);
     return await readSnapshot(skillDir, repoDir);
   } finally {
-    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    await cleanupSkillAcquisitionDirectory(tempRoot);
   }
 }
 
@@ -291,7 +312,7 @@ async function withRemoteZipSkillPackage<T>(
     await validateMaterializedSkillPackage(skillDir);
     return await readPackage(skillDir, zipUrl);
   } finally {
-    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    await cleanupSkillAcquisitionDirectory(tempRoot);
   }
 }
 

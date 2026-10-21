@@ -1,4 +1,7 @@
 import { materializeRemoteGitRepository } from "../../skills/git-materialize";
+import { collectSkillDirsFromRepo } from "../../skills/directory-discovery";
+import { cleanupSkillAcquisitionDirectory } from "../../skills/acquisition-cleanup";
+import { isExternalSkillRepoPath } from "../../skill-local-repo-ownership";
 import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import { fetchRemoteBytes, fetchRemoteText } from "../../skills/remote-fetch";
 import {
@@ -13,7 +16,6 @@ import {
 } from "../../skills/git-source";
 import { cloneSkillRepository } from "../../skills/git-transport";
 import { replaceSkillDestination } from "../../skills/destination";
-import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 
@@ -70,12 +72,14 @@ export async function gitClone(
   url: string,
   destination: string,
   branch?: string,
+  directory?: string,
 ): Promise<void> {
   const settings = readSkillNetworkSettings();
   await cloneSkillRepository(
     url,
     destination,
     branch,
+    directory,
     undefined,
     skillGitEnvironment(url, settings),
   );
@@ -165,24 +169,6 @@ async function replaceSkillRepo(
   );
 }
 
-async function copySkillRepoToNewDestination(
-  sourceDir: string,
-  destinationDir: string,
-  shouldIgnore: (relativePath: string) => boolean,
-): Promise<void> {
-  const stagingDir = `${destinationDir}.staging-${process.pid}-${randomUUID()}`;
-  try {
-    await fs.cp(sourceDir, stagingDir, {
-      recursive: true,
-      filter: createSkillRepoCopyFilter(sourceDir, shouldIgnore),
-    });
-    await fs.rename(stagingDir, destinationDir);
-  } catch (error) {
-    await fs.rm(stagingDir, { recursive: true, force: true });
-    throw error;
-  }
-}
-
 export async function linkRepoToTarget(
   sourceDir: string,
   destinationDir: string,
@@ -254,19 +240,30 @@ export async function installFromSkillContent(
 
   const normalizedName = validateSkillName(skillName);
   await fs.mkdir(getOperationsDir(), { recursive: true });
-  const stagingRoot = await fs.mkdtemp(
-    path.join(getOperationsDir(), "skill-import-"),
-  );
-  const localRepoPath = path.join(stagingRoot, "files");
+  // External local imports remain copies, not linked packages. Owned Git stages
+  // can go directly to storage without another intermediate directory copy.
+  const copySource =
+    options?.repoSourceDir &&
+    isExternalSkillRepoPath("pending-install", options.repoSourceDir);
+  const stagingRoot =
+    options?.repoSourceDir && !copySource
+      ? undefined
+      : await fs.mkdtemp(path.join(getOperationsDir(), "skill-import-"));
+  const localRepoPath = stagingRoot
+    ? path.join(stagingRoot, "files")
+    : options!.repoSourceDir!;
   try {
     if (options?.repoSourceDir) {
       await validateRepoPackageInventory(options.repoSourceDir);
-      const ignore = await loadSkillPackageIgnoreMatcher(options.repoSourceDir);
-      await copySkillRepoToNewDestination(
-        options.repoSourceDir,
-        localRepoPath,
-        ignore,
-      );
+      if (copySource) {
+        const ignore = await loadSkillPackageIgnoreMatcher(
+          options.repoSourceDir,
+        );
+        await fs.cp(options.repoSourceDir, localRepoPath, {
+          recursive: true,
+          filter: createSkillRepoCopyFilter(options.repoSourceDir, ignore),
+        });
+      }
     } else {
       await fs.mkdir(localRepoPath);
       await fs.writeFile(
@@ -313,7 +310,7 @@ export async function installFromSkillContent(
       }),
     }).id;
   } finally {
-    await fs.rm(stagingRoot, { recursive: true, force: true });
+    if (stagingRoot) await cleanupSkillAcquisitionDirectory(stagingRoot);
   }
 }
 
@@ -347,9 +344,19 @@ export async function withSelectedGitSkill<T>(
     const skillDir = source.directory
       ? await resolveSelectedSkillDirectory(checkoutDir, source.directory)
       : await resolveSingleSkillDirFromRepo(checkoutDir);
-    return await read(skillDir, source);
+    const directory =
+      path
+        .relative(await fs.realpath(checkoutDir), await fs.realpath(skillDir))
+        .split(path.sep)
+        .join("/") || ".";
+    // Keep the owned staging prefix after realpath containment validation; a
+    // data-directory alias must not turn our checkout into an external import.
+    return await read(path.join(checkoutDir, directory), {
+      ...source,
+      directory,
+    });
   } finally {
-    await fs.rm(stagingRoot, { recursive: true, force: true });
+    await cleanupSkillAcquisitionDirectory(stagingRoot);
   }
 }
 
@@ -451,11 +458,7 @@ export async function collectSkillDirs(scanPath: string): Promise<string[]> {
 export async function resolveSingleSkillDirFromRepo(
   repoRoot: string,
 ): Promise<string> {
-  if (await fileExists(path.join(repoRoot, "SKILL.md"))) {
-    return repoRoot;
-  }
-
-  const skillDirs = await collectSkillDirs(repoRoot);
+  const skillDirs = await collectSkillDirsFromRepo(repoRoot);
   if (skillDirs.length === 1) {
     return skillDirs[0];
   }

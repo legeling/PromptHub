@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createSkillTestRuntime,
@@ -12,9 +13,13 @@ import {
 import { loadGitHubSkillRepo } from "../../src/renderer/services/github-skill-store";
 import { initDatabase } from "../../src/main/database";
 import { getSkillsDir } from "../../src/main/runtime-paths";
+import * as packageRepo from "../../src/main/services/skill-installer-repo";
 import type { RegistrySkill, Skill } from "@prompthub/shared/types";
 
-const gitTransport = vi.hoisted(() => ({ source: "" }));
+const gitTransport = vi.hoisted(() => ({
+  source: "",
+  directories: [] as (string | undefined)[],
+}));
 vi.mock(
   "../../src/main/services/skill-installer-utils",
   async (importOriginal) => {
@@ -24,23 +29,34 @@ vi.mock(
       >();
     return {
       ...actual,
-      // Only the network transport changes: selection, staging and persistence
-      // still operate on an actual Git checkout with multiple Skill packages.
-      gitClone: async (url: string, destination: string, branch?: string) => {
+      // Only source URL/policy change; production sparse Git, IPC, publication
+      // and SQLite reopen all execute against an isolated local Git server.
+      gitClone: async (
+        url: string,
+        destination: string,
+        branch?: string,
+        selectedDirectory?: string,
+      ) => {
         expect(url).toBe(
           "https://github.com/hechtcarmel/jetbrains-index-mcp-plugin",
         );
-        execFileSync(
-          "git",
-          [
-            "clone",
-            "--branch",
-            branch || "main",
-            gitTransport.source,
-            destination,
-          ],
-          { timeout: 10_000, stdio: "pipe" },
+        gitTransport.directories.push(selectedDirectory);
+        const { cloneSkillRepository } =
+          await import("@prompthub/core/skills/git-transport");
+        const source = pathToFileURL(gitTransport.source).href;
+        await cloneSkillRepository(
+          source,
+          destination,
+          branch,
+          selectedDirectory,
+          (candidate) => {
+            expect(candidate).toBe(source);
+          },
         );
+        if (selectedDirectory)
+          expect(fs.existsSync(path.join(destination, "other-skill"))).toBe(
+            false,
+          );
       },
     };
   },
@@ -99,6 +115,7 @@ function writeRepository(repo: string): void {
   git(repo, "init", "-b", "main");
   git(repo, "config", "user.email", "fixture@example.com");
   git(repo, "config", "user.name", "Skill fixture");
+  git(repo, "config", "uploadpack.allowFilter", "true");
   git(repo, "add", ".");
   git(repo, "commit", "-m", "Initial nested package");
 }
@@ -164,6 +181,7 @@ describe("#218 nested Git Skill import and source update", () => {
   beforeEach(async () => {
     runtime = await createSkillTestRuntime();
     gitTransport.source = runtime.source;
+    gitTransport.directories = [];
     writeRepository(runtime.source);
     const values = new Map<string, string>();
     vi.stubGlobal("localStorage", {
@@ -190,17 +208,21 @@ describe("#218 nested Git Skill import and source update", () => {
     });
   });
   afterEach(() => {
+    vi.restoreAllMocks();
     runtime?.dispose();
     gitTransport.source = "";
     vi.unstubAllGlobals();
   });
 
   async function installSelected(): Promise<Skill> {
+    const intermediateCopy = vi.spyOn(packageRepo, "copyRepoByPathToDirectory");
     const selected = await selectedPackage(runtime.source);
     const result = await renderer.useSkillStore
       .getState()
       .installRegistrySkill(selected);
     expect(result.status).toBe("installed");
+    expect(gitTransport.directories).toEqual([directory]);
+    expect(intermediateCopy).not.toHaveBeenCalled();
     if (result.status !== "installed")
       throw new Error("Nested Git installation failed");
     expectInstalledPackage(result.skill, runtime.source);
@@ -226,6 +248,31 @@ describe("#218 nested Git Skill import and source update", () => {
           .getInstalledSkillSourceUpdateStatus(skill.id)
       )?.status,
     ).toBe("up-to-date");
+  });
+
+  it("acquires an unknown directory once and persists discovery through reopening", async () => {
+    const selected = await selectedPackage(runtime.source);
+    fs.rmSync(path.join(runtime.source, "other-skill"), { recursive: true });
+    git(runtime.source, "add", ".");
+    git(runtime.source, "commit", "-m", "Single discoverable package");
+    const result = await renderer.useSkillStore
+      .getState()
+      .installRegistrySkill({
+        ...selected,
+        source_directory: undefined,
+        canonical_skill_path: undefined,
+        source_url: repoUrl,
+        content_url: undefined,
+        content: "",
+      });
+    expect(result.status).toBe("installed");
+    expect(gitTransport.directories).toEqual([undefined]);
+    if (result.status !== "installed")
+      throw new Error("Discovery installation failed");
+    await runtime.reopen();
+    const reopened = await skillApi.get(result.skill.id);
+    if (!reopened) throw new Error("Discovered package missing after reopen");
+    expectInstalledPackage(reopened, runtime.source);
   });
 
   it("updates only the selected complete package and persists its new baseline", async () => {

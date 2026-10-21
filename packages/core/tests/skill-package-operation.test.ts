@@ -60,6 +60,20 @@ function expectInvalidRequest(
 }
 
 describe("Skill package operation policy", () => {
+  it.each(["remote-git", "remote-zip"] as const)(
+    "allows main to acquire %s without a prefetched body",
+    (kind) => {
+      const source =
+        kind === "remote-git"
+          ? { kind, repoUrl: registrySkill.source_url }
+          : { kind, zipUrl: "https://example.com/writer.zip" };
+      expect(() =>
+        validateSkillPackageOperationRequest(
+          installRequest({ source, content: "" }),
+        ),
+      ).not.toThrow();
+    },
+  );
   it("validates install/update requests and rejects malformed package files", () => {
     expect(validateSkillPackageOperationRequest(installRequest())).toEqual(
       installRequest(),
@@ -267,7 +281,17 @@ describe("Skill package operation policy", () => {
       },
       /description exceeds the text length limit/,
     );
-    expectInvalidRequest({ content: "" }, /content must be a non-empty string/);
+    expectInvalidRequest(
+      {
+        content: "",
+        source: {
+          kind: "content",
+          sourceUrl: registrySkill.source_url,
+          content: "# Writer",
+        },
+      },
+      /content must be a non-empty string/,
+    );
     const oversizedContent = "x".repeat(MAX_SKILL_PACKAGE_TEXT_BYTES + 1);
     expectInvalidRequest(
       { content: oversizedContent },
@@ -414,7 +438,11 @@ describe("Skill package operation policy", () => {
     expectInvalidRequest({ operation: "remove" as never }, /operation must be/);
     expectInvalidRequest({ registrySkill: null as never }, /must be an object/);
     expectInvalidRequest({ registrySkill: [] as never }, /must be an object/);
-    expect(() => validateSkillPackageOperationRequest(installRequest({ safetyScan: null as never }))).not.toThrow();
+    expect(() =>
+      validateSkillPackageOperationRequest(
+        installRequest({ safetyScan: null as never }),
+      ),
+    ).not.toThrow();
     expect(() =>
       validateSkillPackageOperationRequest(
         installRequest({

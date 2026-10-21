@@ -121,6 +121,367 @@ SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升�
 `prepareRecord` 保留连续的身份、来源与恢复记录核验；迁移编排保留批次发布及
 清理顺序，两函数允许超过 50 行，避免拆散必须一起审查的状态转换。
 
+### Git directory acquisition (#215)
+
+Confirmed and locally implemented 2026-10-20; release pending.
+
+Follow-up scope (locally implemented and verified 2026-10-20): legacy Desktop
+`installFromSource` / `installFromGithub` must use the same Core source parser
+and materializer as current package acquisition, including branch/directory
+selection and the existing HTTPS archive fallback. Keep existing publication
+and rollback ownership. Unknown-directory imports discover once, then persist
+the actual repository-relative `source_directory` (`.` for root), so reopen,
+checks and updates select the same package even if other Skills are later added.
+No metadata-only discovery engine, persistent cache, schema migration or
+changes to local copy/symlink policy. Existing records with no directory remain
+discoverable; no speculative bulk backfill. Regression coverage must include
+legacy entrypoints, discovery/reopen/update, ambiguity, fallback and cleanup.
+The existing Desktop recursive directory walker moves to Core and is reused by
+CLI Git discovery, replacing its two-level, hidden-directory-skipping scan.
+Existing traversal bounds, ignored entries and symlink policy remain unchanged;
+local CLI scan-preview behavior is outside this change. Discovery visits each
+directory once, retaining the existing bounded queue and per-directory sorting.
+
+Acquisition audit:
+
+Review corrections (2026-10-21; locally implemented and verified): first remote
+installation must acquire its package once in main, without a renderer snapshot
+prefetch. Main persists the discovered directory and canonical entrypoint while
+preserving source identity. Caller-owned Git staging is used directly through
+publication; CLI Git imports also publish directly from their owned acquisition
+directory. External local imports retain copy semantics and their staging copy.
+Legacy Git installation delegates publication and rollback exclusively to
+canonical storage, with no second copy/update or manual post-create compensation.
+Disposable acquisition cleanup failures log the retained path and sanitized
+diagnostic without changing a committed success or hiding the primary failure.
+Storage rollback failures keep their existing recovery contract. POSIX Git owns
+a process group so timeout kills its descendants before staging cleanup; Windows
+retains the existing native process-tree terminator. No cache, retries, schema
+change or new public operation is introduced. Regression acceptance includes
+single acquisition/publication, discovered-directory reopen, injected cleanup
+and publication failures, and a real descendant holding process output open.
+The existing request shape is unchanged: remote Git/ZIP requests may carry an
+empty cached body because staging reads the required authoritative `SKILL.md`;
+content-only requests still require a nonempty body. Copy-failure injection also
+exposed an empty new Skill container blocking reopen; storage must remove only
+that operation's previously absent, empty container after publication rollback.
+
+Convergence follow-up (2026-10-21; locally implemented and verified): the
+registered legacy Git/ZIP save IPCs must adapt into the same package lifecycle
+as current updates, returning the canonical published path and persisting the
+resolved Git directory. They must not commit a second `repo` tree or sidecars
+before SQL finalization. SQL failure preserves the previous package, metadata
+and history; reopening and retrying remain valid. Git checkout symlinks are
+skipped without following their targets, as before the intermediate-copy
+optimization. Filtering belongs to owned disposable acquisition, not relaxed
+canonical-storage validation or mutation of external local sources. This adds
+only a linear metadata traversal, not another package-byte copy. Legacy install
+conflicts use the selected package's final name, not a repository-wide name.
+Unknown-directory selection includes root and nested candidates in the same
+ambiguity check on Desktop and CLI. Explicit directory selection is unchanged.
+No schema migration, persistent cache or new retry/rollback mechanism is needed.
+The save-IPC adapter keeps request mapping and result translation together
+(over 50 lines), with no persistence of its own; its Git/ZIP integration cases
+cover publication, metadata, SQL rollback, reopen and retry.
+
+| Entry | Current acquisition boundary |
+| --- | --- |
+| Legacy Desktop source/Git install | Core source parsing → materializer → selected package → one canonical storage publication/rollback |
+| Legacy Desktop remote Git/ZIP save IPC | Request adapter → same lifecycle instance and startup recovery gate as current updates → canonical storage; no independent filesystem publication |
+| Desktop package snapshot/install/update | Core materializer; install acquires once in main and persists staging `resolvedDirectory`; snapshot remains the check/preview boundary |
+| CLI Git import/check/update | Core materializer; unknown directory uses shared recursive discovery, import persists its actual directory |
+| HTTP Git catalog scan | Existing tree metadata + entrypoint reads; no package clone needed |
+| SSH Git catalog scan | Shared Git transport + shared discovery; unknown scan remains a full shallow checkout |
+
+Legacy publication now supplies the selected package path, not the checkout
+root, to canonical storage. `SKILL.md` remains required and authoritative;
+an unreadable entrypoint cannot be replaced by repository README content.
+The legacy install orchestration keeps selection and metadata assembly together
+(over 50 lines); canonical storage alone owns publication and compensation.
+
+#### Submission review — 2026-10-21
+
+An index-only source snapshot excludes unrelated working-tree changes. Review
+found and fixed one additional CLI path-alias defect: realpath validation must
+not replace the owned staging prefix passed to publication, or the checkout is
+misclassified as external and copied again. An explicit symlinked-root regression
+asserts one publication, no intermediate copy, intact binary bytes and reopen.
+Ordinary test profiles use canonical paths; the alias case remains explicit.
+
+The final selected regression union passes 413 distinct cases: Core 68 across
+nine files, Desktop 306 across twelve files, CLI 39 across five files. The two
+CLI files affected by the path correction were rerun (14 cases); unaffected
+passing suites were retained. This includes real Git filtering and pinned
+revision checkout, package completeness, CLI marketplace install/update/reopen,
+legacy IPC convergence, rollback, cleanup and process-tree termination.
+
+Reproduction commands (run in each owning package):
+
+```sh
+# packages/core
+pnpm exec vitest run tests/skill-git-materialize.test.ts tests/skill-git-process.test.ts tests/skill-git-sparse.test.ts tests/skill-git-transport.test.ts tests/skill-network-settings.test.ts tests/canonical-skill-db.test.ts tests/skill-package-operation.test.ts tests/plugin-git-acquisition.test.ts tests/plugin-third-party-marketplace.test.ts --maxWorkers=2 --minWorkers=1
+# apps/desktop
+pnpm exec vitest run tests/integration/skill-git-acquisition-convergence.test.ts tests/integration/skill-legacy-git-acquisition.test.ts tests/integration/skill-nested-git-source-update.test.ts tests/unit/main/skill-local-repo-ipc.test.ts tests/unit/main/skill-installer-install-sources.test.ts tests/unit/main/skill-installer-remote-git-package.test.ts tests/unit/main/skill-installer-remote-package.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/main/skill-package-lifecycle.test.ts tests/unit/main/skill-package-lifecycle-desktop.test.ts tests/unit/main/plugin-source-reconciliation.test.ts tests/unit/main/plugin-library-marketplace.test.ts --maxWorkers=2 --minWorkers=1
+# apps/cli
+pnpm exec vitest run tests/plugin-market-acquisition.test.ts tests/plugin-management-parity.test.ts tests/skill-git-source-parity.test.ts tests/skill-package-policy.test.ts tests/skill.test.ts --maxWorkers=2 --minWorkers=1
+```
+
+The isolated runs reuse installed dependencies with pnpm's
+`--config.verify-deps-before-run=false`; no dependencies are installed.
+Core and CLI TypeScript, Desktop source/test TypeScript and scoped ESLint pass.
+Local full/sparse Git pack sizes remain 2,098,762 / 971 bytes for the controlled
+fixture; this is not a public-network speed guarantee. No native GUI, Windows
+runtime or full release harness is claimed. Publication remains pending.
+
+#### Convergence regression acceptance — 2026-10-21
+
+- `apps/desktop/tests/integration/skill-git-acquisition-convergence.test.ts`
+  adds nine real-storage cases. All nine failed against the reviewed code and
+  pass after correction: Git/ZIP legacy save, SQL failure rollback and retry,
+  two explicit packages in one repository, root-plus-nested ambiguity, and
+  CLI/current Desktop/legacy Desktop symlink filtering. Assertions include
+  nested text/binary bytes, canonical returned path, source-directory reopen,
+  preserved personal tags/favorite state/history, no leftover legacy repo,
+  one asset publication and zero intermediate Git directory copies. Internal,
+  broken and external-directory links are skipped without changing targets.
+- Selected regression union: 399 distinct tests pass (Desktop 316, Core 47,
+  CLI 36). The initial expanded Desktop run had 14 failures in the mocked
+  remote-package adapter fixture, whose `readdir` returned the same child at
+  every depth. Correcting that fixture, without relaxing product assertions,
+  made its 28 cases pass; the affected three-file rerun passed 71 cases.
+- Desktop source/test TypeScript (including Core tests), CLI source/test
+  TypeScript, scoped ESLint and diff whitespace checks pass. The first type
+  check caught an invalid empty category in the adapter; it now uses the
+  existing `general` category. ESLint runs from the repository root with the
+  Desktop config so Core files are included rather than ignored.
+- Existing local real-Git sparse regression preserved package bytes and
+  measured full/sparse pack sizes of 2,098,762 / 971 bytes. This is local pack
+  evidence, not public-network throughput. The new integration substitutes
+  Git/HTTP and Electron transport only; lifecycle, SQLite, files and reopening
+  execute production code. No GUI, Windows runtime or full release-harness
+  acceptance is claimed. No commit or publication was performed.
+
+Focused reproduction/acceptance commands (from repository root):
+
+```sh
+pnpm --dir apps/desktop exec vitest run tests/integration/skill-git-acquisition-convergence.test.ts tests/unit/main/skill-local-repo-ipc.test.ts tests/unit/main/skill-installer-remote-package.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --dir packages/core exec vitest run tests/skill-git-materialize.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --dir packages/core exec vitest run tests/canonical-skill-db.test.ts tests/skill-git-sparse.test.ts tests/skill-git-transport.test.ts tests/skill-git-process.test.ts tests/skill-package-operation.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --dir apps/cli exec vitest run tests/skill-git-source-parity.test.ts tests/skill-package-policy.test.ts tests/skill.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --dir apps/desktop typecheck:tests
+pnpm --dir apps/cli typecheck
+```
+
+- Desktop and CLI Git package preview, installation, fingerprint checks and
+  updates share Core's materialization/transport boundary. A known non-root
+  `directory` uses shallow partial clone without checkout, literal root-anchored
+  non-cone sparse selection, then checkout of the clone's HEAD. Root `.` and unknown directories retain
+  full shallow checkout and existing package discovery. Never infer a directory
+  from a Skill name or hardcode `skills/` or `main`.
+- Reuse `directory`, snapshot `resolvedDirectory` and persisted `source_directory`.
+  No schema, IPC shape, source identity, storage layout or package fingerprint change.
+  Discovery results flow through existing install metadata; no repository cache,
+  metadata index, additional retry, concurrency policy or user-facing switch.
+- `git-transport` owns commands and one shared existing Git timeout budget;
+  `git-materialize` passes the requested directory and owns the existing HTTPS
+  archive fallback. Desktop/CLI retain their URL policy and network environment.
+  All Git subprocesses, including lazy object fetch during checkout, receive the
+  same environment; cleanup waits for process exit. No global Git config changes.
+- Validate relative directory input before transport/fallback. Escape Git pattern
+  characters and select only the requested directory tree, excluding unrelated
+  ancestor/root-level files; only the selected package enters validation and
+  publication. Existing symlink, ignore, capacity and full-inventory checks apply.
+  Missing directory/entrypoint and invalid packages fail without selecting a
+  different Skill or adding a full-clone retry.
+
+- Servers ignoring the filter may still complete successfully with reduced
+  checkout but no network savings; retain bounded diagnostics. Git acquisition
+  failures use only the existing archive policy; SSH is never converted to HTTPS.
+  Preserve the installed package and baseline on failure. No migration is needed;
+  code rollback restores full shallow acquisition without rewriting user data.
+- Cost: repository tree/index metadata remains proportional to repository paths;
+  content transfer is the selected package and any Git-required attributes when the server
+  supports filtering. Unknown/root acquisition retains current repository cost.
+  No persistent cache or extra in-memory package copy is introduced.
+- Acceptance: real Git fixtures compare full and sparse package inventory/bytes,
+  verify unrelated blobs are absent without lazy fetching them, cover branch and
+  unusual directory names, root/unknown selection, invalid paths, acquisition
+  failure and existing archive/publication recovery. Desktop/CLI consumers must
+  preserve resolved directories and existing reopen/update behavior. Measure
+  elapsed time and object/disk bytes separately from network traffic; local Git
+  measurements are not remote-network or Windows acceptance.
+- The Git process runner keeps timer, stdin/stderr and exit handling together
+  (over 50 lines) so cleanup cannot precede process exit. Real Git integration
+  fixtures keep package comparison and measurements together for the same reason;
+  process lifecycle tests cover timeout and shared-budget failure behavior.
+
+Scope expansion locally implemented and verified 2026-10-21: Skill and Plugin
+share literal directory-pattern construction. Plugin Git source and marketplace
+acquisition select the package before checkout, including pinned revisions;
+CLI marketplace installation/update materialize and publish complete packages.
+Each owner's URL policy, process runner, publication and recovery boundary remain.
+No schema, persistent layout, external Agent CLI, CI or release-script changes.
+Acquisition remains linear in the selected package plus Git tree metadata;
+unknown/root packages retain whole-tree acquisition. Existing installations are
+unchanged until an explicit update; rollback uses existing package versions.
+
+#### Expanded Skill/Plugin/CLI verification — 2026-10-21
+
+- Core: 34 cases passed, including nine new Plugin acquisition cases and strengthened
+  Skill object-inventory assertions. Real filtering-enabled `file://` repositories
+  exercise both Plugin materializers, pinned revisions, root packages, literal
+  brackets/Unicode/spaces/wildcards, complete hidden/nested/binary files, rejection
+  of line-separated patterns, missing-manifest cleanup and preservation of a prior
+  package. The POSIX wildcard/quote cases are not Windows acceptance.
+- CLI: 14 distinct cases passed across marketplace acquisition, Plugin management
+  parity and Skill Git parity. The new marketplace case uses real `runCli`, Git,
+  canonical package publication, SQLite close/reopen, binary-only update and a
+  failed update with the original package retained and staging removed. Only
+  HTTP metadata and the remote Git location are replaced; the latter uses isolated
+  Git config to route to the fixture. `check-update` exercises upstream comparison;
+  `check` is the separate local package health command.
+- Desktop: 138 cases passed across the six selected installer, marketplace,
+  source-reconciliation, nested-source and legacy-acquisition suites. Integration
+  cases exercise the registered entrypoints with substituted Electron transport,
+  real package files and SQLite; this is not graphical application acceptance.
+- Defect sensitivity: an isolated source copy with CLI materialization disabled
+  fails the new test on missing installed package files (exit 1). Restoring the
+  pre-expansion Plugin checkout and Skill cone selection produces eight failures
+  in the 15 selected Git cases (exit 1): missing literal paths, unrelated/obsolete
+  blobs fetched and line-separated patterns accepted. Working sources were not
+  modified for these checks; the isolated copy was removed.
+- Controlled Skill measurement: full/sparse local pack bytes 2,098,762 / 971;
+  elapsed 241 / 519 ms in one concurrent test run. This verifies reduced object
+  materialization, not network-byte savings or universal latency improvement.
+- Core strict source types, Desktop source/test types (including Core tests), CLI
+  source/test types, scoped ESLint and whitespace checks pass. New files are below
+  1,000 lines. Ordered Git fixture and CLI lifecycle test functions retain more
+  than 50 lines to keep setup, reopen, update and failure assertions together.
+- No Windows machine, live remote rerun, GUI run or full release harness in this
+  expansion. No commit, push or remote issue mutation.
+
+Repeat from repository root:
+
+```sh
+pnpm --filter @prompthub/core test -- tests/plugin-git-acquisition.test.ts tests/skill-git-sparse.test.ts tests/skill-git-transport.test.ts tests/skill-git-materialize.test.ts tests/skill-git-process.test.ts tests/plugin-third-party-marketplace.test.ts
+pnpm --filter @prompthub/cli test -- tests/plugin-market-acquisition.test.ts tests/plugin-management-parity.test.ts tests/skill-git-source-parity.test.ts
+pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-source-reconciliation.test.ts tests/unit/main/plugin-library-marketplace.test.ts tests/unit/main/skill-installer-remote-git-package.test.ts tests/unit/main/skill-installer-utils.test.ts tests/integration/skill-nested-git-source-update.test.ts tests/integration/skill-legacy-git-acquisition.test.ts --minWorkers=1 --maxWorkers=2
+pnpm --filter @prompthub/core typecheck
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --filter @prompthub/cli typecheck
+```
+
+The new files are selected by the normal Core and CLI Vitest discovery and their
+existing root harness checks. This focused run does not imply release readiness.
+
+#### Verification — 2026-10-20
+
+- TDD: before implementation, `skill-git-materialize.test.ts` produced five
+  assertion failures (missing directory argument and four unsafe paths accepted).
+  All five pass after implementation. Additional regressions cover real package
+  acquisition, process lifecycle and the existing consumer workflows.
+- Core: 16 tests across `skill-git-{materialize,process,sparse,transport}.test.ts`
+  and `skill-network-settings.test.ts` pass. The six sparse cases use real Git;
+  the quoted pathname case is POSIX-only because Windows forbids quotes.
+  Process fixtures verify shared timeout budget, environment propagation and
+  waiting for process exit. Materializer spies prove boundary routing only.
+- Desktop: 170 tests pass across the two remote-package suites, installer utils,
+  package lifecycle and `skill-nested-git-source-update.test.ts`. The five nested
+  Git integration cases exercise renderer actions, registered preload/IPC,
+  production partial clone, real files/SQLite and reopen; only remote URL/policy,
+  GitHub metadata and Electron transport are substituted. They assert unchanged
+  package bytes, binary-only updates, new baseline and failed-source preservation.
+  Another 35 source-check/routing/update-failure store regressions pass.
+- CLI: 16 Git-source parity/package-policy cases pass, including import/reopen
+  and binary-only remote change detection. These substitute network checkout,
+  assert the forwarded directory and exercise actual commands/storage.
+- Local controlled fixture: same package bytes and commit, unrelated blob absent;
+  full/sparse pack sizes 2,098,624 / 854 bytes, measured acquisition 100 / 82 ms.
+  Pack size is not a network-byte measurement.
+- Real GitHub acquisition: `anthropics/skills`, `skills/pdf`, commit
+  `dbd4588f9e1033efb41dad4bef2f7947c8993d44`; all 12 package file hashes match.
+  Full/sparse `.git` file bytes 3,931,769 / 144,174; total temporary file bytes
+  15,824,235 / 254,620; elapsed 3.67 / 6.36 seconds. This single sequential sample
+  proves less local materialization, not universal acceleration or measured
+  wire-byte savings. Partial clone introduces extra remote round trips.
+- Desktop source/test TypeScript (including Core tests), CLI source/test
+  TypeScript, scoped ESLint and file size checks pass. CLI's independent type
+  check caught the missing directory argument in its dependency declaration;
+  the declaration was corrected and the check passes. No Electron GUI, Windows runtime, full release harness,
+  remote authentication or measured public-network byte acceptance is claimed.
+
+#### Legacy/discovery follow-up verification — 2026-10-20
+
+- Test-first evidence: two CLI cases failed because discovered `source_directory`
+  was absent; two further deep/hidden-directory cases failed with
+  `SKILL_INVALID_PACKAGE` before shared discovery. Legacy integration also exposed
+  the wrong root path passed to storage and the missing archive fallback.
+  The initial cleanup assertion incorrectly assumed an empty operations folder;
+  it now compares against the runtime's existing journal/migration directories.
+- 154 distinct selected tests pass: Desktop 120 (legacy acquisition 7,
+  install sources 17, local resilience 57, remote Git package 18, discovery 11,
+  nested Git source update 5, source routing 5); CLI 34 (Git parity 10,
+  package policy 10, existing Skill commands 14). Eleven cases are new in this
+  follow-up. The deep/hidden cases exercise import, real SQLite reopen, remote
+  check and source update after another package is added upstream.
+- Legacy acquisition integration substitutes only Git/HTTP transport and the
+  existing isolated desktop runtime transport; package validation, storage,
+  byte readback and reopen are real. CLI parity substitutes checkout. Existing
+  discovery tests retain symlink, hidden-container, ignore, depth and directory
+  budget coverage. Existing rollback injection and real Git integration pass.
+- Desktop source/test and CLI TypeScript, scoped ESLint, file-size check and
+  `git diff --check` pass. No GUI, Windows, new live-network benchmark or full
+  release harness was run for this follow-up. No commits or publication.
+
+Additional follow-up commands (repository root):
+
+```sh
+pnpm --config.verify-deps-before-run=false --dir apps/desktop exec vitest run tests/integration/skill-legacy-git-acquisition.test.ts tests/unit/main/skill-installer-install-sources.test.ts tests/unit/main/skill-installer-local-resilience.test.ts tests/unit/main/skill-installer-discovery.test.ts tests/unit/main/skill-installer-remote-git-package.test.ts tests/integration/skill-nested-git-source-update.test.ts tests/unit/stores/skill-store-source-routing.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --config.verify-deps-before-run=false --dir apps/cli exec vitest run tests/skill-git-source-parity.test.ts tests/skill-package-policy.test.ts tests/skill.test.ts --maxWorkers=1 --minWorkers=1
+```
+
+#### Acquisition/publication review verification — 2026-10-21
+
+- 385 distinct selected tests pass after the review fixes: Core 58, Desktop 291,
+  CLI 36. Core covers Git materialization/transport/process/sparse checkout,
+  package request validation, canonical Skill storage and SQLite publication.
+  Desktop covers both real-runtime Git workflows, installer source/utils/remote
+  adapters, lifecycle and its desktop adapter, source routing/check/update-failure
+  actions, package IPC and renderer operation contracts. CLI covers Git parity,
+  package policy and existing Skill commands. Counts exclude repeated checks.
+- Real renderer → preload/IPC → main → filesystem/SQLite installation acquires
+  known and unknown directories exactly once; unknown discovery survives reopen.
+  The Git lifecycle makes no intermediate directory copy. Legacy installation
+  invokes storage create once with no follow-up update. CLI Git import performs
+  no intermediate directory copy and copies its binary asset once for canonical
+  publication. Source check/apply remains fresh and fingerprint-guarded.
+- Failure injection verifies canonical copy failure leaves no installed row,
+  removes its new empty container, allows database reopen and a successful retry.
+  Nonempty containers remain untouched. Disposable cleanup failures preserve both
+  successful installation and primary acquisition errors while logging the path.
+  Existing SQLite tests also cover real process exit before/after commit and
+  uncertain commit recovery; the publication journal contract is unchanged.
+- A real POSIX parent/descendant fixture verifies timeout closes inherited output
+  without the fixture rescue timer. Existing real Git sparse/full fixtures retain
+  identical package bytes and 2,098,624 / 854-byte packs; this run measured about
+  628 / 262 ms under local test load, not remote network traffic or a general speed
+  guarantee. No global Git settings were changed.
+- Desktop source/test TypeScript (including Core), CLI source/test TypeScript,
+  scoped ESLint, source/test size checks and scoped `git diff --check` pass.
+  No GUI, Windows runtime, fresh live-network acquisition or release harness was
+  run. Test-owned temporary profiles and processes were cleaned up. No commit,
+  push or release was performed.
+
+Re-run the selected suites from the repository root (existing dependencies):
+
+```sh
+pnpm --config.verify-deps-before-run=false --dir packages/core exec vitest run tests/skill-git-materialize.test.ts tests/skill-git-process.test.ts tests/skill-git-sparse.test.ts tests/skill-git-transport.test.ts tests/skill-network-settings.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --config.verify-deps-before-run=false --dir apps/desktop exec vitest run tests/unit/main/skill-installer-remote-git-package.test.ts tests/unit/main/skill-installer-remote-package.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/main/skill-package-lifecycle.test.ts tests/integration/skill-nested-git-source-update.test.ts tests/unit/stores/skill-store-source-checks.test.ts tests/unit/stores/skill-store-source-routing.test.ts tests/unit/stores/skill-store-source-update-failures.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --config.verify-deps-before-run=false --dir apps/cli exec vitest run tests/skill-git-source-parity.test.ts tests/skill-package-policy.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --config.verify-deps-before-run=false --dir apps/desktop exec tsc --noEmit -p tsconfig.test.json
+pnpm --config.verify-deps-before-run=false --dir apps/cli exec tsc --noEmit -p tsconfig.json
+```
+
 ### 2.1 Source Update Reconciliation Contract
 
 - My Skills 的来源更新必须按三方对账处理：`B` 是上次来源安装基线，`L` 是当前本地 package，`R` 是当前来源 package。

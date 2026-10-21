@@ -343,8 +343,11 @@ describe("Desktop Skill package lifecycle persistence", () => {
         return repoPath;
       };
       const gitSpy = vi
-        .spyOn(SkillInstaller, "saveRemoteGitSkillToLocalRepoBySkillId")
-        .mockImplementation(materialize as never);
+        .spyOn(SkillInstaller, "materializeRemoteGitSkillPackage")
+        .mockImplementation(async (skill, _options, stagingRoot) => ({
+          repoPath: await materialize(skill, { targetRootDir: stagingRoot }),
+          resolvedDirectory: "skills/writer",
+        }));
       const zipSpy = vi
         .spyOn(SkillInstaller, "saveRemoteZipSkillToLocalRepoBySkillId")
         .mockImplementation(materialize as never);
@@ -376,6 +379,9 @@ describe("Desktop Skill package lifecycle persistence", () => {
       });
 
       expect(staged.safetyReport).toBeUndefined();
+      expect(staged.resolvedDirectory).toBe(
+        sourceKind === "remote-git" ? "skills/writer" : undefined,
+      );
       expect(
         sourceKind === "remote-git" ? gitSpy : zipSpy,
       ).toHaveBeenCalledTimes(1);
@@ -383,6 +389,7 @@ describe("Desktop Skill package lifecycle persistence", () => {
         expect(gitSpy).toHaveBeenCalledWith(
           expect.anything(),
           expect.objectContaining({ skillName: "writer" }),
+          stagingRoot,
         );
       }
     },

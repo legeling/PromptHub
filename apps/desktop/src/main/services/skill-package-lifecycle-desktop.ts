@@ -188,20 +188,27 @@ async function materializeRemoteSource(
   source: RemotePackageSource,
   stagingRoot: string,
   stageSkill: Skill,
-): Promise<string> {
+): Promise<{ repoPath: string; resolvedDirectory?: string }> {
   if (source.kind === "remote-git") {
-    return SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(stageSkill, {
-      repoUrl: source.repoUrl,
-      branch: source.branch,
-      directory: source.directory,
-      skillName: source.skillName,
-      targetRootDir: stagingRoot,
-    });
+    return SkillInstaller.materializeRemoteGitSkillPackage(
+      stageSkill,
+      {
+        repoUrl: source.repoUrl,
+        branch: source.branch,
+        directory: source.directory,
+        skillName: source.skillName,
+      },
+      stagingRoot,
+    );
   }
-  return SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(stageSkill, {
-    zipUrl: source.zipUrl,
-    targetRootDir: stagingRoot,
-  });
+  const repoPath = await SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(
+    stageSkill,
+    {
+      zipUrl: source.zipUrl,
+      targetRootDir: stagingRoot,
+    },
+  );
+  return { repoPath };
 }
 
 function isRemotePackageSource(
@@ -223,9 +230,12 @@ async function stagePackage(
   const stageSkill = createStageSkill(request, context.sourceId);
   const source = request.source;
   const remote = isRemotePackageSource(source);
-  const repoPath = remote
+  const materialized = remote
     ? await materializeRemoteSource(source, context.stagingRoot, stageSkill)
-    : await materializeNonRemoteSource(source, context.stagingRoot);
+    : {
+        repoPath: await materializeNonRemoteSource(source, context.stagingRoot),
+      };
+  const { repoPath } = materialized;
   await validateMaterializedSkillPackage(repoPath);
   const directoryFingerprint = await computeRepoDirectoryFingerprint(repoPath);
   const content = await fs.readFile(path.join(repoPath, "SKILL.md"), "utf8");
@@ -234,6 +244,7 @@ async function stagePackage(
     content,
     contentHash: computeContentHash(content),
     directoryFingerprint,
+    resolvedDirectory: materialized.resolvedDirectory,
   };
 }
 

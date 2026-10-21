@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SkillStorageDB } from "../src/skill-storage";
 import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
 
@@ -22,6 +22,7 @@ beforeEach(() => {
   fs.writeFileSync(path.join(source, "SKILL.md"), "Initial");
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   database.close();
   resetRuntimePaths();
   fs.rmSync(root, { recursive: true, force: true });
@@ -35,6 +36,35 @@ function create() {
     local_repo_path: source,
   });
 }
+
+it("removes only its new empty container when package preparation fails", () => {
+  const copy = vi.spyOn(fs, "copyFileSync").mockImplementation(() => {
+    throw new Error("fixture copy failure");
+  });
+  expect(create).toThrow("fixture copy failure");
+  copy.mockRestore();
+  expect(skills.getAll()).toEqual([]);
+  expect(fs.readdirSync(path.join(root, "data", "skills"))).toEqual([]);
+  expect(create().local_repo_path).toBeTruthy();
+});
+
+it("retains nonempty new containers when rollback cannot remove unrelated contents", () => {
+  vi.spyOn(fs, "copyFileSync").mockImplementation((_source, target) => {
+    const container = path.dirname(path.dirname(String(target)));
+    fs.writeFileSync(path.join(container, "retained.txt"), "keep");
+    throw new Error("fixture copy failure");
+  });
+  expect(create).toThrow("fixture copy failure");
+  const containers = fs.readdirSync(path.join(root, "data", "skills"));
+  expect(containers).toHaveLength(1);
+  expect(
+    fs.readFileSync(
+      path.join(root, "data", "skills", containers[0], "retained.txt"),
+      "utf8",
+    ),
+  ).toBe("keep");
+  expect(skills.getAll()).toEqual([]);
+});
 it("adopts full package bytes and updates metadata and history in SQL", () => {
   const skill = create();
   const directory = path.join(root, "data", "skills", skill.id, "files");

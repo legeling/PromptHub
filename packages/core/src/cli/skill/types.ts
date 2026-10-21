@@ -152,5 +152,6 @@ export interface CliSkillServiceDeps {
     url: string,
     destinationDir: string,
     branch?: string,
+    directory?: string,
   ) => Promise<void>;
 }

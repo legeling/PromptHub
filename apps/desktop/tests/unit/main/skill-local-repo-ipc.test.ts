@@ -8,6 +8,11 @@ vi.mock("@prompthub/core/runtime-paths", () => ({
 }));
 
 const handleMock = vi.fn();
+const runPackageOperationMock = vi.fn().mockResolvedValue({
+  status: "completed",
+  operation: "update",
+  skill: { local_repo_path: "/managed/writer/files" },
+});
 const saveRemoteGitSkillToLocalRepoBySkillIdMock = vi
   .fn()
   .mockResolvedValue("/managed/writer/repo");
@@ -123,6 +128,7 @@ function createSkillDbMock() {
 async function setupSkillLocalRepoIpc() {
   vi.resetModules();
   handleMock.mockReset();
+  runPackageOperationMock.mockClear();
   saveRemoteGitSkillToLocalRepoBySkillIdMock.mockClear();
   saveRemoteZipSkillToLocalRepoBySkillIdMock.mockClear();
   getRemoteGitSkillPackageFingerprintMock.mockClear();
@@ -148,6 +154,9 @@ async function setupSkillLocalRepoIpc() {
 
   const db = createSkillDbMock();
   registerSkillLocalRepoHandlers({ db } as never);
+  const { registerSkillRemoteSaveHandlers } =
+    await import("../../../src/main/ipc/skill/remote-save-handlers");
+  registerSkillRemoteSaveHandlers({ db } as never, runPackageOperationMock);
 
   const handlers = Object.fromEntries(
     handleMock.mock.calls.map(([channel, handler]) => [channel, handler]),
@@ -199,27 +208,28 @@ describe("skill local repo IPC", () => {
       ),
     ).resolves.toEqual({
       status: "saved",
-      repoPath: "/managed/writer/repo",
+      repoPath: "/managed/writer/files",
     });
 
-    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(
-      skill,
-      {
-        repoUrl: "https://gitea.example.com/team/skills",
-        branch: "main",
-        directory: "skills/writer",
-        safetyScan: undefined,
-        approvedPackageFingerprint: undefined,
-      },
+    expect(runPackageOperationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "update",
+        skillId: skill.id,
+        markAsBuiltin: false,
+        source: {
+          kind: "remote-git",
+          repoUrl: skill.source_url,
+          branch: "main",
+          directory: "skills/writer",
+        },
+        registrySkill: expect.objectContaining({
+          source_directory: "skills/writer",
+          source_branch: "main",
+        }),
+      }),
     );
-    expect(computeRepoDirectoryFingerprintMock).toHaveBeenCalledWith(
-      "/managed/writer/repo",
-    );
-    expect(db.update).toHaveBeenCalledWith("skill-writer", {
-      local_repo_path: "/managed/writer/repo",
-      directory_fingerprint: "fingerprint-after-copy",
-      fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
-    });
+    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it("computes a remote Git package fingerprint without saving the package", async () => {
@@ -424,25 +434,21 @@ describe("skill local repo IPC", () => {
       ),
     ).resolves.toEqual({
       status: "saved",
-      repoPath: "/managed/zip-skill/repo",
+      repoPath: "/managed/writer/files",
     });
 
-    expect(saveRemoteZipSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(
-      skill,
-      {
-        zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep",
-        safetyScan: undefined,
-        approvedPackageFingerprint: undefined,
-      },
+    expect(runPackageOperationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "update",
+        skillId: skill.id,
+        source: {
+          kind: "remote-zip",
+          zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep",
+        },
+      }),
     );
-    expect(computeRepoDirectoryFingerprintMock).toHaveBeenCalledWith(
-      "/managed/zip-skill/repo",
-    );
-    expect(db.update).toHaveBeenCalledWith("skill-gifgrep", {
-      local_repo_path: "/managed/zip-skill/repo",
-      directory_fingerprint: "fingerprint-after-copy",
-      fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
-    });
+    expect(saveRemoteZipSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -533,15 +539,20 @@ describe("skill local repo IPC", () => {
       safetyScan: { mode: "enabled" },
       approvedPackageFingerprint: "not-sha256",
     });
-    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(
-      skill,
-      {
-        repoUrl: "https://gitea.example.com/team/private-skill.git",
-        branch: undefined,
-        directory: undefined,
-      },
+    expect(runPackageOperationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "update",
+        skillId: skill.id,
+        source: {
+          kind: "remote-git",
+          repoUrl: "https://gitea.example.com/team/private-skill.git",
+        },
+      }),
     );
-    expect(db.update).toHaveBeenCalled();
+    const [request] = runPackageOperationMock.mock.calls[0];
+    expect(request).not.toHaveProperty("safetyScan");
+    expect(request).not.toHaveProperty("approvedPackageFingerprint");
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it.each([

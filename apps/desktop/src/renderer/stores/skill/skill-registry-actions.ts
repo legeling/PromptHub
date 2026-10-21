@@ -506,6 +506,13 @@ function createRegistryUpdateActions(set: SkillStoreSet, get: SkillStoreGet) {
 async function resolveInstallContent(
   registrySkill: RegistrySkill,
 ): Promise<string> {
+  const source = buildSkillPackageOperationSource(
+    registrySkill,
+    registrySkill.content,
+  );
+  // Main reads the authoritative entrypoint while staging the complete package.
+  if (source.kind === "remote-git" || source.kind === "remote-zip")
+    return registrySkill.content;
   let content = registrySkill.content;
   try {
     content = await resolveRegistrySkillContent(registrySkill);

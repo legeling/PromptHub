@@ -42,6 +42,28 @@ Official references:
 - Git/SSH/HTTP/local folder 都可以作为自定义 plugin source。
 - SSH source 应走本地 git 和本地密钥，不应依赖匿名 GitHub API 完成主扫描。
 
+#### Git package acquisition (#215)
+
+Locally implemented and verified 2026-10-21; release pending. Git source and marketplace paths
+must use shallow partial clone without initial checkout, then literal anchored
+directory selection before checking out the requested branch or pinned commit.
+The complete package includes hidden files, nested assets and binary content;
+unrelated root, ancestor and sibling files must not be fetched when filtering is
+supported. Root packages still require their full tree. Directory names are
+paths, never wildcard expressions. Skill and Plugin share pattern construction;
+transport policy, package validation and publication remain with their owners.
+
+CLI marketplace install/update must publish actual package files, matching the
+Desktop contract; metadata-only success is insufficient. Existing metadata-only
+entries are not bulk migrated: explicit update uses existing materialization and
+canonical publication. Source identity, version records and storage layout stay
+unchanged, and failure must preserve the previously installed package. Reuse
+existing rollback/version facilities. Native Agent CLI-managed Git operations,
+HTTP catalogs, archives and release/CI clones are outside this change.
+
+The acquisition regressions, isolated defect-sensitivity checks and exact repeat
+commands are recorded in [Skill/Plugin acquisition verification](skills.md#expanded-skillplugincli-verification--2026-10-21).
+
 #### Third-party marketplace repair (#242 / #243)
 
 - The Core marketplace boundary normalizes Claude relative-directory and Git repository entries, and Antigravity `type=archive` entries, into `PluginPackageSource`. Relative Claude entries use `.claude-plugin/plugin.json`; Codex retains its existing portable/legacy manifest contract. Repository `ref` and pinned `sha` must be used consistently for preview and checkout, never replaced by the default branch.

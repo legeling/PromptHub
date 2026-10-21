@@ -3,11 +3,7 @@ import type { SkillPackageReadResponse } from "@prompthub/shared/types/skill-pac
 import { captureSkillPackageRead } from "../../services/skill-package-read-error";
 import { mutateSkillPackage } from "@prompthub/core/skills/package-mutation";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
-import type {
-  SkillPackageSnapshot,
-  RemoteSkillPackageSaveResult,
-  SkillSafetyScanInput,
-} from "@prompthub/shared/types";
+import type { SkillPackageSnapshot } from "@prompthub/shared/types";
 import { SKILL_PACKAGE_FINGERPRINT_ALGORITHM } from "@prompthub/shared/utils/skill-source-update";
 import { SkillInstaller } from "../../services/skill-installer";
 import {
@@ -126,120 +122,6 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
         throw new Error(`Skill not found: ${skillId}`);
       }
       return SkillInstaller.saveToLocalRepoBySkillId(skill, sourceDir, mode);
-    },
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO,
-    async (
-      _,
-      skillId: string,
-      options?: {
-        repoUrl?: string;
-        branch?: string;
-        directory?: string;
-        safetyScan?: {
-          mode?: "enabled" | "disabled";
-          aiConfig?: SkillSafetyScanInput["aiConfig"];
-        };
-        approvedPackageFingerprint?: string;
-      },
-    ) => {
-      if (typeof skillId !== "string" || skillId.trim().length === 0) {
-        throw new Error(
-          "skill:saveRemoteGitToRepo requires a non-empty skillId",
-        );
-      }
-      if (
-        !options ||
-        typeof options.repoUrl !== "string" ||
-        options.repoUrl.trim().length === 0
-      ) {
-        throw new Error(
-          "skill:saveRemoteGitToRepo requires a non-empty repoUrl",
-        );
-      }
-      const skill = db.getById(skillId);
-      if (!skill) {
-        throw new Error(`Skill not found: ${skillId}`);
-      }
-
-      try {
-        const repoPath =
-          await SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(skill, {
-            repoUrl: options.repoUrl,
-            branch: options.branch,
-            directory: options.directory,
-          });
-        const directoryFingerprint =
-          await computeRepoDirectoryFingerprint(repoPath);
-        db.update(skillId, {
-          local_repo_path: repoPath,
-          directory_fingerprint: directoryFingerprint,
-          fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
-        });
-        return {
-          status: "saved",
-          repoPath,
-        } satisfies RemoteSkillPackageSaveResult;
-      } catch (error) {
-        throw error;
-      }
-    },
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.SKILL_SAVE_REMOTE_ZIP_TO_REPO,
-    async (
-      _,
-      skillId: string,
-      options?: {
-        zipUrl?: string;
-        safetyScan?: {
-          mode?: "enabled" | "disabled";
-          aiConfig?: SkillSafetyScanInput["aiConfig"];
-        };
-        approvedPackageFingerprint?: string;
-      },
-    ) => {
-      if (typeof skillId !== "string" || skillId.trim().length === 0) {
-        throw new Error(
-          "skill:saveRemoteZipToRepo requires a non-empty skillId",
-        );
-      }
-      if (
-        !options ||
-        typeof options.zipUrl !== "string" ||
-        options.zipUrl.trim().length === 0
-      ) {
-        throw new Error(
-          "skill:saveRemoteZipToRepo requires a non-empty zipUrl",
-        );
-      }
-      const skill = db.getById(skillId);
-      if (!skill) {
-        throw new Error(`Skill not found: ${skillId}`);
-      }
-
-      try {
-        const repoPath =
-          await SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(skill, {
-            zipUrl: options.zipUrl,
-          });
-        const directoryFingerprint =
-          await computeRepoDirectoryFingerprint(repoPath);
-        db.update(skillId, {
-          local_repo_path: repoPath,
-          directory_fingerprint: directoryFingerprint,
-          fingerprint_algorithm: SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
-        });
-        return {
-          status: "saved",
-          repoPath,
-        } satisfies RemoteSkillPackageSaveResult;
-      } catch (error) {
-        throw error;
-      }
     },
   );
 

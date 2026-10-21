@@ -253,7 +253,51 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
       "https://gitea.example.com/team/skills",
       expect.stringContaining("team-skills"),
       "main",
+      "skills/writer",
     );
+  });
+
+  it("uses the same selected directory for preview, fingerprint and package replacement", async () => {
+    await SkillInstaller.init();
+    const clone = vi
+      .spyOn(skillInstallerUtils, "gitClone")
+      .mockImplementation(async (_url, destination, _branch, directory) => {
+        expect(directory).toBe("skills/writer");
+        const selected = path.join(destination, "skills/writer");
+        await fs.mkdir(path.join(selected, "assets"), { recursive: true });
+        await fs.writeFile(path.join(selected, "SKILL.md"), "# Writer\n");
+        await fs.writeFile(
+          path.join(selected, "assets/icon.bin"),
+          Buffer.from([0, 255, 4]),
+        );
+      });
+    const options = {
+      repoUrl: "https://example.com/team/skills",
+      directory: "skills/writer",
+    };
+    const snapshot =
+      await SkillInstaller.getRemoteGitSkillPackageSnapshot(options);
+    expect(snapshot.resolvedDirectory).toBe("skills/writer");
+    expect(snapshot.files?.map((file) => file.path).sort()).toEqual([
+      "SKILL.md",
+      "assets/icon.bin",
+    ]);
+    expect(
+      await SkillInstaller.getRemoteGitSkillPackageFingerprint(options),
+    ).toBe(snapshot.directoryFingerprint);
+    const result = await SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(
+      {
+        id: "sparse-writer",
+        name: "writer",
+        source_directory: "skills/writer",
+      },
+      { repoUrl: options.repoUrl },
+    );
+    expect(await fs.readFile(path.join(result, "assets/icon.bin"))).toEqual(
+      Buffer.from([0, 255, 4]),
+    );
+    expect(clone).toHaveBeenCalledTimes(3);
+    expect(await listRemoteImportTempDirs()).toEqual([]);
   });
 
   it("installs a complete public HTTPS package through HTTP when Git is absent", async () => {
@@ -398,7 +442,7 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     {
       name: "path traversal directory",
       directory: "../outside",
-      expectedError: /Path traversal detected/,
+      expectedError: /safe relative path/,
       files: {
         "skills/writer/SKILL.md": "---\nname: writer\n---\n\n# Writer\n",
       },

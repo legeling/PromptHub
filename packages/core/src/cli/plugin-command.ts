@@ -221,6 +221,7 @@ export async function handlePluginCommand(
         ? await createTargetResolver(databaseHooks)
         : undefined;
     const service = new CorePluginLibraryService({
+      materializePackages: true,
       resolvePluginTargetPath: targets?.resolvePath,
     });
 

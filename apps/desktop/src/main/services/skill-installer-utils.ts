@@ -158,11 +158,12 @@ export function gitClone(
   url: string,
   destDir: string,
   branch?: string,
+  directory?: string,
 ): Promise<void> {
   if (!url.trim()) throw new Error("Git clone URL cannot be empty");
   if (url.startsWith("-"))
     throw new Error("Git clone URL cannot start with a dash");
-  return cloneSkillRepository(url, destDir, branch, (source) =>
+  return cloneSkillRepository(url, destDir, branch, directory, (source) =>
     validateRemoteGitTransportUrl(source, "clone"),
   );
 }

@@ -9,7 +9,10 @@ export function makeTempRoot(
   tempDirs: string[],
   options: { seedDatabase?: boolean } = {},
 ): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-cli-app-"));
+  // OS temporary roots can be aliases; normal fixtures must not exercise symlink rejection.
+  const dir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-cli-app-")),
+  );
   tempDirs.push(dir);
 
   if (options.seedDatabase !== false) {

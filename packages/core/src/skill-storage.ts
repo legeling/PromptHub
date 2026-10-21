@@ -13,7 +13,10 @@ import type {
   SkillVersion,
   UpdateSkillParams,
 } from "@prompthub/shared/types";
-import type { CanonicalEntryMutation } from "./canonical-entry-publication";
+import {
+  isCanonicalCommitOutcomeError,
+  type CanonicalEntryMutation,
+} from "./canonical-entry-publication";
 import {
   publishSqliteEntries,
   recoverSqliteEntryPublication,
@@ -213,9 +216,35 @@ export class SkillStorageDB extends SqlSkillDB {
     }
     const id = crypto.randomUUID();
     const prepared = preparePackage(id, data, undefined, this.context);
-    return this.publish(prepared.entries, () =>
-      super.createWithId(id, { ...data, ...prepared.data }, options),
+    const container = path.dirname(
+      getManagedSkillPackagePath(id, this.context.skillsRoot),
     );
+    const hadContainer = fs.existsSync(container);
+    try {
+      return this.publish(prepared.entries, () =>
+        super.createWithId(id, { ...data, ...prepared.data }, options),
+      );
+    } catch (error) {
+      // Publication removes its stage, but a new empty parent is not a Skill
+      // and must not be left for startup to mistake for historical data.
+      if (!hadContainer && !isCanonicalCommitOutcomeError(error)) {
+        try {
+          fs.rmdirSync(container);
+        } catch (cleanupError) {
+          const code =
+            cleanupError instanceof Error && "code" in cleanupError
+              ? cleanupError.code
+              : undefined;
+          if (code !== "ENOENT" && code !== "ENOTEMPTY" && code !== "EEXIST")
+            throw new AggregateError(
+              [error, cleanupError],
+              `Skill publication failed and container cleanup failed: ${container}`,
+              { cause: error },
+            );
+        }
+      }
+      throw error;
+    }
   }
 
   override update(id: string, data: UpdateSkillParams): Skill | null {

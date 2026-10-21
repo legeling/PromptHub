@@ -35,7 +35,13 @@ it("checks out a selected branch with real Git and reports a missing branch", as
     const validateFixture = (candidate: string): void => {
       expect(candidate).toBe(url);
     };
-    await cloneSkillRepository(url, destination, "selected", validateFixture);
+    await cloneSkillRepository(
+      url,
+      destination,
+      "selected",
+      undefined,
+      validateFixture,
+    );
     expect(await fs.readFile(path.join(destination, "SKILL.md"), "utf8")).toBe(
       "# Selected\n",
     );
@@ -44,6 +50,7 @@ it("checks out a selected branch with real Git and reports a missing branch", as
         url,
         path.join(root, "missing"),
         "absent",
+        undefined,
         validateFixture,
       ),
     ).rejects.toThrow(/Git clone failed/);

@@ -12,7 +12,25 @@ import {
   GitExecutableUnavailableError,
 } from "./git-transport";
 import { SkillPackageTransportError } from "./transport-error";
+import { validateSkillGitDirectory } from "./git-source";
+import { shouldIgnoreSkillDirectoryEntry } from "@prompthub/shared/utils/skill-identity";
 type FetchArchive = (url: string) => Promise<Uint8Array>;
+
+// Only owned disposable checkouts are modified. Unlink rather than dereference
+// so direct publication retains the former copy filter without copying bytes.
+async function removeCheckoutSymlinks(root: string): Promise<void> {
+  const pending = [root];
+  while (pending.length) {
+    const directory = pending.pop()!;
+    for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+      if (shouldIgnoreSkillDirectoryEntry(path.relative(root, target)))
+        continue;
+      if (entry.isSymbolicLink()) await fs.unlink(target);
+      else if (entry.isDirectory()) pending.push(target);
+    }
+  }
+}
 export function buildGitArchiveUrl(
   repo: NonNullable<ReturnType<typeof parseGitRepo>>,
   branch?: string,
@@ -64,10 +82,11 @@ export async function materializeRemoteGitRepository(
   requestedDirectory?: string,
   clone: typeof cloneSkillRepository = cloneSkillRepository,
 ): Promise<string> {
+  if (requestedDirectory !== undefined)
+    validateSkillGitDirectory(requestedDirectory);
   const cloneDir = path.join(tempRoot, `${repo.owner}-${repo.repo}`);
   try {
-    await clone(repo.cloneUrl, cloneDir, branch);
-    return cloneDir;
+    await clone(repo.cloneUrl, cloneDir, branch, requestedDirectory);
   } catch (gitError) {
     const archiveUrl = buildGitArchiveUrl(repo, branch);
     if (!archiveUrl) {
@@ -99,4 +118,6 @@ export async function materializeRemoteGitRepository(
     );
     return resolveArchiveCheckoutRoot(extractDir);
   }
+  await removeCheckoutSymlinks(cloneDir);
+  return cloneDir;
 }

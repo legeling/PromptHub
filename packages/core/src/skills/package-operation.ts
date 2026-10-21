@@ -231,7 +231,6 @@ export function validateSkillPackageOperationRequest(
     validateOptionalString(request.skillId, "skillId");
   }
   validateRegistrySkill(request.registrySkill);
-  requirePackageText(request.content, "content");
   if (
     !request.source ||
     typeof request.source !== "object" ||
@@ -240,6 +239,12 @@ export function validateSkillPackageOperationRequest(
     throw new Error("source must be an object");
   }
   validateOperationSource(request.source);
+  requirePackageText(
+    request.content,
+    "content",
+    request.source.kind === "remote-git" ||
+      request.source.kind === "remote-zip",
+  );
   validateStringList(request.userTags, "userTags", true);
   if (
     request.operation === "update" &&

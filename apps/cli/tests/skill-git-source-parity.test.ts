@@ -1,7 +1,14 @@
 import { unzipSync, zipSync, strToU8 } from "fflate";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import * as acquisitionFs from "fs/promises";
+
+vi.mock("fs/promises", async (original) => {
+  const actual = await original<typeof import("fs/promises")>();
+  return { ...actual, rm: vi.fn(actual.rm) };
+});
 import {
   closeDatabase,
   createCliSkillService,
@@ -10,7 +17,13 @@ import {
 import { execCli, makeTempRoot, withDataDir } from "./helpers/cli-harness";
 
 const roots: string[] = [];
+beforeEach(async () => {
+  const actual =
+    await vi.importActual<typeof import("fs/promises")>("fs/promises");
+  vi.mocked(acquisitionFs.rm).mockImplementation(actual.rm);
+});
 afterEach(async () => {
+  vi.restoreAllMocks();
   closeDatabase();
   resetRuntimePaths();
   await Promise.all(
@@ -20,21 +33,96 @@ afterEach(async () => {
   );
 });
 
+it.each([false, true])(
+  "cleanup failure preserves the CLI operation result (acquisition fails: %s)",
+  async (failAcquisition) => {
+    const root = makeTempRoot(roots);
+    const { rm: originalRm } =
+      await vi.importActual<typeof import("fs/promises")>("fs/promises");
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    let retained = "";
+    const service = createCliSkillService({
+      gitCloneImpl: async (_url, checkout) => {
+        if (failAcquisition) throw new Error("fixture transport denied");
+        await fs.mkdir(checkout, { recursive: true });
+        await fs.writeFile(
+          path.join(checkout, "SKILL.md"),
+          "---\nname: cleanup-writer\n---\n# Writer\n",
+        );
+      },
+    });
+    vi.mocked(acquisitionFs.rm).mockImplementation(async (target, options) => {
+      if (path.basename(String(target)).startsWith("skill-git-")) {
+        retained = String(target);
+        throw new Error("fixture cleanup denied");
+      }
+      return originalRm(target, options);
+    });
+    try {
+      const result = await execCli(
+        [
+          ...withDataDir(root),
+          "skill",
+          "import",
+          "git@example.com:example/catalog.git",
+        ],
+        service,
+      );
+      expect(result.exitCode === 0).toBe(!failAcquisition);
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining(retained),
+        expect.stringContaining("fixture cleanup denied"),
+      );
+      if (failAcquisition)
+        expect(result.joinedStderr).toContain("fixture transport denied");
+      closeDatabase();
+      resetRuntimePaths();
+      const list = await execCli([...withDataDir(root), "skill", "list"]);
+      const records = list.json.data ?? list.json;
+      expect(records).toHaveLength(failAcquisition ? 0 : 1);
+      if (!failAcquisition) {
+        const files = await execCli([
+          ...withDataDir(root),
+          "skill",
+          "repo-files",
+          "cleanup-writer",
+        ]);
+        expect(files.joinedStdout).toContain("SKILL.md");
+      }
+    } finally {
+      vi.mocked(acquisitionFs.rm).mockImplementation(originalRm);
+      if (retained)
+        await originalRm(retained, { recursive: true, force: true });
+    }
+  },
+);
+
 // Only the network checkout is replaced. Commands, package storage and reopen are real.
-it.each([
-  ["https://github.com/example/catalog/tree/main/skills/writer", []],
+it.each<[string, string[], boolean]>([
+  ["https://github.com/example/catalog/tree/main/skills/writer", [], false],
   [
     "git@github.com:example/catalog.git",
     ["--branch", "main", "--directory", "skills/writer"],
+    false,
   ],
+  ["https://github.com/example/catalog/tree/main/skills/writer", [], true],
 ])(
-  "imports a complete selected package from %s and reads it after reopen",
-  async (source, flags) => {
-    const root = makeTempRoot(roots);
+  "imports a complete selected package from %s with flags %j (aliased root: %s) and reads it after reopen",
+  async (source, flags, aliasedRoot) => {
+    let root = makeTempRoot(roots);
+    if (aliasedRoot) {
+      const alias = `${root}-alias`;
+      roots.push(alias);
+      await fs.symlink(root, alias, "junction");
+      root = alias;
+    }
+    const directoryCopy = vi.spyOn(fs, "cp");
+    const fileCopy = vi.spyOn(fsSync, "copyFileSync");
     const service = createCliSkillService({
-      gitCloneImpl: async (url, checkout, branch) => {
+      gitCloneImpl: async (url, checkout, branch, directory) => {
         expect(url).toMatch(/example\/catalog/);
         expect(branch).toBe("main");
+        expect(directory).toBe("skills/writer");
         await fs.mkdir(path.join(checkout, "skills/writer/assets"), {
           recursive: true,
         });
@@ -58,6 +146,12 @@ it.each([
       service,
     );
     expect(imported.exitCode, imported.joinedStderr).toBe(0);
+    expect(directoryCopy).not.toHaveBeenCalled();
+    expect(
+      fileCopy.mock.calls.filter(([source]) =>
+        String(source).endsWith("assets/icon.bin"),
+      ),
+    ).toHaveLength(1);
     closeDatabase();
     resetRuntimePaths();
     const read = await execCli([
@@ -112,6 +206,84 @@ it("rejects a traversal selector before transport and leaves the library empty",
   expect(list.exitCode).toBe(0);
   expect(list.json.data ?? list.json).toEqual([]);
 });
+
+it.each(["writer", ".", "skills/productivity/writer", ".agents/skills/writer"])(
+  "persists discovered directory %s across reopen, checks and source updates",
+  async (selectedDirectory) => {
+    const root = makeTempRoot(roots);
+    const requests: Array<string | undefined> = [];
+    let version = 1;
+    const service = createCliSkillService({
+      gitCloneImpl: async (_url, checkout, _branch, directory) => {
+        requests.push(directory);
+        const selected = path.join(checkout, selectedDirectory);
+        await fs.mkdir(selected, { recursive: true });
+        await fs.writeFile(
+          path.join(selected, "SKILL.md"),
+          "---\nname: discovered\n---\n# Discovered",
+        );
+        await fs.writeFile(
+          path.join(selected, "icon.bin"),
+          Buffer.from([version]),
+        );
+        if (version > 1) {
+          await fs.mkdir(path.join(checkout, "another"), { recursive: true });
+          await fs.writeFile(
+            path.join(checkout, "another/SKILL.md"),
+            "# Another",
+          );
+        }
+      },
+    });
+    const imported = await execCli(
+      [
+        ...withDataDir(root),
+        "skill",
+        "import",
+        "https://github.com/example/catalog",
+      ],
+      service,
+    );
+    expect(imported.exitCode, imported.joinedStderr).toBe(0);
+    closeDatabase();
+    resetRuntimePaths();
+    const read = await execCli([
+      ...withDataDir(root),
+      "--full",
+      "skill",
+      "get",
+      "discovered",
+    ]);
+    const skill = read.json.data ?? read.json;
+    expect(skill.source_directory).toBe(selectedDirectory);
+    expect(
+      await fs.readFile(path.join(skill.local_repo_path, "icon.bin")),
+    ).toEqual(Buffer.from([1]));
+    version = 2;
+    const check = await execCli(
+      [
+        ...withDataDir(root),
+        "--full",
+        "skill",
+        "check-update",
+        "discovered",
+        "--fetch-remote",
+      ],
+      service,
+    );
+    expect(check.exitCode, check.joinedStderr).toBe(0);
+    expect(check.joinedStdout).toContain("update-available");
+    const updated = await execCli(
+      [...withDataDir(root), "skill", "update-source", "discovered"],
+      service,
+    );
+    expect(updated.exitCode, updated.joinedStderr).toBe(0);
+    expect(requests).toEqual([undefined, selectedDirectory, selectedDirectory]);
+    expect(
+      await fs.readFile(path.join(skill.local_repo_path, "icon.bin")),
+    ).toEqual(Buffer.from([2]));
+  },
+);
 
 // Git and HTTP are the only replaced boundaries; fallback, extraction, import and storage are real.
 it("falls back from a failed Git checkout to a bounded HTTP archive and preserves nested binary files", async () => {

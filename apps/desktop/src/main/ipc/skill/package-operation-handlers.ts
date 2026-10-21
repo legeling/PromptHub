@@ -6,6 +6,7 @@ import {
   createDesktopSkillPackageLifecycleDependencies,
 } from "../../services/skill-package-lifecycle-desktop";
 import type { SkillIPCContext } from "./shared";
+import { registerSkillRemoteSaveHandlers } from "./remote-save-handlers";
 
 /** Register the single main-process owner for Skill package installation and updates. */
 export function registerSkillPackageOperationHandlers({
@@ -28,16 +29,18 @@ export function registerSkillPackageOperationHandlers({
     );
   });
 
+  const run = async (request: unknown) => {
+    await ready;
+    if (recoveryFailed)
+      throw new Error("Skill package recovery failed", {
+        cause: recoveryError,
+      });
+    return lifecycle.run(request);
+  };
   ipcMain.handle(
     IPC_CHANNELS.SKILL_RUN_PACKAGE_OPERATION,
-    async (_event, request: unknown) => {
-      await ready;
-      if (recoveryFailed)
-        throw new Error("Skill package recovery failed", {
-          cause: recoveryError,
-        });
-      return lifecycle.run(request);
-    },
+    (_event, request: unknown) => run(request),
   );
+  registerSkillRemoteSaveHandlers({ db }, run);
   return ready;
 }

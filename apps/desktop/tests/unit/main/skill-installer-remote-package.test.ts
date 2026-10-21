@@ -120,12 +120,54 @@ function createRemoteSkill(
 }
 
 describe("remote Skill package adapter", () => {
+  it("reports cleanup failure without turning a completed snapshot into failure", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.rm.mockRejectedValue(new Error("fixture cleanup denied"));
+    try {
+      await expect(
+        getRemoteGitSkillPackageSnapshot({
+          repoUrl: "https://gitea.example.com/team/skills",
+        }),
+      ).resolves.toHaveProperty("content");
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining(".remote-fingerprint-"),
+        expect.stringContaining("fixture cleanup denied"),
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("preserves the package error when cleanup also fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.rm.mockRejectedValue(new Error("fixture cleanup denied"));
+    mocks.validateMaterializedSkillPackage.mockRejectedValueOnce(
+      new Error("invalid package fixture"),
+    );
+    try {
+      await expect(
+        getRemoteGitSkillPackageSnapshot({
+          repoUrl: "https://gitea.example.com/team/skills",
+        }),
+      ).rejects.toThrow("invalid package fixture");
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("retained directory"),
+        expect.stringContaining("fixture cleanup denied"),
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mkdtemp.mockImplementation(async (prefix: string) => `${prefix}op`);
-    mocks.readdir.mockResolvedValue([
-      { name: "skills-main", isDirectory: () => true },
-    ]);
+    // Only the extracted archive has a wrapper directory. A constant child at
+    // every path would model an infinite tree when the checkout is traversed.
+    mocks.readdir.mockImplementation(async (directory: string) =>
+      directory.endsWith("http-archive")
+        ? [{ name: "skills-main", isDirectory: () => true }]
+        : [],
+    );
     mocks.readFile.mockResolvedValue("# Writer\n\nFrom private Gitea\n");
     mocks.rm.mockResolvedValue(undefined);
     mocks.initSkillsDir.mockResolvedValue(undefined);
@@ -203,7 +245,7 @@ describe("remote Skill package adapter", () => {
   it("uses an explicit or source fallback directory and target staging root", async () => {
     const onSafetyReport = vi.fn();
     const result = await saveRemoteGitSkillPackage(
-      createRemoteSkill({ source_directory: "/skills/writer/" }),
+      createRemoteSkill({ source_directory: "skills/writer/" }),
       {
         repoUrl: "https://gitea.example.com/team/skills",
         branch: "main",
@@ -379,9 +421,22 @@ describe("remote Skill package adapter", () => {
         repoUrl: "https://gitea.example.com/team/skills",
         directory: "../outside",
       }),
-    ).rejects.toThrow(/Path traversal detected/);
+    ).rejects.toThrow(/safe relative path/);
+    expect(mocks.gitClone).not.toHaveBeenCalled();
+    expect(mocks.fetchRemoteBytes).not.toHaveBeenCalled();
     expect(mocks.fileExists).not.toHaveBeenCalled();
     expect(mocks.rm).toHaveBeenCalled();
+  });
+
+  it("rejects an absolute directory instead of stripping its leading slash", async () => {
+    await expect(
+      saveRemoteGitSkillPackage(createRemoteSkill(), {
+        repoUrl: "https://gitea.example.com/team/skills",
+        directory: "/skills/writer",
+      }),
+    ).rejects.toThrow(/safe relative path/);
+    expect(mocks.gitClone).not.toHaveBeenCalled();
+    expect(mocks.fetchRemoteBytes).not.toHaveBeenCalled();
   });
 
   it.each(["explicit", "auto"] as const)(

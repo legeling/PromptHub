@@ -15,6 +15,7 @@ import type {
 } from "@prompthub/shared/types/plugin";
 
 import { getCacheDir, getDataDir } from "../runtime-paths";
+import { gitPackageDirectoryPattern } from "../git-package-directory";
 import {
   CorePluginError,
   MAX_PLUGIN_PACKAGE_SNAPSHOT_FILE_BYTES,
@@ -640,38 +641,10 @@ export async function materializeGitSourcePackage(
     `.source-${request.sourceId}.tmp-${process.pid}-${Date.now()}`,
   );
   const repoDir = path.join(tempRoot, "repo");
-  const cloneArgs = ["clone", "--depth", "1", "--filter=blob:none"];
-  if (request.packagePath) {
-    cloneArgs.push("--sparse");
-  }
-  if (request.branch && !request.revision) {
-    cloneArgs.push("--branch", request.branch);
-  }
-  cloneArgs.push("--", request.url, repoDir);
-
   try {
     fs.rmSync(tempRoot, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(tempRoot), { recursive: true });
-    await runGit(cloneArgs, undefined, request.url);
-    if (request.revision) {
-      await runGit(
-        ["fetch", "--depth", "1", "origin", request.revision],
-        repoDir,
-        request.url,
-      );
-      await runGit(
-        ["checkout", "--detach", "FETCH_HEAD"],
-        repoDir,
-        request.url,
-      );
-    }
-    if (request.packagePath) {
-      await runGit(
-        ["sparse-checkout", "set", "--no-cone", "--", request.packagePath],
-        repoDir,
-        request.url,
-      );
-    }
+    await checkoutGitPackage(request.url, repoDir, request);
 
     const sourcePath = request.packagePath
       ? path.join(repoDir, ...request.packagePath.split("/"))
@@ -704,23 +677,26 @@ function getMarketGitPackageSource(entry: PluginMarketEntry): {
   };
 }
 
-async function checkoutMarketGitPackage(
+async function checkoutGitPackage(
   repository: string,
-  packagePath: string,
   repoDir: string,
-  entry: PluginMarketEntry,
+  source: Pick<
+    NormalizedPluginSourceRequest,
+    "packagePath" | "branch" | "revision"
+  >,
 ): Promise<void> {
-  const branch =
-    entry.source.branch ??
-    parseGitHubRepositoryRef(repository, entry.source.rawJsonUrl)?.branch;
+  const pattern =
+    source.packagePath && source.packagePath !== "."
+      ? gitPackageDirectoryPattern(source.packagePath)
+      : undefined;
   await runGit(
     [
       "clone",
       "--depth",
       "1",
       "--filter=blob:none",
-      "--sparse",
-      ...(branch && !entry.source.revision ? ["--branch", branch] : []),
+      "--no-checkout",
+      ...(source.branch && !source.revision ? ["--branch", source.branch] : []),
       "--",
       repository,
       repoDir,
@@ -728,18 +704,21 @@ async function checkoutMarketGitPackage(
     undefined,
     repository,
   );
-  if (entry.source.revision) {
+  if (pattern)
     await runGit(
-      ["fetch", "--depth", "1", "origin", entry.source.revision],
+      ["sparse-checkout", "set", "--no-cone", "--", pattern],
       repoDir,
       repository,
     );
-    await runGit(["checkout", "--detach", "FETCH_HEAD"], repoDir, repository);
+  if (source.revision) {
+    await runGit(
+      ["fetch", "--depth", "1", "origin", source.revision],
+      repoDir,
+      repository,
+    );
   }
   await runGit(
-    packagePath === "."
-      ? ["sparse-checkout", "disable"]
-      : ["sparse-checkout", "set", "--no-cone", "--", packagePath],
+    source.revision ? ["checkout", "--detach", "FETCH_HEAD"] : ["checkout"],
     repoDir,
     repository,
   );
@@ -792,12 +771,14 @@ export async function materializeGitPackage(
   try {
     fs.rmSync(tempRoot, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(pluginRoot), { recursive: true });
-    await checkoutMarketGitPackage(
-      source.repository,
-      source.packagePath,
-      repoDir,
-      entry,
-    );
+    await checkoutGitPackage(source.repository, repoDir, {
+      packagePath: source.packagePath,
+      branch:
+        entry.source.branch ??
+        parseGitHubRepositoryRef(source.repository, entry.source.rawJsonUrl)
+          ?.branch,
+      revision: entry.source.revision,
+    });
     return finalizeMarketGitPackage(
       entry,
       pluginRoot,
