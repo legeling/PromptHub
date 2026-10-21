@@ -1,8 +1,44 @@
 # 0.6.1 release preparation
 
+## Product
+
+Delivery
+
 ## Status
 
-Completed: 0.6.1 is published; website, Homebrew and self-hosted image are synchronized.
+in_progress. Replacement publication authorized on 2026-10-21, including
+candidate preparation, scoped commits, push, protected tag replacement and
+publication after complete candidate/platform acceptance. The 2026-10-19 pause
+is lifted. Preserve existing work and exclude pre-existing scratch output.
+Earlier publication evidence below applies only to the original candidate.
+
+## Replacement acceptance (2026-10-19)
+
+- [ ] Submit the credential migration and startup diagnostic changes separately.
+- [ ] Synchronize curated release notes, localized manual replacement guidance and website metadata.
+- [ ] Pass current full verification, isolated startup UI checks and platform packaging/signing gates.
+- [ ] Update v0.6.1 using an expected-old-value lease, verify uploaded artifacts, then publish.
+- [ ] Confirm website, Homebrew and self-hosted distribution results for the replacement.
+
+The 2026-10-21 candidate also includes native Codex Plugin management and Windows
+runtime discovery, selective complete Git package acquisition, Plugin feedback,
+Skill editor cache refresh, byte-stable database reopen and documentation
+classification/lifecycle cleanup. The Windows x64 build now runs existing native
+command/runtime/lifecycle cases using an isolated pinned Codex 0.163.0 fixture;
+no account or model invocation is involved. Its runner/profile and installer
+acceptance do not establish Windows 11 Store UI acceptance. The manual SignPath
+test remains separate from production artifacts.
+
+Remote recheck returned 404 for the v0.6.1 Release, while the tag still exists
+at tag object e04faa061abb3119bc8319b8ab877398e0bfb502 (commit 132dfcf1).
+No remote deletion is part of this preparation. Preserve the old tag identity
+for recovery; never replace it if another writer changes it. Existing 0.6.1
+installations require manual replacement because semver is unchanged.
+Isolated Electron UI automation was explicitly authorized for this replacement.
+The startup diagnostic smoke injects one failed storage IPC response, then uses
+the real preload, startup page, Copy action and OS clipboard, restoring clipboard
+formats and disposing the isolated profile. This proves diagnostic UI behavior,
+not a new migration scenario; disk migration/reopen/rollback remains Core coverage.
 
 ## Scope and authority
 

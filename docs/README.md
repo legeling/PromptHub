@@ -61,13 +61,17 @@ docs/
 
 版本范围与验证结果见 [0.6.1 发布记录](../spec/releases/0.6.1.md)。
 
-当前稳定版为 [v0.6.1](https://github.com/legeling/PromptHub/releases/tag/v0.6.1)，于 2026-10-19 正式发布。
+截至 2026-10-21，GitHub 当前可下载的稳定版为 [v0.6.0](https://github.com/legeling/PromptHub/releases/tag/v0.6.0)。0.6.1 原发布已不可用，同版本替换已恢复准备，尚未发布。
+
+待发布的同版本替换包含旧设置凭据迁移和启动错误日志复制。已安装先前 0.6.1 的用户应保留应用数据目录，等待替换包发布后再手动安装；相同版本号不会触发自动更新。
 
 - [主 README](../README.md) 区分最新稳定下载、已发布预览版和当前开发版本。
 - [CHANGELOG.md 的 Unreleased](../CHANGELOG.md#unreleased) 记录尚未随新发行包发布的主线改动；合并贡献分支不等于发布其版本号。
 - [0.6.1 发布记录](../spec/releases/0.6.1.md) 维护版本线与发布验证结果，历史预览说明不被后续主线改动覆盖。
 
 ## 内部文档入口
+
+开发文档按产品与共享模块分类，优先从 [当前文档首页](../spec/README.md) 和 [活动工作](../spec/changes/index.md#active) 进入。
 
 - `spec/README.md`
 - `spec/workflow/`

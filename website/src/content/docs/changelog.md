@@ -2,11 +2,11 @@
 
 ### 开发中 / In development
 
-当前稳定版为 `0.6.1`。后续改动将在此记录。
+当前可下载的稳定版为 `0.6.0`。`0.6.1` 替换包尚未发布，下方版本章节包含待发布修复。
 
-The current stable release is `0.6.1`. Future changes will be recorded here.
+The currently available stable release is `0.6.0`. The `0.6.1` replacement is not yet published; its section below includes pending fixes.
 
-## [0.6.1] - 2026-10-19
+## [0.6.1]
 
 ### 新功能 / Features
 
@@ -17,6 +17,14 @@ The current stable release is `0.6.1`. Future changes will be recorded here.
 
 ### 改进 / Improvements
 
+- **Plugin 安装反馈**：安装和分发开始时立即显示提示，完成后及时更新结果；后台清单刷新不再拖延成功反馈。
+  - **Plugin installation feedback**: Installation and distribution show immediate progress feedback and publish results promptly, without waiting for background inventory refreshes.
+- **Git 包获取**：从 Git 仓库选择 Skill 或 Plugin 时按所选包获取完整文件，减少无关仓库内容传输，并保留失败重试和历史版本。
+  - **Git package acquisition**: Fetches complete selected Skill or Plugin packages while reducing unrelated repository transfers, preserving retry and version history workflows.
+- **Codex Plugin 管理**：支持原生插件安装、更新、启用、禁用和卸载，并发现桌面客户端或 VS Code 扩展附带的 Codex 运行程序。
+  - **Codex Plugin management**: Supports native installation, updates, enable, disable and uninstall, with discovery of Codex runtimes bundled with the desktop app or VS Code extension.
+- **启动错误诊断**：启动失败页面提供“复制错误日志”和可选择的错误详情，复制结果有明确反馈；常见敏感字段会先脱敏，分享前仍请检查内容。
+  - **Startup diagnostics**: Startup failures offer Copy error log and selectable details with clear copy feedback. Common sensitive fields are redacted; review the contents before sharing.
 - **更新窗口**：版本信息与更新内容分栏展示，安装按钮始终可见；更新内容按界面语言显示当前版本的中文或英文说明。
   - **Update dialog**: Version details and release notes appear in separate columns with installation actions always visible. Notes show the selected version in Chinese or English according to the interface language.
 - **备份与安装**：安装更新前自动创建本地快照，手动导出备份可按需选择。
@@ -26,6 +34,10 @@ The current stable release is `0.6.1`. Future changes will be recorded here.
 
 ### 问题修复 / Fixes
 
+- **Skill 文件刷新**：更新 Skill 包后，已打开的文件列表和内容随版本刷新，同时保留未保存的编辑。
+  - **Skill file refresh**: Open file lists and contents refresh after a package update while preserving unsaved edits.
+- **旧设置升级启动**：自动处理代理、同步连接和 AI 配置中的历史凭据及空占位值，保留非空凭据并迁入加密存储，避免这类旧设置阻断启动。凭据冲突或密钥不可用时保留原数据并提示恢复。
+  - **Startup with older settings**: Automatically migrates historical credentials and empty placeholders in proxy, sync and AI settings, preserving nonempty credentials in encrypted storage so these older settings no longer block startup. Credential conflicts or unavailable keys preserve the original data and require recovery.
 - **Skill 首次分发**：修复详情页首次勾选目标后点击“应用变更”未安装的问题；进入 Agent Skills 时会读取当前目标的已安装列表。
   - **Initial Skill distribution**: Fixed Apply changes failing to install newly selected targets from the detail page. Agent Skills now loads the selected target's installed inventory on entry.
 - **Skill 改名与内容保护**：分发副本存在外部修改时会提示先处理冲突；改名失败后保留原名称、包文件和分发状态。
@@ -36,6 +48,12 @@ The current stable release is `0.6.1`. Future changes will be recorded here.
   - **Rules list**: Fixed multiple Rules files from the same platform not all appearing in the list.
 - **更新通道与下载反馈**：预览通道可升级到更新的正式版；下载开始时立即显示进度，失败时给出明确提示。
   - **Update channels and download feedback**: Preview users can upgrade to newer stable releases. Downloads show progress immediately and report failures clearly.
+
+### 安装说明 / Installation note
+
+已安装此前 `0.6.1` 的用户需要手动下载并覆盖安装本次修复包；相同版本号不会触发更高版本自动更新。请勿删除应用数据目录。
+
+If you already installed the earlier `0.6.1`, download and install the replacement package manually. The unchanged version number does not trigger a newer-version automatic update. Do not delete the application data directory.
 
 ## [0.6.0] - 2026-10-18
 

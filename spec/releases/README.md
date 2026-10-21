@@ -2,7 +2,7 @@
 
 `spec/releases/` 对齐 `spec-init` 的 releases 边界，用来记录版本级对外交付摘要。
 
-在锁定的 `spec-init` 基线（`f83def1`）中，这一层属于 `records.releases`。
+版本记录区分当前可下载发行版、待发布的候选和历史发布证据；构建版本不代表已发布。
 
 当前 PromptHub 对外版本说明的主入口仍然是：
 
@@ -10,13 +10,14 @@
 - `docs/README.*`
 - `website/src/content/docs/changelog.md`
 
-如果后续需要增加更结构化的版本发布归档，可以在这里扩展。
+2026-10-21 只读核对：GitHub latest 为 `v0.6.0`；`v0.6.1` 不在公开发行列表中。
+同版本替换已恢复准备，尚未发布，详见对应记录。
 
 ## Release Index
 
 | Version        | Status                                            | Path                            | Updated    |
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
-| `0.6.1` | stable record | `spec/releases/0.6.1.md` | 2026-10-19 |
+| `0.6.1` | replacement in verification; original release unavailable | `spec/releases/0.6.1.md` | 2026-10-21 |
 | `0.6.0-beta.2` | published prerelease                              | `spec/releases/0.6.0-beta.2.md` | 2026-09-03 |
 | `0.6.0-beta.1` | published prerelease; Skill mutation fix replaced | `spec/releases/0.6.0-beta.1.md` | 2026-08-21 |
 | `0.6.0`        | stable record                                     | `spec/releases/0.6.0.md`        | 2026-10-18 |

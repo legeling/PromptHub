@@ -1,5 +1,138 @@
 # 0.6.1 preparation evidence
 
+## Replacement publication resumed (2026-10-21)
+
+Maintainer authorization now includes scoped submission, push, final candidate
+verification, protected replacement of the existing 0.6.1 tag, publication and
+distribution synchronization. The earlier pause is superseded; publication
+remains conditional on current-candidate gates.
+
+The two remote SignPath test commits were merged without rewriting history.
+All three affected local files were byte-identical to remote main before and
+after the merge. The test certificate workflow remains outside production
+release artifacts. The candidate retains existing product fixes, tests and
+documentation reorganization; pre-existing `output/` is excluded.
+
+Preparation validation passed specification governance, verification-harness
+tests, release-workflow tests, both affected CLI fixture suites and CI/version
+configuration checks in 20.8 seconds. The preceding assessment's 16 static and
+160 focused passing cases cover the unchanged product code; its native test
+skip is still explicit. The release workflow adds a Windows x64 native Codex
+fixture (0.163.0) for existing command/runtime/plugin lifecycle tests, with an
+isolated home and cleanup. That gate must pass on Windows before publication.
+Current release notes include the later Plugin feedback, native management,
+selective Git acquisition and Skill file refresh changes. Stable download
+metadata remains 0.6.0 until the replacement is public.
+
+Full verification and platform packaging will run on the committed candidate
+in isolated CI runners, including Electron interaction under the CI virtual
+display. No local user application or profile is used for those checks.
+Preparation evidence is retained under
+`/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-061-publish-T5BK5Y/`.
+
+## Release readiness assessment (2026-10-21)
+
+Decision: not ready for publication; ready to proceed to complete candidate
+acceptance. This assessment does not resume publication or authorize submission,
+push, tag replacement, uploads or deployment.
+
+Candidate: local HEAD `78279239b5856db429aa2d069e2100c38c9a5fc2` plus the existing
+uncommitted work. HEAD contains 11 commits after the original `v0.6.1` commit.
+The read-only remote check returned latest stable `v0.6.0`, HTTP 404 for the
+`v0.6.1` Release, and the unchanged annotated tag object
+`e04faa061abb3119bc8319b8ab877398e0bfb502`. Remote main was
+`0329370a8bf2102db4613f1c8f235d7e56117143`; no CI approval for this local candidate
+was established. The successful original release and Windows test-signing runs
+are not current-candidate acceptance.
+
+Current diagnostic verification passed all 19 selected checks in 247.2 seconds,
+serially, through the existing verification executor and its bounded process-tree
+cleanup. This is a selected diagnostic run, not the complete quick or release
+profile. It includes all 16 quick-profile static/governance checks and:
+
+- Core credential migration, empty credentials, encrypted vault, SQLite settings,
+  database byte-stable reopen and Git package acquisition: 55 passed; one opt-in
+  native Codex lifecycle test skipped (`PROMPTHUB_NATIVE_AGENT_TESTS` unset).
+- Desktop settings replacement through registered IPC/preload and reopen:
+  40 passed.
+- Desktop startup error copy, proxy startup, Plugin marketplace/distribution/store
+  feedback and Skill editor package refresh/draft preservation: 65 passed.
+
+All 4,801 existing candidate files retained identical SHA-256 values throughout
+the checks. Product/test/harness whitespace checking passed. No product source
+was changed by this assessment. No GUI automation, full application build,
+complete integration/unit suites, performance gates or platform packaging was
+run. Prior focused UI evidence remains scoped to its recorded candidate.
+
+Before publication, freeze the final included changes and pass the complete
+release harness on that candidate; obtain current Windows x64 two-start packaged
+upgrade and macOS signing/notarization/Gatekeeper evidence plus the remaining
+platform build gates. The new Windows native Codex Plugin lifecycle still lacks
+Windows 11 installation/enable-disable/removal acceptance, as recorded in
+[Plugins](../../../knowledge/behavior/plugins.md#windows-native-runtime-discovery-244).
+Reconcile release notes with the final included Skill/Plugin changes. Same-version
+replacement still requires manual installation for existing 0.6.1 users and
+expected-old-value protection when replacing the original tag after authorization.
+
+Reproducible runner, exact command results, candidate hashes and stability report
+are retained at
+`/private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-061-assess-98J52k/`.
+The runner is `assess.mjs`; the result is `assessment.json`. Temporary test
+profiles and the disposable Node compile cache were removed; no assessment
+process remains running. This entry was added after the frozen-file checks.
+
+## Replacement preparation (2026-10-19)
+
+Publication paused by maintainer. The final local invocation was cancelled after
+16 checks passed, including Core tests/storage performance, CLI tests within the
+unchanged suite budget, and Desktop lint/source/test typechecks. Desktop
+integration was interrupted; the remaining checks are cancelled or blocked, not
+passing. All 4,762 candidate files remained unchanged during verification.
+The verification process exited and its isolated temporary profiles were removed.
+Reports remain in `/private/tmp/prompthub-061-replacement-cx4PXp/`; no replacement
+commit, push, tag mutation or asset publication occurred. Full replacement release
+acceptance remains incomplete and cannot be inferred from these partial results.
+
+The replacement includes Core settings credential upgrade and Desktop startup
+error diagnostics. Focused evidence is owned by the desktop-settings topic and
+data-recovery topic: 175 credential/adjacent cases and 23 diagnostic/startup
+cases passed before release preparation, with typechecks and production build.
+These are not replacement release acceptance. The original release gates below
+must not be reused as evidence for changed product code.
+
+The remote Release API returns 404; release listing starts at 0.6.0. The original
+v0.6.1 tag object remains e04faa061abb3119bc8319b8ab877398e0bfb502. No remote
+deletion, tag mutation or asset upload has occurred in this replacement batch.
+Only pre-existing untracked output/ is excluded from submission. Product
+versions stay 0.6.1; no dependency or lockfile update is required. Public notes
+and seven-language installation guidance cover same-version manual replacement.
+Existing screenshots remain historical feature illustrations; none claims the
+new startup-error state. Isolated Electron UI automation is authorized. The
+additional app smoke covers visible error details, redacted OS clipboard bytes
+and reload after an injected IPC failure; prior clipboard formats are restored.
+The cohesive smoke body exceeds 50 lines to keep failure setup, UI assertions
+and clipboard/profile cleanup in one test. Its first run reached the real error
+page but expected English before saved-language hydration; the fixture now pins
+the browser locale as well as saved settings. Product language behavior is unchanged.
+The governance quick check detected a stale change index after reopening the
+release plan; the standard index generator refreshed it.
+
+The first complete invocation used the platform's aliased temporary path instead
+of the earlier physical-path wrapper. Core hit 300 seconds; CLI reported five
+symlink-parent fixture failures. The run was stopped after collecting these
+failures, without changing its 4,762 frozen candidate files. Remaining checks
+are cancelled/blocked, not passing. One known task-owned interrupted fixture was
+removed; the subsequent wrapper owns and removes its entire temporary root.
+
+The isolated timing diagnostic passed all 148 Core files / 1,224 cases in 328.1
+seconds. The maintainer approved raising the registry's Core process deadline
+from 300 to 600 seconds. Only this test-process deadline changes; cases, workers,
+assertions and the independent Core performance budget remain unchanged. Revert
+the single registry value to restore the former deadline. CLI's physical-path
+rerun passed all 175 assertions but exceeded its unchanged 75-second suite budget
+(88.2 seconds measured by its teardown); this remains a failed gate pending
+verification at stable load, not permission to raise that performance budget.
+
 ## Initial candidate and changes
 
 Base: `de0f63541faf88bea6e0421b11ea70583c093570`. Initial preparation identified
@@ -130,3 +263,15 @@ Vercel production deployment 7170895691 succeeded at stable-metadata commit
 inconclusive due network errors; no visual/browser acceptance is inferred.
 Homebrew and GitHub stable publication are verified; R2 remains unconfigured.
 No task-owned local development service, tunnel or test process is retained.
+
+## Documentation availability reconciliation (2026-10-21)
+
+GitHub latest is v0.6.0 and the v0.6.1 Release returns 404. Seven localized
+README badges/downloads and generated website metadata now select 0.6.0;
+0.6.1 replacement copy is explicitly pending. Historical original-package
+evidence and local replacement changes are preserved. Product versions remain
+0.6.1; screenshots and runtime locale strings are unaffected.
+
+Website synchronization passed. Version/release-metadata tests passed 9/9, and
+the governance-only quick profile exited 0. These are documentation consistency
+checks, not replacement-candidate or platform acceptance. No publication resumed.
