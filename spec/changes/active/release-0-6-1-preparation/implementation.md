@@ -1,5 +1,43 @@
 # 0.6.1 preparation evidence
 
+## Replacement publication and website blocker (2026-10-21)
+
+The replacement is public at candidate 60db70df. Current tag, CI, artifact,
+Homebrew and image evidence is owned by [the release record](../../../releases/0.6.1.md#replacement-publication-2026-10-21).
+
+Post-publication documentation validation passed release-metadata tests,
+CI/version consistency, spec governance and diff checks. The broad local quick
+profile was stopped after its Core run reported three Plugin fixture failures
+(1267 passed, 6 skipped); it is not a passing quick run. Those fixtures used
+macOS's symlinked /var temporary root, triggering target-parent protection.
+With TMPDIR resolved through fs.realpathSync, all 16 cases in the three affected
+suites passed in 4 seconds without code changes. Remaining product checks were
+cancelled because the published candidate already passed complete tagged CI.
+The later quick profile scoped to governance passed all three checks.
+
+The standalone website directory has no local dependencies, so local Astro
+build was unavailable. Vercel Production built its published metadata at
+e0d42643 (deployment 7222161150). This is not the official domain's deployment:
+prompthub.click is served by the separate prompthub-cloud Railway web service.
+Its release metadata and public changelog use the existing sync:release script.
+The source tree for web and its build inputs matches the prior production
+328f3fa tree apart from the generated release content; backend/admin/database
+changes are outside this deployment. The obsolete Astro site origin pointed
+to a different site's login page and is corrected to prompthub.click.
+
+The official Railway web upload returned UPLOAD_FAILED, "Deploys have been
+paused temporarily", without a new deployment ID. The official status page
+confirmed a platform build/API incident. The previous successful deployment
+64505661-800a-4f3a-9e82-20faf1bc0a8c remains active. Cloud commit 52f0c86
+prepares only generated release metadata/changelog and verification notes;
+[skip ci] prevents its default workflow from deploying all three services.
+Thirteen focused metadata/content tests and clean-export documentation checks
+passed. The local Cloud checkout's pre-existing untracked .agents Skill copy
+causes its own docs validator to fail and was preserved.
+
+The following dated sections retain intermediate and original-release evidence.
+Their candidate failures are superseded by tagged CI; the official website blocker remains active.
+
 ## Windows file identity correction (2026-10-21)
 
 Native-only run 39566915923 identified DOS short temporary directory names versus

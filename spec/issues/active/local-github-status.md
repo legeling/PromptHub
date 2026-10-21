@@ -29,20 +29,19 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
-### Plugin issue follow-up — 2026-10-20
+### Replacement 0.6.1 follow-up — 2026-10-21
 
-#242/#243 live upstream previews, full-package installations and SQLite reopen
-pass again through the shared Core entrypoint. #244 has local runtime discovery,
-Windows shim execution and safe error diagnostic fixes; Windows 11 acceptance is
-still pending because no test machine is available. The maintainer removed 0.6.1
-for republication; these checks do not establish a new published release.
-User-authorized closure of #242/#243 was verified remotely on 2026-10-20; #244
-remains open. Local commits `58199ef6` and `54575191` have not been pushed. See
-[the follow-up verification](ISS-20260809-001-remaining-open-issues-roadmap.md#marketplace-and-windows-follow-up--2026-10-20).
+The verified marketplace fixes for #242/#243 and native runtime/config-path
+fixes for #244 are pushed and included in stable replacement 0.6.1 at 60db70df.
+Fourteen native Codex tests pass on Windows x64, alongside the packaged two-start
+upgrade. Windows 11 Store GUI acceptance remains separate and pending.
+Remote states were read back on 2026-10-21: #242 closed, #243 closed,
+#244 open. No issue state was changed by this publication. The #196
+sidebar identity fix is also included in 0.6.1.
 
 | Issue | GitHub state | Local status | Target release | Remaining boundary |
 | --- | --- | --- | --- | --- |
-| #244 | open | in_progress | 0.6.1 | Local fixes in `58199ef6` / `54575191` are unpushed; Windows Store/npm native installation, enable/disable and removal on a real Windows 11 machine remain pending. |
+| #244 | open | in_progress | 0.6.1 | Runtime/config fixes released and Windows native CLI verified; real Windows 11 Store GUI installation, enable/disable and removal remain pending. |
 
 ### Published 0.6.0 review — 2026-10-19
 

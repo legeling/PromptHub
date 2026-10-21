@@ -81,7 +81,7 @@ No independent active change. Cross-product work is listed under Shared.
 | `existing-feature-release-acceptance` | active | [spec/changes/active/existing-feature-release-acceptance/](active/existing-feature-release-acceptance/) |
 | `infistar-sponsor-promotion` | release-pending | [spec/changes/active/infistar-sponsor-promotion/](active/infistar-sponsor-promotion/) |
 | `r2-direct-downloads` | blocked | [spec/changes/active/r2-direct-downloads/](active/r2-direct-downloads/) |
-| `release-0-6-1-preparation` | active | [spec/changes/active/release-0-6-1-preparation/](active/release-0-6-1-preparation/) |
+| `release-0-6-1-preparation` | blocked | [spec/changes/active/release-0-6-1-preparation/](active/release-0-6-1-preparation/) |
 | `risk-aware-verification-harness` | review-pending | [spec/changes/active/risk-aware-verification-harness/](active/risk-aware-verification-harness/) |
 
 ## Completed

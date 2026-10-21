@@ -4,7 +4,7 @@ import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://prompthub-app.vercel.app/',
+  site: 'https://prompthub.click/',
   integrations: [react(), tailwind(), sitemap()],
   output: 'static',
   server: {

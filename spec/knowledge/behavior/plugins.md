@@ -415,8 +415,10 @@ The native diagnostic confirmed a short temporary directory name versus Codex's
 long directory name for the same file. Writes use the verified native layer path
 and expected version; original bytes still protect concurrent edits. A different
 config file remains rejected. Regression coverage uses a real stdio child process.
-Windows native lifecycle acceptance remains pending the corrected gate;
-this CLI check does not claim Windows Store GUI acceptance.
+The corrected native-only run 39567397618 and tagged release run 39569049313
+passed all 14 Windows native command/runtime/config/lifecycle cases at 60db70df.
+This covers install, disabled update, reopen, enable and removal with isolated
+Codex 0.163.0; it does not claim Windows 11 Store GUI acceptance.
 
 `native-codex.yml` provides a manual Windows-only verification entrypoint while
 diagnosing native failures. It and the full release job execute the same

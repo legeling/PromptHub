@@ -6,19 +6,21 @@ Delivery
 
 ## Status
 
-in_progress. Replacement publication authorized on 2026-10-21, including
-candidate preparation, scoped commits, push, protected tag replacement and
-publication after complete candidate/platform acceptance. The 2026-10-19 pause
-is lifted. Preserve existing work and exclude pre-existing scratch output.
-Earlier publication evidence below applies only to the original candidate.
+blocked. Desktop stable replacement 0.6.1, Homebrew and GHCR are published.
+Repository documentation and the separate Vercel site are updated. The official
+website prompthub.click is served by Railway and remains at 0.5.9; its web-only
+release-content upload was rejected while Railway builds/deploys are paused.
+The prepared Cloud content is committed at 52f0c86. Resume only that web
+deployment after platform recovery, verify the public version/download pages,
+then mark completed and move this change out of active.
 
 ## Replacement acceptance (2026-10-19)
 
 - [x] Submit the credential migration and startup diagnostic changes separately.
-- [ ] Synchronize curated release notes, localized manual replacement guidance and website metadata.
-- [ ] Pass current full verification, isolated startup UI checks and platform packaging/signing gates.
-- [ ] Update v0.6.1 using an expected-old-value lease, verify uploaded artifacts, then publish.
-- [ ] Confirm website, Homebrew and self-hosted distribution results for the replacement.
+- [x] Synchronize curated release notes, localized manual replacement guidance and website metadata.
+- [x] Pass current full verification, isolated startup UI checks and platform packaging/signing gates.
+- [x] Update v0.6.1 using an expected-old-value lease, verify uploaded artifacts, then publish.
+- [ ] Complete the official Railway website deployment and HTTP readback after platform recovery; Homebrew and self-hosted image publication are confirmed.
 
 The 2026-10-21 candidate also includes native Codex Plugin management and Windows
 runtime discovery, selective complete Git package acquisition, Plugin feedback,
@@ -29,7 +31,7 @@ no account or model invocation is involved. Its runner/profile and installer
 acceptance do not establish Windows 11 Store UI acceptance. The manual SignPath
 test remains separate from production artifacts.
 
-Remote recheck returned 404 for the v0.6.1 Release, while the tag still exists
+Before replacement, the remote recheck returned 404 for v0.6.1; the old tag existed
 at tag object e04faa061abb3119bc8319b8ab877398e0bfb502 (commit 132dfcf1).
 No remote deletion is part of this preparation. Preserve the old tag identity
 for recovery; never replace it if another writer changes it. Existing 0.6.1
