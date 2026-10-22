@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import rootPackage from "../../../../package.json";
+import { SKILL_SNAPSHOT_SYNC_VERSION } from "@prompthub/shared/utils/skill-file-snapshot";
 import { buildRemotePayload } from "./sync.test-fixtures";
 import {
   authHeaders,
@@ -15,6 +16,63 @@ import {
 
 describe("desktop remote backup routes", () => {
   setupSyncRouteTestLifecycle();
+
+  it(
+    "accepts encoded Skill snapshots and reads their bytes back (#185)",
+    async () => {
+      const dataDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "prompthub-web-backup-binary-"),
+      );
+      try {
+        const app = await createTestApp(dataDir);
+        const { payload } = await registerUser(
+          app,
+          "binary-backup-owner",
+          "debugpass001",
+        );
+        const headers = authHeaders(payload.data.accessToken);
+        const snapshot = buildRemotePayload();
+        const files = [
+          {
+            relativePath: "assets/sample.bin",
+            encoding: "base64",
+            content: "AP+A",
+          },
+        ];
+        const skillFiles = { [snapshot.skills[0]!.id]: files };
+        const response = await app.request(
+          new Request("http://local/api/backups/desktop", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              clientVersion: rootPackage.version,
+              payload: {
+                ...snapshot,
+                version: SKILL_SNAPSHOT_SYNC_VERSION,
+                skillFiles,
+              },
+            }),
+          }),
+        );
+        expect(response.status, await response.text()).toBe(201);
+        const latest = await app.request(
+          new Request("http://local/api/backups/desktop/latest", { headers }),
+        );
+        expect(latest.status).toBe(200);
+        expect(await latest.json()).toMatchObject({
+          data: {
+            snapshot: {
+              version: SKILL_SNAPSHOT_SYNC_VERSION,
+              skillFiles,
+            },
+          },
+        });
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+    SYNC_ROUTE_TEST_TIMEOUT,
+  );
 
   it(
     "blocks version mismatches before writing a backup",

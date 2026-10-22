@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import rootPackage from "../../../../package.json";
 import { SELF_HOSTED_BACKUP_PROTOCOL_VERSION } from "@prompthub/shared";
+import { SKILL_SNAPSHOT_SYNC_VERSION } from "@prompthub/shared/utils/skill-file-snapshot";
 import { getAuthUser } from "../middleware/auth.js";
 import {
   DesktopBackupIntegrityError,
@@ -82,12 +83,15 @@ backups.post("/desktop", async (c) => {
       actor.userId,
       parsed.data.payload,
     );
-    if (snapshot.version !== "desktop-backup-v1") {
+    if (
+      snapshot.version !== "desktop-backup-v1" &&
+      snapshot.version !== SKILL_SNAPSHOT_SYNC_VERSION
+    ) {
       return error(
         c,
         422,
         ErrorCode.VALIDATION_ERROR,
-        "Desktop backup must use snapshot version desktop-backup-v1",
+        `Desktop backup must use snapshot version desktop-backup-v1 or ${SKILL_SNAPSHOT_SYNC_VERSION}`,
       );
     }
     const metadata = backupStore.create(actor.userId, {
