@@ -115,7 +115,7 @@ describe("installDesktopBridge media helpers", () => {
     await expect(api.skill.exportZip("writer")).rejects.toThrow();
   });
 
-  it("falls back when crypto.randomUUID is unavailable for pasted image uploads", async () => {
+  it("uses the server filename when crypto.randomUUID is unavailable for pasted image uploads", async () => {
     const installDesktopBridge = await loadInstallDesktopBridge();
     const originalCrypto = globalThis.crypto;
     Object.defineProperty(globalThis, "crypto", {
@@ -123,22 +123,25 @@ describe("installDesktopBridge media helpers", () => {
       value: {},
     });
 
-    installDesktopBridge();
-
-    const electronBridge = Reflect.get(window, "electron") as {
-      saveImageBuffer: (buffer: ArrayBuffer) => Promise<string>;
-    };
-    const fileName = await electronBridge.saveImageBuffer(
-      new Uint8Array([1, 2, 3]).buffer,
-    );
-
-    expect(fileName).toMatch(/^image-/);
-    expect(fileName).toMatch(/\.png$/);
-
-    Object.defineProperty(globalThis, "crypto", {
-      configurable: true,
-      value: originalCrypto,
-    });
+    try {
+      const storedName = "server-assigned.png";
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: storedName })),
+      );
+      installDesktopBridge();
+      // The bridge is installed dynamically, outside the Web Window declaration.
+      const electronBridge = Reflect.get(window, "electron") as {
+        saveImageBuffer: (buffer: ArrayBuffer) => Promise<string>;
+      };
+      expect(
+        await electronBridge.saveImageBuffer(new Uint8Array([1, 2, 3]).buffer),
+      ).toBe(storedName);
+    } finally {
+      Object.defineProperty(globalThis, "crypto", {
+        configurable: true,
+        value: originalCrypto,
+      });
+    }
   });
 
   it("opens media previews without exposing the opener window", async () => {

@@ -63,6 +63,12 @@
 
 ### 8. Web Media Files
 
+- The media upload response owns the stored filename. Browser clipboard uploads
+  and file selections must retain that returned name for previews and saved
+  Prompt references, including HTTP environments without `crypto.randomUUID`.
+  A failed upload must reject without returning an unpersisted filename.
+  This changes no storage layout; previously broken references cannot be mapped
+  to randomly named files safely and must not be guessed or silently rewritten.
 - Uploaded and remotely downloaded media files under
   `data/assets/<userId>/{images,videos}/` must be written to a same-directory
   temporary file first and renamed into place only after the full payload is

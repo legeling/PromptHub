@@ -160,16 +160,6 @@ function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-function createBrowserFileId(prefix: string): string {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function unsupportedDesktopOperation(operation: string): never {
   throw new Error(`${operation} is not supported in the web runtime`);
 }
@@ -817,12 +807,10 @@ export function installDesktopBridge(): void {
     selectImage: async () => uploadSelectedMedia("images", "image/*"),
     saveImage: async (paths: string[]) => paths,
     saveImageBuffer: async (buffer: ArrayBuffer) => {
-      const fileName = `${createBrowserFileId("image")}.png`;
-      await apiOk("/api/media/images/base64", "POST", {
-        fileName,
+      return apiJsonBody<string>("/api/media/images/base64", "POST", {
+        fileName: "image.png",
         base64Data: bufferToBase64(buffer),
       });
-      return fileName;
     },
     downloadImage: async (url: string) =>
       apiJson<string>("/api/media/images/download", {
