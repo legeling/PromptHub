@@ -9,6 +9,124 @@
 - Delivery authority: [local overlay](local-github-status.md); behavior and design stay in their existing domain records.
 - Scope: published 0.6.0 review, authorized issue follow-up, local repairs and the later explicitly authorized split commits/push. Release and tag creation remain outside scope. Historical sections retain their original verification boundaries.
 
+## Provider follow-up — 2026-10-22
+
+### Current seven-issue acceptance and submission
+
+The scoped follow-up covers six bugs (#246/#244/#209/#190/#185/#141) and
+provider deletion #245. GitHub readback after closing #209/#190 reports 30 open and
+190 closed issues. No push, deployment or release was performed.
+
+| Issue | Current evidence and action |
+| --- | --- |
+| #245 | `aedff96e` includes `Closes #245`; isolated Model Services create/cancel/delete/Toast/restart acceptance passed. Remote remains open because the commit is local. |
+| #246 | `f2326479` references #246. Five real Claude CLI/controlled-gateway integration cases plus adapter/import/UI component regressions pass. Original Windows/gateway login behavior remains unverified, so no closure keyword. |
+| #244 | Runtime/config fixes were already committed, pushed and included in replacement 0.6.1. Current macOS native Codex lifecycle and real GUI distribution/restart pass. Original Windows Store-only GUI remains open, not a missing local commit. |
+| #209 | Existing storage fixes and startup regression pass. Real Electron close → external CLAUDE.md edit → reopen preserves external bytes and presents a conflict; explicitly accepting the external copy survives another reopen. Closed remotely at 2026-10-22T09:38:48Z. |
+| #190 | Existing `3607c4c3` dual-manifest repair accepted: the exact ayghri/i-have-adhd URL imports (0.4.1) and exposes both native Codex/Claude targets. A harmless dual-native fixture also installs to both and survives restart. Initial Git attempts lacked the existing proxy variables; inheriting the same routing resolved download without product changes. Closed remotely; original Windows and execution of upstream hooks are not claimed. |
+| #185 | The new real Electron/live Web test found binary snapshots rejected with HTTP 422. `c4369236` fixes the route and includes `Closes #185`. Upload, local removal, three restore/restart cycles preserve binary package bytes and history. Remote remains open; matching corrected Web deployment is required. |
+| #141 | Original URL and name reproduced in real GUI: anthropics/skills loads 20 current entries and unchanged cache survives full restart. A separate source-switch loading race was fixed in `f51eee2f` with `Refs #141`; original 15-count/empty-list state remains unconfirmed. Keep open pending its exact saved state. |
+
+Verification on this checkout:
+
+- Desktop focused batch: 17 files / 171 tests passed (provider CRUD/auth,
+  Rules startup, Plugin import/native/overlay, self-hosted service and remote
+  source loading). After the loading repair, the affected file passed 20 tests.
+- Core native Codex/runtime batch: 2 files / 6 tests passed. Real CLI processes
+  and isolated native configuration were used, not production accounts.
+- Web initial sync batch: 5 files / 33 tests passed. Binary backup follow-up:
+  3 files / 24 tests passed, including validation and failure preservation.
+- Headed Electron `plugin-operation-feedback.spec.ts`: passed; progress and
+  success Toast, automatic picker close, horizontal repeat actions, light/dark.
+- Headed Electron `self-hosted-skill-roundtrip.spec.ts`: passed against a real
+  local Web process. Reporter deployment and Windows are unavailable.
+- Production build, Desktop source typecheck, Web typecheck and focused ESLint
+  passed. Whole Desktop test typecheck is blocked by a concurrent unrelated
+  `workspace-refresh-controller.test.ts` import of missing
+  `createWorkspaceRefreshController`; it is not reported as passing.
+- Runtime-only fixtures use isolated HOME/profile roots. No daily Agent files,
+  credentials, installed app or unrelated processes were modified.
+- Final file-size gate, seven spec governance tests, generated index and
+  traceability checks passed; Web server production build passed. Test app/server
+  processes were closed and disposable profiles removed. Acceptance screenshots
+  remain under the task's OS temporary evidence directory, not the repository.
+
+- [#245](https://github.com/legeling/PromptHub/issues/245): Desktop 0.6.1 cannot
+  delete an extra custom provider. The user confirmed Settings → AI Configuration
+  on 2026-10-22; the issue itself has no screenshot. Before repair, Model Services
+  had no provider delete control, and store deletion detached rather than removed
+  associated models, allowing the provider group to reappear. The local repair follows the
+  [Desktop contract](../../knowledge/behavior/desktop.md#model-services-provider-crud-245).
+  Agent provider profiles are independent records with existing CRUD and must
+  be verified separately, not deleted as a side effect.
+- [#246](https://github.com/legeling/PromptHub/issues/246): Windows x64 / 0.6.1;
+  a custom Anthropic-compatible gateway configured in Claude settings with an
+  API key and a non-Claude model still requests `/login`. The report's claim
+  that `ANTHROPIC_API_KEY` is obsolete is not established: official docs describe
+  both API-key and Bearer-token authentication. Record official contracts and
+  implementation gaps in the existing Claude capability research. The subsequent
+  request authorizes implementation and isolated native acceptance, starting with
+  import authentication selection and model precedence (FR-AGENT-122). Daily
+  account/configuration changes and paid third-party requests remain out of scope.
+
+The subsequent issue audit authorizes scoped commits and closure of verified
+resolved issues. Push and release remain outside scope. The user authorized
+isolated macOS GUI acceptance; no original Windows or self-hosted environment is
+available.
+
+### #245 local verification
+
+- Added a destructive confirmation with provider name/model count and seven-locale
+  copy. Provider deletion removes its models and stale defaults in one persisted
+  settings write; model-derived groups use the same removal operation. Failed
+  writes leave renderer state unchanged. Editing a provider no longer overwrites
+  model display names or issues duplicate per-model writes.
+- `apps/desktop/tests/integration/model-services-provider-crud.test.ts`: **3 passed**.
+  The lifecycle case covers create/read/edit/delete, two same-endpoint providers
+  with distinct IDs, unrelated-record preservation, route cleanup and final empty
+  state after real SQLite close/reopen. The other cases cover failed-write
+  preservation/retry and one-write model-derived removal. The lifecycle case
+  intentionally exceeds 50 lines to keep one profile's successive reopen states
+  together. Electron transport, renderer cache and unrelated shell APIs are
+  substituted; initialization, registered settings IPC, persistence and hydration
+  are real. Empty credentials avoid OS-keychain or external-provider claims.
+- `apps/desktop/tests/unit/components/ai-settings-prototype.test.tsx`: **38 passed**,
+  including `confirms provider deletion`, `deletes a model-derived provider`, and
+  `reports failed provider deletion`. These exercise confirmation/cancellation
+  and notifications with a mocked store, not native Electron acceptance.
+- Related unit suites: `tests/unit/stores/settings-ai-models.test.ts` **11 passed**,
+  `tests/unit/components/ai-workbench-endpoints-section.test.tsx` **1 passed**,
+  `tests/unit/services/ai-workbench-locales.test.ts` **8 passed** (desktop-relative).
+  Independent Agent provider CRUD: existing
+  `apps/desktop/tests/integration/release-acceptance-agents-assets-providers.test.ts`
+  **2 passed**, without changing that feature.
+- Regression sensitivity: an isolated Vitest transform loaded the original
+  `HEAD` version of `EndpointsSection.tsx` without changing the checkout. Filtering
+  `confirms provider deletion` exited **1**, because the `Delete provider` button
+  was absent (one failed case, 37 excluded), not because of compilation/setup.
+- Production build, test-inclusive typecheck, scoped ESLint and file-size checks
+  passed. `pnpm spec:test` passed seven governance cases, index validation and
+  traceability for 13 changes. New integration tests are included by the normal desktop integration
+  glob and root `desktop-integration` gate. The full release harness was not run.
+- Work is linear in providers, models and route references, with one settings
+  publication per group removal and no external model request. No new dependency,
+  schema, compatibility parser or production configuration is introduced.
+- Authorized macOS Electron acceptance passed on 2026-10-22: create an empty
+  provider through Model Services, cancel deletion and retain it, confirm deletion
+  with success Toast, then close/reopen and verify the provider list remains empty.
+  The profile and HOME were isolated. Windows GUI is not covered.
+
+Reproduce from the repository root:
+
+```sh
+pnpm --filter @prompthub/desktop exec vitest run --project integration tests/integration/model-services-provider-crud.test.ts tests/integration/release-acceptance-agents-assets-providers.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop exec vitest run --project unit tests/unit/components/ai-settings-prototype.test.tsx tests/unit/stores/settings-ai-models.test.ts tests/unit/components/ai-workbench-endpoints-section.test.tsx tests/unit/services/ai-workbench-locales.test.ts --minWorkers=1 --maxWorkers=1
+pnpm typecheck:tests
+pnpm lint:file-size
+pnpm build
+pnpm spec:test
+```
+
 ## Split Submission — 2026-10-19
 
 The authorized main-branch push contains independent commits:
@@ -88,7 +206,7 @@ This table retains all 42 originally reviewed reports; six rows are now closed.
 | [#185](https://github.com/legeling/PromptHub/issues/185) | 部分完成 | 自部署 Skill 反复恢复/本地 URL 失败 | source_url 清理、稳定身份/文件/历史映射及自部署 schema 修复均在 tag；已有 scoped sync 测试。 | 原真实服务器的连续 push/pull/重开和部署镜像仍需确认，不以桌面 release 证明其服务已更新。 |
 | [#177](https://github.com/legeling/PromptHub/issues/177) | 未解决 | SkillHub 集成 | 已有市场框架不等于 skillhub.cn 协议适配；仍是 marketplace-expansion 的待实现项。 | 确认正式来源/API/包授权及安装更新合同。 |
 | [#145](https://github.com/legeling/PromptHub/issues/145) | 部分完成 | 标签管理界面改进 | 用量、排序、Prompt 标签跳转已进入 tag，TagManagerModal 测试存在；issue 主要以截图描述。 | 确认截图诉求是否全部覆盖，再作整体关闭判断；不凭标题推定完整范围。 |
-| [#141](https://github.com/legeling/PromptHub/issues/141) | 待复现 | 自定义 Skill 商店无结果 | 没有商店 URL、配置和响应文本，已有自定义源功能不能解释该空列表。 | 收集脱敏源配置及 0.6.0 请求错误；不要与新 Plugin 市场缺陷直接合并。 |
+| [#141](https://github.com/legeling/PromptHub/issues/141) | 待精准复现 | 自定义 Skill 商店无结果 | 原截图实际包含 `https://github.com/anthropics/skills`、商店名 `my` 和 15 条计数；此前“没有 URL”的判断有误。当前 15 条自定义缓存渲染及重新水合回归通过。 | 已另行复现并修复远端源切换时加载状态丢失，不把它推定为原截图空列表的同一根因。 |
 | [#139](https://github.com/legeling/PromptHub/issues/139) | 部分完成 | 导出/导入迁移经验 | 这是经验/支持条目；备份迁移说明卡与 ZIP 导入引导已发布，并非一个仍待实现的明确 bug。 | 可作为文档已覆盖的支持答复；不能保证所有旧版本数据恢复。 |
 | [#132](https://github.com/legeling/PromptHub/issues/132) | 未解决 | Prompt 商店 | Skill/Plugin 商店不是 Prompt 模板商店；marketplace-expansion 未交付本需求。 | 定义模板来源、浏览、导入及授权，不能用其他商店替代。 |
 | [#107](https://github.com/legeling/PromptHub/issues/107) | 部分完成 | Docker HTTP 图片上传/粘贴 | 发布版 Web bridge 有 randomUUID 不可用回退及对应测试；文件选择器走上传入口。 | 评论另报告局域网图床；真实 HTTP 浏览器文件选择和私网 URL 策略未验收，不能把粘贴单测当全部解决。 |

@@ -29,6 +29,23 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Seven-issue audit — 2026-10-22
+
+This dated audit supersedes the older per-issue acceptance descriptions below.
+Remote readback: 30 open / 190 closed. No push or deployment was performed.
+
+| Issue | GitHub state | Local outcome | Remaining boundary |
+| --- | --- | --- | --- |
+| #245 | open | local_done, `aedff96e` (`Closes #245`) | Real macOS provider deletion/Toast/restart passed; local commit is not pushed. |
+| #246 | open | local repair committed, `f2326479` (`Refs #246`) | Native two-header/model/rollback tests pass; reporter gateway and Windows login behavior unverified. |
+| #244 | open | released in replacement 0.6.1 | Mac native lifecycle and GUI distribution pass; Windows Store-only GUI remains unverified. |
+| #209 | closed | existing fix accepted | Real macOS external-edit/restart/conflict resolution passed; closure read back at 09:38:48Z. |
+| #190 | closed | existing dual-manifest fix accepted | Exact Git URL imports and displays Codex/Claude Native targets on macOS after inheriting existing proxy routing. Harmless fixture native install/restart passes; Windows and upstream Hook execution not claimed. |
+| #185 | open | local_done, `c4369236` (`Closes #185`) | Binary snapshot route fixed; three live restore/restart cycles pass. Matching Web must be deployed; local commit is not pushed. |
+| #141 | open | current source/cache pass, `f51eee2f` (`Refs #141`) | Real original source loads 20 entries and retains cache after restart; historical 15-count empty list not reproduced. |
+
+Commands and evidence are recorded in the [current audit](ISS-20260809-001-remaining-open-issues-roadmap.md#current-seven-issue-acceptance-and-submission).
+
 ### Replacement 0.6.1 follow-up — 2026-10-21
 
 The verified marketplace fixes for #242/#243 and native runtime/config-path

@@ -3,17 +3,15 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-20`
-- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Closed issues captured: `184`
-
-- Targeted refresh: #215 verified CLOSED on `2026-10-21T05:02:04Z` using `gh issue view 215 --repo legeling/PromptHub --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; other rows retain the full snapshot date above.
+- Snapshot date: `2026-10-22`
+- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; targeted #190 readback after closure.
+- Closed issues captured: `190`
 
 ## Notes
 
-- This file mirrors remote GitHub state only; local delivery state is recorded in `../active/local-github-status.md`.
-- The shared capture contains 218 issues, below the requested limit; pull requests are excluded by the issue endpoint.
-- Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
+- This file mirrors remote GitHub state only; local delivery is recorded in `../active/local-github-status.md`.
+- The shared capture contains 220 issues (30 open / 190 closed), below the requested limit; pull requests are excluded.
+- #209/#190 closures were confirmed on 2026-10-22. Local commits for #245/#185 have not been pushed and do not change their remote state.
 
 ## Closed Issues Archive
 
@@ -22,8 +20,11 @@
 | #243 | [Feature]: 支持第三方插件市场（统一 Claude Code 与 Antigravity 插件的索引及下载） | enhancement, version: 0.6.0 | 2026-10-18 | 2026-10-20 | [#243](https://github.com/legeling/PromptHub/issues/243) |
 | #242 | [Feature]: [Bug / 功能建议] antigravity官方插件商店支持 | enhancement, version: 版本: 0.6.0 · 稳定版通道 | 2026-10-18 | 2026-10-20 | [#242](https://github.com/legeling/PromptHub/issues/242) |
 | #241 | [Bug]: 我的 Skill 列表首屏「已分发」计数与卡片「未分发」角标不一致 | bug | 2026-10-17 | 2026-10-19 | [#241](https://github.com/legeling/PromptHub/issues/241) |
+| #240 | [Bug]: 「安装我的 Skill」弹窗无法勾选 Skill，确认按钮一直显示安装 0 个 | bug | 2026-10-17 | 2026-10-21 | [#240](https://github.com/legeling/PromptHub/issues/240) |
+| #239 | [Bug]: window系统mcp下载异常 | bug, version: 0.6.0-beta.2 | 2026-10-15 | 2026-10-21 | [#239](https://github.com/legeling/PromptHub/issues/239) |
 | #238 | [Feature]: 内置 `skills.sh 商店` 仅缓存 9892 个静态技能，无法检索 skills.sh 全量库。 | enhancement, version: 版本: 0.6.0-beta.2 | 2026-10-14 | 2026-10-16 | [#238](https://github.com/legeling/PromptHub/issues/238) |
 | #237 | [Feature]: Plugins优化，agent的配置能否和设置保持一致。同时，目前Antigravity的Plugins并不能识别出他的插件。 | enhancement, version: 版本: 0.6.0-beta.2 | 2026-10-14 | 2026-10-16 | [#237](https://github.com/legeling/PromptHub/issues/237) |
+| #236 | [Bug]: 新建 Prompt会软件崩溃，再次添加也不能录入 | bug, version: 版本: 0.6.0-beta.2 · 稳定版通道 | 2026-10-14 | 2026-10-21 | [#236](https://github.com/legeling/PromptHub/issues/236) |
 | #235 | [Bug]: MCP 版本弹窗的 Tab 焦点能移出当前弹窗 | bug | 2026-10-13 | 2026-10-14 | [#235](https://github.com/legeling/PromptHub/issues/235) |
 | #234 | [Feature]: 补齐 My MCP 与 CLI 的正式版本管理入口 |  | 2026-10-13 | 2026-10-14 | [#234](https://github.com/legeling/PromptHub/issues/234) |
 | #233 | [Bug]: 卸载 Codex MCP 后管理区注释不成对 |  | 2026-10-13 | 2026-10-14 | [#233](https://github.com/legeling/PromptHub/issues/233) |
@@ -36,6 +37,7 @@
 | #226 | [Bug]: antigravity中的plugin配置方式有误。 | bug, version: 最新稳定版 | 2026-10-11 | 2026-10-14 | [#226](https://github.com/legeling/PromptHub/issues/226) |
 | #225 | [Feature]: 解除 Prompt「用户提示词」非空限制，改为「系统/用户提示词至少一个非空」 | enhancement, version: 0.5.9 | 2026-10-11 | 2026-10-14 | [#225](https://github.com/legeling/PromptHub/issues/225) |
 | #224 | [Feature]: 支持千问办公（Qwen Work）Skill 目录管理 | enhancement, version: 0.5.9 | 2026-10-05 | 2026-10-14 | [#224](https://github.com/legeling/PromptHub/issues/224) |
+| #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-21 | [#221](https://github.com/legeling/PromptHub/issues/221) |
 | #220 | [Feature]: 请求支持antigravity 新版本的 MCP | enhancement, version: 版本2.16.0 (985656990) | 2026-09-24 | 2026-10-14 | [#220](https://github.com/legeling/PromptHub/issues/220) |
 | #219 | [Bug]: 自托管 Web：prompt 无法归入普通分类（分类 visibility=shared、prompt 默认 private，必报 422） | bug, version: v0.5.9 | 2026-09-18 | 2026-10-14 | [#219](https://github.com/legeling/PromptHub/issues/219) |
 | #218 | [Bug]: 手动添加github项目非根目录下的skill，导入成功后点击更新，报错 | bug, version: 0.6.0-beta.2 | 2026-09-16 | 2026-10-14 | [#218](https://github.com/legeling/PromptHub/issues/218) |
@@ -44,6 +46,7 @@
 | #215 | [Feature]: 使用部分克隆、稀疏检出减少克隆内容 | enhancement, version: new release | 2026-09-07 | 2026-10-21 | [#215](https://github.com/legeling/PromptHub/issues/215) |
 | #211 | [Bug]: git仓库和skill商店安装skill失败 | bug, version: 0.5.9 | 2026-09-01 | 2026-09-01 | [#211](https://github.com/legeling/PromptHub/issues/211) |
 | #210 | [Bug]: 导入备份/快照时无条件覆盖用户的真实规则文件并删除版本历史（绕过 rules 冲突保护） | bug | 2026-08-19 | 2026-10-19 | [#210](https://github.com/legeling/PromptHub/issues/210) |
+| #209 | [Bug]: 本地 ~/.claude/CLAUDE.md 变更后，会被 PromptHub 自动恢复 | bug, version: 0.5.8 | 2026-08-19 | 2026-10-22 | [#209](https://github.com/legeling/PromptHub/issues/209) |
 | #207 | Submit IdeaHunter for the tools/resources list | wontfix | 2026-08-16 | 2026-08-20 | [#207](https://github.com/legeling/PromptHub/issues/207) |
 | #202 | [Feature]: 适配不同智能体的 MCP 请求头环境变量写法 | enhancement | 2026-08-06 | 2026-08-20 | [#202](https://github.com/legeling/PromptHub/issues/202) |
 | #201 | [Question]: Pi MCP 适配是否基于 pi-mcp-adapter，是否支持项目级配置？ | question | 2026-08-06 | 2026-08-20 | [#201](https://github.com/legeling/PromptHub/issues/201) |
@@ -53,6 +56,7 @@
 | #193 | [Bug]: 规则文件删除后重新扫描仍保留失效记录 | bug | 2026-07-29 | 2026-10-14 | [#193](https://github.com/legeling/PromptHub/issues/193) |
 | #192 | [Bug]: 自定义输出启用后两个“复制 Prompt”入口结果不一致 | bug, version: 未知（截图中未显示） | 2026-07-29 | 2026-10-14 | [#192](https://github.com/legeling/PromptHub/issues/192) |
 | #191 | [Bug]: safetyReport.scanMethod 校验失败导致无法备份到远程 | bug, version: 未知（截图中未显示） | 2026-07-29 | 2026-10-19 | [#191](https://github.com/legeling/PromptHub/issues/191) |
+| #190 | [Bug]: GitHub部分插件项目，提供了codex和claude原生支持，但通过hub扫描原生的只有codex | bug, version: 0.5.9 | 2026-07-28 | 2026-10-22 | [#190](https://github.com/legeling/PromptHub/issues/190) |
 | #188 | [Feature]: 可以在我的skill 里面加一个标签搜索吗 | enhancement, version: 0.5.10 | 2026-07-23 | 2026-10-19 | [#188](https://github.com/legeling/PromptHub/issues/188) |
 | #187 | [Feature]: oh-my-pi支持 | enhancement, version: oh-my-pi支持 | 2026-07-20 | 2026-08-20 | [#187](https://github.com/legeling/PromptHub/issues/187) |
 | #186 | [Feature]:智谱ZCode支持 | enhancement, version: 智谱ZCode支持 | 2026-07-12 | 2026-07-14 | [#186](https://github.com/legeling/PromptHub/issues/186) |

@@ -24,6 +24,18 @@ review-pending. Matrix, capacity and native lifecycle acceptance tasks remain op
 
 ## Verification
 
+- 2026-10-22 authorized macOS Electron acceptance: a local dual-manifest fixture
+  exposes both native targets, installs through real Codex and Claude CLIs, and
+  retains both distribution targets after application restart. The exact report's
+  `https://github.com/ayghri/i-have-adhd` URL imports version 0.4.1 and displays both
+  native Codex/Claude targets. Initial download attempts lacked the existing proxy
+  variables; matching the user's existing routing resolved Git access without
+  product changes. #190 is closed for the missing-target defect; original Windows
+  and execution of the upstream package's hooks were not tested.
+- Existing focused Desktop import/native/target-overlay regressions pass in the
+  seven-issue audit. Native Plugin Toast/close/horizontal-action/light-dark GUI
+  regression also passes. No generated Plugin hooks were executed by this check.
+
 - Desktop Plugin focused suites: 41 tests passed across distribution/import,
   package validation/version restore, and native/invalid target overlay.
 - Core and Desktop typechecks: passed.
@@ -41,7 +53,8 @@ review-pending. Matrix, capacity and native lifecycle acceptance tasks remain op
 ## Converge
 
 - Stable Plugin behavior synced: yes.
-- Local issue overlay synced: yes; GitHub remains open until release.
+- Local issue overlay synced: yes; #190 closed after exact-source macOS acceptance,
+  independently of the broader matrix/capacity tasks and release state.
 - Final change destination: active until release assignment and manual Desktop
   operation are complete.
 

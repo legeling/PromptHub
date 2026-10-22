@@ -3,29 +3,24 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-20`
-- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`
-- Open issues captured: `34`
-
-- Targeted refresh: #215 verified CLOSED on `2026-10-21T05:02:04Z` using `gh issue view 215 --repo legeling/PromptHub --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; other rows retain the full snapshot date above.
+- Snapshot date: `2026-10-22`
+- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; targeted #190 readback after closure.
+- Open issues captured: `30`
 
 ## Notes
 
-- This file mirrors remote GitHub state only; local delivery state is recorded in `local-github-status.md`.
-- The shared capture contains 218 issues, below the requested limit; pull requests are excluded by the issue endpoint.
-- Issue bodies and discussion remain attributable to their linked GitHub reports; implementation and verification belong in the existing domain records.
+- This file mirrors remote GitHub state only; local delivery is recorded in `local-github-status.md`.
+- The shared capture contains 220 issues (30 open / 190 closed), below the requested limit; pull requests are excluded.
+- #209/#190 closures were confirmed on 2026-10-22. Local commits for #245/#185 have not been pushed and do not change their remote state.
 
 ## Open Issues
 
 | # | 标题 | 标签 | 创建时间 | 更新时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #246 | [Bug]: claude导入第三方模型配置格式错误 | bug, version: 0.6.1 | 2026-10-21 | 2026-10-21 | [#246](https://github.com/legeling/PromptHub/issues/246) |
+| #245 | [Feature]: 供应商无法删除额外的 | enhancement, version: 0.6.1 | 2026-10-21 | 2026-10-21 | [#245](https://github.com/legeling/PromptHub/issues/245) |
 | #244 | [Bug]: Codex 原生分发无法正常使用：未配置 CLI 报错 not found，配置官方 CLI 后报 marketplace failed | bug, version: 0.6.1 | 2026-10-19 | 2026-10-20 | [#244](https://github.com/legeling/PromptHub/issues/244) |
-| #240 | [Bug]: 「安装我的 Skill」弹窗无法勾选 Skill，确认按钮一直显示安装 0 个 | bug | 2026-10-17 | 2026-10-17 | [#240](https://github.com/legeling/PromptHub/issues/240) |
-| #239 | [Bug]: window系统mcp下载异常 | bug, version: 0.6.0-beta.2 | 2026-10-15 | 2026-10-15 | [#239](https://github.com/legeling/PromptHub/issues/239) |
-| #236 | [Bug]: 新建 Prompt会软件崩溃，再次添加也不能录入 | bug, version: 版本: 0.6.0-beta.2 · 稳定版通道 | 2026-10-14 | 2026-10-14 | [#236](https://github.com/legeling/PromptHub/issues/236) |
-| #221 | [Bug]: PromptHub 0.5.9备份失败，导入备份也失败 | bug, version: PromptHub 0.5.9 | 2026-10-01 | 2026-10-14 | [#221](https://github.com/legeling/PromptHub/issues/221) |
 | #212 | [Feature]: 建议将现有 Rules 模块调整为 Instructions，并新增真正的 Scoped Rules 模块 | enhancement, version: Next release | 2026-09-03 | 2026-10-12 | [#212](https://github.com/legeling/PromptHub/issues/212) |
-| #209 | [Bug]: 本地 ~/.claude/CLAUDE.md 变更后，会被 PromptHub 自动恢复 | bug, version: 0.5.8 | 2026-08-19 | 2026-08-20 | [#209](https://github.com/legeling/PromptHub/issues/209) |
 | #205 | Would you take a pull-request security scan workflow? | question | 2026-08-14 | 2026-08-20 | [#205](https://github.com/legeling/PromptHub/issues/205) |
 | #204 | [Feature]: 支持从 npx skills 导入 skills 配置 | enhancement | 2026-08-11 | 2026-08-20 | [#204](https://github.com/legeling/PromptHub/issues/204) |
 | #203 | [Feature]: 集中管理 PromptHub 生成的 Agent 配置备份和适配文件 | enhancement | 2026-08-08 | 2026-08-08 | [#203](https://github.com/legeling/PromptHub/issues/203) |
@@ -33,7 +28,6 @@
 | #197 | [Feature]: 评估并纳入各 AI Agent 的 Rules / rule 目录扫描与管理 | enhancement | 2026-08-04 | 2026-08-04 | [#197](https://github.com/legeling/PromptHub/issues/197) |
 | #195 | [Feature]: 生图提示词里面，上传的每个图片，是否可以再下载/导出？ | enhancement, version: 0.5.9 | 2026-08-01 | 2026-08-01 | [#195](https://github.com/legeling/PromptHub/issues/195) |
 | #194 | [Feature]: 增加通用 ~/.agents/skills 全局安装目录（需兼容性验证） | enhancement | 2026-07-29 | 2026-07-29 | [#194](https://github.com/legeling/PromptHub/issues/194) |
-| #190 | [Bug]: GitHub部分插件项目，提供了codex和claude原生支持，但通过hub扫描原生的只有codex | bug, version: 0.5.9 | 2026-07-28 | 2026-07-28 | [#190](https://github.com/legeling/PromptHub/issues/190) |
 | #185 | [Bug]: 自部署：本地skill同步到远端或者网页版商城安装skill问题 | bug, version: 0.5.9 | 2026-07-11 | 2026-07-11 | [#185](https://github.com/legeling/PromptHub/issues/185) |
 | #177 | [Feature]: 可以集成skillhub吗 | enhancement, version: 0.59 | 2026-06-22 | 2026-07-22 | [#177](https://github.com/legeling/PromptHub/issues/177) |
 | #145 | [Feature]: 建议完善标签管理界面 | enhancement, version: 0.5.6 | 2026-05-24 | 2026-05-24 | [#145](https://github.com/legeling/PromptHub/issues/145) |
