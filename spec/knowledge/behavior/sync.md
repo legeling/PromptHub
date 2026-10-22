@@ -67,6 +67,14 @@
   Selected histories must satisfy the current-version contract; restore does
   not fabricate missing entries in a selected history. Independent marketplace
   metadata retained by the scope merge survives candidate projection.
+- WebDAV/S3 legacy and incremental download pass the complete verified snapshot
+  (including inline media, portable settings and AI configuration) to that same
+  restore owner once. They must not write settings or media after publication:
+  the desktop restore closes the active database and schedules a restart.
+  The remote layout and schema do not change; failure recovery remains owned by
+  the existing restore journal and safety snapshot. GUI acceptance on 2026-10-22
+  exposed a duplicate post-restore settings write that rolled back a restored
+  Skill package; regression and cold-reopen verification cover both formats.
 - Selecting settings imports all four `AGENT_SETTING_KEYS` through the existing
   `agent-settings-v1` import boundary, including when the target is nonempty.
   Unselected settings, nonportable device configuration and local secret bytes

@@ -28,16 +28,58 @@
   ESLint and production client build pass (existing chunk-size/import warnings).
   The initial test harness mixed browser and Node typed-array realms
   during JWT signing; its setup failure is not counted as defect reproduction.
-- #79: no new implementation defect reproduced. The diagnostic run passed 18
-  backup/WebDAV checks, six real Skill-workspace cases and three registered
-  sync-entrypoint cases (27 total). The latter use controlled HTTP with separate
-  SQLite profiles and whole Skill packages including binary files. Existing
-  `.prompthubignore` filtering remains the only package exclusion policy.
-  Reporter WebDAV-provider and native GUI acceptance remain open.
+- #79: the earlier 27 diagnostic checks did not cover the GUI restore boundary.
+  Actual Electron acceptance exposed a successful atomic restore followed by
+  duplicate settings/media writes against the closed database, triggering rollback.
+  Legacy and incremental download now pass the complete verified snapshot to
+  `restoreFromBackup` once. The existing journal/safety snapshot owns recovery;
+  the remote schema, layout and `.prompthubignore` policy are unchanged.
+  Media write failure remains observable through the shared restore owner.
 - Scoped repair committed as `c4a3a8d5` with `Refs #107`; no push, issue closure
-  or deployment. #107's ordinary HTTP file-picker
-  behavior remains unverified; LAN URL rejection retains the existing HTTPS and
+  or deployment. Subsequent real Chrome acceptance covered ordinary HTTP image
+  and video chooser events, actual clipboard image paste, decoded previews,
+  save/reload/reopen and cancellation. The page reported `isSecureContext=false`
+  and `crypto.randomUUID=undefined`. Two images decoded at 256px; the uploaded
+  WebM decoded at 160px with a 1-second duration after reopening. These results
+  do not certify the reporter's Docker image or Windows browser.
+  LAN URL rejection retains the existing HTTPS and
   SSRF boundary. Existing broken random-name references are not guessed/repaired.
+
+### Authorized isolated GUI acceptance
+
+- In the Electron WebDAV settings, connection check and backup buttons succeeded.
+  The fixture contained `SKILL.md`, nested Unicode text, a binary PNG, a companion
+  note and `.prompthubignore`; its excluded cache directory was absent. The UI
+  reported 1 Skill, 2 versions and 5 files even with zero Prompts.
+- Both incremental and legacy modes were exercised through the backup/restore
+  buttons: remove the isolated local Skill, restore, fully terminate Electron,
+  relaunch the same profile, and compare every file and version snapshot. Both
+  retained the exact original data. E2E mode suppresses automatic portable-restore
+  relaunch, so these were explicit cold restarts, not renderer reloads.
+- A malformed remote manifest was rejected with an error toast, and the complete
+  local package/history remained byte-for-byte unchanged. This is pre-publication
+  failure preservation; it is not a new injected disk-publication failure test.
+- Online synchronization was separately enabled through settings. A second empty
+  isolated profile selected “use remote library as baseline” in the real dialog;
+  the Skill appeared in My Skills. Package/history SHA-256 matched the source
+  before and after a cold restart. Native home, app data and Agent targets stayed
+  in temporary profiles. The WebDAV protocol server was controlled, not a vendor.
+- Regression `sync-backup-core.test.ts`, case `hands the complete snapshot to the
+  restore owner once`, failed twice before repair with `Database already closed`
+  (legacy and incremental). It substitutes the restore owner to enforce the
+  handoff contract; GUI runs above exercise the actual owner and persistence.
+  `database-backup.test.ts` additionally rejects false-returning image/video
+  writes. Five focused files / 64 tests pass, plus source/test typechecks, scoped
+  ESLint and a desktop production build. Existing bundling warnings remain.
+
+Re-run the changed desktop boundary:
+
+```sh
+pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/sync-backup-core.test.ts tests/unit/services/webdav.test.ts tests/unit/services/s3-sync.test.ts tests/unit/services/backup-orchestrator.test.ts tests/unit/services/database-backup.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/desktop typecheck
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --filter @prompthub/desktop build
+```
 
 Re-run the changed Web boundary:
 

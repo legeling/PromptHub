@@ -124,6 +124,8 @@ describe("sync-backup-core", () => {
       versions: [],
     });
     restoreFromBackupMock.mockResolvedValue(undefined);
+    restoreAiConfigSnapshotMock.mockReset();
+    restoreSettingsStateSnapshotMock.mockReset();
     localStorage.clear();
   });
 
@@ -179,6 +181,75 @@ describe("sync-backup-core", () => {
   });
 
   describe("downloadSyncBackup", () => {
+    it.each([false, true])(
+      "hands the complete snapshot to the restore owner once (incremental=%s, #79)",
+      async (incrementalSync) => {
+        const images = { "reference.png": "AAH/" };
+        const settings = { state: { language: "en" } };
+        const aiConfig = { aiProvider: "openai" };
+        exportDatabaseMock.mockResolvedValue({
+          version: 1,
+          exportedAt: "2026-01-05T00:00:00.000Z",
+          prompts: [],
+          folders: [],
+          versions: [],
+          images,
+          settings,
+          aiConfig,
+          skills: [{ id: "skill-79", name: "whole-package" }],
+          skillFiles: {
+            "skill-79": [{ relativePath: "SKILL.md", content: "# Package" }],
+          },
+        });
+        const objects = new Map<string, string>();
+        const adapter = createAdapter({
+          uploadText: async (key, content) => {
+            objects.set(key, content);
+            return { success: true };
+          },
+          downloadText: async (key) =>
+            objects.has(key)
+              ? { success: true, data: objects.get(key) }
+              : { success: false, notFound: true },
+        });
+        expect(
+          (await uploadSyncBackup(adapter, { incrementalSync })).success,
+        ).toBe(true);
+        // Atomic desktop publication closes the old DB. No caller may write
+        // media/settings afterward, even when the restore itself succeeded.
+        const closedDatabase = () => {
+          throw new Error("Database already closed");
+        };
+        restoreAiConfigSnapshotMock.mockImplementationOnce(closedDatabase);
+        restoreSettingsStateSnapshotMock.mockImplementationOnce(closedDatabase);
+        vi.mocked(window.electron.saveImageBase64).mockImplementationOnce(
+          closedDatabase,
+        );
+        const rollbackRestore = vi.fn();
+        const result = await downloadSyncBackup(adapter, {
+          incrementalSync,
+          rollbackRestore,
+        });
+        expect(result.success, result.message).toBe(true);
+        expect(restoreFromBackupMock).toHaveBeenCalledTimes(1);
+        expect(restoreFromBackupMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            images,
+            settings,
+            aiConfig,
+            skills: [{ id: "skill-79", name: "whole-package" }],
+            skillFiles: {
+              "skill-79": [{ relativePath: "SKILL.md", content: "# Package" }],
+            },
+          }),
+        );
+        expect(window.electron.saveImageBase64).not.toHaveBeenCalled();
+        expect(restoreAiConfigSnapshotMock).not.toHaveBeenCalled();
+        expect(restoreSettingsStateSnapshotMock).not.toHaveBeenCalled();
+        expect(rollbackRestore).not.toHaveBeenCalled();
+      },
+    );
+
     it("falls back to the legacy backup payload when no incremental manifest exists", async () => {
       const downloadText = vi.fn(async (path: string) => {
         if (path.includes("manifest")) {
@@ -651,5 +722,4 @@ describe("sync-backup-core", () => {
       expect(result.details?.skipped).toBe(3);
     });
   });
-
 });

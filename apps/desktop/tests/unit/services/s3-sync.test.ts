@@ -178,6 +178,8 @@ describe("s3-sync", () => {
       prompts: [{ id: "prompt-2", title: "Office pull" }],
       folders: [],
       versions: [],
+      images: {},
+      videos: {},
       rules: [{ id: "global:agents", content: "# Pulled" }],
       skills: [{ id: "skill-1", name: "writer" }],
       skillVersions: [

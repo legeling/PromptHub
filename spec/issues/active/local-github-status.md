@@ -33,8 +33,8 @@ remote closure and publication are recorded separately.
 
 | Issue | Local outcome | Remaining boundary |
 | --- | --- | --- |
-| #107 | Clipboard stored-filename mismatch repaired in local commit `c4a3a8d5` (`Refs #107`). Three pre-fix failures reproduce the mismatch; 61 focused Web checks pass, including five new functional regressions. | Original HTTP browser/native file-picker and Docker image acceptance remain open. LAN media restrictions are unchanged; old broken references cannot be safely guessed. Commit not pushed. |
-| #79 | Current backup and online-sync paths passed 27 diagnostic checks, including whole Skill packages over controlled HTTP and SQLite reopen. No source change required by reproduced evidence. | Reporter WebDAV service and GUI acceptance remain open. Existing `.prompthubignore` filtering is retained. |
+| #107 | Fix `c4a3a8d5` now also passes isolated Chrome GUI acceptance over ordinary HTTP with `crypto.randomUUID` unavailable: image/video chooser, real clipboard paste, preview, save/reload/reopen and cancelled selection. Earlier 61 focused Web checks remain the regression baseline. | Reporter Docker image/Windows and private-network image hosting are not certified. HTTPS/SSRF restrictions and previously broken references are unchanged. No push. |
+| #79 | GUI acceptance found and repaired post-publication media/settings writes against a closed database. Legacy and incremental restore now use one complete snapshot; 64 focused checks, source/test typechecks, scoped lint and desktop build pass. Both formats restore 1 Skill / 5 files / 2 versions exactly after cold reopen; malformed manifest preserves all local bytes/history. A fresh peer adopts the online baseline through UI and retains the identical package after restart. | Controlled local WebDAV transport, not a reporter/vendor server. S3 shares the repair and passes focused tests but was not GUI-tested. Existing `.prompthubignore` filtering is retained. No push or remote issue mutation. |
 
 See [the scoped verification record](ISS-20260809-001-remaining-open-issues-roadmap.md#media-and-webdav-follow-up--2026-10-22). No remote issue mutation was made.
 

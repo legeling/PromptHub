@@ -920,10 +920,10 @@ describe("database-backup restore", () => {
       electron: {
         getImageSize: vi.fn().mockResolvedValue(128),
         readImageBase64: vi.fn().mockResolvedValue("base64-image"),
-        saveImageBase64: vi.fn().mockResolvedValue(undefined),
+        saveImageBase64: vi.fn().mockResolvedValue(true),
         getVideoSize: vi.fn().mockResolvedValue(512),
         readVideoBase64: vi.fn().mockResolvedValue("base64-video"),
-        saveVideoBase64: vi.fn().mockResolvedValue(undefined),
+        saveVideoBase64: vi.fn().mockResolvedValue(true),
       },
     });
 
@@ -1018,13 +1018,39 @@ describe("database-backup restore", () => {
     );
   });
 
-  it("throws when backup restore cannot fully write assets", async () => {
-    installWindowMocks({
-      electron: {
-        saveImageBase64: vi.fn().mockRejectedValue(new Error("disk full")),
-      },
-    });
+  it.each(["reject", "false"])(
+    "throws when asset restore reports %s",
+    async (failure) => {
+      installWindowMocks({
+        electron: {
+          saveImageBase64:
+            failure === "reject"
+              ? vi.fn().mockRejectedValue(new Error("disk full"))
+              : vi.fn().mockResolvedValue(false),
+        },
+      });
 
+      await expect(
+        restoreFromBackup({
+          version: 1,
+          exportedAt: "2026-04-07T00:00:00.000Z",
+          prompts: [],
+          folders: [],
+          versions: [],
+          images: {
+            "image-1.png": "base64-image",
+          },
+        }),
+      ).rejects.toThrow(
+        "Backup restore completed with 1 file errors: image image-1.png",
+      );
+    },
+  );
+
+  it("rejects an unsuccessful video restore", async () => {
+    installWindowMocks({
+      electron: { saveVideoBase64: vi.fn().mockResolvedValue(false) },
+    });
     await expect(
       restoreFromBackup({
         version: 1,
@@ -1032,12 +1058,10 @@ describe("database-backup restore", () => {
         prompts: [],
         folders: [],
         versions: [],
-        images: {
-          "image-1.png": "base64-image",
-        },
+        videos: { "clip.webm": "AAH/" },
       }),
     ).rejects.toThrow(
-      "Backup restore completed with 1 file errors: image image-1.png",
+      "Backup restore completed with 1 file errors: video clip.webm",
     );
   });
 
