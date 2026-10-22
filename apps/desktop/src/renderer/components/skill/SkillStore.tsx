@@ -1187,6 +1187,7 @@ export function SkillStore() {
             {installed.length === 0 &&
               recommended.length === 0 &&
               !shouldShowCustomStoreEmpty &&
+              !currentRemoteError &&
               !shouldShowInitialLoading && (
                 <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                   <SearchIcon className="w-12 h-12 opacity-20 mb-4" />

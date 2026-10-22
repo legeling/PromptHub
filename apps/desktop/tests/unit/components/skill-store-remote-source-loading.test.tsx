@@ -15,7 +15,10 @@ import { installWindowMocks } from "../../helpers/window";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 
-import { makeRegistrySkill } from "./skill-store-remote.test-fixtures";
+import {
+  createDeferred,
+  makeRegistrySkill,
+} from "./skill-store-remote.test-fixtures";
 
 const { showToast } = vi.hoisted(() => ({
   showToast: vi.fn(),
@@ -73,6 +76,89 @@ describe("SkillStore remote loading", () => {
     vi.unstubAllEnvs();
   });
 
+  it("keeps each pending source loading when switching away and back", async () => {
+    const claude = createDeferred<string>();
+    const codex = createDeferred<string>();
+    const fetchRemoteContent = vi.fn((url: string) =>
+      url.includes("anthropics/skills") ? claude.promise : codex.promise,
+    );
+    installWindowMocks({
+      api: {
+        settings: {
+          get: vi.fn().mockResolvedValue({ device: { storeAutoSync: false } }),
+        },
+        skill: { fetchRemoteContent },
+      },
+    });
+    await renderWithI18n(<SkillStore />, { language: "en" });
+    expect(screen.getByText(/Loading Claude Code skills/)).toBeInTheDocument();
+    act(() => useSkillStore.getState().selectStoreSource("openai-codex"));
+    expect(screen.getByText(/Loading OpenAI Codex skills/)).toBeInTheDocument();
+    act(() => useSkillStore.getState().selectStoreSource("claude-code"));
+    expect(screen.getByText(/Loading Claude Code skills/)).toBeInTheDocument();
+    expect(screen.queryByText("No skills found")).not.toBeInTheDocument();
+    expect(fetchRemoteContent).toHaveBeenCalledTimes(2);
+    await act(async () =>
+      codex.reject(new Error("HTTP 404: fixture unavailable")),
+    );
+    expect(screen.getByText(/Loading Claude Code skills/)).toBeInTheDocument();
+    await act(async () =>
+      claude.reject(new Error("HTTP 404: fixture unavailable")),
+    );
+    expect(screen.getByText("Failed to load remote store")).toBeInTheDocument();
+    expect(screen.queryByText("No skills found")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+  });
+
+  it("renders the populated custom anthropics catalog, count and cached reopen (#141)", async () => {
+    const sourceId = "custom-anthropics";
+    const names = Array.from(
+      { length: 15 },
+      (_, index) => `fixture-skill-${index}`,
+    );
+    useSkillStore.setState({
+      selectedStoreSourceId: sourceId,
+      customStoreSources: [
+        {
+          id: sourceId,
+          name: "my",
+          type: "git-repo",
+          url: "https://github.com/anthropics/skills",
+          enabled: true,
+          order: 0,
+          createdAt: 1,
+        },
+      ],
+      remoteStoreEntries: {
+        [sourceId]: {
+          loadedAt: 1,
+          catalogComplete: true,
+          error: null,
+          skills: names.map((name) => makeRegistrySkill(name)),
+        },
+      },
+    });
+    const fetchRemoteContent = vi.fn().mockRejectedValue(new Error("offline"));
+    installWindowMocks({
+      api: {
+        settings: {
+          get: vi.fn().mockResolvedValue({ device: { storeAutoSync: false } }),
+        },
+        skill: { fetchRemoteContent },
+      },
+    });
+    const view = await renderWithI18n(<SkillStore />, { language: "en" });
+    expect(screen.getByText("Loaded 15")).toBeInTheDocument();
+    expect(screen.getByText("Fixture Skill 0")).toBeInTheDocument();
+    expect(screen.getByText("Fixture Skill 14")).toBeInTheDocument();
+    view.unmount();
+    await useSkillStore.persist.rehydrate();
+    await renderWithI18n(<SkillStore />, { language: "en" });
+    expect(screen.getByText("Fixture Skill 0")).toBeInTheDocument();
+    expect(screen.getByText("Fixture Skill 14")).toBeInTheDocument();
+    expect(fetchRemoteContent).not.toHaveBeenCalled();
+  });
+
   it.each(["claude-code", "openai-codex"])(
     "refreshes an unverified three-item %s cache and preserves it on incomplete downloads",
     async (sourceId) => {
@@ -128,7 +214,9 @@ describe("SkillStore remote loading", () => {
         useSkillStore.getState().remoteStoreEntries[sourceId].loadedAt,
       ).toBe(100);
       fail = false;
-      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      const retry = screen.getByRole("button", { name: "Retry" });
+      await waitFor(() => expect(retry).toBeEnabled());
+      fireEvent.click(retry);
       await waitFor(() =>
         expect(
           useSkillStore

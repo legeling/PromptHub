@@ -290,10 +290,18 @@ export function useSkillStoreRemoteSync(
   );
   const scanLocalPreview = useSkillStore((state) => state.scanLocalPreview);
 
-  const [loadingSourceId, setLoadingSourceId] = useState<string | null>(null);
-  const [loadingMoreSourceId, setLoadingMoreSourceId] = useState<string | null>(
-    null,
+  const [pendingLoads, setPendingLoads] = useState<
+    Record<string, { sourceId: string; continuation: boolean }>
+  >({});
+  const selectedLoads = Object.values(pendingLoads).filter(
+    (load) => load.sourceId === selectedStoreSourceId,
   );
+  const loadingSourceId = selectedLoads.some((load) => !load.continuation)
+    ? selectedStoreSourceId
+    : null;
+  const loadingMoreSourceId = selectedLoads.some((load) => load.continuation)
+    ? selectedStoreSourceId
+    : null;
   const remoteStoreEntriesRef = useRef(remoteStoreEntries);
   const storeCategoryRef = useRef(storeCategory);
   const storeSearchQueryRef = useRef(storeSearchQuery);
@@ -902,11 +910,10 @@ export function useSkillStoreRemoteSync(
 
       const loadPromise = (async () => {
         const isContinuationLoad = pageDirection === "next";
-        if (isContinuationLoad) {
-          setLoadingMoreSourceId(sourceId);
-        } else {
-          setLoadingSourceId(sourceId);
-        }
+        setPendingLoads((current) => ({
+          ...current,
+          [loadKey]: { sourceId, continuation: isContinuationLoad },
+        }));
         try {
           let result: StoreLoadResult = { skills: [] };
           if (source.type === "git-repo") {
@@ -1035,15 +1042,11 @@ export function useSkillStoreRemoteSync(
           });
         } finally {
           inflightStoreLoadsRef.current.delete(loadKey);
-          if (isContinuationLoad) {
-            setLoadingMoreSourceId((current) =>
-              current === sourceId ? null : current,
-            );
-          } else {
-            setLoadingSourceId((current) =>
-              current === sourceId ? null : current,
-            );
-          }
+          setPendingLoads((current) => {
+            const next = { ...current };
+            delete next[loadKey];
+            return next;
+          });
         }
       })();
 

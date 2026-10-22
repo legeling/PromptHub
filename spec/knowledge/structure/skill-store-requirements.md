@@ -198,6 +198,15 @@ Custom Marketplace JSON sources must use HTTPS and return a valid JSON document.
 
 ### 3.3 Content Sources
 
+Loading feedback belongs to each in-flight source request. Switching sources and
+returning before completion must keep that source's loading indicator and disable
+its refresh action without issuing another identical request. Completion or
+failure of another source must not clear it. Failed loads show the existing error
+and retry action, not a contradictory search-empty message. Cached catalogs stay
+visible throughout refresh. This is transient renderer state only; no cache
+schema, network policy or persistence migration changes. Tracking costs are
+linear in the number of active requests, not catalog entries.
+
 Catalog persistence: successful remote lists remain in the existing renderer `skill-store` cache across navigation and application restart. Canonical source configuration belongs to Core/SQLite; startup migration must redact legacy durable configuration before writing the sanitized renderer snapshot, never delete the newly written catalog. No new schema, cache location, or IPC is introduced. Existing valid cached lists and their complete-catalog marker are restored immediately, including when the next refresh fails; manual refresh and configured background sync may replace them only after successful loading. Legacy incomplete catalogs remain visible during revalidation. Cache deletion is recoverable by fetching again, but already-deleted snapshots cannot be reconstructed offline. Verification must cover migration followed by multiple restarts without intervening writes, and failed refresh followed by reopen without another automatic request.
 
 Cache verification (2026-10-17): `renderer-persistence`, `skill-store-remote-source-loading`, and `skill-store-cache-persistence` passed 57 tests. The startup regression uses the real Core migration/SQLite owner (closed and reopened three times) and renderer storage hydration; four remote catalogs remain persisted without subsequent UI writes and durable source configuration stays out of the renderer snapshot. Component tests cover cached rendering without network requests and failed refresh/reopen for Claude Code and Codex, with remote transport replaced. Desktop source typecheck and focused ESLint passed. Native Electron restart/GUI was not exercised, per the user's preference to inspect the application personally.
