@@ -29,6 +29,15 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Media and WebDAV follow-up — 2026-10-22
+
+| Issue | Local outcome | Remaining boundary |
+| --- | --- | --- |
+| #107 | Clipboard stored-filename mismatch repaired in local commit `c4a3a8d5` (`Refs #107`). Three pre-fix failures reproduce the mismatch; 61 focused Web checks pass, including five new functional regressions. | Original HTTP browser/native file-picker and Docker image acceptance remain open. LAN media restrictions are unchanged; old broken references cannot be safely guessed. Commit not pushed. |
+| #79 | Current backup and online-sync paths passed 27 diagnostic checks, including whole Skill packages over controlled HTTP and SQLite reopen. No source change required by reproduced evidence. | Reporter WebDAV service and GUI acceptance remain open. Existing `.prompthubignore` filtering is retained. |
+
+See [the scoped verification record](ISS-20260809-001-remaining-open-issues-roadmap.md#media-and-webdav-follow-up--2026-10-22). No remote issue mutation was made.
+
 ### Seven-issue audit — 2026-10-22
 
 This dated audit supersedes the older per-issue acceptance descriptions below.

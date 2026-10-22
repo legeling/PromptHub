@@ -9,6 +9,44 @@
 - Delivery authority: [local overlay](local-github-status.md); behavior and design stay in their existing domain records.
 - Scope: published 0.6.0 review, authorized issue follow-up, local repairs and the later explicitly authorized split commits/push. Release and tag creation remain outside scope. Historical sections retain their original verification boundaries.
 
+## Media and WebDAV follow-up — 2026-10-22
+
+- #107: confirmed a second clipboard defect after the browser UUID fallback.
+  `/api/media/images/base64` returns a server-assigned name, but the browser
+  bridge returned its discarded request name. The bridge now returns the
+  existing API result directly; the unused browser ID generator is removed.
+  No schema, path, dependency or network-policy change is introduced.
+- `apps/web/src/client/desktop/media-roundtrip.test.ts` uses the real browser
+  bridge, authenticated Hono routes, SQLite and temporary media files. Only DOM
+  selection and HTTP delivery are substituted. Before the fix, three clipboard
+  cases failed on filename equality; image/video selection controls passed.
+  After the fix all five pass, including UUID-unavailable operation, exact byte
+  reads, saved Prompt references, database close/reopen and failed-upload
+  preservation. This does not prove native file-picker interaction or visual
+  image decoding in the reporter's Docker/browser environment.
+- Focused Web verification: four files / 61 tests pass; Web typecheck, scoped
+  ESLint and production client build pass (existing chunk-size/import warnings).
+  The initial test harness mixed browser and Node typed-array realms
+  during JWT signing; its setup failure is not counted as defect reproduction.
+- #79: no new implementation defect reproduced. The diagnostic run passed 18
+  backup/WebDAV checks, six real Skill-workspace cases and three registered
+  sync-entrypoint cases (27 total). The latter use controlled HTTP with separate
+  SQLite profiles and whole Skill packages including binary files. Existing
+  `.prompthubignore` filtering remains the only package exclusion policy.
+  Reporter WebDAV-provider and native GUI acceptance remain open.
+- Scoped repair committed as `c4a3a8d5` with `Refs #107`; no push, issue closure
+  or deployment. #107's ordinary HTTP file-picker
+  behavior remains unverified; LAN URL rejection retains the existing HTTPS and
+  SSRF boundary. Existing broken random-name references are not guessed/repaired.
+
+Re-run the changed Web boundary:
+
+```sh
+pnpm --filter @prompthub/web exec vitest run src/client/desktop/media-roundtrip.test.ts src/client/desktop/install-bridge.test.ts src/routes/media.test.ts src/utils/remote-http.test.ts --minWorkers=1 --maxWorkers=1 --testTimeout=20000 --hookTimeout=30000
+pnpm --filter @prompthub/web typecheck
+pnpm --filter @prompthub/web exec eslint src/client/desktop/install-bridge.ts src/client/desktop/install-bridge.test.ts src/client/desktop/media-roundtrip.test.ts
+```
+
 ## Provider follow-up — 2026-10-22
 
 ### Current seven-issue acceptance and submission
