@@ -115,6 +115,45 @@ function harness(read = vi.fn(() => config())) {
 }
 
 describe("Agent Provider source service", () => {
+  it.each(["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] as const)(
+    "imports a custom Claude gateway with explicit %s authentication",
+    async (credentialEnvKey) => {
+      const source = config();
+      source.providers[1].provider = "custom-vendor-label";
+      const { service, create } = harness(vi.fn(() => source));
+      await service.importSource({
+        platformId: "claude",
+        sourceId: "provider-anthropic",
+        modelId: "model-anthropic",
+        protocol: "anthropic-messages",
+        credentialEnvKey,
+      });
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({
+            providerKind: "anthropic-compatible",
+            config: { credentialEnvKey },
+          }),
+          secret: "anthropic-secret",
+        }),
+      );
+    },
+  );
+
+  it("rejects a Claude credential selection for another platform", async () => {
+    const { service, create } = harness();
+    await expect(
+      service.importSource({
+        platformId: "codex",
+        sourceId: "provider-work",
+        modelId: "model-chat",
+        protocol: "openai-responses",
+        credentialEnvKey: "ANTHROPIC_AUTH_TOKEN",
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_SOURCE_INPUT_INVALID");
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("lists redacted PromptHub providers and filters non-chat models", () => {
     const { service } = harness();
 

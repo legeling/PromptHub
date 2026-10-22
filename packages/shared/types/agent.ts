@@ -968,11 +968,17 @@ export interface AgentProviderSourceCandidate {
   models: AgentProviderSourceModel[];
 }
 
+export type ClaudeCredentialEnvKey =
+  | "ANTHROPIC_API_KEY"
+  | "ANTHROPIC_AUTH_TOKEN";
+
 export interface ImportAgentProviderSourceRequest {
   platformId: string;
   sourceId: string;
   modelId: string;
   protocol: string;
+  /** Claude-only native header choice; omission retains API-key authentication. */
+  credentialEnvKey?: ClaudeCredentialEnvKey;
 }
 
 export type AgentProviderMigrationCredentialSource =

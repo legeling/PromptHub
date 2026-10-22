@@ -695,6 +695,7 @@
           "protocol-unsupported": "Das Protokoll wird nicht unterstuetzt",
           "no-chat-model": "Kein Chat-Modell konfiguriert",
           "invalid-endpoint": "Endpunkt ist ungueltig"
+        "claudeAuthHint": "Wählen Sie den vom Gateway benötigten Header: API-Schlüssel nutzt x-api-key, Auth-Token nutzt Authorization: Bearer. Die interaktive API-Schlüssel-Freigabe erfolgt in Claude Code.",
         }
       },
       "deepLink": {

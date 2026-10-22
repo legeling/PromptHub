@@ -695,6 +695,7 @@
           "protocol-unsupported": "Protocol is not supported",
           "no-chat-model": "No chat model is configured",
           "invalid-endpoint": "Endpoint is invalid"
+        "claudeAuthHint": "Choose the gateway's required header: API key uses x-api-key; auth token uses Authorization: Bearer. Interactive API-key approval is handled by Claude Code.",
         }
       },
       "deepLink": {

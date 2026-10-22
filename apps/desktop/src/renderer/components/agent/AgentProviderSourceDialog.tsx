@@ -9,9 +9,11 @@ import { useTranslation } from "react-i18next";
 
 import type {
   AgentProviderSourceCandidate,
+  ClaudeCredentialEnvKey,
   ImportAgentProviderSourceRequest,
 } from "@prompthub/shared";
 import { Button, Modal, Select, getCategoryIcon } from "../ui";
+import { AgentProviderFormSelect } from "./AgentProviderFormSelect";
 import {
   getModelCategory,
   getProviderIconCategory,
@@ -65,8 +67,11 @@ export function AgentProviderSourceDialog({
   const [sourceId, setSourceId] = useState("");
   const [modelId, setModelId] = useState("");
   const [protocol, setProtocol] = useState("");
+  const [credentialEnvKey, setCredentialEnvKey] =
+    useState<ClaudeCredentialEnvKey>("ANTHROPIC_API_KEY");
 
   useEffect(() => {
+    setCredentialEnvKey("ANTHROPIC_API_KEY");
     if (isOpen) void onLoad(platformId);
   }, [isOpen, onLoad, platformId]);
 
@@ -86,13 +91,20 @@ export function AgentProviderSourceDialog({
     const model =
       candidate.models.find((item) => item.isDefault) ?? candidate.models[0];
     setSourceId(candidate.sourceId);
+    setCredentialEnvKey("ANTHROPIC_API_KEY");
     setModelId(model?.id ?? "");
     setProtocol(candidate.protocol ?? candidate.protocols[0] ?? "");
   }
 
   async function submit(): Promise<void> {
     if (!sourceId || !modelId || !protocol) return;
-    const result = await onImport({ platformId, sourceId, modelId, protocol });
+    const result = await onImport({
+      platformId,
+      sourceId,
+      modelId,
+      protocol,
+      ...(platformId === "claude" ? { credentialEnvKey } : {}),
+    });
     if (result) onClose();
   }
 
@@ -238,6 +250,35 @@ export function AgentProviderSourceDialog({
               triggerClassName="flex min-h-12 w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-left text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-default disabled:opacity-70"
             />
           </label>
+        </div>
+      ) : null}
+      {selected && platformId === "claude" ? (
+        <div className="mt-4 space-y-2">
+          <AgentProviderFormSelect
+            label={t("agents.providerProfiles.form.credentialKind")}
+            value={credentialEnvKey}
+            disabled={loading || importing}
+            onChange={(value) => {
+              if (
+                value === "ANTHROPIC_API_KEY" ||
+                value === "ANTHROPIC_AUTH_TOKEN"
+              )
+                setCredentialEnvKey(value);
+            }}
+            options={[
+              {
+                value: "ANTHROPIC_API_KEY",
+                label: t("agents.providerProfiles.form.anthropicApiKey"),
+              },
+              {
+                value: "ANTHROPIC_AUTH_TOKEN",
+                label: t("agents.providerProfiles.form.anthropicAuthToken"),
+              },
+            ]}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("agents.providerProfiles.sourceImport.claudeAuthHint")}
+          </p>
         </div>
       ) : null}
       <div className="mt-5 flex justify-end gap-2">

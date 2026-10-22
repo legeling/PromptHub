@@ -1,5 +1,8 @@
 import fs from "node:fs/promises";
-import { isClaudeCloudProviderEnabled } from "@prompthub/shared/utils/claude-config";
+import {
+  getClaudeConfiguredModel,
+  isClaudeCloudProviderEnabled,
+} from "@prompthub/shared/utils/claude-config";
 import path from "node:path";
 import {
   applyEdits,
@@ -296,7 +299,7 @@ function inspectClaude(
   data: JsonRecord,
   relativePath: string,
 ): AgentModelConfiguration {
-  const model = getString(data, "model");
+  const model = getClaudeConfiguredModel(data);
   const env = getRecord(data, "env");
   const endpoint = sanitizeEndpoint(getString(env, "ANTHROPIC_BASE_URL"));
   const provider = isClaudeCloudProviderEnabled(env?.CLAUDE_CODE_USE_BEDROCK)
@@ -1046,6 +1049,17 @@ function jsonModelEdits(
     raw,
     modify(raw, modelPath, model, { formattingOptions: formatting }),
   );
+  if (
+    agentId === "claude" &&
+    getRecord(parseJsonRecord(next), "env")?.ANTHROPIC_MODEL !== undefined
+  ) {
+    next = applyEdits(
+      next,
+      modify(next, ["env", "ANTHROPIC_MODEL"], undefined, {
+        formattingOptions: formatting,
+      }),
+    );
+  }
   if (agentId === "opencode" && secondaryModel !== undefined) {
     next = applyEdits(
       next,

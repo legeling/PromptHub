@@ -695,6 +695,7 @@
           "protocol-unsupported": "El protocolo no es compatible",
           "no-chat-model": "No hay un modelo de chat configurado",
           "invalid-endpoint": "El endpoint no es valido"
+        "claudeAuthHint": "Elija la cabecera requerida por la pasarela: la clave API usa x-api-key y el token usa Authorization: Bearer. Claude Code gestiona la aprobación interactiva de la clave API.",
         }
       },
       "deepLink": {

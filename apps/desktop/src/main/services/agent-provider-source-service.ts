@@ -8,6 +8,7 @@ import type {
   AgentPiWriteResult,
   AgentProviderProfilePublic,
   AgentProviderSourceCandidate,
+  ClaudeCredentialEnvKey,
   CreateAgentProviderProfileRequest,
   ImportAgentProviderSourceRequest,
 } from "@prompthub/shared";
@@ -129,6 +130,7 @@ function projectionFor(
   platformId: string,
   provider: CoreAIProviderConfig,
   requestedProtocol?: string,
+  credentialEnvKey: ClaudeCredentialEnvKey = "ANTHROPIC_API_KEY",
 ): ProviderProjection | null {
   const protocols = protocolOptionsFor(platformId, provider);
   const protocol = requestedProtocol ?? protocols[0];
@@ -150,9 +152,12 @@ function projectionFor(
   }
   if (platformId === "claude") {
     return {
-      providerKind: provider.provider,
+      providerKind:
+        provider.provider === "anthropic"
+          ? "anthropic"
+          : "anthropic-compatible",
       protocol,
-      config: { credentialEnvKey: "ANTHROPIC_API_KEY" },
+      config: { credentialEnvKey },
     };
   }
   if (platformId === "gemini") {
@@ -259,6 +264,14 @@ export function createAgentProviderSourceService({
     request: ImportAgentProviderSourceRequest,
   ): Promise<AgentProviderProfilePublic> {
     const platformId = requireRequestId(request.platformId);
+    const credentialEnvKey = request.credentialEnvKey;
+    if (
+      credentialEnvKey !== undefined &&
+      (platformId !== "claude" ||
+        (credentialEnvKey !== "ANTHROPIC_API_KEY" &&
+          credentialEnvKey !== "ANTHROPIC_AUTH_TOKEN"))
+    )
+      throw new Error("AGENT_PROVIDER_SOURCE_INPUT_INVALID");
     if (platformId === "pi") {
       throw new Error("AGENT_PROVIDER_SOURCE_INCOMPATIBLE");
     }
@@ -275,7 +288,12 @@ export function createAgentProviderSourceService({
     if (!candidate.protocols.includes(protocol)) {
       throw new Error("AGENT_PROVIDER_SOURCE_PROTOCOL_UNSUPPORTED");
     }
-    const projection = projectionFor(platformId, provider, protocol)!;
+    const projection = projectionFor(
+      platformId,
+      provider,
+      protocol,
+      credentialEnvKey,
+    )!;
     const model = providerModels(config, provider).find(
       (item) => item.id === modelId,
     );

@@ -694,6 +694,7 @@
           "protocol-unsupported": "このプロトコルはサポートされていません",
           "no-chat-model": "チャットモデルが設定されていません",
           "invalid-endpoint": "エンドポイントが無効です"
+        "claudeAuthHint": "ゲートウェイの要件に合わせて選択：API キーは x-api-key、認証トークンは Authorization: Bearer を使用します。対話モードの API キー承認は Claude Code が処理します。",
         }
       },
       "deepLink": {

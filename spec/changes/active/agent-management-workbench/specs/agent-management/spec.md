@@ -4216,6 +4216,28 @@ native state MUST show a checked, non-destructive switch; selecting an inactive
 switch MUST enter the existing review, atomic apply, verification and rollback
 workflow. The detail pane MUST NOT retain a second activation command.
 
+2026-10-22 confirmed follow-up (#246), locally implemented and verified: imported Claude
+providers must expose the native credential choice before import. The request's
+optional `credentialEnvKey` accepts only `ANTHROPIC_API_KEY` (the existing default,
+`x-api-key`) or `ANTHROPIC_AUTH_TOKEN` (`Authorization: Bearer`), only for Claude.
+The selected value is stored in the existing Profile config; credentials remain
+write-only in the existing secret owner. Arbitrary source provider labels must
+project to Claude's `anthropic-compatible` kind rather than become invalid native
+provider kinds. No automatic dual headers, credential fallback, login, key
+approval, or account migration is allowed.
+
+Within the selected native settings file, model reads must follow
+`env.ANTHROPIC_MODEL` → root `model` → `env.ANTHROPIC_DEFAULT_MODEL`. Explicit
+primary-model writes use root `model` and remove the same file's stale
+`env.ANTHROPIC_MODEL`, preserving unrelated env, modelSettings, permissions,
+hooks and extensions. Both the Profile adapter and direct model editor must use
+the same reading contract. User/project/managed files and process flags remain
+separate scopes; file verification must not claim effective process verification.
+Interactive API-key approval remains Claude-owned, not a PromptHub-written
+`customApiKeyResponses` bypass. Both static modes require native-process tests
+against a controlled gateway; reporter gateway and Windows acceptance remain
+separate from those tests.
+
 The read-only current native provider, including an official platform-managed
 provider, MUST expose the same connection and explicit model-test surfaces as a
 stored provider. Testing MUST derive an ephemeral sanitized target from the

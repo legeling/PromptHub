@@ -138,8 +138,10 @@ describe("Claude Code unified Provider Profile adapter", () => {
       targetPath,
       JSON.stringify({
         model: "old-primary",
+        modelSettings: { custom: { preserved: true } },
         permissions: { allow: ["Read"] },
         env: {
+          ANTHROPIC_MODEL: "effective-primary",
           ANTHROPIC_DEFAULT_SONNET_MODEL: "old-sonnet",
           ANTHROPIC_DEFAULT_OPUS_MODEL: "old-opus",
           ANTHROPIC_DEFAULT_HAIKU_MODEL: "old-haiku",
@@ -151,7 +153,7 @@ describe("Claude Code unified Provider Profile adapter", () => {
     const adapter = createAgentClaudeProviderAdapter(options(root));
     const baseline = await adapter.inspect(context(root));
     expect(baseline.values).toMatchObject({
-      model: "old-primary",
+      model: "effective-primary",
       sonnetModel: "old-sonnet",
       opusModel: "old-opus",
       haikuModel: "old-haiku",
@@ -171,6 +173,8 @@ describe("Claude Code unified Provider Profile adapter", () => {
       modelMappings: routeInput.modelMappings,
     });
     const routed = JSON.parse(await fs.readFile(targetPath, "utf8"));
+    expect(routed.env).not.toHaveProperty("ANTHROPIC_MODEL");
+    expect(routed.modelSettings).toEqual({ custom: { preserved: true } });
     expect(routed).toMatchObject({
       model: "claude-sonnet-4-6",
       permissions: { allow: ["Read"] },

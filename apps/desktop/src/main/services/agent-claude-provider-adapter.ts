@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
-import { isClaudeCloudProviderEnabled } from "@prompthub/shared/utils/claude-config";
+import {
+  getClaudeConfiguredModel,
+  isClaudeCloudProviderEnabled,
+} from "@prompthub/shared/utils/claude-config";
 import path from "node:path";
 import { getAgentPrimaryModelConfigPath } from "./agent-model-config-paths";
 
@@ -29,6 +32,7 @@ import type {
   AgentProviderProfile,
   AgentProviderRollbackResult,
   AgentProviderVerification,
+  ClaudeCredentialEnvKey as CredentialEnvKey,
 } from "@prompthub/shared";
 
 import {
@@ -55,7 +59,6 @@ import type {
 } from "./agent-secret-store";
 
 type JsonRecord = Record<string, unknown>;
-type CredentialEnvKey = "ANTHROPIC_API_KEY" | "ANTHROPIC_AUTH_TOKEN";
 type CredentialKind = "api-key" | "auth-token" | "none";
 type ClaudeModelRoute = "primary" | "sonnet" | "opus" | "haiku" | "subagent";
 
@@ -108,6 +111,7 @@ const CREDENTIAL_ENV_KEYS = new Set<CredentialEnvKey>([
   "ANTHROPIC_AUTH_TOKEN",
 ]);
 const DIRECT_PROVIDER_ENV_KEYS = [
+  "ANTHROPIC_MODEL",
   "ANTHROPIC_BASE_URL",
   "ANTHROPIC_API_KEY",
   "ANTHROPIC_AUTH_TOKEN",
@@ -230,7 +234,7 @@ function comparableState(
         !["anthropic", "custom-gateway"].includes(provider)
           ? "platform-native"
           : "anthropic-messages",
-      model: getString(data, "model"),
+      model: getClaudeConfiguredModel(data),
       sonnetModel: getString(env, MODEL_ROUTE_ENV_KEYS.sonnet),
       opusModel: getString(env, MODEL_ROUTE_ENV_KEYS.opus),
       haikuModel: getString(env, MODEL_ROUTE_ENV_KEYS.haiku),
@@ -673,7 +677,7 @@ export function createAgentClaudeProviderAdapter(
       const env = getRecord(native.data, "env");
       const provider = native.state.values.provider as string;
       const credential = nativeCredential(env);
-      const model = getString(native.data, "model");
+      const model = getClaudeConfiguredModel(native.data);
       const routeMappings = (
         Object.entries(MODEL_ROUTE_ENV_KEYS) as Array<
           [Exclude<ClaudeModelRoute, "primary">, string]

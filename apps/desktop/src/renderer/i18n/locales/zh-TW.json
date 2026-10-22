@@ -694,6 +694,7 @@
           "protocol-unsupported": "此協定不受支援",
           "no-chat-model": "尚未設定對話模型",
           "invalid-endpoint": "端點位址無效"
+        "claudeAuthHint": "依閘道要求選擇認證標頭：API Key 使用 x-api-key，Auth Token 使用 Authorization: Bearer。互動模式下的 API Key 確認由 Claude Code 處理。",
         }
       },
       "deepLink": {

@@ -695,6 +695,7 @@
           "protocol-unsupported": "Ce protocole n'est pas pris en charge",
           "no-chat-model": "Aucun modele de discussion n'est configure",
           "invalid-endpoint": "Le point de terminaison est invalide"
+        "claudeAuthHint": "Choisissez l’en-tête requis par la passerelle : la clé API utilise x-api-key ; le jeton utilise Authorization: Bearer. Claude Code gère l’approbation interactive de la clé API.",
         }
       },
       "deepLink": {
