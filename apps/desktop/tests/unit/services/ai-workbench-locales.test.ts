@@ -9,6 +9,10 @@ import zhTW from "../../../src/renderer/i18n/locales/zh-TW.json";
 import zh from "../../../src/renderer/i18n/locales/zh.json";
 
 const AI_WORKBENCH_KEYS = [
+  "aiWorkbenchDeleteProvider",
+  "aiWorkbenchDeleteProviderConfirm",
+  "aiWorkbenchProviderDeleted",
+  "aiWorkbenchProviderDeleteFailed",
   "aiWorkbenchTitle",
   "aiWorkbenchDescription",
   "aiWorkbenchTestDefault",

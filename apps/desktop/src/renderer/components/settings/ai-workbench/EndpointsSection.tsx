@@ -102,6 +102,7 @@ export function EndpointsSection({
   onTestDefault,
   onTestEndpoint,
   onEditEndpoint,
+  onDeleteEndpoint,
   onUpdateEndpointCredentials,
   onAddProvider,
   onAddModel,
@@ -121,6 +122,7 @@ export function EndpointsSection({
   onTestDefault: () => void;
   onTestEndpoint: (group: EndpointGroup) => void;
   onEditEndpoint: (group: EndpointGroup) => void;
+  onDeleteEndpoint: (group: EndpointGroup) => void;
   onUpdateEndpointCredentials: (
     group: EndpointGroup,
     credentials: { apiKey: string; apiUrl: string },
@@ -575,6 +577,14 @@ export function EndpointsSection({
                     >
                       <PencilIcon aria-hidden="true" className="h-3.5 w-3.5" />
                       {t("common.edit")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteEndpoint(selectedGroup)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/30 px-2.5 text-xs text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
+                      {t("settings.aiWorkbenchDeleteProvider")}
                     </button>
                   </div>
                 </div>

@@ -110,6 +110,27 @@ CLI 分发、检测、安装及 Desktop 集成统一见 [独立 CLI](cli.md)。D
 - 桌面端 card view 的右侧 Prompt 详情区应支持不离开当前上下文的轻量快速编辑，用于修改选中 Prompt 的标题和当前可见的用户提示词；标题展示态应支持双击直接进入该快速编辑。
 - 完整字段编辑仍由专门的 Prompt 编辑弹窗承担；轻量快速编辑不应替代完整编辑流程。
 
+### Model Services provider CRUD (#245)
+
+Model Services owns the PromptHub `aiProviders` / `aiModels` settings, persisted
+through the existing settings authority. Every custom provider must expose
+create, read, edit and delete. Deletion requires confirmation naming the provider
+and the number of associated models; cancellation changes nothing. Confirmation
+removes that provider and its model configurations in one settings update,
+clears their default/scenario/route selections using the existing model-default
+rules, and keeps unrelated providers and models unchanged. Removing the final
+provider must remain empty after reload; no model may recreate a deleted group.
+Agent Provider Profiles imported earlier are independent and remain unchanged.
+
+Provider edits synchronize model connections once through the store, preserve
+model display names and update the active default connection. Provider deletion
+is awaited: the existing main-process settings authority must accept the write
+before the renderer removes records or reports success. Failure leaves the
+visible state unchanged and permits retry. No schema or storage-layout migration
+is needed. This is configuration deletion,
+not deletion of Prompt history or external Agent files. Implementation and
+verification are tracked in the [#245 record](../../issues/active/ISS-20260809-001-remaining-open-issues-roadmap.md#provider-follow-up--2026-10-22).
+
 ### 5. AI Workbench Protocol Routing
 
 - 桌面端 AI workbench 必须为每个聊天模型持久化显式 `apiProtocol`，当前稳定支持 `openai`、`gemini`、`anthropic` 三种协议。

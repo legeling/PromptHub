@@ -704,6 +704,28 @@ export function AISettingsPrototype() {
     closeModelFetch();
   };
 
+  const handleDeleteEndpoint = async (group: EndpointGroup) => {
+    if (
+      !(await requestConfirmation({
+        message: t("settings.aiWorkbenchDeleteProviderConfirm", {
+          name: getEndpointDisplayName(group),
+          modelCount: group.models.length,
+        }),
+        variant: "destructive",
+        confirmText: t("common.delete"),
+      }))
+    )
+      return;
+    try {
+      if (group.providerConfigId)
+        await settings.deleteAiProvider(group.providerConfigId);
+      else await settings.deleteAiModels(group.models.map((model) => model.id));
+      showToast(t("settings.aiWorkbenchProviderDeleted"), "success");
+    } catch {
+      showToast(t("settings.aiWorkbenchProviderDeleteFailed"), "error");
+    }
+  };
+
   const handleDeleteModel = async (model: AIModelConfig) => {
     if (
       !(await requestConfirmation({
@@ -923,13 +945,11 @@ export function AISettingsPrototype() {
   ) => {
     if (targetGroup.providerConfigId) {
       settings.updateAiProvider(targetGroup.providerConfigId, providerConfig);
-    }
-
-    for (const model of targetGroup.models) {
-      settings.updateAiModel(model.id, {
-        providerId: targetGroup.providerConfigId,
-        ...providerConfig,
-      });
+    } else {
+      const { name: _providerName, ...connection } = providerConfig;
+      for (const model of targetGroup.models) {
+        settings.updateAiModel(model.id, connection);
+      }
     }
 
     setEndpointStatuses((prev) => {
@@ -1134,6 +1154,7 @@ export function AISettingsPrototype() {
         modelScenarioBadges={modelScenarioBadges}
         onTestEndpoint={(group) => void handleTestEndpoint(group)}
         onEditEndpoint={openEditEndpoint}
+        onDeleteEndpoint={(group) => void handleDeleteEndpoint(group)}
         onUpdateEndpointCredentials={handleUpdateEndpointCredentials}
         onAddProvider={openAddEndpoint}
         onAddModel={openAddModel}

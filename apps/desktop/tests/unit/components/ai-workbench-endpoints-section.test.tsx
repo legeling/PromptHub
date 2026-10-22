@@ -88,6 +88,7 @@ describe("EndpointsSection", () => {
           onTestDefault={onTestDefault}
           onTestEndpoint={vi.fn()}
           onEditEndpoint={vi.fn()}
+          onDeleteEndpoint={vi.fn()}
           onUpdateEndpointCredentials={vi.fn()}
           onAddProvider={onAddProvider}
           onAddModel={vi.fn()}

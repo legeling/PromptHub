@@ -10,6 +10,7 @@ import type {
 } from "./settings-action-context";
 import {
   AI_SCENARIO_MODEL_ROUTE,
+  buildAISettingsSyncPayload,
   findMatchingAIProvider,
   normalizeAIModelCapabilities,
   normalizeAIProtocol,
@@ -27,6 +28,7 @@ type AIActionKey =
   | "addAiModel"
   | "updateAiModel"
   | "deleteAiModel"
+  | "deleteAiModels"
   | "setDefaultAiModel"
   | "setScenarioModelDefault"
   | "setModelRouteDefault";
@@ -124,6 +126,7 @@ function syncModelsWithProvider(
           apiProtocol: provider.apiProtocol,
           apiKey: provider.apiKey,
           apiUrl: provider.apiUrl,
+          lastVerifiedAt: provider.lastVerifiedAt,
         }
       : model,
   );
@@ -142,21 +145,35 @@ function createAiProviderUpdateAction(context: SettingsActionContext) {
       const aiModels = updatedProvider
         ? syncModelsWithProvider(get().aiModels, id, updatedProvider)
         : get().aiModels;
-      commitAISettings({ aiProviders, aiModels });
+      const partial: Partial<SettingsState> = { aiProviders, aiModels };
+      const updatedDefault = aiModels.find(
+        (model) => model.providerId === id && model.isDefault,
+      );
+      if (updatedDefault)
+        applyChatModelToLegacyDefaults(partial, updatedDefault);
+      commitAISettings(partial);
     },
   } satisfies SettingsActionGroup<"updateAiProvider">;
 }
 
 function createAiProviderDeleteAction(context: SettingsActionContext) {
-  const { get, commitAISettings } = context;
+  const { get } = context;
   return {
-    deleteAiProvider: (id) =>
-      commitAISettings({
-        aiProviders: get().aiProviders.filter((provider) => provider.id !== id),
-        aiModels: get().aiModels.map((model) =>
-          model.providerId === id ? { ...model, providerId: undefined } : model,
-        ),
-      }),
+    deleteAiProvider: async (id) => {
+      const state = get();
+      const provider = state.aiProviders.find((item) => item.id === id);
+      if (!provider) return;
+      const ids = state.aiModels
+        .filter(
+          (model) =>
+            model.providerId === id ||
+            (!model.providerId && findMatchingAIProvider([provider], model)),
+        )
+        .map((model) => model.id);
+      await persistModelRemoval(context, new Set(ids), {
+        aiProviders: state.aiProviders.filter((item) => item.id !== id),
+      });
+    },
   } satisfies SettingsActionGroup<"deleteAiProvider">;
 }
 
@@ -249,40 +266,63 @@ function createAiModelUpdateAction(context: SettingsActionContext) {
 
 function removeModelDefaults(
   state: SettingsState,
-  id: string,
+  ids: ReadonlySet<string>,
 ): Pick<SettingsState, "scenarioModelDefaults" | "modelRouteDefaults"> {
   const scenarioModelDefaults = { ...state.scenarioModelDefaults };
   const modelRouteDefaults = { ...state.modelRouteDefaults };
   for (const [scenario, modelId] of Object.entries(scenarioModelDefaults)) {
-    if (modelId === id)
+    if (ids.has(modelId))
       delete scenarioModelDefaults[scenario as AIUsageScenario];
   }
   for (const [route, modelId] of Object.entries(modelRouteDefaults)) {
-    if (modelId === id) delete modelRouteDefaults[route as AIModelRoute];
+    if (ids.has(modelId)) delete modelRouteDefaults[route as AIModelRoute];
   }
   return { scenarioModelDefaults, modelRouteDefaults };
+}
+
+function modelRemovalSettings(
+  state: SettingsState,
+  ids: ReadonlySet<string>,
+): Partial<SettingsState> {
+  const removedDefault = state.aiModels.some(
+    (model) => ids.has(model.id) && model.isDefault,
+  );
+  const aiModels = state.aiModels.filter((model) => !ids.has(model.id));
+  const partial: Partial<SettingsState> = {
+    aiModels,
+    ...removeModelDefaults(state, ids),
+  };
+  if (removedDefault && aiModels.length > 0) {
+    aiModels[0] = { ...aiModels[0], isDefault: true };
+    applyChatModelToLegacyDefaults(partial, aiModels[0]);
+  } else if (aiModels.length === 0) {
+    Object.assign(partial, { aiApiKey: "", aiApiUrl: "", aiModel: "" });
+  }
+  return partial;
+}
+
+async function persistModelRemoval(
+  context: SettingsActionContext,
+  ids: ReadonlySet<string>,
+  extra: Partial<SettingsState> = {},
+): Promise<void> {
+  const state = context.get();
+  const partial = { ...modelRemovalSettings(state, ids), ...extra };
+  // Destructive actions publish once and only update the view after storage accepts them.
+  await context.persistSettingsToMain(
+    buildAISettingsSyncPayload({ ...state, ...partial }),
+  );
+  context.setTouched(partial);
 }
 
 function createAiModelDeleteAction(context: SettingsActionContext) {
   const { get, commitAISettings } = context;
   return {
     deleteAiModel: (id) => {
-      const state = get();
-      const deleted = state.aiModels.find((model) => model.id === id);
-      const aiModels = state.aiModels.filter((model) => model.id !== id);
-      if (deleted?.isDefault && aiModels.length > 0) {
-        aiModels[0] = { ...aiModels[0], isDefault: true };
-      }
-      const partial: Partial<SettingsState> = {
-        aiModels,
-        ...removeModelDefaults(state, id),
-      };
-      if (deleted?.isDefault && aiModels.length > 0) {
-        applyChatModelToLegacyDefaults(partial, aiModels[0]);
-      }
-      commitAISettings(partial);
+      commitAISettings(modelRemovalSettings(get(), new Set([id])));
     },
-  } satisfies SettingsActionGroup<"deleteAiModel">;
+    deleteAiModels: (ids) => persistModelRemoval(context, new Set(ids)),
+  } satisfies SettingsActionGroup<"deleteAiModel" | "deleteAiModels">;
 }
 
 function createAiModelActions(context: SettingsActionContext) {

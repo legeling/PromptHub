@@ -68,6 +68,7 @@ function createSettingsState() {
     addAiModel: vi.fn(),
     updateAiModel: vi.fn(),
     deleteAiModel: vi.fn(),
+    deleteAiModels: vi.fn(),
     setDefaultAiModel: vi.fn(),
   };
 }
@@ -129,6 +130,90 @@ describe("AISettingsPrototype", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useToastMock.mockReturnValue({ showToast: vi.fn() });
+  });
+
+  it("confirms provider deletion with its model count and allows cancellation (#245)", async () => {
+    const state = createSettingsState();
+    state.aiProviders[0].name = "Extra gateway";
+    state.aiModels = [createConfiguredModel({ providerId: "provider-1" })];
+    useSettingsStoreMock.mockReturnValue(state);
+    await renderWithI18n(
+      <>
+        <ConfirmationHost />
+        <AISettingsPrototype />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete provider" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Extra gateway");
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("1");
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(state.deleteAiProvider).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Delete provider" }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    await waitFor(() =>
+      expect(state.deleteAiProvider).toHaveBeenCalledWith("provider-1"),
+    );
+    expect(state.deleteAiModel).not.toHaveBeenCalled();
+  });
+
+  it("deletes a model-derived provider as one batch without creating an empty provider (#245)", async () => {
+    const state = createSettingsState();
+    state.aiProviders = [];
+    state.aiModels = [createConfiguredModel()];
+    useSettingsStoreMock.mockReturnValue(state);
+    await renderWithI18n(
+      <>
+        <ConfirmationHost />
+        <AISettingsPrototype />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete provider" }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    await waitFor(() =>
+      expect(state.deleteAiModels).toHaveBeenCalledWith(["model-1"]),
+    );
+    expect(state.addAiProvider).not.toHaveBeenCalled();
+  });
+
+  it("reports failed provider deletion without a success notification (#245)", async () => {
+    const state = createSettingsState();
+    state.deleteAiProvider.mockRejectedValue(
+      new Error("fixture write failure"),
+    );
+    useSettingsStoreMock.mockReturnValue(state);
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    await renderWithI18n(
+      <>
+        <ConfirmationHost />
+        <AISettingsPrototype />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete provider" }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        "Failed to delete provider",
+        "error",
+      ),
+    );
+    expect(showToast).not.toHaveBeenCalledWith(expect.any(String), "success");
   });
 
   it("uses provider instance ids as endpoint grouping keys", () => {
@@ -318,15 +403,8 @@ describe("AISettingsPrototype", () => {
       apiUrl: "https://api.changed.example/v1",
       lastVerifiedAt: undefined,
     });
-    expect(settingsState.updateAiModel).toHaveBeenCalledWith("model-inline", {
-      providerId: "provider-1",
-      name: "Inline Provider",
-      provider: "openai",
-      apiProtocol: "openai",
-      apiKey: "new-key",
-      apiUrl: "https://api.changed.example/v1",
-      lastVerifiedAt: undefined,
-    });
+    // The provider action owns model connection updates; a second UI write overwrote model names.
+    expect(settingsState.updateAiModel).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("heading", { name: "Edit Endpoint" }),
     ).not.toBeInTheDocument();
