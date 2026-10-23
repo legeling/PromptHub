@@ -673,6 +673,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
+        "claudeAuthHint": "Choisissez l’en-tête requis par la passerelle : la clé API utilise x-api-key ; le jeton utilise Authorization: Bearer. Claude Code gère l’approbation interactive de la clé API.",
         "open": "Importer depuis PromptHub",
         "title": "Importer un fournisseur PromptHub",
         "hint": "Ajoute à l'Agent un fournisseur indépendant déjà configuré dans PromptHub. L'activation reste une etape de validation distincte.",
@@ -695,7 +696,6 @@
           "protocol-unsupported": "Ce protocole n'est pas pris en charge",
           "no-chat-model": "Aucun modele de discussion n'est configure",
           "invalid-endpoint": "Le point de terminaison est invalide"
-        "claudeAuthHint": "Choisissez l’en-tête requis par la passerelle : la clé API utilise x-api-key ; le jeton utilise Authorization: Bearer. Claude Code gère l’approbation interactive de la clé API.",
         }
       },
       "deepLink": {
@@ -2352,6 +2352,10 @@
     "aiWorkbenchEndpointConnected": "Point d'accès connecté ({{latency}}ms)",
     "aiWorkbenchEndpointUpdated": "Point d'accès mis à jour",
     "aiWorkbenchProviderAdded": "Fournisseur ajouté",
+    "aiWorkbenchDeleteProvider": "Supprimer le fournisseur",
+    "aiWorkbenchDeleteProviderConfirm": "Supprimer « {{name}} » et ses {{modelCount}} configurations de modèle ? Les routes par défaut associées seront effacées. Les fournisseurs déjà importés dans les Agents ne seront pas affectés.",
+    "aiWorkbenchProviderDeleted": "Fournisseur supprimé",
+    "aiWorkbenchProviderDeleteFailed": "Échec de la suppression du fournisseur",
     "aiWorkbenchModelTestSuccess": "test reussi",
     "aiWorkbenchModelTestFailed": "test echoue",
     "aiWorkbenchNoDefaultModel": "Aucun modèle par défaut disponible à tester pour le moment",
@@ -2375,10 +2379,6 @@
     "protocolOpenAICompatible": "Compatible OpenAI",
     "protocolGeminiCompatible": "Compatible Gemini",
     "protocolAnthropicCompatible": "Compatible Anthropic",
-    "aiWorkbenchDeleteProvider": "Supprimer le fournisseur",
-    "aiWorkbenchDeleteProviderConfirm": "Supprimer « {{name}} » et ses {{modelCount}} configurations de modèle ? Les routes par défaut associées seront effacées. Les fournisseurs déjà importés dans les Agents ne seront pas affectés.",
-    "aiWorkbenchProviderDeleted": "Fournisseur supprimé",
-    "aiWorkbenchProviderDeleteFailed": "Échec de la suppression du fournisseur",
     "advancedParams": "Paramètres avancés",
     "showAdvancedParams": "Afficher les paramètres avancés",
     "hideAdvancedParams": "Masquer les paramètres avancés",

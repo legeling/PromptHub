@@ -673,6 +673,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
+        "claudeAuthHint": "Choose the gateway's required header: API key uses x-api-key; auth token uses Authorization: Bearer. Interactive API-key approval is handled by Claude Code.",
         "open": "Import from PromptHub",
         "title": "Import PromptHub provider",
         "hint": "Add an independent Agent provider from one already configured in PromptHub. Activation remains a separate review step.",
@@ -695,7 +696,6 @@
           "protocol-unsupported": "Protocol is not supported",
           "no-chat-model": "No chat model is configured",
           "invalid-endpoint": "Endpoint is invalid"
-        "claudeAuthHint": "Choose the gateway's required header: API key uses x-api-key; auth token uses Authorization: Bearer. Interactive API-key approval is handled by Claude Code.",
         }
       },
       "deepLink": {
@@ -2353,6 +2353,10 @@
     "aiWorkbenchEndpointConnected": "Endpoint connected ({{latency}}ms)",
     "aiWorkbenchEndpointUpdated": "Endpoint updated",
     "aiWorkbenchProviderAdded": "Provider added",
+    "aiWorkbenchDeleteProvider": "Delete provider",
+    "aiWorkbenchDeleteProviderConfirm": "Delete “{{name}}” and its {{modelCount}} model configurations? Related default routes will be cleared. Previously imported Agent providers are not affected.",
+    "aiWorkbenchProviderDeleted": "Provider deleted",
+    "aiWorkbenchProviderDeleteFailed": "Failed to delete provider",
     "aiWorkbenchModelTestSuccess": "test succeeded",
     "aiWorkbenchModelTestFailed": "test failed",
     "aiWorkbenchNoDefaultModel": "There is no default model available to test yet",
@@ -2376,10 +2380,6 @@
     "protocolOpenAICompatible": "OpenAI-compatible",
     "protocolGeminiCompatible": "Gemini-compatible",
     "protocolAnthropicCompatible": "Anthropic-compatible",
-    "aiWorkbenchDeleteProvider": "Delete provider",
-    "aiWorkbenchDeleteProviderConfirm": "Delete “{{name}}” and its {{modelCount}} model configurations? Related default routes will be cleared. Previously imported Agent providers are not affected.",
-    "aiWorkbenchProviderDeleted": "Provider deleted",
-    "aiWorkbenchProviderDeleteFailed": "Failed to delete provider",
     "advancedParams": "Advanced Parameters",
     "showAdvancedParams": "Show Advanced Parameters",
     "hideAdvancedParams": "Hide Advanced Parameters",

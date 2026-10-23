@@ -673,6 +673,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
+        "claudeAuthHint": "按网关要求选择认证头：API Key 使用 x-api-key，Auth Token 使用 Authorization: Bearer。交互模式下的 API Key 确认由 Claude Code 处理。",
         "open": "从 PromptHub 导入",
         "title": "导入 PromptHub 供应商",
         "hint": "将 PromptHub 中已有的供应商添加到当前 Agent。导入不会修改 Agent，激活仍需单独预览确认。",
@@ -695,7 +696,6 @@
           "protocol-unsupported": "此协议不受支持",
           "no-chat-model": "未配置对话模型",
           "invalid-endpoint": "端点地址无效"
-        "claudeAuthHint": "按网关要求选择认证头：API Key 使用 x-api-key，Auth Token 使用 Authorization: Bearer。交互模式下的 API Key 确认由 Claude Code 处理。",
         }
       },
       "deepLink": {
@@ -2353,6 +2353,10 @@
     "aiWorkbenchEndpointConnected": "端点连接成功（{{latency}}ms）",
     "aiWorkbenchEndpointUpdated": "端点配置已更新",
     "aiWorkbenchProviderAdded": "供应商已添加",
+    "aiWorkbenchDeleteProvider": "删除供应商",
+    "aiWorkbenchDeleteProviderConfirm": "删除“{{name}}”及其 {{modelCount}} 个模型配置？相关默认路由将被清除，不影响此前导入 Agent 的供应商。",
+    "aiWorkbenchProviderDeleted": "供应商已删除",
+    "aiWorkbenchProviderDeleteFailed": "删除供应商失败",
     "aiWorkbenchModelTestSuccess": "测试成功",
     "aiWorkbenchModelTestFailed": "测试失败",
     "aiWorkbenchNoDefaultModel": "还没有可测试的默认模型",
@@ -2376,10 +2380,6 @@
     "protocolOpenAICompatible": "OpenAI 兼容",
     "protocolGeminiCompatible": "Gemini 兼容",
     "protocolAnthropicCompatible": "Anthropic 兼容",
-    "aiWorkbenchDeleteProvider": "删除供应商",
-    "aiWorkbenchDeleteProviderConfirm": "删除“{{name}}”及其 {{modelCount}} 个模型配置？相关默认路由将被清除，不影响此前导入 Agent 的供应商。",
-    "aiWorkbenchProviderDeleted": "供应商已删除",
-    "aiWorkbenchProviderDeleteFailed": "删除供应商失败",
     "advancedParams": "高级参数",
     "showAdvancedParams": "显示高级参数",
     "hideAdvancedParams": "隐藏高级参数",

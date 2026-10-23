@@ -673,6 +673,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
+        "claudeAuthHint": "Wählen Sie den vom Gateway benötigten Header: API-Schlüssel nutzt x-api-key, Auth-Token nutzt Authorization: Bearer. Die interaktive API-Schlüssel-Freigabe erfolgt in Claude Code.",
         "open": "Aus PromptHub importieren",
         "title": "PromptHub-Anbieter importieren",
         "hint": "Fuegt einen unabhaengigen Agent-Anbieter aus PromptHub hinzu. Die Aktivierung bleibt ein separater Pruefschritt.",
@@ -695,7 +696,6 @@
           "protocol-unsupported": "Das Protokoll wird nicht unterstuetzt",
           "no-chat-model": "Kein Chat-Modell konfiguriert",
           "invalid-endpoint": "Endpunkt ist ungueltig"
-        "claudeAuthHint": "Wählen Sie den vom Gateway benötigten Header: API-Schlüssel nutzt x-api-key, Auth-Token nutzt Authorization: Bearer. Die interaktive API-Schlüssel-Freigabe erfolgt in Claude Code.",
         }
       },
       "deepLink": {
@@ -2351,6 +2351,10 @@
     "aiWorkbenchEndpointConnected": "Endpunkt verbunden ({{latency}}ms)",
     "aiWorkbenchEndpointUpdated": "Endpunkt aktualisiert",
     "aiWorkbenchProviderAdded": "Anbieter hinzugefügt",
+    "aiWorkbenchDeleteProvider": "Anbieter löschen",
+    "aiWorkbenchDeleteProviderConfirm": "„{{name}}“ und seine {{modelCount}} Modellkonfigurationen löschen? Zugehörige Standardrouten werden entfernt. Bereits in Agents importierte Anbieter bleiben unverändert.",
+    "aiWorkbenchProviderDeleted": "Anbieter gelöscht",
+    "aiWorkbenchProviderDeleteFailed": "Anbieter konnte nicht gelöscht werden",
     "aiWorkbenchModelTestSuccess": "Test erfolgreich",
     "aiWorkbenchModelTestFailed": "Test fehlgeschlagen",
     "aiWorkbenchNoDefaultModel": "Derzeit ist kein testbares Standardmodell verfügbar",
@@ -2374,10 +2378,6 @@
     "protocolOpenAICompatible": "OpenAI-kompatibel",
     "protocolGeminiCompatible": "Gemini-kompatibel",
     "protocolAnthropicCompatible": "Anthropic-kompatibel",
-    "aiWorkbenchDeleteProvider": "Anbieter löschen",
-    "aiWorkbenchDeleteProviderConfirm": "„{{name}}“ und seine {{modelCount}} Modellkonfigurationen löschen? Zugehörige Standardrouten werden entfernt. Bereits in Agents importierte Anbieter bleiben unverändert.",
-    "aiWorkbenchProviderDeleted": "Anbieter gelöscht",
-    "aiWorkbenchProviderDeleteFailed": "Anbieter konnte nicht gelöscht werden",
     "advancedParams": "Erweiterte Parameter",
     "showAdvancedParams": "Erweiterte Parameter anzeigen",
     "hideAdvancedParams": "Erweiterte Parameter ausblenden",

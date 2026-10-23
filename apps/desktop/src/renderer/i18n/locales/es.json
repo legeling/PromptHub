@@ -673,6 +673,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
+        "claudeAuthHint": "Elija la cabecera requerida por la pasarela: la clave API usa x-api-key y el token usa Authorization: Bearer. Claude Code gestiona la aprobación interactiva de la clave API.",
         "open": "Importar desde PromptHub",
         "title": "Importar proveedor de PromptHub",
         "hint": "Añade al Agent un proveedor independiente ya configurado en PromptHub. La activacion sigue siendo un paso de revision separado.",
@@ -695,7 +696,6 @@
           "protocol-unsupported": "El protocolo no es compatible",
           "no-chat-model": "No hay un modelo de chat configurado",
           "invalid-endpoint": "El endpoint no es valido"
-        "claudeAuthHint": "Elija la cabecera requerida por la pasarela: la clave API usa x-api-key y el token usa Authorization: Bearer. Claude Code gestiona la aprobación interactiva de la clave API.",
         }
       },
       "deepLink": {
@@ -2351,6 +2351,10 @@
     "aiWorkbenchEndpointConnected": "Endpoint conectado ({{latency}}ms)",
     "aiWorkbenchEndpointUpdated": "Endpoint actualizado",
     "aiWorkbenchProviderAdded": "Proveedor añadido",
+    "aiWorkbenchDeleteProvider": "Eliminar proveedor",
+    "aiWorkbenchDeleteProviderConfirm": "¿Eliminar «{{name}}» y sus {{modelCount}} configuraciones de modelos? Se borrarán las rutas predeterminadas asociadas. Los proveedores ya importados en Agents no se verán afectados.",
+    "aiWorkbenchProviderDeleted": "Proveedor eliminado",
+    "aiWorkbenchProviderDeleteFailed": "No se pudo eliminar el proveedor",
     "aiWorkbenchModelTestSuccess": "prueba exitosa",
     "aiWorkbenchModelTestFailed": "prueba fallida",
     "aiWorkbenchNoDefaultModel": "Todavía no hay un modelo predeterminado disponible para probar",
@@ -2374,10 +2378,6 @@
     "protocolOpenAICompatible": "Compatible con OpenAI",
     "protocolGeminiCompatible": "Compatible con Gemini",
     "protocolAnthropicCompatible": "Compatible con Anthropic",
-    "aiWorkbenchDeleteProvider": "Eliminar proveedor",
-    "aiWorkbenchDeleteProviderConfirm": "¿Eliminar «{{name}}» y sus {{modelCount}} configuraciones de modelos? Se borrarán las rutas predeterminadas asociadas. Los proveedores ya importados en Agents no se verán afectados.",
-    "aiWorkbenchProviderDeleted": "Proveedor eliminado",
-    "aiWorkbenchProviderDeleteFailed": "No se pudo eliminar el proveedor",
     "advancedParams": "Parámetros avanzados",
     "showAdvancedParams": "Mostrar parámetros avanzados",
     "hideAdvancedParams": "Ocultar parámetros avanzados",

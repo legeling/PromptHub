@@ -672,6 +672,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
+        "claudeAuthHint": "ゲートウェイの要件に合わせて選択：API キーは x-api-key、認証トークンは Authorization: Bearer を使用します。対話モードの API キー承認は Claude Code が処理します。",
         "open": "PromptHub からインポート",
         "title": "PromptHub プロバイダーをインポート",
         "hint": "PromptHub の既存プロバイダーを現在の Agent に追加します。適用は別途確認が必要です。",
@@ -694,7 +695,6 @@
           "protocol-unsupported": "このプロトコルはサポートされていません",
           "no-chat-model": "チャットモデルが設定されていません",
           "invalid-endpoint": "エンドポイントが無効です"
-        "claudeAuthHint": "ゲートウェイの要件に合わせて選択：API キーは x-api-key、認証トークンは Authorization: Bearer を使用します。対話モードの API キー承認は Claude Code が処理します。",
         }
       },
       "deepLink": {
@@ -2351,6 +2351,10 @@
     "aiWorkbenchEndpointConnected": "エンドポイント接続成功（{{latency}}ms）",
     "aiWorkbenchEndpointUpdated": "エンドポイント設定を更新しました",
     "aiWorkbenchProviderAdded": "プロバイダーを追加しました",
+    "aiWorkbenchDeleteProvider": "プロバイダーを削除",
+    "aiWorkbenchDeleteProviderConfirm": "「{{name}}」と {{modelCount}} 件のモデル設定を削除しますか？関連する既定のルートは解除されます。以前 Agent にインポートしたプロバイダーには影響しません。",
+    "aiWorkbenchProviderDeleted": "プロバイダーを削除しました",
+    "aiWorkbenchProviderDeleteFailed": "プロバイダーの削除に失敗しました",
     "aiWorkbenchModelTestSuccess": "テスト成功",
     "aiWorkbenchModelTestFailed": "テスト失敗",
     "aiWorkbenchNoDefaultModel": "テスト可能なデフォルトモデルがまだありません",
@@ -2374,10 +2378,6 @@
     "protocolOpenAICompatible": "OpenAI 互換",
     "protocolGeminiCompatible": "Gemini 互換",
     "protocolAnthropicCompatible": "Anthropic 互換",
-    "aiWorkbenchDeleteProvider": "プロバイダーを削除",
-    "aiWorkbenchDeleteProviderConfirm": "「{{name}}」と {{modelCount}} 件のモデル設定を削除しますか？関連する既定のルートは解除されます。以前 Agent にインポートしたプロバイダーには影響しません。",
-    "aiWorkbenchProviderDeleted": "プロバイダーを削除しました",
-    "aiWorkbenchProviderDeleteFailed": "プロバイダーの削除に失敗しました",
     "advancedParams": "詳細パラメータ",
     "showAdvancedParams": "詳細パラメータを表示",
     "hideAdvancedParams": "詳細パラメータを非表示",
