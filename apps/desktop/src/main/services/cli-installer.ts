@@ -7,7 +7,10 @@ import type {
   CliInstallResult,
   CliStatus,
 } from "@prompthub/shared/types";
-import { preparePnpmEnvironment } from "./cli-install-environment";
+import {
+  prepareCliShellEnvironment,
+  preparePnpmEnvironment,
+} from "./cli-install-environment";
 import { resolveCliInstallSource } from "./cli-install-source";
 import {
   CliCommandError,
@@ -121,18 +124,21 @@ function removeLegacyCliWrapper(filePath: string | null): boolean {
   return true;
 }
 
-async function resolveFromLoginShell(command: string): Promise<string | null> {
+async function resolveFromLoginShell(
+  command: string,
+  env: NodeJS.ProcessEnv,
+): Promise<string | null> {
   if (process.platform === "win32") {
     return null;
   }
 
-  const shell = process.env.SHELL || "/bin/zsh";
+  const shell = env.SHELL || "/bin/zsh";
   try {
     const { stdout } = await execFileAsync(
       shell,
-      ["-lc", `command -v ${command}`],
+      ["-c", `command -v ${command}`],
       {
-        env: process.env,
+        env,
         timeout: VERSION_PROBE_TIMEOUT_MS,
         windowsHide: true,
         maxBuffer: 64 * 1024,
@@ -158,7 +164,10 @@ function cleanCommandPath(value: string): string {
   return value.trim().replace(/^"|"$/g, "");
 }
 
-async function resolveFromWindowsWhere(command: string): Promise<string[]> {
+async function resolveFromWindowsWhere(
+  command: string,
+  env: NodeJS.ProcessEnv,
+): Promise<string[]> {
   if (process.platform !== "win32") {
     return [];
   }
@@ -168,6 +177,7 @@ async function resolveFromWindowsWhere(command: string): Promise<string[]> {
       "where.exe",
       [command],
       VERSION_PROBE_TIMEOUT_MS,
+      env,
     );
     return uniqueNonEmpty(stdout.split(/\r?\n/).map(cleanCommandPath));
   } catch {
@@ -178,6 +188,7 @@ async function resolveFromWindowsWhere(command: string): Promise<string[]> {
 async function detectVersionAtPath(
   commandPath: string,
   pathSource: CommandPathSource,
+  env: NodeJS.ProcessEnv,
 ): Promise<{
   version: string | null;
   path: string | null;
@@ -195,6 +206,7 @@ async function detectVersionAtPath(
       commandPath,
       ["--version"],
       VERSION_PROBE_TIMEOUT_MS,
+      env,
     );
     return {
       version: stdout.trim() || null,
@@ -209,13 +221,14 @@ async function detectVersionAtPath(
 async function detectVersionFromCandidates(
   candidates: string[],
   pathSource: CommandPathSource,
+  env: NodeJS.ProcessEnv,
 ): Promise<{
   version: string | null;
   path: string | null;
   pathSource: CommandPathSource | null;
 }> {
   for (const candidate of uniqueNonEmpty(candidates)) {
-    const result = await detectVersionAtPath(candidate, pathSource);
+    const result = await detectVersionAtPath(candidate, pathSource, env);
     if (result.version) {
       return result;
     }
@@ -224,14 +237,17 @@ async function detectVersionFromCandidates(
   return { version: null, path: null, pathSource: null };
 }
 
-async function queryNpmValue(args: string[]): Promise<string | null> {
+async function queryNpmValue(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): Promise<string | null> {
   if (process.platform !== "win32") {
     return null;
   }
 
   const npmExecutables = uniqueNonEmpty([
     "npm",
-    ...(await resolveFromWindowsWhere("npm")),
+    ...(await resolveFromWindowsWhere("npm", env)),
   ]);
 
   for (const npmExecutable of npmExecutables) {
@@ -240,6 +256,7 @@ async function queryNpmValue(args: string[]): Promise<string | null> {
         npmExecutable,
         args,
         VERSION_PROBE_TIMEOUT_MS,
+        env,
       );
       const value = stdout.trim();
       if (value) {
@@ -253,9 +270,11 @@ async function queryNpmValue(args: string[]): Promise<string | null> {
   return null;
 }
 
-async function getWindowsNpmGlobalPrefixes(): Promise<string[]> {
-  const prefix = await queryNpmValue(["config", "get", "prefix"]);
-  const root = await queryNpmValue(["root", "-g"]);
+async function getWindowsNpmGlobalPrefixes(
+  env: NodeJS.ProcessEnv,
+): Promise<string[]> {
+  const prefix = await queryNpmValue(["config", "get", "prefix"], env);
+  const root = await queryNpmValue(["root", "-g"], env);
   const rootPrefix =
     root && pathWin32.basename(root).toLowerCase() === "node_modules"
       ? pathWin32.dirname(root)
@@ -264,7 +283,9 @@ async function getWindowsNpmGlobalPrefixes(): Promise<string[]> {
   return uniqueNonEmpty([prefix, rootPrefix]);
 }
 
-async function detectPrompthubFromWindowsNpmPrefix(): Promise<{
+async function detectPrompthubFromWindowsNpmPrefix(
+  env: NodeJS.ProcessEnv,
+): Promise<{
   version: string | null;
   path: string | null;
   pathSource: CommandPathSource | null;
@@ -273,17 +294,20 @@ async function detectPrompthubFromWindowsNpmPrefix(): Promise<{
     return { version: null, path: null, pathSource: null };
   }
 
-  const prefixes = await getWindowsNpmGlobalPrefixes();
+  const prefixes = await getWindowsNpmGlobalPrefixes(env);
   const candidates = prefixes.flatMap((prefix) => [
     pathWin32.join(prefix, "prompthub.cmd"),
     pathWin32.join(prefix, "prompthub.exe"),
     pathWin32.join(prefix, "prompthub"),
   ]);
 
-  return detectVersionFromCandidates(candidates, "npm-prefix");
+  return detectVersionFromCandidates(candidates, "npm-prefix", env);
 }
 
-async function detectCommandVersion(command: string): Promise<{
+async function detectCommandVersion(
+  command: string,
+  env: NodeJS.ProcessEnv,
+): Promise<{
   version: string | null;
   path: string | null;
   pathSource: CommandPathSource | null;
@@ -291,52 +315,59 @@ async function detectCommandVersion(command: string): Promise<{
   // Resolve PromptHub before running it: PATH may still point to a desktop
   // wrapper from a previous data directory, or to PromptHub.exe itself.
   if (command !== CLI_COMMAND) {
-    const directResult = await detectVersionAtPath(command, "app-env");
+    const directResult = await detectVersionAtPath(command, "app-env", env);
     if (directResult.version) {
       return directResult;
     }
   }
 
   const windowsWhereResult = await detectVersionFromCandidates(
-    await resolveFromWindowsWhere(command),
+    await resolveFromWindowsWhere(command, env),
     "windows-where",
+    env,
   );
   if (windowsWhereResult.version) {
     return windowsWhereResult;
   }
 
   if (command === CLI_COMMAND) {
-    const windowsNpmPrefixResult = await detectPrompthubFromWindowsNpmPrefix();
+    const windowsNpmPrefixResult =
+      await detectPrompthubFromWindowsNpmPrefix(env);
     if (windowsNpmPrefixResult.version) {
       return windowsNpmPrefixResult;
     }
   }
 
-  const shellPath = await resolveFromLoginShell(command);
+  const shellPath = await resolveFromLoginShell(command, env);
   if (!shellPath) {
     return { version: null, path: null, pathSource: null };
   }
-  return detectVersionAtPath(shellPath, "login-shell");
+  return detectVersionAtPath(shellPath, "login-shell", env);
 }
 
-async function detectPackageManager(command: CliInstallMethod): Promise<{
+async function detectPackageManager(
+  command: CliInstallMethod,
+  env: NodeJS.ProcessEnv,
+): Promise<{
   version: string | null;
   path: string | null;
   pathSource: CommandPathSource | null;
 }> {
-  return detectCommandVersion(command);
+  return detectCommandVersion(command, env);
 }
 
-async function detectPrompthubVersion(): Promise<{
+async function detectPrompthubVersion(env: NodeJS.ProcessEnv): Promise<{
   version: string | null;
   globalBinDirectory?: string | null;
 }> {
-  const result = await detectCommandVersion(CLI_COMMAND);
+  const result = await detectCommandVersion(CLI_COMMAND, env);
   if (result.version) return { version: result.version };
-  const pnpm = await detectPackageManager("pnpm");
+  const pnpm = await detectPackageManager("pnpm", env);
   if (!pnpm.version) return { version: null };
-  const prepared = await preparePnpmEnvironment((args, env) =>
-    runCommand(pnpm.path || "pnpm", args, VERSION_PROBE_TIMEOUT_MS, env),
+  const prepared = await preparePnpmEnvironment(
+    (args, childEnv) =>
+      runCommand(pnpm.path || "pnpm", args, VERSION_PROBE_TIMEOUT_MS, childEnv),
+    env,
   );
   if (!prepared.globalBinDirectory) return { version: null };
   const paths = process.platform === "win32" ? pathWin32 : path;
@@ -361,14 +392,15 @@ async function detectPrompthubVersion(): Promise<{
   }
 }
 
-export async function getCliStatus(
-  requireInstallSource = false,
+async function getCliStatusInEnvironment(
+  requireInstallSource: boolean,
+  env: NodeJS.ProcessEnv,
 ): Promise<CliStatus> {
   const legacyCommandPath = findLegacyCliWrapper();
   const [pnpmInfo, npmInfo, installedVersion] = await Promise.all([
-    detectPackageManager("pnpm"),
-    detectPackageManager("npm"),
-    detectPrompthubVersion(),
+    detectPackageManager("pnpm", env),
+    detectPackageManager("npm", env),
+    detectPrompthubVersion(env),
   ]);
   const release =
     installedVersion.version && !requireInstallSource
@@ -427,10 +459,31 @@ export async function getCliStatus(
   };
 }
 
+async function getCliEnvironment(): Promise<NodeJS.ProcessEnv> {
+  return prepareCliShellEnvironment((args, env) =>
+    execFileAsync(env.SHELL || "/bin/zsh", args, {
+      env,
+      timeout: VERSION_PROBE_TIMEOUT_MS,
+      windowsHide: true,
+      maxBuffer: 64 * 1024,
+    }),
+  );
+}
+
+export async function getCliStatus(
+  requireInstallSource = false,
+): Promise<CliStatus> {
+  return getCliStatusInEnvironment(
+    requireInstallSource,
+    await getCliEnvironment(),
+  );
+}
+
 async function performCliInstall(
   method?: CliInstallMethod,
 ): Promise<CliInstallResult> {
-  const status = await getCliStatus(true);
+  const env = await getCliEnvironment();
+  const status = await getCliStatusInEnvironment(true, env);
   const installMethod = method ?? status.packageManager;
 
   if (status.error)
@@ -457,7 +510,7 @@ async function performCliInstall(
       ? ["add", "-g", installSource]
       : ["install", "-g", installSource];
   const command = `${installMethod} ${args.join(" ")}`;
-  const packageManagerInfo = await detectPackageManager(installMethod);
+  const packageManagerInfo = await detectPackageManager(installMethod, env);
 
   if (!packageManagerInfo.version) {
     return {
@@ -472,10 +525,17 @@ async function performCliInstall(
     const executable = packageManagerInfo.path || installMethod;
     const prepared =
       installMethod === "pnpm"
-        ? await preparePnpmEnvironment((probeArgs, env) =>
-            runCommand(executable, probeArgs, VERSION_PROBE_TIMEOUT_MS, env),
+        ? await preparePnpmEnvironment(
+            (probeArgs, childEnv) =>
+              runCommand(
+                executable,
+                probeArgs,
+                VERSION_PROBE_TIMEOUT_MS,
+                childEnv,
+              ),
+            env,
           )
-        : { env: process.env };
+        : { env };
     const { stdout, stderr } = await runCommand(
       executable,
       args,

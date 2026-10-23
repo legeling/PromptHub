@@ -5,6 +5,32 @@ type Probe = (
   env: NodeJS.ProcessEnv,
 ) => Promise<{ stdout: string }>;
 
+export async function prepareCliShellEnvironment(
+  probe: Probe,
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): Promise<NodeJS.ProcessEnv> {
+  if (platform === "win32") return { ...env };
+  try {
+    // GUI launches do not inherit interactive rc files. Import only the tool
+    // environment, with NUL framing to exclude shell startup banners.
+    const { stdout } = await probe(
+      ["-ilc", 'printf "\\0%s\\0%s\\0" "$PATH" "$PNPM_HOME"'],
+      env,
+    );
+    const fields = stdout.split("\0");
+    const [, shellPath, pnpmHome] = fields;
+    if (fields.length < 4 || !shellPath || pnpmHome === undefined)
+      return { ...env };
+    const next: NodeJS.ProcessEnv = { ...env, PATH: shellPath };
+    if (pnpmHome) next.PNPM_HOME = pnpmHome;
+    return next;
+  } catch {
+    // A broken/unavailable user shell must not hide tools already on app PATH.
+    return { ...env };
+  }
+}
+
 function absoluteDirectory(
   value: string | undefined,
   platform: NodeJS.Platform,

@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import type { CliStatus } from "@prompthub/shared/types";
 
+// Older observations were made without the interactive shell tool environment.
+const CACHE_SCHEMA_VERSION = 2;
 const TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_BYTES = 64 * 1024;
 
@@ -105,7 +107,7 @@ export class CliStatusCache {
       const data: unknown = JSON.parse(fs.readFileSync(this.file, "utf8"));
       if (
         !record(data) ||
-        data.schemaVersion !== 1 ||
+        data.schemaVersion !== CACHE_SCHEMA_VERSION ||
         data.environment !== environmentKey() ||
         typeof data.checkedAt !== "number" ||
         !Number.isFinite(data.checkedAt) ||
@@ -128,7 +130,7 @@ export class CliStatusCache {
     const temporary = `${this.file}.${randomUUID()}.tmp`;
     try {
       const bytes = JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: CACHE_SCHEMA_VERSION,
         environment: environmentKey(),
         checkedAt: status.checkedAt,
         status,

@@ -1,8 +1,28 @@
 import { expect, it, vi } from "vitest";
 import {
+  prepareCliShellEnvironment,
   preparePnpmEnvironment,
   withCliDirectories,
 } from "../../../src/main/services/cli-install-environment";
+
+it("keeps the inherited environment when the login shell fails or has incomplete output", async () => {
+  const env = { PATH: "/usr/bin", PNPM_HOME: "/existing", KEEP: "unchanged" };
+  for (const probe of [
+    async () => {
+      throw new Error("shell unavailable");
+    },
+    async () => ({ stdout: "banner\0/not-complete\0" }),
+  ]) {
+    expect(await prepareCliShellEnvironment(probe, env, "darwin")).toEqual(env);
+  }
+});
+
+it("never invokes a Unix shell on Windows", async () => {
+  const probe = vi.fn();
+  const env = { Path: "C:\\Node" };
+  expect(await prepareCliShellEnvironment(probe, env, "win32")).toEqual(env);
+  expect(probe).not.toHaveBeenCalled();
+});
 
 it("uses the configured global bin directory and preserves the original Windows environment", async () => {
   const env = {

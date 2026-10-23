@@ -60,7 +60,7 @@ describe("cli-installer", () => {
   it("checks an installed CLI without waiting for remote releases", async () => {
     releaseLookup.mockImplementation(() => new Promise(() => undefined));
     execFileMock.mockImplementation((command, args, _options, callback) => {
-      if (args[0] === "-lc")
+      if (args[0] === "-c")
         return callback(null, "/usr/local/bin/prompthub", "");
       return callback(
         null,
@@ -262,7 +262,7 @@ describe("cli-installer", () => {
         _options: unknown,
         callback: (error: Error | null, stdout: string, stderr: string) => void,
       ) => {
-        if (args.join(" ") === "-lc command -v prompthub") {
+        if (args.join(" ") === "-c command -v prompthub") {
           callback(null, `${wrapperPath}\n`, "");
           return;
         }
@@ -335,7 +335,7 @@ describe("cli-installer", () => {
         ) => {
           if (command === "where.exe" && args[0] === "prompthub")
             return callback(null, `${wrapper}\n${standalone}\n`, "");
-          if (args.join(" ") === "-lc command -v prompthub")
+          if (args.join(" ") === "-c command -v prompthub")
             return callback(null, wrapper, "");
           if (command === standalone) return callback(null, "0.5.9", "");
           if (command === "prompthub")
@@ -594,7 +594,7 @@ describe("cli-installer", () => {
           callback(new Error("command not found"), "", "");
           return;
         }
-        if (args.join(" ") === "-lc command -v pnpm") {
+        if (args.join(" ") === "-c command -v pnpm") {
           callback(null, "/Users/demo/.local/share/pnpm/pnpm\n", "");
           return;
         }

@@ -76,6 +76,21 @@ describe("CLI observation cache", () => {
     expect(probe).toHaveBeenCalledTimes(4);
   });
 
+  it("rechecks observations made before interactive shell detection was fixed", async () => {
+    const file = path.join(root, "cli-status.json");
+    const probe = vi.fn().mockResolvedValue(status);
+    await new CliStatusCache(file, probe, () => 1000).get();
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    fs.writeFileSync(file, JSON.stringify({ ...data, schemaVersion: 1 }));
+    expect(
+      await new CliStatusCache(file, probe, () => 2000).get(),
+    ).toMatchObject({
+      fromCache: false,
+      packageManager: "pnpm",
+    });
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
   it("coalesces requests and keeps the last success after failed refresh", async () => {
     const file = path.join(root, "cli-status.json");
     const probe = vi.fn().mockResolvedValue(status);
