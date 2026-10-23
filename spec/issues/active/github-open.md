@@ -3,22 +3,21 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-22`
-- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; targeted #190 readback after closure.
-- Open issues captured: `30`
+- Snapshot date: `2026-10-23`
+- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt` after the authorized push to main.
+- Open issues captured: `26`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery is recorded in `local-github-status.md`.
-- The shared capture contains 220 issues (30 open / 190 closed), below the requested limit; pull requests are excluded.
-- #209/#190 closures were confirmed on 2026-10-22. Local commits for #245/#185 have not been pushed and do not change their remote state.
+- The shared capture contains 220 issues (26 open / 194 closed), below the requested limit; pull requests are excluded.
+- #245/#185/#145/#141 automatic closures were confirmed on 2026-10-23 after the push through `e144e34d`. #198 and #246 remain open. Closure does not establish publication.
 
 ## Open Issues
 
 | # | 标题 | 标签 | 创建时间 | 更新时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
 | #246 | [Bug]: claude导入第三方模型配置格式错误 | bug, version: 0.6.1 | 2026-10-21 | 2026-10-21 | [#246](https://github.com/legeling/PromptHub/issues/246) |
-| #245 | [Feature]: 供应商无法删除额外的 | enhancement, version: 0.6.1 | 2026-10-21 | 2026-10-21 | [#245](https://github.com/legeling/PromptHub/issues/245) |
 | #244 | [Bug]: Codex 原生分发无法正常使用：未配置 CLI 报错 not found，配置官方 CLI 后报 marketplace failed | bug, version: 0.6.1 | 2026-10-19 | 2026-10-20 | [#244](https://github.com/legeling/PromptHub/issues/244) |
 | #212 | [Feature]: 建议将现有 Rules 模块调整为 Instructions，并新增真正的 Scoped Rules 模块 | enhancement, version: Next release | 2026-09-03 | 2026-10-12 | [#212](https://github.com/legeling/PromptHub/issues/212) |
 | #205 | Would you take a pull-request security scan workflow? | question | 2026-08-14 | 2026-08-20 | [#205](https://github.com/legeling/PromptHub/issues/205) |
@@ -28,10 +27,7 @@
 | #197 | [Feature]: 评估并纳入各 AI Agent 的 Rules / rule 目录扫描与管理 | enhancement | 2026-08-04 | 2026-08-04 | [#197](https://github.com/legeling/PromptHub/issues/197) |
 | #195 | [Feature]: 生图提示词里面，上传的每个图片，是否可以再下载/导出？ | enhancement, version: 0.5.9 | 2026-08-01 | 2026-08-01 | [#195](https://github.com/legeling/PromptHub/issues/195) |
 | #194 | [Feature]: 增加通用 ~/.agents/skills 全局安装目录（需兼容性验证） | enhancement | 2026-07-29 | 2026-07-29 | [#194](https://github.com/legeling/PromptHub/issues/194) |
-| #185 | [Bug]: 自部署：本地skill同步到远端或者网页版商城安装skill问题 | bug, version: 0.5.9 | 2026-07-11 | 2026-07-11 | [#185](https://github.com/legeling/PromptHub/issues/185) |
 | #177 | [Feature]: 可以集成skillhub吗 | enhancement, version: 0.59 | 2026-06-22 | 2026-07-22 | [#177](https://github.com/legeling/PromptHub/issues/177) |
-| #145 | [Feature]: 建议完善标签管理界面 | enhancement, version: 0.5.6 | 2026-05-24 | 2026-05-24 | [#145](https://github.com/legeling/PromptHub/issues/145) |
-| #141 | [Bug]: skill 添加商店问题 | bug, version: 0.5.6 | 2026-05-20 | 2026-05-20 | [#141](https://github.com/legeling/PromptHub/issues/141) |
 | #139 | [Feature]: 数据迁移的一个小经验：数据导出导入可以解决大多数问题 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-19 | [#139](https://github.com/legeling/PromptHub/issues/139) |
 | #132 | [Feature]: 增加 Prompt 商店 | enhancement, version: 0.5.5 | 2026-05-13 | 2026-05-13 | [#132](https://github.com/legeling/PromptHub/issues/132) |
 | #107 | docker部署上传图片报错 |  | 2026-04-26 | 2026-04-26 | [#107](https://github.com/legeling/PromptHub/issues/107) |

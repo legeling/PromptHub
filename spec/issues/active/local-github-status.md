@@ -29,6 +29,53 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Batched submission and remote readback — 2026-10-23
+
+This entry supersedes the commit/push and remote-state statements in the dated
+audits below, without extending their functional acceptance boundaries.
+
+- Pushed 16 commits to `origin/main` through `e144e34d`: eight existing local
+  commits and eight new logical batches. Remote branch hash matched the local
+  commit. No tag, package publication or deployment was performed.
+- New batches: provider locale structure `44828da7`, native Agent extensions
+  `7a700b06`, workspace refresh `01eba15a`, GUI-launched CLI environment
+  `82b3a84d`, tag ordering `b4b4b577`, complete custom-store card regression
+  `afb59d6b`, acceptance records `a4ab6cfb`, and development version `e144e34d`.
+- Remote snapshot: 220 issues, 26 open / 194 closed. Automatic closure confirmed
+  for #245 (`aedff96e`), #185 (`c4369236`), #145 (`b4b4b577`) and #141
+  (`afb59d6b`). The new fixes remain `local_done`, pending publication; #141's
+  original rendering fix was already included in 0.5.7, while its separate
+  loading-race fix and stronger regression are now pushed.
+- #198 remains open / `in_progress`: implementation and automated verification
+  are pushed, but native Electron refresh/draft-confirmation acceptance remains.
+  #246 remains open / `in_progress`: configuration/authentication repairs and
+  extension support are pushed; reporter gateway/Windows and the remaining
+  cross-Agent execution/UI checks are not complete.
+- Submission verification: 23 focused files / 217 tests passed, including real
+  preload/SQLite/filesystem integration. Desktop source and test typechecks,
+  scoped ESLint, production build, all three governance quick checks and all
+  four website release-metadata tests passed. Seven locale JSON files parse;
+  outgoing whitespace and common credential/private-key pattern checks passed.
+  Prior native acceptance is retained; native CLI/GUI checks were not rerun for
+  this submission. Existing bundler/deprecation warnings remain.
+- Historical `output/` acceptance artifacts were preserved outside Git. No
+  development server or native application was started for submission.
+
+Reproduce the focused submission batch (excluding opt-in native CLI tests):
+
+```sh
+git diff --name-only afd3a323 e144e34d -- apps/desktop/tests \
+  | rg '\.test\.tsx?$' \
+  | rg -v '/(claude-native-assets|opencode-native-extensions)\.test\.ts$' \
+  | sed 's#^apps/desktop/##' \
+  | xargs pnpm --filter @prompthub/desktop exec vitest run --minWorkers=1 --maxWorkers=1 --silent
+pnpm --filter @prompthub/desktop typecheck
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --filter @prompthub/desktop build
+pnpm verify:release:quick --surface governance --concurrency 1
+pnpm --dir website test:release-sync
+```
+
 ### Media and WebDAV follow-up — 2026-10-22
 
 | Issue | Local outcome | Remaining boundary |

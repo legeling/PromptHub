@@ -3,20 +3,21 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-22`
-- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt`; targeted #190 readback after closure.
-- Closed issues captured: `190`
+- Snapshot date: `2026-10-23`
+- Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt` after the authorized push to main.
+- Closed issues captured: `194`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery is recorded in `../active/local-github-status.md`.
-- The shared capture contains 220 issues (30 open / 190 closed), below the requested limit; pull requests are excluded.
-- #209/#190 closures were confirmed on 2026-10-22. Local commits for #245/#185 have not been pushed and do not change their remote state.
+- The shared capture contains 220 issues (26 open / 194 closed), below the requested limit; pull requests are excluded.
+- #245/#185/#145/#141 automatic closures were confirmed on 2026-10-23 after the push through `e144e34d`. #198 and #246 remain open. Closure does not establish publication.
 
 ## Closed Issues Archive
 
 | # | 标题 | 标签 | 创建时间 | 关闭时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #245 | [Feature]: 供应商无法删除额外的 | enhancement, version: 0.6.1 | 2026-10-21 | 2026-10-23 | [#245](https://github.com/legeling/PromptHub/issues/245) |
 | #243 | [Feature]: 支持第三方插件市场（统一 Claude Code 与 Antigravity 插件的索引及下载） | enhancement, version: 0.6.0 | 2026-10-18 | 2026-10-20 | [#243](https://github.com/legeling/PromptHub/issues/243) |
 | #242 | [Feature]: [Bug / 功能建议] antigravity官方插件商店支持 | enhancement, version: 版本: 0.6.0 · 稳定版通道 | 2026-10-18 | 2026-10-20 | [#242](https://github.com/legeling/PromptHub/issues/242) |
 | #241 | [Bug]: 我的 Skill 列表首屏「已分发」计数与卡片「未分发」角标不一致 | bug | 2026-10-17 | 2026-10-19 | [#241](https://github.com/legeling/PromptHub/issues/241) |
@@ -60,6 +61,7 @@
 | #188 | [Feature]: 可以在我的skill 里面加一个标签搜索吗 | enhancement, version: 0.5.10 | 2026-07-23 | 2026-10-19 | [#188](https://github.com/legeling/PromptHub/issues/188) |
 | #187 | [Feature]: oh-my-pi支持 | enhancement, version: oh-my-pi支持 | 2026-07-20 | 2026-08-20 | [#187](https://github.com/legeling/PromptHub/issues/187) |
 | #186 | [Feature]:智谱ZCode支持 | enhancement, version: 智谱ZCode支持 | 2026-07-12 | 2026-07-14 | [#186](https://github.com/legeling/PromptHub/issues/186) |
+| #185 | [Bug]: 自部署：本地skill同步到远端或者网页版商城安装skill问题 | bug, version: 0.5.9 | 2026-07-11 | 2026-10-23 | [#185](https://github.com/legeling/PromptHub/issues/185) |
 | #184 | CLI 写入冲突：Desktop 打开时 CLI 无法写入数据库 |  | 2026-07-10 | 2026-07-10 | [#184](https://github.com/legeling/PromptHub/issues/184) |
 | #183 | [Bug]: SKILL.md frontmatter 手写解析器不支持 YAML 块标量与 allowed-tools 字段，编辑后静默丢字段 |  | 2026-07-10 | 2026-07-11 | [#183](https://github.com/legeling/PromptHub/issues/183) |
 | #181 | CLI 检测机制不兼容自定义 npm prefix |  | 2026-07-08 | 2026-07-10 | [#181](https://github.com/legeling/PromptHub/issues/181) |
@@ -89,9 +91,11 @@
 | #148 | [Bug]: 软链接安装不正确 | bug, version: 0.5.6 | 2026-05-27 | 2026-05-30 | [#148](https://github.com/legeling/PromptHub/issues/148) |
 | #147 | [Bug]: OpenCode的rules路径不正确 | bug, version: 0.5.6 | 2026-05-27 | 2026-05-30 | [#147](https://github.com/legeling/PromptHub/issues/147) |
 | #146 | [Bug]: promptHub安装失败 | bug, version: master | 2026-05-26 | 2026-05-30 | [#146](https://github.com/legeling/PromptHub/issues/146) |
+| #145 | [Feature]: 建议完善标签管理界面 | enhancement, version: 0.5.6 | 2026-05-24 | 2026-10-23 | [#145](https://github.com/legeling/PromptHub/issues/145) |
 | #144 | [Feature]: 建议简化标签的添加和删除操作 | enhancement, version: 0.5.6 | 2026-05-23 | 2026-05-27 | [#144](https://github.com/legeling/PromptHub/issues/144) |
 | #143 | [Feature]: 中间插入行的时候，prompthub 可以自动刷新各行行号 | enhancement, version: 0.5.6 | 2026-05-23 | 2026-06-04 | [#143](https://github.com/legeling/PromptHub/issues/143) |
 | #142 | [Feature]: 复制功能只复制了SKILL.md，缺失了其他文件 | enhancement, version: 0.5.6 | 2026-05-21 | 2026-05-26 | [#142](https://github.com/legeling/PromptHub/issues/142) |
+| #141 | [Bug]: skill 添加商店问题 | bug, version: 0.5.6 | 2026-05-20 | 2026-10-23 | [#141](https://github.com/legeling/PromptHub/issues/141) |
 | #140 | [Feature]: 加入“移动到...”菜单项，点击列出当前所有文件夹，方便提示词整理 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-26 | [#140](https://github.com/legeling/PromptHub/issues/140) |
 | #138 | [Feature]: 卡片模式下，能否统一显示模式和编辑模式的显示效果呢 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-30 | [#138](https://github.com/legeling/PromptHub/issues/138) |
 | #137 | [Feature]: 建议增加创建副本功能 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-26 | [#137](https://github.com/legeling/PromptHub/issues/137) |
