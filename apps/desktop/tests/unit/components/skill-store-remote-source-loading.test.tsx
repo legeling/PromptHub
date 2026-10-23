@@ -149,13 +149,15 @@ describe("SkillStore remote loading", () => {
     });
     const view = await renderWithI18n(<SkillStore />, { language: "en" });
     expect(screen.getByText("Loaded 15")).toBeInTheDocument();
-    expect(screen.getByText("Fixture Skill 0")).toBeInTheDocument();
-    expect(screen.getByText("Fixture Skill 14")).toBeInTheDocument();
+    for (const index of names.keys()) {
+      expect(screen.getByText(`Fixture Skill ${index}`)).toBeInTheDocument();
+    }
     view.unmount();
     await useSkillStore.persist.rehydrate();
     await renderWithI18n(<SkillStore />, { language: "en" });
-    expect(screen.getByText("Fixture Skill 0")).toBeInTheDocument();
-    expect(screen.getByText("Fixture Skill 14")).toBeInTheDocument();
+    for (const index of names.keys()) {
+      expect(screen.getByText(`Fixture Skill ${index}`)).toBeInTheDocument();
+    }
     expect(fetchRemoteContent).not.toHaveBeenCalled();
   });
 
