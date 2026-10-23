@@ -13,6 +13,10 @@ import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
+vi.mock("../../../src/renderer/components/ui/Toast", () => ({
+  useToast: () => ({ showToast: vi.fn() }),
+}));
+
 vi.mock("../../../src/renderer/components/prompt/CreatePromptModal", () => ({
   CreatePromptModal: ({
     isOpen,
@@ -154,6 +158,19 @@ describe("TopBar", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it.each(["prompt", "skill", "rules"] as const)("exposes refresh in an empty %s workspace", async (appModule) => {
+    useUIStore.setState({ appModule });
+    useSkillStore.setState({ storeView: "my-skills" });
+    await renderWithI18n(<TopBar onOpenSettings={vi.fn()} updateAvailable={null} />);
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();
+  });
+
+  it("does not show the local refresh action in the remote Skill catalog", async () => {
+    useUIStore.setState({ appModule: "skill" });
+    await renderWithI18n(<TopBar onOpenSettings={vi.fn()} updateAvailable={null} />);
+    expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
   });
 
   it.each([

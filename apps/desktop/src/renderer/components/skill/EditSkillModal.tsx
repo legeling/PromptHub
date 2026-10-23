@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import {
   lazy,
   Suspense,
@@ -115,9 +116,8 @@ export function EditSkillModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  if (!isOpen || !skill) return null;
-
   const hasUnsavedChanges = () => {
+    if (!skill) return false;
     return (
       name !== (skill.name || "") ||
       description !== (skill.description || "") ||
@@ -128,6 +128,14 @@ export function EditSkillModal({
       JSON.stringify(tags) !== JSON.stringify(getUserSkillTags(skill))
     );
   };
+
+  useWorkspaceDraft("skill", {
+    dirty: isOpen && hasUnsavedChanges(),
+    saving: isLoading,
+    discard: onClose,
+  });
+
+  if (!isOpen || !skill) return null;
 
   const handleCloseRequest = () => {
     if (hasUnsavedChanges()) {

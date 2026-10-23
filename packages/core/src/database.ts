@@ -15,6 +15,7 @@ import {
   getDatabase,
   initDatabase as dbInit,
   isDatabaseEmpty,
+  inspectDatabaseClientLeases,
   SCHEMA,
   SCHEMA_INDEXES,
   SCHEMA_TABLES,
@@ -32,6 +33,18 @@ import { getRuntimeStorageContext } from "./runtime-paths";
 import { initializeMcpStorage } from "./mcp-storage-migration";
 import type { McpStorageOptions } from "./mcp-storage";
 
+function requiresCatalogReconciliation(): boolean {
+  if (
+    activeDatabase ||
+    getRuntimeStorageContext().localAuthority !== "canonical-files"
+  ) return false;
+  const clients = inspectDatabaseClientLeases(getDatabasePath());
+  // Rebuilding replaces the database file and requires exclusive ownership.
+  // A live runtime instead shares the existing SQLite connection contract;
+  // dbInit still enforces schema compatibility, integrity and migration locks.
+  return clients.unknownEntries.length > 0 || clients.livePids.length === 0;
+}
+
 export function initDatabase(
   hooks?: InitDatabaseHooks,
   mcpOptions: Pick<
@@ -40,10 +53,7 @@ export function initDatabase(
   > = {},
 ): DatabaseAdapter.Database {
   assertStorageMaintenanceAvailable(getUserDataPath());
-  if (
-    !activeDatabase &&
-    getRuntimeStorageContext().localAuthority === "canonical-files"
-  ) {
+  if (requiresCatalogReconciliation()) {
     reconcileCanonicalStorageCatalog({
       activeRoot: getUserDataPath(),
       databasePath: getDatabasePath(),

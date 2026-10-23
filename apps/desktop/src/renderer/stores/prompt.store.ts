@@ -1,3 +1,4 @@
+import type { PreparedWorkspaceRefresh } from "../services/local-data-refresh";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type {
@@ -227,6 +228,7 @@ interface PromptState {
   // Actions
   // 操作
   fetchPrompts: () => Promise<void>;
+  prepareWorkspaceRefresh: () => Promise<PreparedWorkspaceRefresh>;
   getPromptDetail: (id: string) => Promise<Prompt | null>;
   createPrompt: (data: CreatePromptDTO) => Promise<Prompt>;
   updatePrompt: (id: string, data: UpdatePromptDTO) => Promise<void>;
@@ -298,6 +300,50 @@ export const usePromptStore = create<PromptState>()(
       viewModeRevision: 0,
       galleryImageSize: "medium" as GalleryImageSize,
       kanbanColumns: 3 as KanbanColumns,
+
+      prepareWorkspaceRefresh: async () => {
+        const generation = promptReadRuntime.fetchGeneration;
+        const previousPrompts = get().prompts;
+        const selectedId = get().selectedId;
+        const [prompts, relations, outputFormatItems, detail] = await Promise.all([
+          db.getAllPromptSummaries(),
+          db.listPromptRelations(),
+          db.listOutputFormatItems(),
+          selectedId ? db.getPromptById(selectedId) : Promise.resolve(null),
+        ]);
+        const ids = new Set(prompts.map((prompt) => prompt.id));
+        return {
+          isCurrent: () =>
+            generation === promptReadRuntime.fetchGeneration &&
+            get().prompts === previousPrompts &&
+            get().selectedId === selectedId,
+          commit: () => {
+            invalidatePromptReads();
+            invalidateAllDetailReads();
+            const state = get();
+            const removed = !!state.selectedId && !ids.has(state.selectedId);
+            const selectedIds = state.selectedIds.filter((id) => ids.has(id));
+            set({
+              prompts,
+              relations,
+              outputFormatItems,
+              isLoading: false,
+              promptDetailCache:
+                detail && ids.has(detail.id) ? { [detail.id]: detail } : {},
+              selectedIds,
+              isBatchSelectionActive:
+                state.isBatchSelectionActive &&
+                (selectedIds.length > 0 || state.selectedIds.length === 0),
+              selectedId: removed ? null : state.selectedId,
+              lastSelectedId:
+                state.lastSelectedId && ids.has(state.lastSelectedId)
+                  ? state.lastSelectedId
+                  : null,
+            });
+            return removed;
+          },
+        };
+      },
 
       fetchPrompts: async () => {
         const generation = nextFetchGeneration();

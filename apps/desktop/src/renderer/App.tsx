@@ -56,7 +56,7 @@ import { Spinner } from "./components/ui/Spinner";
 import { isWebRuntime } from "./runtime";
 import { useBackupImportController } from "./hooks/useBackupImportController";
 import { waitForPersistHydration } from "./utils/persist-hydration";
-import { createLocalDataRefreshController } from "./services/local-data-refresh";
+import { refreshWorkspace } from "./services/workspace-refresh";
 
 // Lazy load heavy components for better initial load performance
 // 懒加载大型组件以提升初始加载性能
@@ -769,21 +769,18 @@ function App() {
         isWebDAVSyncInFlightRef.current = false;
       }
     };
-
-    const localDataRefresh = createLocalDataRefreshController({
-      fetchPrompts,
-      fetchFolders,
-      isVisible: () =>
-        isWindowVisibleRef.current && document.visibilityState !== "hidden",
-    });
-
     const handleBackgroundTaskResume = (nextVisibility?: unknown) => {
       if (typeof nextVisibility === "boolean") {
         isWindowVisibleRef.current = nextVisibility;
       }
-      void localDataRefresh.refresh().catch((error) => {
-        console.error("Failed to refresh local data after resume:", error);
-      });
+      if (isWindowVisibleRef.current && document.visibilityState !== "hidden") {
+        const domain = useUIStore.getState().appModule;
+        if (domain === "prompt" || domain === "skill" || domain === "rules") {
+          void refreshWorkspace(domain).catch((error) => {
+            console.error("Failed to refresh workspace after resume:", error);
+          });
+        }
+      }
       if (
         pendingStartupSyncRef.current &&
         isWindowVisibleRef.current &&

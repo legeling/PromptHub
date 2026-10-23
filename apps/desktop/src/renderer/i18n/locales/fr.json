@@ -4975,5 +4975,15 @@
       "unverified": "Non vérifié"
     },
     "pagination": "Pagination"
-  }
+  },
+  "workspaceRefresh": {
+  "action": "Actualiser",
+  "draftWarning": "Des modifications ne sont pas enregistrées. L’actualisation peut charger des modifications externes ou supprimer cet élément. Abandonner le brouillon et actualiser ? Annuler conserve le brouillon.",
+  "discard": "Abandonner et actualiser",
+  "updated": "Espace de travail actualisé",
+  "removed": "Actualisé. L’élément sélectionné n’existe plus.",
+  "protected": "Votre brouillon ou enregistrement est protégé. Terminez la modification puis actualisez.",
+  "superseded": "Les données ont changé pendant l’actualisation. Actualisez à nouveau.",
+  "failed": "Échec de l’actualisation. Le contenu existant est conservé. Réessayez."
+}
 }

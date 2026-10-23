@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { exportSkillFile } from "./export-skill";
 import {
   formatSkillPlatformError,
@@ -14,6 +15,7 @@ import {
   useId,
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from "react";
@@ -180,6 +182,62 @@ export function SkillFullDetailPage({
   const [deleteCopyInstallations, setDeleteCopyInstallations] = useState(false);
   const [snapshotNote, setSnapshotNote] = useState("");
   const [resolvedSkillMdContent, setResolvedSkillMdContent] = useState("");
+  const workspaceReadGenerationRef = useRef(0);
+  const refreshSelectionRef = useRef(selectedSkill);
+  useLayoutEffect(() => {
+    refreshSelectionRef.current = selectedSkill;
+  }, [selectedSkill]);
+  useWorkspaceDraft("skill", {
+    dirty: isEditingUserNotes && draftSkillUserNotes !== skillUserNotes,
+    saving: isSavingUserNotes,
+    discard: () => {
+      setDraftSkillUserNotes(skillUserNotes);
+      setIsEditingUserNotes(false);
+    },
+    prepare: selectedSkill
+      ? async () => {
+          const exists =
+            isExternalDetail || (await window.api.skill.get(selectedSkill.id));
+          const file = !exists
+            ? null
+            : isExternalDetail
+              ? await window.api.skill.readLocalFileByPath(
+                  normalizeLocalSkillDirectoryPath(
+                    selectedSkill.local_repo_path ||
+                      selectedSkill.source_url ||
+                      "",
+                  ),
+                  "SKILL.md",
+                )
+              : await window.api.skill.readLocalFile(
+                  selectedSkill.id,
+                  "SKILL.md",
+                );
+          const sidecar =
+            exists && !isExternalDetail
+              ? await readSkillUserSidecar(selectedSkill.id)
+              : null;
+          if (exists && !isExternalDetail && !file)
+            throw new Error("Skill entrypoint disappeared during refresh");
+          return {
+            isCurrent: () => refreshSelectionRef.current === selectedSkill,
+            commit: () => {
+              workspaceReadGenerationRef.current += 1;
+              setIsLoadingUserNotes(false);
+              if (!file) {
+                if (isExternalDetail) onBack?.();
+                else selectSkill(null);
+                return true;
+              }
+              setResolvedSkillMdContent(file.content);
+              setSkillUserNotes(sidecar?.notes ?? "");
+              setDraftSkillUserNotes(sidecar?.notes ?? "");
+              return false;
+            },
+          };
+        }
+      : undefined,
+  });
   const [fileEditorHasUnsavedChanges, setFileEditorHasUnsavedChanges] =
     useState(false);
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
@@ -339,6 +397,8 @@ export function SkillFullDetailPage({
   useEffect(() => {
     let cancelled = false;
 
+    const generation = workspaceReadGenerationRef.current;
+
     async function resolveSkillMdContent() {
       if (!selectedSkill) {
         setResolvedSkillMdContent("");
@@ -354,7 +414,7 @@ export function SkillFullDetailPage({
             localSkillDirectory,
             "SKILL.md",
           );
-          if (!cancelled) {
+          if (!cancelled && generation === workspaceReadGenerationRef.current) {
             setResolvedSkillMdContent(
               repoSkillMd?.content ||
                 selectedSkill.instructions ||
@@ -363,7 +423,7 @@ export function SkillFullDetailPage({
             );
           }
         } catch {
-          if (!cancelled) {
+          if (!cancelled && generation === workspaceReadGenerationRef.current) {
             setResolvedSkillMdContent(
               selectedSkill.instructions || selectedSkill.content || "",
             );
@@ -380,11 +440,11 @@ export function SkillFullDetailPage({
           selectedSkill.instructions ||
           selectedSkill.content ||
           "";
-        if (!cancelled) {
+        if (!cancelled && generation === workspaceReadGenerationRef.current) {
           setResolvedSkillMdContent(repoSkillMd);
         }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && generation === workspaceReadGenerationRef.current) {
           setResolvedSkillMdContent(
             selectedSkill.instructions || selectedSkill.content || "",
           );
@@ -409,6 +469,8 @@ export function SkillFullDetailPage({
   useEffect(() => {
     let cancelled = false;
 
+    const generation = workspaceReadGenerationRef.current;
+
     async function loadUserNotes() {
       if (!selectedSkillRecordId || isExternalDetail) {
         setSkillUserNotes("");
@@ -420,20 +482,20 @@ export function SkillFullDetailPage({
       setIsLoadingUserNotes(true);
       try {
         const sidecar = await readSkillUserSidecar(selectedSkillRecordId);
-        if (!cancelled) {
+        if (!cancelled && generation === workspaceReadGenerationRef.current) {
           const notes = sidecar?.notes ?? "";
           setSkillUserNotes(notes);
           setDraftSkillUserNotes(notes);
           setIsEditingUserNotes(false);
         }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && generation === workspaceReadGenerationRef.current) {
           setSkillUserNotes("");
           setDraftSkillUserNotes("");
           setIsEditingUserNotes(false);
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && generation === workspaceReadGenerationRef.current) {
           setIsLoadingUserNotes(false);
         }
       }

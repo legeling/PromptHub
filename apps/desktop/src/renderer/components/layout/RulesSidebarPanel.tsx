@@ -1,10 +1,10 @@
+import { WorkspaceRefreshButton } from "./WorkspaceRefreshButton";
 import {
   AlertTriangleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   FolderPlusIcon,
   PlusIcon,
-  RefreshCwIcon,
   Trash2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -37,7 +37,6 @@ export function RulesSidebarPanel({
   const selectedRuleId = useRulesStore((state) => state.selectedRuleId);
   const selectRule = useRulesStore((state) => state.selectRule);
   const loadRuleFiles = useRulesStore((state) => state.loadFiles);
-  const isRulesLoading = useRulesStore((state) => state.isLoading);
   const skillPlatformOrder = useSettingsStore(
     (state) => state.skillPlatformOrder,
   );
@@ -62,14 +61,6 @@ export function RulesSidebarPanel({
     void loadRuleFiles();
   }, [loadRuleFiles, ruleFiles.length]);
 
-  const handleRescanRules = useCallback(async () => {
-    try {
-      await loadRuleFiles({ force: true });
-      showToast(t("rules.rescanDone", "Rules rescanned"), "success");
-    } catch {
-      showToast(t("rules.rescanFailed", "Rescan failed"), "error");
-    }
-  }, [loadRuleFiles, showToast, t]);
 
   const ruleSidebarSections = useMemo(() => {
     const normalizedQuery = rulesSearchQuery.trim().toLowerCase();
@@ -241,21 +232,7 @@ export function RulesSidebarPanel({
             <h3 className="text-base font-semibold text-foreground">
               {t("rules.platformSidebarTitle", "Platforms")}
             </h3>
-            <button
-              type="button"
-              onClick={() => void handleRescanRules()}
-              disabled={isRulesLoading}
-              className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              title={t("rules.rescanAction", "Rescan rules")}
-            >
-              <RefreshCwIcon
-                aria-hidden="true"
-                className={`h-3.5 w-3.5 ${isRulesLoading ? "animate-spin" : ""}`}
-              />
-              {isRulesLoading
-                ? t("rules.rescanWorking", "Scanning...")
-                : t("rules.rescanShortAction", "Rescan")}
-            </button>
+            <WorkspaceRefreshButton domain="rules" />
           </div>
         </div>
       </div>

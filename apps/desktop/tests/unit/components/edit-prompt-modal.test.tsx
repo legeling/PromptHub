@@ -9,6 +9,7 @@ import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { discardWorkspaceDrafts, hasWorkspaceDraft } from "../../../src/renderer/services/workspace-drafts";
 
 const basePrompt: Prompt = {
   id: "prompt-1",
@@ -93,6 +94,16 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("EditPromptModal", () => {
+  it("prevents refresh from discarding a save in flight", async () => {
+    await renderEditPromptModal();
+    let complete!: () => void;
+    updatePromptMock.mockImplementationOnce(() => new Promise<void>((resolve) => { complete = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(hasWorkspaceDraft("prompt")).toBe(true);
+    expect(discardWorkspaceDrafts("prompt")).toBe(false);
+    await act(async () => { complete(); });
+    expect(hasWorkspaceDraft("prompt")).toBe(false);
+  });
   it.each([true, false])("respects manual-save feedback preference %s", async (enabled) => {
     await renderEditPromptModal();
     act(() => useSettingsStore.setState({ showSaveNotification: enabled }));

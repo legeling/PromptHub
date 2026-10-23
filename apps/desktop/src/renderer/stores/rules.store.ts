@@ -1,3 +1,4 @@
+import type { PreparedWorkspaceRefresh } from "../services/local-data-refresh";
 import { useSettingsStore } from "./settings.store";
 import { create } from "zustand";
 import { scheduleAllSaveSync } from "../services/webdav-save-sync";
@@ -40,6 +41,7 @@ interface RulesState {
   error: string | null;
   hasLoadedFiles: boolean;
   refreshFromSync: () => Promise<void>;
+  prepareWorkspaceRefresh: () => Promise<PreparedWorkspaceRefresh>;
   loadFiles: (options?: {
     force?: boolean;
     selectInitial?: boolean;
@@ -145,6 +147,48 @@ export const useRulesStore = create<RulesState>((set, get) => ({
   isRewriting: false,
   error: null,
   hasLoadedFiles: false,
+
+  prepareWorkspaceRefresh: async () => {
+    const before = get();
+    const requestId = latestLoadFilesRequestId;
+    const selectionRequestId = latestSelectRuleRequestId;
+    const allFiles = await window.api.rules.scan();
+    const files = filterVisibleRuleFiles(allFiles);
+    const selectedRuleId = files.some(
+      (file) => file.id === before.selectedRuleId,
+    )
+      ? before.selectedRuleId
+      : null;
+    const currentFile = selectedRuleId
+      ? await window.api.rules.read(selectedRuleId)
+      : null;
+    return {
+      isCurrent: () =>
+        requestId === latestLoadFilesRequestId &&
+        selectionRequestId === latestSelectRuleRequestId &&
+        get().selectedRuleId === before.selectedRuleId &&
+        get().currentFile === before.currentFile &&
+        get().draftContent === before.draftContent,
+      commit: () => {
+        latestLoadFilesRequestId += 1;
+        latestSelectRuleRequestId += 1;
+        set({
+          availableFiles: allFiles,
+          files,
+          selectedRuleId,
+          currentFile,
+          draftContent: currentFile?.content ?? "",
+          hasLoadedFiles: true,
+          isLoading: false,
+          error: null,
+          conflictDialogRuleId: isOutOfSyncRule(currentFile)
+            ? selectedRuleId
+            : null,
+        });
+        return !!before.selectedRuleId && !selectedRuleId;
+      },
+    };
+  },
 
   refreshFromSync: async () => {
     const before = get();

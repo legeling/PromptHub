@@ -1,3 +1,4 @@
+import { WorkspaceRefreshButton } from "./WorkspaceRefreshButton";
 import { ToolbarSearchFrame } from "../ui/ToolbarSearchFrame";
 import {
   SearchIcon,
@@ -824,6 +825,14 @@ export function TopBar({
 
         {/* 右侧操作按钮 - 只有按钮本身不可拖动 */}
         <div className="flex items-center gap-1 ml-4">
+          {!webRuntime &&
+            (isPromptView ||
+              isRulesView ||
+              (isSkillView && !isSkillStoreCatalogView)) && (
+              <WorkspaceRefreshButton
+                domain={isPromptView ? "prompt" : isRulesView ? "rules" : "skill"}
+              />
+            )}
           {/* 更新提示 */}
           {runtimeCapabilities.appUpdate &&
             updateAvailable &&

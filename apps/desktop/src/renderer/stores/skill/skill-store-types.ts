@@ -1,3 +1,4 @@
+import type { PreparedWorkspaceRefresh } from "../../services/local-data-refresh";
 import type {
   CreateSkillParams,
   MCPServerConfig,
@@ -103,6 +104,7 @@ export type RegistrySkillUpdateResult =
     };
 
 export interface SkillState {
+  prepareWorkspaceRefresh: () => Promise<PreparedWorkspaceRefresh>;
   skills: Skill[];
   selectedSkillId: string | null;
   isLoading: boolean;

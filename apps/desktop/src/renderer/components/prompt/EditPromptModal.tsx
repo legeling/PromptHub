@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import {
   useState,
   useEffect,
@@ -105,6 +106,7 @@ export function EditPromptModal({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showEnglishVersion, setShowEnglishVersion] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isRewritingPrompt, setIsRewritingPrompt] = useState(false);
   const [rewriteInstruction, setRewriteInstruction] = useState("");
@@ -317,6 +319,12 @@ export function EditPromptModal({
     return hasPromptFormChanges(formState, prompt || initialData);
   }, [formState, initialData, prompt]);
 
+  useWorkspaceDraft("prompt", {
+    dirty: isOpen && hasUnsavedChanges(),
+    saving: isSaving,
+    discard: onClose,
+  });
+
   // 处理关闭请求
   const handleCloseRequest = useCallback(() => {
     if (hasUnsavedChanges()) {
@@ -387,8 +395,9 @@ export function EditPromptModal({
   }, [prompt, initialData, isOpen]);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !hasPromptContent(formState)) return;
+    if (isSaving || !title.trim() || !hasPromptContent(formState)) return;
 
+    setIsSaving(true);
     try {
       const promptData = buildPromptPayload(formState, {
         preserveEmptyOptionalFields: true,
@@ -409,6 +418,8 @@ export function EditPromptModal({
     } catch (error) {
       console.error("Failed to save prompt:", error);
       showToast(t("common.error"), "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1037,7 +1048,7 @@ export function EditPromptModal({
             variant="primary"
             size="sm"
             onClick={handleSubmit}
-            disabled={!title.trim() || !hasPromptContent(formState)}
+            disabled={isSaving || !title.trim() || !hasPromptContent(formState)}
           >
             <SaveIcon className="w-4 h-4" aria-hidden="true" />
             {prompt ? t("prompt.save") : t("prompt.create")}

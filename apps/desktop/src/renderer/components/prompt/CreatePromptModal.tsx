@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog, CollapsibleSection } from "../ui";
@@ -261,6 +262,12 @@ export function CreatePromptModal({
   const hasUnsavedChanges = useCallback(() => {
     return hasPromptFormChanges(formState);
   }, [formState]);
+
+  useWorkspaceDraft("prompt", {
+    dirty: isOpen && hasUnsavedChanges(),
+    saving: false,
+    discard: onClose,
+  });
 
   // 处理关闭请求
   const handleCloseRequest = useCallback(() => {

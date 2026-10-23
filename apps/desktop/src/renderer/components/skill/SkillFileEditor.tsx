@@ -1,5 +1,7 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import {
   useState,
+  useLayoutEffect,
   useEffect,
   useCallback,
   useRef,
@@ -236,6 +238,8 @@ export function SkillFileEditor({
   const loadedVersionRef = useRef(currentVersion);
   const inventorySourceKeyRef = useRef<string | null>(null);
   const sourceGenerationRef = useRef(0);
+  const selectedFileRef = useRef(selectedFile);
+  useLayoutEffect(() => { selectedFileRef.current = selectedFile; }, [selectedFile]);
   const isPathMode = Boolean(localPath || fileSource);
   const normalizedVisibleFilePaths = useMemo(
     () =>
@@ -425,6 +429,60 @@ export function SkillFileEditor({
     () => Object.keys(modifiedFiles).length > 0,
     [modifiedFiles],
   );
+
+  useWorkspaceDraft("skill", {
+    dirty: isOpen && hasAnyUnsaved,
+    saving: isOpen && isSaving,
+    discard: () => {
+      setModifiedFiles({});
+      setIsEditingFileContent(false);
+    },
+    prepare: isOpen
+      ? async () => {
+          const generation = sourceGenerationRef.current;
+          const entries = selectVisibleFileEntries(
+            await listFiles(),
+            normalizedVisibleFilePaths,
+            hasVisibleFileAllowlist,
+            includeMissingVisibleFiles,
+          );
+          const nextSelected = entries.some(
+            (entry) => entry.path === selectedFile,
+          )
+            ? selectedFile
+            : null;
+          const content = nextSelected ? await readFile(nextSelected) : null;
+          if (nextSelected && !content)
+            throw new Error("Selected Skill file disappeared during refresh");
+          return {
+            isCurrent: () =>
+              activeSourceKeyRef.current === sourceKey &&
+              sourceGenerationRef.current === generation &&
+              selectedFileRef.current === selectedFile,
+            commit: () => {
+              sourceGenerationRef.current += 1;
+              setFiles(entries);
+              setSelectedFile(nextSelected);
+              setLoadedFiles(
+                content && nextSelected
+                  ? {
+                      [nextSelected]: {
+                        ...content,
+                        path: normalizeSkillRelativePath(
+                          content.path || nextSelected,
+                        ),
+                      },
+                    }
+                  : {},
+              );
+              setLoadingFilePath(null);
+              setIsLoading(false);
+              return !!selectedFile && !nextSelected;
+            },
+          };
+        }
+      : undefined,
+  });
 
   useEffect(() => {
     if (!isOpen) {

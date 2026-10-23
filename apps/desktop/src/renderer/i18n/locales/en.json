@@ -5014,5 +5014,15 @@
       "unverified": "Not verified"
     },
     "pagination": "Pagination"
-  }
+  },
+  "workspaceRefresh": {
+  "action": "Refresh",
+  "draftWarning": "There are unsaved changes. Refreshing may load external changes or remove this item. Discard your draft and refresh? Cancel keeps your draft.",
+  "discard": "Discard and refresh",
+  "updated": "Workspace refreshed",
+  "removed": "Workspace refreshed. The selected item no longer exists.",
+  "protected": "Your draft or save is protected. Finish editing and refresh again.",
+  "superseded": "Data changed while refreshing. Refresh again to see the latest data.",
+  "failed": "Refresh failed. Existing content was kept. Please try again."
+}
 }

@@ -1,3 +1,4 @@
+import type { PreparedWorkspaceRefresh } from "../services/local-data-refresh";
 import { create } from "zustand";
 import type {
   Folder,
@@ -17,6 +18,7 @@ interface FolderState {
   // Actions
   // 操作
   fetchFolders: () => Promise<void>;
+  prepareWorkspaceRefresh: () => Promise<PreparedWorkspaceRefresh>;
   createFolder: (data: CreateFolderDTO) => Promise<Folder>;
   updateFolder: (id: string, data: UpdateFolderDTO) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
@@ -37,6 +39,33 @@ export const useFolderStore = create<FolderState>((set, get) => ({
   selectedFolderId: null,
   expandedIds: new Set(),
   unlockedFolderIds: new Set(),
+
+  prepareWorkspaceRefresh: async () => {
+    const before = get().folders;
+    const folders = await db.getAllFolders();
+    const ids = new Set(folders.map((folder) => folder.id));
+    return {
+      isCurrent: () => get().folders === before,
+      commit: () => {
+        const state = get();
+        const removed =
+          !!state.selectedFolderId &&
+          state.selectedFolderId !== "favorites" &&
+          !ids.has(state.selectedFolderId);
+        set({
+          folders,
+          selectedFolderId: removed ? null : state.selectedFolderId,
+          expandedIds: new Set(
+            [...state.expandedIds].filter((id) => ids.has(id)),
+          ),
+          unlockedFolderIds: new Set(
+            [...state.unlockedFolderIds].filter((id) => ids.has(id)),
+          ),
+        });
+        return removed;
+      },
+    };
+  },
 
   fetchFolders: async () => {
     const folders = await db.getAllFolders();

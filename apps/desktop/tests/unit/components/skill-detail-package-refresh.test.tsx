@@ -11,6 +11,7 @@ import { SkillFullDetailPage } from "../../../src/renderer/components/skill/Skil
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { prepareWorkspaceEditors } from "../../../src/renderer/services/workspace-drafts";
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => ({ showToast: vi.fn() }),
@@ -60,6 +61,7 @@ beforeEach(() => {
     selectedSkillId: skill.id,
   });
   const mocks = installWindowMocks();
+  mocks.api.skill.get.mockResolvedValue(skill);
   mocks.api.skill.listLocalFiles.mockImplementation(async () => [
     { path: "SKILL.md", isDirectory: false, size: 10 },
     ...(revision > 1
@@ -80,9 +82,7 @@ afterEach(() => {
 
 async function openFiles() {
   await renderWithI18n(<SkillFullDetailPage />, { settleAsyncEffects: true });
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Files" }),
-  );
+  fireEvent.click(await screen.findByRole("button", { name: "Files" }));
   await waitFor(() =>
     expect(screen.getByTestId("file-content")).toHaveTextContent(
       "Package revision 1",
@@ -102,9 +102,7 @@ function publishRevision() {
 it("refreshes the open file tree and content when the same Skill publishes a package version", async () => {
   await openFiles();
   publishRevision();
-  expect(
-    await screen.findByRole("button", { name: "added.md" }),
-  ).toBeVisible();
+  expect(await screen.findByRole("button", { name: "added.md" })).toBeVisible();
   await waitFor(() =>
     expect(screen.getByTestId("file-content")).toHaveTextContent(
       "Package revision 2",
@@ -125,10 +123,24 @@ it("preserves unsaved file edits across package refresh and metadata-only change
     "Unsaved draft",
   );
   publishRevision();
-  expect(
-    await screen.findByRole("button", { name: "added.md" }),
-  ).toBeVisible();
+  expect(await screen.findByRole("button", { name: "added.md" })).toBeVisible();
   expect(screen.getByRole("textbox", { name: "Code editor" })).toHaveValue(
     "Unsaved draft",
   );
+});
+
+it("refreshes the open detail and files without requiring a package version change", async () => {
+  await openFiles();
+  revision = 2;
+  const snapshots = await Promise.all(prepareWorkspaceEditors("skill"));
+  expect(snapshots.every((snapshot) => snapshot.isCurrent())).toBe(true);
+  act(() => {
+    snapshots.forEach((snapshot) => snapshot.commit());
+  });
+  expect(screen.getByTestId("file-content")).toHaveTextContent(
+    "Package revision 2",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+  expect(await screen.findByText("Package revision 2")).toBeVisible();
+  expect(useSkillStore.getState().skills[0].currentVersion).toBe(1);
 });

@@ -1,3 +1,4 @@
+import { createSkillWorkspaceRefresh } from "./skill/skill-workspace-refresh";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { createSkillLibrarySlice } from "./skill/skill-library-slice";
@@ -28,6 +29,7 @@ export const useSkillStore = create<SkillState>()(
   persist(
     (set, get) => ({
       ...createSkillLibrarySlice(set, get),
+      ...createSkillWorkspaceRefresh(set, get),
       ...createSkillScanSlice(set, get),
       ...createSkillRegistrySlice(set, get),
       ...createSkillTranslationSlice(set, get),

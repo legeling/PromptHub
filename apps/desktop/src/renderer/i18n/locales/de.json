@@ -4974,5 +4974,15 @@
       "unverified": "Nicht geprüft"
     },
     "pagination": "Seitennavigation"
-  }
+  },
+  "workspaceRefresh": {
+  "action": "Aktualisieren",
+  "draftWarning": "Es gibt ungespeicherte Änderungen. Beim Aktualisieren können externe Änderungen oder Löschungen übernommen werden. Entwurf verwerfen und aktualisieren? Abbrechen behält den Entwurf.",
+  "discard": "Verwerfen und aktualisieren",
+  "updated": "Arbeitsbereich aktualisiert",
+  "removed": "Aktualisiert. Der ausgewählte Eintrag existiert nicht mehr.",
+  "protected": "Entwurf oder Speichervorgang geschützt. Bearbeitung abschließen und erneut aktualisieren.",
+  "superseded": "Daten wurden während der Aktualisierung geändert. Bitte erneut aktualisieren.",
+  "failed": "Aktualisierung fehlgeschlagen. Bisherige Inhalte bleiben erhalten. Bitte erneut versuchen."
+}
 }

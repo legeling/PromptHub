@@ -72,6 +72,8 @@ describe("RulesSidebarPanel", () => {
       searchQuery: "",
       isLoading: false,
       loadFiles: vi.fn().mockResolvedValue(undefined),
+      currentFile: null, draftContent: "", isSaving: false, isRewriting: false,
+      prepareWorkspaceRefresh: vi.fn().mockResolvedValue({ isCurrent: () => true, commit: () => false }),
       selectRule: vi.fn(),
       addProjectRule: vi.fn().mockResolvedValue(undefined),
       removeProjectRule: vi.fn().mockResolvedValue(undefined),
@@ -179,14 +181,12 @@ describe("RulesSidebarPanel", () => {
     expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Rescan" }));
+      fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
       fireEvent.click(platformButton);
       fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     });
 
-    expect(useRulesStore.getState().loadFiles).toHaveBeenCalledWith({
-      force: true,
-    });
+    expect(useRulesStore.getState().prepareWorkspaceRefresh).toHaveBeenCalledTimes(1);
     expect(useRulesStore.getState().selectRule).toHaveBeenCalledWith(
       "claude-global",
     );

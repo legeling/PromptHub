@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSkillStore } from "../../stores/skill.store";
@@ -110,6 +111,14 @@ export function useCreateSkillModalController({
     installOperation.resetReviews();
     onClose();
   }, [github, installOperation, localScan, manual, onClose]);
+  useWorkspaceDraft("skill", {
+    dirty:
+      isOpen &&
+      manual.hasUnsavedChanges() &&
+      (mode === "manual" || mode === "ai"),
+    saving: isOpen && (isLoading || isGenerating),
+    discard: handleClose,
+  });
   const handleCloseRequest = useCallback(() => {
     if (manual.hasUnsavedChanges() && (mode === "manual" || mode === "ai")) {
       setShowUnsavedDialog(true);

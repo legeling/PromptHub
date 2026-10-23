@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Prompt, UpdatePromptDTO } from "@prompthub/shared/types";
@@ -169,6 +170,12 @@ export function usePromptDetailInlineEditor(
       detailInlineDraft.userPrompt !== currentValues.userPrompt
     );
   }, [currentValues, detailInlineDraft]);
+
+  useWorkspaceDraft("prompt", {
+    dirty: isDetailInlineEditing && hasChanges,
+    saving: isDetailInlineSaving,
+    discard: cancelDetailInlineEdit,
+  });
 
   const hasDetailInlineContent =
     !!selectedPrompt &&

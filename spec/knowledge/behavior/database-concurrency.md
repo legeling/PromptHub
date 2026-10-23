@@ -9,11 +9,7 @@
 
 ### 1. Durable Source Of Truth
 
-- 当前 v0.6 本地用户资源由 canonical 文件承接 authority；Prompt、Folder、Skill、
-  Rule、MCP、Plugin、Agent、Generation 与关系 mutation 通过领域协调器同时维护
-  canonical bundle/object 和可重建 SQLite 目录。首次切换只在完整 shadow compare、
-  旧树 safety point、原子发布和 fresh reopen 通过后发生，不能用“更新时间较新者获胜”
-  的双写合并代替。
+- 当前数据所有权遵循 [Storage architecture](../structure/storage-architecture.md)：SQLite 负责结构化业务记录、关系、版本元数据与设置，文件系统负责真实包文件、附件与历史文件内容。旧 canonical authority 标记仅服务升级识别，不表示现行 SQLite 可随意删除或重建。
 - `settings` 是兼容配置表；`users`、`refresh_tokens`、`user_settings` 是
   server-authoritative 表；migration intent、client lease、Agent session index 与
   conversation metadata 是 operational 表。重建同设备目录时必须显式保留这些表，
@@ -61,6 +57,19 @@
 - Desktop 在重新获得焦点或从 hidden 恢复时重新读取 Prompt、Relation、
   Output Format 与 Folder，并合并同时发生的重复 refresh。
 - Desktop 不通过第二份 renderer 持久状态或持续轮询复制 SQLite 数据。
+
+### Shared-runtime opening (#198)
+
+Desktop 已打开当前库时，CLI 普通命令必须通过 DB 的常规初始化、schema/checksum、
+quick_check、迁移意图与客户端租约检查，共享现存数据库；不得仅因保留旧 authority
+标记而调用需要替换数据库文件的独占 catalog reconciliation。未知租约仍拒绝，
+需要结构迁移或完整性修复时仍遵守现有独占门禁。显式 catalog repair 继续要求
+所有客户端退出。没有新 schema、迁移脚本或持久化字段；回退此启动判断会恢复
+CLI 与 Desktop 并行打开失败，但不改变数据布局。
+
+2026-10-22: 真实独立 CLI 进程在 Desktop reader 保持打开时 create 退出 10，
+错误为 "Canonical catalog repair requires all database clients to be closed"。
+回归入口：Desktop integration 的 workspace-refresh.test.tsx；修复后 9 项工作区集成、52 项相关 CLI 与 34 项 Core 回归通过；普通共享读写成功，未知租约和显式 repair 的独占门禁仍保留。可重跑命令与替换边界见 [Desktop refresh](desktop.md#verification-and-delivery)。
 
 ### 5. Startup Integrity Gate
 

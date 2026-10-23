@@ -1,3 +1,4 @@
+import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { exportSkillFile } from "./export-skill";
 import { useTranslation } from "react-i18next";
 import {
@@ -93,6 +94,16 @@ export function SkillDetailView() {
   const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
   const [editedInstructions, setEditedInstructions] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  useWorkspaceDraft("skill", {
+    dirty:
+      isEditing && editedInstructions !== (selectedSkill?.instructions || ""),
+    saving: isSaving,
+    discard: () => {
+      setEditedInstructions(selectedSkill?.instructions || "");
+      setIsEditing(false);
+    },
+  });
 
   // Confirmation dialog states
   // 确认对话框状态

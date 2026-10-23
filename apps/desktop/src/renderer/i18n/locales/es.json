@@ -4974,5 +4974,15 @@
       "unverified": "Sin verificar"
     },
     "pagination": "Paginación"
-  }
+  },
+  "workspaceRefresh": {
+  "action": "Actualizar",
+  "draftWarning": "Hay cambios sin guardar. La actualización puede cargar cambios externos o eliminar este elemento. ¿Descartar el borrador y actualizar? Cancelar conserva el borrador.",
+  "discard": "Descartar y actualizar",
+  "updated": "Espacio de trabajo actualizado",
+  "removed": "Actualizado. El elemento seleccionado ya no existe.",
+  "protected": "Se protegió el borrador o el guardado en curso. Termina la edición y vuelve a actualizar.",
+  "superseded": "Los datos cambiaron durante la actualización. Vuelve a actualizar.",
+  "failed": "No se pudo actualizar. Se conservó el contenido anterior. Inténtalo de nuevo."
+}
 }

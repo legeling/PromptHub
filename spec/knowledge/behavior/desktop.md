@@ -568,3 +568,96 @@ SQLite `settings`，键分别为 `marketplaceSources`、`recoveryPaths`、
 安全设置将已知服务端错误映射为本地化提示；未知错误显示通用失败文案并保留排障信息。不得把原始英文异常直接作为 toast，也不改变加密、鉴权和 IPC 合同。
 
 上述合并的完成记录见 [Completed](../../changes/index.md#completed)，其既有测试和实现差异保留在对应记录中；本次合并不补称新的产品验收。
+
+## Workspace manual refresh (#198)
+
+Product: Desktop. Status: review-pending (2026-10-22); implementation and automated checks complete, native Electron UI acceptance pending.
+This section supersedes the unimplemented archived
+`2026-08-18-desktop-workspace-live-refresh` design. #209 remains separate.
+
+### Contract and scope
+
+- Prompt, local Skill and Rules workspaces expose a common toolbar refresh action,
+  including empty and filtered views. Search, filters, layout and surviving IDs
+  remain selected. Removed selections are cleared with an explicit message.
+- Refresh re-reads the owning SQLite/filesystem APIs. Prompt summaries, selected
+  detail, relations, output formats and folders publish only after all reads
+  succeed. Tags, favorites and counts derive from the same refreshed inventory.
+- Skill catalog metadata remains owned by SQLite; local project/Agent inventories
+  and open package files are re-read through existing filesystem APIs. Refresh
+  does not import, install, deploy or fetch remote Skill marketplace catalogs.
+- Rules use the existing scan/read boundary, preserving managed/target distinction
+  and surfacing external divergence through the existing conflict UI. Refresh
+  never chooses a conflict resolution or writes an external target.
+- Editors register transient dirty/saving guards. A manual refresh offers cancel
+  (keep the draft unchanged) or explicit discard and refresh. A save in flight
+  cannot be discarded. Background focus refresh never opens a discard dialog.
+  Guards are checked again immediately before publication; edits made during a
+  slow read cancel publication. Local mutations invalidate stale candidates.
+- One in-flight operation per domain serves manual and focus events. Loading and
+  success/deleted/draft-preserved/failure outcomes are explicit. Read failure keeps
+  the previous visible snapshot. A stale candidate is not reported as success.
+
+### Implementation boundary
+
+The renderer coordinator owns concurrency and result feedback. Stores own candidate
+reads and synchronous publication; editor hooks own draft reset. Extend the existing
+local refresh service and route App focus refresh through the same coordinator.
+No new IPC, schema, dependency, watcher, revision probe, timer or retry policy.
+The live CLI regression also requires the narrow Core startup correction documented
+in [Database concurrency](database-concurrency.md#shared-runtime-opening-198);
+exclusive catalog repair and DB-owned migration/integrity gates remain unchanged.
+Current-domain reads are O(n) in inventory size, with one additional candidate
+inventory and one selected detail; full Prompt bodies are not loaded for every row.
+All listeners/guards are released on unmount. Seven locale files share the same keys.
+The Skill candidate closure intentionally exceeds 50 lines: reads, captured identity
+and publication stay together as one snapshot, without an additional mutable state
+owner. Real file refresh/deletion tests cover that boundary.
+
+### Verification and delivery
+
+Regression coverage must include external create/update/delete while the desktop
+reader stays open; actual selected detail, tags/favorites/count/filter outcomes;
+draft cancel/discard and edits during a delayed read; failure preserving old data;
+coalesced refreshes and stale-response fencing. Skill file and Rules target changes
+must use real temporary files, with target bytes unchanged after Rules refresh.
+UI component tests do not replace native Electron UI acceptance. No GUI control,
+release, commit, push or issue closure is implied by this implementation task.
+2026-10-22 verification:
+
+- Nine integration scenarios passed through the actual preload/registered IPC,
+  disk SQLite and temporary Skill/Rules files. An independent CLI process performs
+  Prompt create/update/delete while the desktop reader retains the same connection.
+  Assertions cover selected detail, tags/favorites/counts/filters, draft cancel and
+  explicit discard, edits during a slow read, read failure/retry, local-save fencing,
+  deleted Skill detail and unknown-lease preservation. Electron transport,
+  CodeMirror widget, notifications and outbound sync are substituted; native UI is
+  not claimed.
+- 132 distinct focused desktop unit/component checks passed across the controller,
+  TopBar, Rules sidebar/store, Prompt read consistency, Prompt/Skill modals, Skill
+  file editor and full detail/package refresh. Saving-in-flight cannot be discarded;
+  open Skill files and preview update even when the package version is unchanged.
+- 52 CLI checks passed (database concurrency, Prompt, Skill, home isolation), plus
+  34 Core catalog-reconciliation/startup-idempotency checks. Explicit repair still
+  rejects live and unknown clients.
+- Desktop source/test types, Core types, scoped desktop ESLint and production build
+  passed. Seven refresh locale dictionaries have identical non-empty keys.
+- A temporary mutation removing only the pre-publication draft check makes the
+  existing controller regression fail (expected protected, received updated); the
+  working source was never mutated for this check.
+
+Reproduce the core regression from the repository root:
+
+```sh
+pnpm --filter @prompthub/desktop exec vitest run tests/integration/workspace-refresh.test.tsx tests/unit/services/local-data-refresh.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --filter @prompthub/cli exec vitest run tests/database-concurrency.test.ts tests/prompt.test.ts tests/skill.test.ts tests/cli-home-isolation.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --dir packages/core exec vitest run tests/canonical-catalog-reconciliation.test.ts tests/database-startup-idempotency.test.ts --minWorkers=1 --maxWorkers=1
+```
+
+Remaining acceptance: on an isolated native Electron profile, click the refresh
+button after CLI writes and verify list/detail/badges, then cancel and confirm the
+unsaved-draft dialog; repeat for local Skill files and Rules. Check empty/search
+views, pending/error feedback and dark/light layout. AGENTS.md GUI-1 requires
+explicit GUI-control authorization, which has not been given for this task.
+No release-package installation, Windows/Linux UI, commit, push or remote issue
+closure has been performed.
