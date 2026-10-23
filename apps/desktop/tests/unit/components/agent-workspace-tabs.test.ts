@@ -38,6 +38,7 @@ describe("Agent workspace tab availability", () => {
       "mcp",
       "plugins",
       "rules",
+      "definitions",
       "provider",
       "appearance",
       "configFiles",
@@ -60,12 +61,41 @@ describe("Agent workspace tab availability", () => {
     ).toEqual(["overview", "plugins"]);
   });
 
-  it("shows Definitions only for Qwen without creating a global capability", () => {
+  it("shows extension settings only for supported adapters and preserves Qwen inventory", () => {
+    expect(
+      getAgentWorkspaceTabs(agent("claude")).find(
+        (tab) => tab.key === "definitions",
+      ),
+    ).toMatchObject({
+      labelKey: "agents.agentExtensions.title",
+      fallback: "Extension Settings",
+    });
+    expect(
+      getAgentWorkspaceTabs(agent("qwen")).find(
+        (tab) => tab.key === "definitions",
+      ),
+    ).toMatchObject({
+      labelKey: "agents.definitions",
+      fallback: "Definitions",
+    });
     expect(
       getAgentWorkspaceTabs(agent("qwen")).map((tab) => tab.key),
     ).toContain("definitions");
     expect(
       getAgentWorkspaceTabs(agent("claude")).map((tab) => tab.key),
+    ).toContain("definitions");
+    expect(
+      getAgentWorkspaceTabs(agent("codex")).map((tab) => tab.key),
+    ).toContain("definitions");
+    for (const id of ["opencode", "cursor", "gemini", "antigravity"]) {
+      expect(
+        getAgentWorkspaceTabs(agent(id)).find(
+          (tab) => tab.key === "definitions",
+        )?.labelKey,
+      ).toBe("agents.agentExtensions.title");
+    }
+    expect(
+      getAgentWorkspaceTabs(agent("unknown")).map((tab) => tab.key),
     ).not.toContain("definitions");
   });
 
@@ -80,7 +110,9 @@ describe("Agent workspace tab availability", () => {
     )!;
 
     expect(getAgentTabStatus(qwen, definitions)).toBe("partial");
-    expect(getAgentTabStatus(agent("codex"), definitions)).toBe("unsupported");
+    expect(getAgentTabStatus(agent("unknown"), definitions)).toBe(
+      "unsupported",
+    );
     expect(getAgentTabStatus(qwen, skills)).toBe("unsupported");
     qwen.paths.skills = "/home/test/.qwen/skills";
     expect(getAgentTabStatus(qwen, skills)).toBe("partial");

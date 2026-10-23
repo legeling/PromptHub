@@ -529,6 +529,28 @@
     "batchTagPartial": "Falló la actualización de {{failed}} de {{total}} prompts"
   },
   "agents": {
+    "agentExtensions": {
+      "documentation": "Documentación oficial",
+      "pluginHooks": "OpenCode implementa Hooks mediante plugins JavaScript/TypeScript en plugins/ o paquetes declarados en opencode.json. Este editor no los instala ni ejecuta. No hay un JSON de Hooks con formato Claude.",
+      "codexHooksNotice": "Aquí solo se edita hooks.json. Los Hooks de config.toml, plugins y políticas son fuentes independientes que se suman. Revise y autorice los cambios en Codex antes de ejecutarlos.",
+      "title": "Configuración avanzada",
+      "empty": "Todavía no hay subagentes en este ámbito.",
+      "select": "Seleccione un subagente para editarlo o introduzca un nombre de archivo para crear uno.",
+      "subagent": "Subagentes",
+      "hooks": "Hooks",
+      "scope": "Ámbito",
+      "local": "Proyecto local",
+      "filename": "Nombre del archivo ({{extension}})",
+      "content": "Contenido de configuración",
+      "notice": "Edita archivos nativos del Agent. Los Hooks pueden ejecutar comandos en sesiones posteriores. Revise antes de guardar. El Agent controla la confianza, las políticas y los plugins. Vaciar los Hooks solo afecta a este archivo.",
+      "loadFailed": "No se pudo cargar la configuración.",
+      "conflict": "Archivo modificado externamente. Recargue y revise.",
+      "invalid": "Configuración nativa no válida. Revise el formato y los campos en la documentación oficial.",
+      "saveFailed": "No se pudo guardar. Borrador conservado; revise permisos y copia segura.",
+      "saveConfirm": "¿Guardar? Los Hooks y las instrucciones pueden afectar futuras sesiones del Agent.",
+      "deleteConfirm": "¿Eliminar este archivo? Se conservará una copia cifrada.",
+      "discardConfirm": "¿Descartar los cambios y recargar?"
+    },
     "webService": {
       "title": "Servicios de Agent",
       "description": "Los servicios se ejecutan en este servidor PromptHub autohospedado.",

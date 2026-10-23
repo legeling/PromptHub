@@ -94,7 +94,7 @@ function isSkillProject(value: unknown): value is SkillProject {
   );
 }
 
-function readProjectRoot(
+export function readProjectRoot(
   database: Database.Database,
   projectId: string,
 ): string {

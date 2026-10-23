@@ -1,5 +1,169 @@
 # Tasks
 
+## Cross-Agent extension configuration — 2026-10-22
+
+Contract: [Cross-Agent Extension Settings](specs/agent-management/spec.md#cross-agent-extension-settings-2026-10-22).
+
+- [x] Inventory all 38 registered Agent ids, distinguish native support from
+  PromptHub editing, and record unresolved product-specific contracts.
+- [x] Generalize the unpublished Claude editor/IPC into one capability-driven
+  surface for Claude, OpenCode, Cursor, Codex, Gemini and Antigravity; preserve
+  Qwen's SubAgent/Commands inventory and all existing user configuration.
+- [x] Add native-format validators and regressions before executing checks.
+- [x] Run focused core/component/preload/native tests and static checks.
+- [ ] Real isolated UI and additional platform runtime execution acceptance.
+- [ ] Follow-up adapters: Qwen editable SubAgents/Hooks while retaining Commands,
+  Copilot, Kimi, Kiro, Grok, Auggie, CodeBuddy and remaining confirmed mechanisms.
+  OpenCode executable plugin editing/installation is not delivered by JSON editing.
+
+No commit, push or native-config migration. Existing preview process has reached
+its owned lifetime limit; no duplicate server is started for this investigation.
+
+Earlier verification records below retain their original command names. The
+unpublished `claude-extensions.test.ts` and `claude-extensions-panel.test.tsx`
+files are now named `agent-extensions.test.ts` and
+`agent-extensions-panel.test.tsx`; native Claude acceptance retains its name.
+
+Verification for this batch: 98 distinct passing cases across 11 files, collected
+in focused runs (not one full-suite or release run). Core/file-owner/components/
+locales/workspace cover 91; real preload/SQLite/filesystem integration covers 3;
+installed OpenCode 1.18.21 covers create/edit discovery and deletion through its
+native `debug agent`/`agent list` commands (1); installed Claude native assets,
+delegation and Plugin lifecycle cover 3. Native tests use disposable profiles;
+OpenCode invokes no model request, and Claude uses the existing local synthetic
+gateway, not production credentials.
+
+The initial run found incomplete new project fixtures and an obsolete test that
+assumed Codex had no extension panel. Fixtures now satisfy the existing registered
+project contract; the test distinguishes unsupported Agents from Codex routing.
+No production validation or timeout was weakened. Scoped ESLint passed for both
+desktop and shared-package files; test TypeScript (including source), file-size,
+spec governance/traceability and whitespace checks passed. An initial ESLint
+invocation excluded shared files due to its cwd; an explicit root/config invocation
+then checked those files successfully.
+
+Cross-Agent native GUI acceptance and actual Cursor/Codex/Gemini/Antigravity
+execution are still pending. OpenCode's executable-plugin Hooks and inline
+agents are documented gaps, not implemented editors. No daily Agent configuration
+was changed; no development server or test runtime is retained by this batch.
+
+## Claude Code complete-adaptation follow-up — 2026-10-22
+
+Scope and credential/model contract: [FR-AGENT-122](specs/agent-management/spec.md#fr-agent-122-claude-code-native-model-routes).
+Capability ownership and official evidence: [current inventory](platform-capability-research.md#claude-code-follow-up-246--2026-10-22).
+
+- [x] Update the installed official CLI: 2.1.209 → 2.1.307 using `claude update`;
+  re-read the version. No account or personal configuration migration.
+- [x] Establish native protocol evidence before implementation: isolated CLI
+  `-p` accepts both credential variables, sends their distinct headers, sends
+  both when both are set, and selects `ANTHROPIC_MODEL` over root `model`.
+- [x] Repair #246 import authentication selection, source provider-kind projection,
+  shared model precedence, activation and direct-editor cleanup. Add regression
+  tests before implementation and verify the whole batch together.
+- [x] Verify Profile create/import → SQLite → preview/apply → native CLI request
+  → verify/reopen/rollback with fake credentials and a controlled local gateway;
+  test incorrect auth rejection and both explicitly selected valid auth modes.
+- [x] Authorized isolated Electron acceptance: import with Auth Token, review,
+  activation, native CLI consumption and full application restart. Real transport,
+  SQLite and secret encryption; synthetic gateway/credentials only.
+- [x] Recheck native Skills/Rules/Plugin/MCP loading and configuration preservation;
+  distinguish existing file/registration support from new native evidence.
+- [x] Implement native SubAgent CRUD and Hooks editing in Claude Definitions,
+  with registered-project scopes, existing encrypted backups and digest guards;
+  acceptance: `claude-extensions.test.ts`, `claude-native-assets.test.ts` and
+  isolated Electron interactions. Native user-root consumption and registered
+  project/local filesystem roundtrips verified; managed/plugin-owned editors are
+  not part of this file-scoped surface.
+- [ ] Close remaining full-suite gaps: project/managed effective-state diagnostics,
+  live subscription usage, reporter gateway,
+  interactive approval and Windows. Do not mark these
+  complete from config parsing, mocked services or local gateway success.
+
+No schema migration: Profile config already owns credential mode; native JSON
+edits reuse digest checking, encrypted backup and rollback. Parsing is linear in
+config bytes; no new dependency, proxy product, retry policy or runtime limiter.
+Test listeners bind ephemeral loopback ports, child processes have bounded
+lifetimes, and only task-owned profiles/processes may be removed.
+
+Verification: 104 distinct scoped Vitest cases passed after repairs (97 unit,
+7 integration), including opt-in `PROMPTHUB_NATIVE_AGENT_TESTS=1` cases;
+desktop/test TypeScript, scoped ESLint, production build, file-size limits and
+spec governance passed. Broader regressions caught a missing-file JSONC deletion
+case; removing `ANTHROPIC_MODEL` now requires the field to exist. Native 401
+acceptance uses the documented `x-should-retry: false` response header: without
+it, 2.1.307 retried and exceeded the fixture's 45-second bound. No product retry
+policy was added. No commit, push, release, paid gateway or Windows acceptance.
+
+Electron capture note: forcing a 1440×900 browser viewport inside a 1200×740
+native window cropped the visible right edge. The repeated accepted flow used
+the native window with `viewport: null`; no product layout changes were required.
+
+Second-batch acceptance (2026-10-22): `claude-native-assets.test.ts` uses installed
+Claude 2.1.307 against a controlled Anthropic gateway. Real Skill deployment
+preserves nested files; native requests contain Skill, Rule, SubAgent and
+SessionStart Hook markers. MCP connects to a task-owned stdio server and returns
+its marker through the native tool loop. A separate real Agent-tool call spawns
+and completes one child with its own system instructions. Native plugin install,
+enable/disable, source update, rediscovery and uninstall passed. Removal checks
+launch a fresh CLI and reject stale Skill/Rule/Hook/MCP markers. The gateway
+supplies deterministic responses, not a paid model or vendor account.
+
+Exact focused commands (from `apps/desktop`):
+
+- `pnpm exec vitest run tests/unit/main/claude-extensions.test.ts tests/unit/main/agent-user-config-files.test.ts tests/unit/components/claude-extensions-panel.test.tsx tests/integration/claude-extensions.test.ts`
+- `PROMPTHUB_NATIVE_AGENT_TESTS=1 pnpm exec vitest run tests/integration/claude-native-assets.test.ts --minWorkers=1 --maxWorkers=1`
+- `PROMPTHUB_NATIVE_AGENT_TESTS=1 pnpm exec vitest run tests/integration/claude-provider-import.test.ts --minWorkers=1 --maxWorkers=1`
+
+The real preload/registered IPC tests use SQLite and native files; only Electron
+transport and the backup transport are substituted. Failure coverage includes
+invalid definitions/hooks, path/symlink rejection, stale save/delete and backup
+failure preservation. JSON formatting is not byte preservation: unrelated
+values and comments remain intact. The UI flow used real encrypted backups,
+created and saved a SubAgent and Hook, invoked native Claude, restarted PromptHub,
+read both back, removed both and checked disk. Light/dark captures used native
+window dimensions; owned profiles, CLI children and listeners were closed.
+
+Native fixture specifics: MCP loading is explicitly `ENABLE_TOOL_SEARCH=false`
+so a deterministic gateway can request the exposed schema; this is not a product
+default change. `claude agents --json` in 2.1.307 lists running sessions, not
+definition files, so consumption assertions use actual model-request contents
+and native child completion stats. No Windows, real gateway, interactive trust,
+every Hook event/type, or managed-scope acceptance is implied.
+
+Final unified acceptance: 14 files / 113 tests passed in one run with
+`PROMPTHUB_NATIVE_AGENT_TESTS=1`, `--minWorkers=1 --maxWorkers=2`, including
+native assets, both #246 credential modes, extension IPC, config-file safety,
+Claude/Qwen Definitions, workspace tabs/resilience and locale coverage.
+Desktop and test TypeScript, scoped ESLint, production build, file-size checks,
+spec governance and `git diff --check` passed. This is scoped local acceptance,
+not the full release harness. Final process inspection found no owned Electron,
+Vitest, native MCP or GUI acceptance processes still running. Disposable profiles
+were removed; screenshots and the reproducible GUI script remain in the task
+evidence directory `/tmp/prompthub-claude-246-GL7pgi`.
+
+Claude presentation follow-up (2026-10-22): renamed the Claude entry to Extension
+Settings / 扩展配置, without changing Qwen or the stored tab key. Replaced primary
+button navigation with lightweight keyboard tabs and native selects with the
+shared portal Select. The card editor now has a compact file/action toolbar;
+seven locales describe configuration rather than literal definitions. Native
+Electron checks covered light/dark menus, tab switching, focus retention after
+asynchronous loading, editing, confirmed saving and refresh/readback of empty
+Hooks in the isolated development profile. No command Hook was created or run.
+
+Regression commands from `apps/desktop`: `pnpm exec vitest run
+tests/unit/components/claude-extensions-panel.test.tsx
+tests/unit/components/agent-workspace-tabs.test.ts
+tests/unit/components/agents-workspace.test.tsx
+tests/unit/components/agent-definitions-panel.test.tsx
+tests/unit/services/agent-workspace-locales.test.ts --minWorkers=1 --maxWorkers=1`.
+The aggregate had lazy-loaded MCP/Provider view timeouts in the existing workspace
+suite; no assertions or timeout limits were relaxed. The other four files passed
+17 cases, and an isolated rerun of `agents-workspace.test.tsx` passed all 36 cases
+without source changes. These are 53 distinct passing cases across separate runs,
+not a green aggregate run or full release gate. Scoped ESLint, source/test TypeScript,
+file-size limits, spec governance and whitespace checks passed. The existing
+single development instance remains available for user review on port 5173.
+
 ## Clarify And Analyze
 
 - [x] `T-AGENT-001` 盘点现有预置/custom Agent、路径、AI config、Skill、MCP、Rules、Plugin、backup、tray 和 session 边界。

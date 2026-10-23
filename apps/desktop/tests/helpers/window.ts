@@ -142,6 +142,10 @@ function createWindowApiDefaults() {
       }),
     },
     agent: {
+      listAgentExtensions: vi.fn().mockResolvedValue([]),
+      readAgentExtension: vi.fn(),
+      writeAgentExtension: vi.fn(),
+      deleteAgentExtension: vi.fn(),
       launch: vi.fn(),
       addPiProvider: vi.fn(),
       updatePiProvider: vi.fn(),

@@ -327,15 +327,31 @@ describe("Qwen Definitions panel", () => {
     );
   });
 
-  it("does not query Qwen paths when rendered defensively for another Agent", async () => {
+  it("does not query Qwen paths when rendered defensively for an unsupported Agent", async () => {
+    await renderWithI18n(
+      <AgentDefinitionsPanel
+        agent={{ ...qwenAgent, id: "unsupported", name: "Unsupported" }}
+      />,
+      { settleAsyncEffects: true },
+    );
+
+    expect(window.api.agent.listDefinitions).not.toHaveBeenCalled();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(window.api.agent.listAgentExtensions).not.toHaveBeenCalled();
+  });
+
+  it("routes Codex to native extension configuration without querying Qwen", async () => {
     await renderWithI18n(
       <AgentDefinitionsPanel
         agent={{ ...qwenAgent, id: "codex", name: "Codex" }}
       />,
       { settleAsyncEffects: true },
     );
-
     expect(window.api.agent.listDefinitions).not.toHaveBeenCalled();
-    expect(document.body).toHaveTextContent("");
+    expect(window.api.agent.listAgentExtensions).toHaveBeenCalledWith({
+      agentId: "codex",
+      scope: "user",
+    });
+    expect(screen.getByRole("tab", { name: "SubAgents" })).toBeInTheDocument();
   });
 });

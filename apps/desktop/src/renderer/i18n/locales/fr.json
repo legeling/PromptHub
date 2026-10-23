@@ -529,6 +529,28 @@
     "batchTagPartial": "Échec de mise à jour pour {{failed}} prompts sur {{total}}"
   },
   "agents": {
+    "agentExtensions": {
+      "documentation": "Documentation officielle",
+      "pluginHooks": "OpenCode utilise des plugins JavaScript/TypeScript dans plugins/ ou des paquets déclarés dans opencode.json pour ses Hooks. Cet éditeur ne les installe ni ne les exécute. Il n’y a pas de JSON Hooks au format Claude.",
+      "codexHooksNotice": "Seul hooks.json est modifié ici. Les Hooks de config.toml, des plugins et des politiques sont des sources cumulatives distinctes. Vérifiez et approuvez les modifications dans Codex avant leur exécution.",
+      "title": "Configuration avancée",
+      "empty": "Aucun sous-agent dans cette portée.",
+      "select": "Sélectionnez un sous-agent à modifier ou créez-en un en saisissant un nom de fichier.",
+      "subagent": "Sous-agents",
+      "hooks": "Hooks",
+      "scope": "Portée",
+      "local": "Projet local",
+      "filename": "Nom du fichier ({{extension}})",
+      "content": "Contenu de la configuration",
+      "notice": "Modifie les fichiers natifs de l’Agent. Les Hooks peuvent exécuter des commandes lors des prochaines sessions. Vérifiez avant d’enregistrer. La confiance, les politiques et les plugins restent gérés par l’Agent. Vider les Hooks ne concerne que ce fichier.",
+      "loadFailed": "Impossible de charger la configuration.",
+      "conflict": "Fichier modifié ailleurs. Rechargez et vérifiez.",
+      "invalid": "Configuration native invalide. Vérifiez le format et les champs dans la documentation officielle.",
+      "saveFailed": "Échec de sauvegarde. Brouillon conservé ; vérifiez les droits et la sauvegarde sécurisée.",
+      "saveConfirm": "Enregistrer ? Les Hooks et instructions peuvent affecter les prochaines sessions de l’Agent.",
+      "deleteConfirm": "Supprimer ce fichier ? Une sauvegarde chiffrée sera conservée.",
+      "discardConfirm": "Abandonner les modifications et recharger ?"
+    },
     "webService": {
       "title": "Services Agent",
       "description": "Les services s’exécutent sur ce serveur PromptHub auto-hébergé.",

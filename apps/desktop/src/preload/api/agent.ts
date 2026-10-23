@@ -1,6 +1,11 @@
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
+  AgentExtensionScope,
+  AgentExtensionRequest,
+  AgentExtensionWriteRequest,
+  AgentExtensionDeleteRequest,
+  AgentExtensionDocument,
   AgentAppearanceActionResult,
   AgentHarnessOverview,
   AgentHarnessPluginMutationRequest,
@@ -78,6 +83,18 @@ import type {
 } from "@prompthub/shared/types";
 
 export const agentApi = {
+  listAgentExtensions: (request: AgentExtensionScope): Promise<string[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AGENT_EXTENSIONS_LIST, request),
+  readAgentExtension: (
+    request: AgentExtensionRequest,
+  ): Promise<AgentExtensionDocument> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AGENT_EXTENSION_READ, request),
+  writeAgentExtension: (
+    request: AgentExtensionWriteRequest,
+  ): Promise<AgentExtensionDocument> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AGENT_EXTENSION_WRITE, request),
+  deleteAgentExtension: (request: AgentExtensionDeleteRequest): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AGENT_EXTENSION_DELETE, request),
   listHarnessProfiles: (): Promise<AgentHarnessOverview> =>
     ipcRenderer.invoke(IPC_CHANNELS.AGENT_HARNESS_PROFILES_LIST),
   readHarnessProfile: (

@@ -111,6 +111,11 @@ interface RedactedConfig {
 }
 
 export interface AgentUserConfigFileService {
+  remove(
+    context: AgentConfigContext,
+    relativePath: string,
+    expectedRevision: string,
+  ): Promise<void>;
   list(context: AgentConfigContext): Promise<SkillLocalFileTreeEntry[]>;
   read(
     context: AgentConfigContext,
@@ -652,6 +657,30 @@ export function createAgentUserConfigFileService(options: {
   }
 
   return {
+    async remove(context, relativePath, expectedRevision) {
+      return mutate(context, relativePath, async () => {
+        const target = await assertInventoryTarget(
+          context,
+          relativePath,
+          false,
+        );
+        const original = await fs.readFile(target.targetPath, "utf8");
+        if (revisionOf(original) !== expectedRevision)
+          throw new Error("AGENT_CONFIG_CONCURRENT_CHANGE");
+        await options.createBackup({
+          agentId: context.agentId,
+          sourcePath: target.targetPath,
+          content: original,
+        });
+        await assertInventoryTarget(context, relativePath, false);
+        if (
+          revisionOf(await fs.readFile(target.targetPath, "utf8")) !==
+          expectedRevision
+        )
+          throw new Error("AGENT_CONFIG_CONCURRENT_CHANGE");
+        await fs.unlink(target.targetPath);
+      });
+    },
     async list(context) {
       const discovered = await discover(context, true);
       const files = new Map(discovered.map((file) => [file.path, file]));
@@ -672,26 +701,31 @@ export function createAgentUserConfigFileService(options: {
     },
     read,
     async write(context, relativePath, content, expectedRevision) {
-      const key = `${context.agentId}:${path.resolve(context.rootPath, relativePath)}`;
-      const previous = mutationTails.get(key) ?? Promise.resolve();
-      let release!: () => void;
-      const tail = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      const scheduled = previous.then(() => tail);
-      mutationTails.set(key, scheduled);
-      await previous;
-      try {
-        return await writeUnlocked(
-          context,
-          relativePath,
-          content,
-          expectedRevision,
-        );
-      } finally {
-        release();
-        if (mutationTails.get(key) === scheduled) mutationTails.delete(key);
-      }
+      return mutate(context, relativePath, () =>
+        writeUnlocked(context, relativePath, content, expectedRevision),
+      );
     },
   };
+
+  async function mutate<T>(
+    context: AgentConfigContext,
+    relativePath: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${context.agentId}:${path.resolve(context.rootPath, relativePath)}`;
+    const previous = mutationTails.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const tail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const scheduled = previous.then(() => tail);
+    mutationTails.set(key, scheduled);
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (mutationTails.get(key) === scheduled) mutationTails.delete(key);
+    }
+  }
 }

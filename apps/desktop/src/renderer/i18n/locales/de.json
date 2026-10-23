@@ -529,6 +529,28 @@
     "batchTagPartial": "Aktualisierung bei {{failed}} von {{total}} Prompts fehlgeschlagen"
   },
   "agents": {
+    "agentExtensions": {
+      "documentation": "Offizielle Dokumentation",
+      "pluginHooks": "OpenCode implementiert Hooks durch JavaScript/TypeScript-Plugins in plugins/ oder Pakete in opencode.json. Dieser Editor installiert oder führt diese nicht aus. Es gibt hier kein Hooks-JSON im Claude-Format.",
+      "codexHooksNotice": "Hier wird nur hooks.json bearbeitet. Hooks in config.toml, Plugins und verwalteten Richtlinien sind separate, additive Quellen. Änderungen müssen vor der Ausführung in Codex geprüft und als vertrauenswürdig bestätigt werden.",
+      "title": "Erweiterte Einstellungen",
+      "empty": "Noch keine SubAgents in diesem Bereich.",
+      "select": "SubAgent zum Bearbeiten auswählen oder über einen Dateinamen erstellen.",
+      "subagent": "SubAgents",
+      "hooks": "Hooks",
+      "scope": "Bereich",
+      "local": "Projekt lokal",
+      "filename": "Dateiname ({{extension}})",
+      "content": "Konfigurationsinhalt",
+      "notice": "Bearbeitet native Agent-Dateien. Hooks können bei späteren Läufen Befehle ausführen. Vor dem Speichern prüfen. Vertrauen, Richtlinien und Plugins bleiben beim Agent. Leeren betrifft nur diese Datei.",
+      "loadFailed": "Konfiguration konnte nicht geladen werden.",
+      "conflict": "Datei extern geändert. Neu laden und prüfen.",
+      "invalid": "Ungültige native Konfiguration. Format und Felder anhand der offiziellen Dokumentation prüfen.",
+      "saveFailed": "Speichern fehlgeschlagen. Entwurf bleibt erhalten; Dateirechte und sichere Sicherung prüfen.",
+      "saveConfirm": "Native Konfiguration speichern? Hooks und SubAgent-Anweisungen beeinflussen spätere Agent-Läufe.",
+      "deleteConfirm": "SubAgent-Datei löschen? Eine verschlüsselte Sicherung bleibt erhalten.",
+      "discardConfirm": "Ungespeicherte Änderungen verwerfen und neu laden?"
+    },
     "webService": {
       "title": "Agent-Dienste",
       "description": "Die Dienste laufen auf diesem selbst gehosteten PromptHub-Server.",

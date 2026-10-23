@@ -2,6 +2,80 @@
 
 ## Added Requirements
 
+### Cross-Agent Extension Settings (2026-10-22)
+
+Confirmed scope: inventory SubAgent and Hook mechanisms for all registered Agents,
+then adapt mainstream native configuration surfaces. Native support and PromptHub
+management/verification are separate claims. The capability research owns the
+38-Agent evidence inventory; unknown support must not be labelled unsupported.
+
+Implementation batch: Claude, OpenCode, Cursor, Codex, Gemini CLI and Antigravity.
+Use one shared extension capability catalog, one typed IPC contract carrying
+`agentId`, and one editor. Core adapters own path and format validation, not the
+renderer. SubAgents retain native Markdown/YAML or Codex TOML. Claude/Gemini
+Hooks edit only the selected settings section; Cursor/Codex edit the hooks section
+of `hooks.json`; Antigravity edits its named-hook map. OpenCode Hooks are executable
+JS/TS plugins, not JSON settings: show native guidance without a save action.
+Do not install a generated plugin, convert formats, migrate native assets, alter
+trust approvals, or claim bundled/managed assets are independently editable.
+Qwen's existing SubAgent/Commands inventory remains available pending its separate
+editing adapter. Other mechanisms remain documented gaps, not empty editable tabs.
+
+User roots use the existing platform path owner; project roots are registered
+projects plus the catalog's native directory. Keep filesystem authority, redaction,
+revision/backup/atomic-write guarantees and existing bounded linear inventory.
+No schema migration, new dependency, network work on read, or execution on save.
+The unpublished Claude-specific IPC is replaced in its producers/consumers, not
+retained as an alias. Stored workspace tab identity remains `definitions`.
+Acceptance covers per-platform CRUD/reopen, unrelated-field preservation, malformed
+native formats, scope/path/symlink rejection, and write failure preservation.
+Native executable loading and real GUI acceptance must be reported separately.
+
+The existing panel keeps its coordinated selection, dirty-state guard and JSX in
+one render function; service/IPC factories keep their related operations together.
+These cohesive functions exceed the default 50-line guideline. Platform parsing
+is isolated in small validators; component and preload lifecycle regressions cover
+the longer orchestration blocks without adding a second state owner.
+
+### Claude native definitions and Hooks (2026-10-22)
+
+Implemented locally with native and isolated Electron evidence: the desktop Claude Extension Settings surface
+must manage native user/project `agents/**/*.md` and the `hooks` section of
+user/project/local settings. Project roots come from registered Skill projects;
+the user root comes from the existing Agent path owner. Managed and plugin-owned
+definitions remain outside this editor. Native files are authoritative; no DB
+mirror, schema migration, OAuth state or automatic hook executor is introduced.
+
+The Claude entry is labelled Extension Settings (扩展配置), not Definitions.
+SubAgents and Hooks use lightweight keyboard-accessible tabs; scope and project
+selectors reuse the shared portal-backed Select. The editor uses a card surface
+with a compact file/action toolbar and a secondary file sidebar. UI presentation
+does not rename stored tab keys, change native files or alter Qwen's inventory.
+
+Subagent creation/editing/deletion preserves full Markdown and unknown YAML
+fields. Validate required name/description and native name restrictions, not a
+Skill-name convention. Hooks retain native event/matcher/handler fields and
+validate the documented structure; editing replaces only the selected file's
+hooks object, preserving other settings and hidden secrets. An empty object
+removes this file's hooks, not hooks from managed or other scopes. Saving can
+affect subsequent Claude runs; show an explicit execution/trust notice.
+
+Reuse the config-file owner's secret masking, revision guards, encrypted backups,
+safe-path checks, secret-edit exclusion and atomic writes. Masked secrets cannot
+be added, replaced or removed through this editor, including clearing Hooks that
+contain protected values; use the native credential owner for those changes.
+Deletion requires the read revision and a
+backup before removal; races must fail without overwriting newer content. Do not
+execute commands while listing, validating or saving. Reading is on demand and
+linear in the existing bounded config inventory. No new dependency or limiter.
+
+Acceptance requires real preload/IPC/filesystem CRUD, reopen, invalid content,
+revision conflicts, symlink/path rejection and failure preservation. Native Claude
+must consume representative Skills, Rules, MCP tools, registered Plugins,
+SubAgent definitions and task-owned harmless Hooks in an isolated home. Synthetic
+model responses prove CLI loading/tool execution, not model quality or production
+gateway compatibility. UI acceptance uses only the authorized isolated window.
+
 ### `FR-AGENT-138`: One Current Contract Per Agent Capability
 
 Confirmed by the user on 2026-09-28; implementation pending. Each Agent capability
@@ -4148,6 +4222,28 @@ new stored website, notes, icon, proxy or request-conversion fields.
 
 ### `FR-AGENT-122`: Claude Code Native Model Routes
 
+2026-10-22 confirmed follow-up (#246), locally implemented and verified: imported Claude
+providers must expose the native credential choice before import. The request's
+optional `credentialEnvKey` accepts only `ANTHROPIC_API_KEY` (the existing default,
+`x-api-key`) or `ANTHROPIC_AUTH_TOKEN` (`Authorization: Bearer`), only for Claude.
+The selected value is stored in the existing Profile config; credentials remain
+write-only in the existing secret owner. Arbitrary source provider labels must
+project to Claude's `anthropic-compatible` kind rather than become invalid native
+provider kinds. No automatic dual headers, credential fallback, login, key
+approval, or account migration is allowed.
+
+Within the selected native settings file, model reads must follow
+`env.ANTHROPIC_MODEL` → root `model` → `env.ANTHROPIC_DEFAULT_MODEL`. Explicit
+primary-model writes use root `model` and remove the same file's stale
+`env.ANTHROPIC_MODEL`, preserving unrelated env, modelSettings, permissions,
+hooks and extensions. Both the Profile adapter and direct model editor must use
+the same reading contract. User/project/managed files and process flags remain
+separate scopes; file verification must not claim effective process verification.
+Interactive API-key approval remains Claude-owned, not a PromptHub-written
+`customApiKeyResponses` bypass. Both static modes require native-process tests
+against a controlled gateway; reporter gateway and Windows acceptance remain
+separate from those tests.
+
 The custom-provider editor for Claude Code MUST expose the model routes that
 Claude Code natively supports: the required primary model and optional Sonnet,
 Opus, Haiku and subagent models. These values MUST be stored as typed model
@@ -4215,28 +4311,6 @@ every managed provider row. The provider verified against the Agent's current
 native state MUST show a checked, non-destructive switch; selecting an inactive
 switch MUST enter the existing review, atomic apply, verification and rollback
 workflow. The detail pane MUST NOT retain a second activation command.
-
-2026-10-22 confirmed follow-up (#246), locally implemented and verified: imported Claude
-providers must expose the native credential choice before import. The request's
-optional `credentialEnvKey` accepts only `ANTHROPIC_API_KEY` (the existing default,
-`x-api-key`) or `ANTHROPIC_AUTH_TOKEN` (`Authorization: Bearer`), only for Claude.
-The selected value is stored in the existing Profile config; credentials remain
-write-only in the existing secret owner. Arbitrary source provider labels must
-project to Claude's `anthropic-compatible` kind rather than become invalid native
-provider kinds. No automatic dual headers, credential fallback, login, key
-approval, or account migration is allowed.
-
-Within the selected native settings file, model reads must follow
-`env.ANTHROPIC_MODEL` → root `model` → `env.ANTHROPIC_DEFAULT_MODEL`. Explicit
-primary-model writes use root `model` and remove the same file's stale
-`env.ANTHROPIC_MODEL`, preserving unrelated env, modelSettings, permissions,
-hooks and extensions. Both the Profile adapter and direct model editor must use
-the same reading contract. User/project/managed files and process flags remain
-separate scopes; file verification must not claim effective process verification.
-Interactive API-key approval remains Claude-owned, not a PromptHub-written
-`customApiKeyResponses` bypass. Both static modes require native-process tests
-against a controlled gateway; reporter gateway and Windows acceptance remain
-separate from those tests.
 
 The read-only current native provider, including an official platform-managed
 provider, MUST expose the same connection and explicit model-test surfaces as a

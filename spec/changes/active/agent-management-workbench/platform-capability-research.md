@@ -14,7 +14,148 @@ first-party source code, or a verified local runtime. PromptHub does not enable 
 adapter from an inferred filename alone. A platform remains visible when a deep
 adapter is unavailable.
 
-Research refreshed on 2026-07-31.
+General inventory research refreshed on 2026-07-31; targeted updates retain
+their own dates below.
+
+## Claude Code follow-up (#246) — 2026-10-22
+
+The follow-up now includes authorized local implementation and isolated native
+acceptance. The report concerns Windows x64, an unspecified Claude Code version,
+and a third-party gateway with a non-Claude model. Official documentation does
+not guarantee non-Claude model compatibility. Obtain the actual CLI version,
+effective configuration scope and credential mode before diagnosing `/login`.
+
+| Area | Current evidence / required follow-up |
+| --- | --- |
+| Gateway authentication | [Gateway connection](https://code.claude.com/docs/en/llm-gateway-connect) documents `ANTHROPIC_BASE_URL` plus either `ANTHROPIC_AUTH_TOKEN` (Bearer header) or `ANTHROPIC_API_KEY` (`x-api-key`). Native 2.1.307 sends both headers if both are present: inspection's API-key preference is not native precedence. The adapter writes one selected credential; source import must expose this choice and normalize custom provider labels to `anthropic-compatible`. API keys remain supported. Interactive API-key approval and subscription login belong to Claude; PromptHub must not forge approval or copy OAuth state. |
+| Settings and paths | [Settings scopes](https://code.claude.com/docs/en/settings) distinguish user, project, local and managed configuration. Recheck `CLAUDE_CONFIG_DIR`, Windows path resolution and environment/CLI precedence through the existing path owner; writing a valid user file alone does not prove it is effective. |
+| Models | [Model configuration](https://code.claude.com/docs/en/model-config) documents model selection and alias overrides. Within a selected file, read `env.ANTHROPIC_MODEL` before root `model`, then `env.ANTHROPIC_DEFAULT_MODEL`. Explicit model writes must remove a stale same-file `ANTHROPIC_MODEL`. Reuse family/subagent routes and preserve unrelated `modelSettings`; CLI, process, project and managed overrides remain outside this file-scoped writer. |
+| Instructions and extensions | [Extension overview](https://code.claude.com/docs/en/features-overview) distinguishes CLAUDE.md/rules, Skills, subagents, MCP, hooks and Plugins. Full adaptation must inventory each owner/scope and native consumption; their merge and name precedence rules differ. Existing Skill/MCP/Rules/Plugin support is not proof of subagent/hook parity. |
+| Plugin lifecycle | Reuse the existing [Plugin adapter matrix](../../../knowledge/reference/plugin-agent-adapter-matrix.md). Validate discovery, install, enable/disable, update, removal and restart against Claude's native registry; package copying alone is insufficient. |
+| Runtime surfaces | Session history/resume, usage, launch and maintenance remain in their current adapters. Verify official versus gateway credential ownership and unsupported usage states; do not introduce login, OAuth refresh, network probes or new execution policies during inventory. |
+
+The first repair batch passed isolated native Claude acceptance with a recorded
+version, both authentication modes, preserved unknown fields, preview/apply/
+re-read/rollback and restart. Windows and the reporter's actual gateway remain
+unverified. This inventory is not authorization to run paid model requests or
+modify the user's daily Claude configuration. The issue remains open.
+
+### Native baseline and implementation sequence
+
+- Official `claude update` completed locally: 2.1.209 → 2.1.307. No account or
+  daily configuration was modified. Three isolated `claude -p` runs against a
+  loopback Anthropic Messages fixture succeeded: API key, Bearer token and both
+  headers. All selected `ANTHROPIC_MODEL` over the root model. This proves native
+  wire behavior, not the reporter's gateway, interactive approval or Windows.
+- First batch: FR-AGENT-122 import authentication choice, provider-kind
+  normalization, shared file-model precedence, stale-override removal; test
+  import/preview/activate/reopen/native requests/rollback with real SQLite.
+- Next acceptance layer: existing Skills, Rules, MCP and native Plugin registry
+  paths. A copied directory alone is not activation evidence.
+- Local first-batch results: 104 distinct scoped tests passed; the authorized
+  Electron flow imported Auth Token through the real form, activated it, restarted
+  PromptHub and passed the resulting settings to native Claude. The local gateway
+  observed Bearer-only authentication and the selected model. Audit-write failure
+  used a real SQLite rejection trigger and restored the original config bytes.
+  Bad credentials produced native 401 when the gateway explicitly disabled retries
+  with `x-should-retry: false`; without that header the CLI exceeded the bounded
+  test lifetime. The product does not change Claude's retry policy.
+
+| Capability | Existing owner / scope | Remaining boundary |
+| --- | --- | --- |
+| Provider and model | `agent-claude-provider-adapter.ts`, `agent-model-config.ts`; selected user config, secret store, backups, role routes | #246 first batch; effective multi-scope diagnostics and interactive/vendor acceptance remain separate. |
+| Skills / instructions | Shared Skill deployment and Claude scoped-rules services; complete Skill package and CLAUDE.md/rules | Native user-root Skill and global Rule consumption verified, with nested package preservation and fresh-run removal checks; project scopes remain separately scoped. |
+| MCP | Existing Claude MCP adapter; native user registry and custom-root resolution | Native stdio connection, exposed tool call/result and removal passed; remote server authentication and project trust were not exercised. |
+| Plugins | Existing Claude native installation/registry adapter and plugin matrix | Native install, Skill consumption, disable/enable, source update and uninstall passed. New optional manifests/component types remain outside the verified package fixture. |
+| Subagents | Native `.claude/agents/**/*.md`, distinct from Skills and PromptHub's platform records | Claude Definitions user/project CRUD passed real IPC/reopen and isolated user-root UI acceptance. Native `--agent` instructions and a real spawned/completed child were verified. Qwen metadata-only view remains separate. |
+| Hooks | Native settings / installed Plugin package | Claude Definitions edits the selected user/project/local hooks object; validates matcher/handler structure and required handler fields, preserves unknown fields/events. Native SessionStart command-hook context passed. Event applicability and managed/trust decisions remain Claude-owned; editing never executes commands. |
+| Sessions / usage / maintenance | Existing depth adapters and CLI lifecycle | Session JSONL is local history, not live billing; gateway usage and subscription OAuth require their own evidence. |
+
+No new schema, parallel credential store, login implementation or automatic
+protocol fallback is required for the first batch. Existing backup/digest guards
+and rollback remain authoritative; configuration parsing is linear in file size.
+The existing cross-platform projection/import and JSON editing dispatch functions
+remain longer than 50 lines to keep their protocol decisions adjacent; this batch
+does not split their ownership. Source-service regression cases cover the added
+Claude branch, and the SQLite/native acceptance follows the complete lifecycle
+in one test body so assertions retain their before/after context.
+
+The Definitions panel keeps its state and render branches together (over 50 lines)
+to avoid splitting one draft/revision/confirmation lifecycle among components;
+component and real IPC acceptance cover save confirmation and retained drafts.
+The native asset tests similarly keep deployment, CLI consumption and removal in
+one lifecycle. Core parsing is linear in file bytes; inventory and size bounds
+reuse the existing config-file owner. No second execution engine is added.
+
+## SubAgent and Hooks inventory — 2026-10-22
+
+All 38 registered ids are listed below. “Native” describes the upstream product,
+not PromptHub acceptance. “Unverified” means the current public evidence does not
+establish a safe standalone file editor; it does not mean the product lacks the
+feature. Existing path discovery and an asset tab are not native CRUD support.
+Upstream pages and installed versions can differ; OpenCode on this machine is
+1.18.21, while Context7 also indexes the V2 development branch. This batch uses
+the current public Markdown file contract and does not translate V2 fields.
+
+| Registry id | Native SubAgent mechanism | Native Hooks mechanism | PromptHub editing boundary in this batch |
+| --- | --- | --- | --- |
+| `claude` | `agents/**/*.md`, YAML frontmatter | settings `hooks`, matcher groups | Existing user/project/local adapter generalized; native execution previously verified |
+| `opencode` | `agents/**/*.md`; also inline config agents | JS/TS runtime plugins, not Claude JSON | Markdown CRUD; plugin guidance only, inline agents and executable plugins remain gaps |
+| `cursor` | `agents/*.md`; name/description optional | `hooks.json`, version + direct event handlers | User/project file adapter; native execution pending |
+| `codex` | `agents/*.toml`, required name/description/developer_instructions | `hooks.json` and inline config.toml, additive | TOML CRUD + hooks.json section editor; inline Hooks remain Config Files/native-owned; trust unchanged |
+| `gemini` | `.gemini/agents/*.md` | settings `hooks`, command handlers, timeout in ms | User/project file adapter; enterprise/paid-API identity unchanged; native execution pending |
+| `antigravity` | global config `agents/`, project `.agents/agents/` | named maps in `hooks.json`, not Claude wrapper | User/project native map adapter; CLI inline settings remain native-owned; execution pending |
+| `qwen` | user/project Markdown agents | settings matcher groups; command/http/prompt | Existing read-only SubAgent + Commands inventory retained; CRUD/Hooks editor next |
+| `copilot` | `.agent.md` in user agents and `.github/agents` | CLI/cloud Hook JSON; surface-specific behavior | Native confirmed; dedicated scope/schema adapter pending |
+| `kimi` | current user/project Markdown custom agents | `[[hooks]]` in config.toml | Native confirmed; TOML section editor pending |
+| `kiro` | custom-agent JSON, IDE/CLI/Web distinctions | `.kiro/hooks/*.json` and profile hooks | Native confirmed; V3/profile migration boundaries need adapter |
+| `grok` | agents/roles/personas, native child sessions | `.grok/hooks/`, project trust, plugins | Native confirmed; separate role/persona/hook adapter pending |
+| `augment` | native Auggie custom subagents | Auggie lifecycle hooks | Native confirmed; dedicated adapter pending |
+| `codebuddy` | CLI Markdown and IDE custom agents | CLI settings/local/frontmatter, beta semantics | Native confirmed; CLI/IDE scope distinction pending |
+| `qoder` | current product extension-provided agents | extension Hooks | Bundle ownership must be retained; standalone editor pending |
+| `qoderwork` | product-specific custom-agent contract unverified | native settings.json Hooks | Hooks confirmed; independent adapter pending, not aliased to Qoder |
+| `windsurf` | custom standalone subagent contract unverified | native Cascade hooks.json | Hooks confirmed; dedicated schema adapter pending |
+| `cline` | SDK/bundled team plugin | file hooks and typed SDK runtime callbacks | Runtime and extension-product boundary pending; no guessed JSON editor |
+| `kilo` | CLI custom agents; IDE custom modes differ | CLI runtime plugin hooks | Native CLI confirmed; split-root/product adapter pending |
+| `amp` | built-in delegation; plugin Agent API | plugin runtime events | Runtime mechanism; no Claude-format editor |
+| `pi` | extension-provided, standalone native editor unverified | TypeScript extension events | Runtime extension adapter pending |
+| `oh-my-pi` | native delegation/custom agents documented | extension/runtime hooks | Exact current editable file contract pending |
+| `openclaw` | sessions_spawn and agents configuration | HOOK.md packages and typed plugin hooks | Runtime/package ownership; not Markdown persona CRUD |
+| `hermes` | delegation tool | gateway packages, plugin callbacks, YAML shell hooks | Multiple execution owners; dedicated adapter pending |
+| `reasonix` | Skills runAs/subagent roles and plugin agents | settings.json and plugin runtime | Current native contract documented; dedicated adapter pending |
+| `zcode` | user agents/<name>.md in existing reference | standalone editable Hook contract unverified | Existing asset evidence only; editor pending |
+| `deepseek-harness` | host/plugin-owned | host/plugin-owned | Keep plugin-harness workspace, no synthetic native editor |
+| `cherry-studio` | app Work/Agents; not equivalent to child-agent files | internal SDK hooks; public editable contract unverified | No standalone editor |
+| `doubao` | unverified for this registered product | unverified | No inferred capability |
+| `trae` | custom-Agent UI exists; portable child-agent file contract unverified | unverified | No inferred file editor |
+| `trae-cn` | unverified for this regional product | unverified | Do not inherit international product contracts |
+| `trae-work` | unverified for Work | unverified | Do not inherit IDE contracts |
+| `trae-work-cn` | unverified for Work CN | unverified | No inferred capability |
+| `qwen-work` | unverified for Work client | unverified | Do not inherit Qwen Code CLI contracts |
+| `copaw` | AgentScope capabilities alone do not establish CoPaw's file contract | product-specific contract unverified | No inferred editor from SDK features |
+| `autoclaw` | product-specific contract unverified | product-specific contract unverified | Do not inherit OpenClaw contracts |
+| `nanoclaw` | container/SDK orchestration; editable product contract unverified | product-specific contract unverified | No host-profile writes inferred from SDK |
+| `qclaw` | product-specific contract unverified | product-specific contract unverified | Do not inherit OpenClaw contracts |
+| `workbuddy` | product-specific contract unverified | product-specific contract unverified | Do not inherit CodeBuddy CLI contracts |
+
+First-party evidence checked for this inventory:
+
+- [OpenCode agents](https://opencode.ai/docs/agents/) and [runtime plugins](https://opencode.ai/docs/plugins/).
+- [Cursor subagents](https://cursor.com/docs/subagents) and [Hooks](https://cursor.com/docs/hooks).
+- [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) and [Hooks](https://learn.chatgpt.com/docs/hooks).
+- [Gemini subagents](https://geminicli.com/docs/core/subagents/) and [Hooks](https://geminicli.com/docs/hooks/).
+- [Antigravity subagents](https://antigravity.google/docs/subagents) and [Hooks](https://antigravity.google/docs/hooks).
+- [Qwen subagents](https://qwenlm.github.io/qwen-code-docs/en/users/features/sub-agents/) and [Hooks](https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/). Current site documents per-invocation agent Hooks; older GitHub snapshots described session-wide v1 scope and must not override the current contract.
+- [Copilot custom agents](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli) and [Hooks](https://docs.github.com/en/copilot/concepts/customizations/hooks).
+- [Kimi agents](https://www.kimi.com/code/docs/en/kimi-code-cli/customization/agents.html) and [Hooks](https://www.kimi.com/code/docs/en/kimi-code-cli/customization/hooks.html).
+- [Kiro subagents](https://kiro.dev/docs/chat/subagents/) and [Hooks](https://kiro.dev/docs/cli/hooks/).
+- [Auggie subagents](https://docs.augmentcode.com/cli/subagents) and [Hooks](https://docs.augmentcode.com/cli/hooks).
+- [CodeBuddy subagents](https://www.codebuddy.ai/docs/cli/sub-agents) and [Hooks](https://www.codebuddy.ai/docs/cli/hooks).
+- [Grok extension surfaces](https://docs.x.ai/build/features/skills-plugins-marketplaces).
+- [Qoder subagents](https://docs.qoder.com/qoder/subagents), [Hooks](https://docs.qoder.com/extensions/hooks), and [QoderWork Hooks](https://docs.qoder.com/qoderwork/hooks).
+- [Windsurf Hooks](https://docs.devin.ai/desktop/cascade/hooks), [Cline runtime plugins](https://github.com/cline/cline/blob/main/sdk/examples/plugins/README.md), [Kilo migration boundaries](https://kilo.ai/articles/claude-code-to-kilo-code-migration-guide), and [Amp plugin API](https://ampcode.com/docs/plugin-api).
+- [OpenClaw subagents](https://docs.openclaw.ai/subagents) and [Hook families](https://docs.openclaw.ai/concepts/agent-loop), [Hermes Hooks](https://hermes-agent.nousresearch.com/docs/user-guide/features/hooks), [Reasonix docs](https://reasonix.io/docs/), [Oh My Pi](https://github.com/can1357/oh-my-pi), and [Cherry Studio Work](https://cherryai.com/docs/en/advanced-basic/agent/).
+- Pi, ZCode and product-specific unknowns retain the bounded evidence in the [platform reference](../../../knowledge/reference/agent-platforms.md); missing public file contracts are explicitly unresolved rather than invented.
 
 ## Complete Built-In Capability Inventory
 

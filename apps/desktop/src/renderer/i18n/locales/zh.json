@@ -529,6 +529,28 @@
     "batchTagPartial": "{{failed}}/{{total}} 个提示词更新失败"
   },
   "agents": {
+    "agentExtensions": {
+      "documentation": "官方文档",
+      "pluginHooks": "OpenCode 通过 plugins/ 中的 JavaScript/TypeScript 插件或 opencode.json 声明的包实现 Hooks。此编辑器暂不安装或执行这些插件；这里没有可套用的 Claude 式 hooks JSON。",
+      "codexHooksNotice": "此处仅编辑 hooks.json。config.toml 内联 Hooks、插件和托管 Hooks 是叠加的独立来源；修改后仍需在 Codex 中审查并信任，才会执行。",
+      "title": "扩展配置",
+      "empty": "此作用域下还没有子 Agent。",
+      "select": "选择一个子 Agent 进行编辑，或输入文件名新建。",
+      "subagent": "子 Agent",
+      "hooks": "Hooks",
+      "scope": "作用域",
+      "local": "项目本地",
+      "filename": "文件名（{{extension}}）",
+      "content": "配置内容",
+      "notice": "修改将保存到 Agent 原生配置文件。Hooks 可能在后续运行时执行命令，请审查后保存。项目信任、托管策略和插件配置仍由 Agent 管理；清空 Hooks 仅影响当前文件。",
+      "loadFailed": "无法加载配置。",
+      "conflict": "文件已被外部修改，请刷新并核对后再保存。",
+      "invalid": "原生配置格式有误，请对照此 Agent 的官方文档检查格式和字段。",
+      "saveFailed": "保存失败，草稿已保留。请检查文件权限和安全备份是否可用。",
+      "saveConfirm": "保存原生配置？Hooks 和子 Agent 指令可能影响后续 Agent 运行。",
+      "deleteConfirm": "删除此子 Agent 文件？将保留加密备份。",
+      "discardConfirm": "放弃未保存的修改并重新加载？"
+    },
     "webService": {
       "title": "Agent 服务",
       "description": "这些服务运行在当前自部署的 PromptHub 服务器上。",

@@ -529,6 +529,28 @@
     "batchTagPartial": "{{failed}} of {{total}} prompts failed to update"
   },
   "agents": {
+    "agentExtensions": {
+      "documentation": "Official documentation",
+      "pluginHooks": "OpenCode implements Hooks through JavaScript/TypeScript plugins in plugins/ or packages declared in opencode.json. This editor does not install or execute those plugins. There is no native Claude-style hooks JSON to edit here.",
+      "codexHooksNotice": "This edits hooks.json only. Inline hooks in config.toml and plugin/managed hooks are separate, additive sources. Review and trust changes in Codex before they can run.",
+      "title": "Extension Settings",
+      "empty": "No subagents in this scope yet.",
+      "select": "Select a subagent to edit, or create one using the filename field.",
+      "subagent": "SubAgents",
+      "hooks": "Hooks",
+      "scope": "Scope",
+      "local": "Project local",
+      "filename": "Filename ({{extension}})",
+      "content": "Configuration content",
+      "notice": "Edits affect native Agent files. Hooks may execute commands on subsequent runs. Review before saving. Trust, managed policy and plugin-owned settings stay with the Agent. Clearing Hooks affects only this file.",
+      "loadFailed": "Could not load configuration.",
+      "conflict": "The file changed externally. Refresh and review before saving.",
+      "invalid": "Invalid native configuration. Check the format and fields against this Agent's documentation.",
+      "saveFailed": "Could not save. Your draft is retained; check file access and secure backup availability.",
+      "saveConfirm": "Save native configuration? Hooks and subagent instructions can affect subsequent Agent runs.",
+      "deleteConfirm": "Delete this SubAgent file? An encrypted backup is retained.",
+      "discardConfirm": "Discard unsaved changes and reload?"
+    },
     "webService": {
       "title": "Agent services",
       "description": "Services run on this self-hosted PromptHub server.",

@@ -37,6 +37,11 @@ function flattenLeaves(
 }
 
 describe("Agent workspace locale contract", () => {
+  it("names Claude settings by their purpose rather than literal definitions", () => {
+    expect(zh.agents.agentExtensions.title).toBe("扩展配置");
+    expect(zh.agents.agentExtensions.content).toBe("配置内容");
+    expect(en.agents.agentExtensions.title).toBe("Extension Settings");
+  });
   it("keeps every Agent UI leaf present and non-empty in all seven locales", () => {
     const english = flattenLeaves(localeTrees.en);
     const expectedKeys = [...english.keys()].sort();

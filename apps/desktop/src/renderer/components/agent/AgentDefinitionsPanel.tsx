@@ -21,6 +21,8 @@ import type {
   ManagedAgentSummary,
 } from "@prompthub/shared/types";
 import { useSettingsStore } from "../../stores/settings.store";
+import { AgentExtensionsPanel } from "./AgentExtensionsPanel";
+import { getAgentExtensionCapability } from "@prompthub/shared/constants/agent-extension-capabilities";
 
 function selectedId(entry: AgentDefinitionEntry): string {
   return `${entry.kind}:${entry.relativePath}`;
@@ -459,5 +461,9 @@ export function AgentDefinitionsPanel({
 }: {
   agent: ManagedAgentSummary;
 }) {
-  return agent.id === "qwen" ? <QwenDefinitionsPanel /> : null;
+  return getAgentExtensionCapability(agent.id) ? (
+    <AgentExtensionsPanel key={agent.id} agentId={agent.id} />
+  ) : agent.id === "qwen" ? (
+    <QwenDefinitionsPanel />
+  ) : null;
 }

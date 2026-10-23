@@ -170,6 +170,13 @@ Agent 导入/重开 1 项通过。Desktop test typecheck、Core typecheck、定�
 
 ## User Config Files Boundary
 
+SubAgent/Hooks editing is a separate, capability-gated Extension Settings surface.
+Its six-platform first batch and the complete 38-Agent support/gap inventory are
+defined in the [workbench extension contract](../../changes/active/agent-management-workbench/specs/agent-management/spec.md#cross-agent-extension-settings-2026-10-22)
+and [capability research](../../changes/active/agent-management-workbench/platform-capability-research.md#subagent-and-hooks-inventory--2026-10-22).
+It shares this file owner's safety/backup primitives, but does not make executable
+plugins, arbitrary projects or every configuration file structurally editable.
+
 - Agent Config Files 管理的是 canonical registry 或用户覆盖解析出的用户级 Agent 根目录，不扫描项目级配置空间。
 - 主进程在该根目录内有界发现现有文本配置文件；平台声明的相对路径仍用于默认选中和创建缺失的已知配置文件。读写 IPC 只接受平台声明路径或同一有界发现清单内的现有文件，调用方不能用任意相对路径绕过清单。
 - Config Files 的 inventory、选中内容、缓存和异步响应按 Agent source identity 隔离；用户切换 Agent 前必须确认是否丢弃未保存修改。
@@ -558,6 +565,8 @@ Current support boundary:
 - Reusable assets:
   - skills in `.claude/skills/<name>/SKILL.md`
   - subagent persistent memory is officially documented
+  - Claude Extension Settings editing and native acceptance are specified in
+    [the workbench contract](../../changes/active/agent-management-workbench/specs/agent-management/spec.md#claude-native-definitions-and-hooks-2026-10-22).
 - Provider and credentials:
   - user Provider projection is `~/.claude/settings.json`; PromptHub edits it
     structurally and preserves unrelated JSON/JSONC content

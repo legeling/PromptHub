@@ -16,5 +16,6 @@ export * from "./agent";
 export * from "./agent-platform";
 export * from "./agent-harness";
 export * from "./agent-definition";
+export * from "./agent-extension";
 export * from "./provider-preset";
 export * from "./image-generation";

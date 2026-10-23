@@ -4,6 +4,10 @@ import type {
   ManagedAgentSummary,
 } from "@prompthub/shared/types";
 import type { AgentAssetDomain } from "./use-agent-asset-domain";
+import {
+  AGENT_EXTENSION_PLATFORM_IDS,
+  getAgentExtensionCapability,
+} from "@prompthub/shared/constants/agent-extension-capabilities";
 
 export type AgentWorkspaceTabKey =
   | "overview"
@@ -85,7 +89,7 @@ export const AGENT_WORKSPACE_TABS: AgentWorkspaceTab[] = [
     capability: "assets",
     labelKey: "agents.definitions",
     fallback: "Definitions",
-    platformIds: ["qwen"],
+    platformIds: ["qwen", ...AGENT_EXTENSION_PLATFORM_IDS],
   },
   {
     key: "provider",
@@ -149,6 +153,14 @@ export function getAgentWorkspaceTabs(
   }
   return AGENT_WORKSPACE_TABS.filter(
     (tab) => !tab.platformIds || tab.platformIds.includes(agent.id),
+  ).map((tab) =>
+    getAgentExtensionCapability(agent.id) && tab.key === "definitions"
+      ? {
+          ...tab,
+          labelKey: "agents.agentExtensions.title",
+          fallback: "Extension Settings",
+        }
+      : tab,
   );
 }
 

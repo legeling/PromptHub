@@ -377,13 +377,14 @@ describe("Agent workspace shell", () => {
     await renderWorkspaceAndSettleOverview();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(9);
+    expect(tabs).toHaveLength(10);
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Overview",
       "Skills",
       "MCP",
       "Plugins",
       "Rules",
+      "Extension Settings",
       "Provider & Model",
       "Appearance",
       "Config Files",

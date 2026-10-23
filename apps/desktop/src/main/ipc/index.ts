@@ -11,6 +11,7 @@ import { registerSkillIPC } from "./skill.ipc";
 import { registerAIIPC } from "./ai.ipc";
 import { registerAgentIPC } from "./agent.ipc";
 import { registerAgentQwenDefinitionIPC } from "./agent-qwen-definition.ipc";
+import { registerAgentExtensionIPC } from "./agent-extension.ipc";
 import { registerAgentDeepSeekHarnessIPC } from "./agent-deepseek-harness.ipc";
 import { registerAgentSessionIndexIPC } from "./agent-session-index.ipc";
 import { registerAgentConversationIPC } from "./agent-conversation.ipc";
@@ -457,6 +458,7 @@ function registerAllIpcGroups(
     registerAgentIPC();
     registerAgentDeepSeekHarnessIPC();
     registerAgentQwenDefinitionIPC(db);
+    registerAgentExtensionIPC(db);
     registerAgentSessionIndexIPC({
       createService: (agentId) =>
         createAgentSessionIndexOperations(runtime.sessionIndexDb, agentId),

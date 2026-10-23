@@ -528,6 +528,28 @@
     "batchTagPartial": "{{total}} 件中 {{failed}} 件の更新に失敗しました"
   },
   "agents": {
+    "agentExtensions": {
+      "documentation": "公式ドキュメント",
+      "pluginHooks": "OpenCode の Hooks は plugins/ の JavaScript/TypeScript プラグイン、または opencode.json のパッケージで実装されます。このエディターはそれらをインストール・実行しません。Claude 形式の hooks JSON は使用しません。",
+      "codexHooksNotice": "ここでは hooks.json のみを編集します。config.toml 内、プラグイン、管理ポリシーの Hooks は別の追加ソースです。実行には Codex での確認と信頼が必要です。",
+      "title": "拡張設定",
+      "empty": "このスコープにはサブエージェントがありません。",
+      "select": "編集するサブエージェントを選択するか、ファイル名を入力して作成してください。",
+      "subagent": "サブエージェント",
+      "hooks": "Hooks",
+      "scope": "スコープ",
+      "local": "プロジェクトローカル",
+      "filename": "ファイル名（{{extension}}）",
+      "content": "設定内容",
+      "notice": "Agent のネイティブ設定を編集します。Hooks は次回以降にコマンドを実行する場合があります。保存前に確認してください。信頼・管理ポリシー・プラグイン設定は Agent が管理します。空にしても対象はこのファイルのみです。",
+      "loadFailed": "設定を読み込めません。",
+      "conflict": "ファイルが外部で変更されました。再読み込みして確認してください。",
+      "invalid": "ネイティブ設定が無効です。公式ドキュメントで形式とフィールドを確認してください。",
+      "saveFailed": "保存できません。下書きは保持されています。権限と安全なバックアップを確認してください。",
+      "saveConfirm": "保存しますか？Hooks とサブエージェント指示は今後の Agent 実行に影響します。",
+      "deleteConfirm": "このサブエージェントのファイルを削除しますか？暗号化バックアップは保持されます。",
+      "discardConfirm": "未保存の変更を破棄して再読み込みしますか？"
+    },
     "webService": {
       "title": "Agent サービス",
       "description": "サービスはこのセルフホスト PromptHub サーバーで実行されます。",
