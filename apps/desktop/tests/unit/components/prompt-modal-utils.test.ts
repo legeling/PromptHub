@@ -3,12 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   buildPromptPayload,
   isPureEnglish,
+  mergePromptTagCatalog,
   parsePromptVariables,
   promoteMainEnglishToEnglishVersion,
   replacePromptVariables,
 } from "../../../src/renderer/components/prompt/prompt-modal-utils";
 
 describe("prompt-modal-utils", () => {
+  it("retains catalog order while normalizing duplicates (#145)", () => {
+    expect(mergePromptTagCatalog([], [" beta ", "alpha", "beta", ""])).toEqual([
+      "beta",
+      "alpha",
+    ]);
+  });
   it("detects pure English content without CJK text", () => {
     expect(
       isPureEnglish(

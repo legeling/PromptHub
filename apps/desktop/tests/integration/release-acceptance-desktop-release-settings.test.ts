@@ -52,6 +52,19 @@ async function openSettings(): Promise<SkillTestRuntime> {
 }
 
 describe("release acceptance: persisted desktop settings through preload", () => {
+  it("keeps manual tag order through preload, SQLite and storage reopen (#145)", async () => {
+    const current = await openSettings();
+    const promptTagCatalog = ["gamma", "alpha", "beta"];
+    await settingsApi.set({ promptTagCatalog });
+    expect(await settingsApi.get()).toMatchObject({ promptTagCatalog });
+    await current.reopen();
+    registerSettings(current.profile);
+    expect(await settingsApi.get()).toMatchObject({ promptTagCatalog });
+    expect(
+      (await settingsApi.rendererPersistence.get()).settings,
+    ).toMatchObject({ promptTagCatalog });
+  });
+
   it("keeps shell preferences and remembered close choice after closing and reopening storage", async () => {
     const current = await openSettings();
     await settingsApi.set({

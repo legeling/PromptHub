@@ -183,7 +183,7 @@ export function normalizePromptTagCatalog(value: unknown): string[] {
         .map((tag) => tag.trim())
         .filter(Boolean),
     ),
-  ).sort((left, right) => left.localeCompare(right));
+  );
 }
 
 export function normalizeCreationMode(

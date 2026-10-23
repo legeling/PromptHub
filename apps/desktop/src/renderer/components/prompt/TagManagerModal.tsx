@@ -1,29 +1,41 @@
 import { requestConfirmation } from "../ui/confirmation";
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { EditIcon, Trash2Icon, SearchIcon, CheckIcon, XIcon, Loader2Icon, EyeIcon } from 'lucide-react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
-import { usePromptStore } from '../../stores/prompt.store';
-import { useSkillStore } from '../../stores/skill.store';
-import { useSettingsStore } from '../../stores/settings.store';
-import { useToast } from '../ui/Toast';
-import { scheduleAllSaveSync } from '../../services/webdav-save-sync';
-import { getExistingSkillTags, getUserSkillTags } from '../skill/skill-modal-utils';
-import { mergePromptTagCatalog } from './prompt-modal-utils';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  EditIcon,
+  Trash2Icon,
+  SearchIcon,
+  CheckIcon,
+  XIcon,
+  Loader2Icon,
+  EyeIcon,
+  GripVerticalIcon,
+} from "lucide-react";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { usePromptStore } from "../../stores/prompt.store";
+import { useSkillStore } from "../../stores/skill.store";
+import { useSettingsStore } from "../../stores/settings.store";
+import { useToast } from "../ui/Toast";
+import { scheduleAllSaveSync } from "../../services/webdav-save-sync";
+import {
+  getExistingSkillTags,
+  getUserSkillTags,
+} from "../skill/skill-modal-utils";
+import { mergePromptTagCatalog } from "./prompt-modal-utils";
 
 interface TagManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  resourceType?: 'prompt' | 'skill';
+  resourceType?: "prompt" | "skill";
 }
 
 export function TagManagerModal({
   isOpen,
   onClose,
-  resourceType = 'prompt',
+  resourceType = "prompt",
 }: TagManagerModalProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -32,42 +44,59 @@ export function TagManagerModal({
   const skills = useSkillStore((state) => state.skills);
   const updateSkill = useSkillStore((state) => state.updateSkill);
   const promptTagCatalog = useSettingsStore((state) => state.promptTagCatalog);
-  const addPromptTagCatalogEntry = useSettingsStore((state) => state.addPromptTagCatalogEntry);
-  const renamePromptTagCatalogEntry = useSettingsStore((state) => state.renamePromptTagCatalogEntry);
-  const deletePromptTagCatalogEntry = useSettingsStore((state) => state.deletePromptTagCatalogEntry);
+  const addPromptTagCatalogEntry = useSettingsStore(
+    (state) => state.addPromptTagCatalogEntry,
+  );
+  const renamePromptTagCatalogEntry = useSettingsStore(
+    (state) => state.renamePromptTagCatalogEntry,
+  );
+  const deletePromptTagCatalogEntry = useSettingsStore(
+    (state) => state.deletePromptTagCatalogEntry,
+  );
+  const reorderPromptTagCatalog = useSettingsStore(
+    (state) => state.reorderPromptTagCatalog,
+  );
   const tagFilterMode = useSettingsStore((state) => state.tagFilterMode);
   const setTagFilterMode = useSettingsStore((state) => state.setTagFilterMode);
 
   const [promptTags, setPromptTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [newTagValue, setNewTagValue] = useState('');
-  // v0.6.3 #145: usage-count sorting and one-click jump to filtered list.
-  // 按用量排序 + 一键直达筛选。
-  const [sortMode, setSortMode] = useState<'usage-desc' | 'usage-asc' | 'name'>('usage-desc');
+  const [search, setSearch] = useState("");
+  const [newTagValue, setNewTagValue] = useState("");
+  const [sortMode, setSortMode] = useState<
+    "manual" | "usage-desc" | "usage-asc" | "name"
+  >(resourceType === "skill" ? "usage-desc" : "manual");
+  const [draggedTag, setDraggedTag] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const filterTags = usePromptStore((state) => state.filterTags);
   const setFilterTags = usePromptStore((state) => state.setFilterTags);
 
   const [editingTag, setEditingTag] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [editValue, setEditValue] = useState("");
   const [processingTag, setProcessingTag] = useState<string | null>(null);
 
-  const isSkillManager = resourceType === 'skill';
+  const isSkillManager = resourceType === "skill";
   const skillTags = useMemo(() => getExistingSkillTags(skills), [skills]);
-  const tags = isSkillManager ? skillTags : promptTags;
+  const tags = useMemo(
+    () =>
+      isSkillManager
+        ? skillTags
+        : mergePromptTagCatalog(prompts, [...promptTagCatalog, ...promptTags]),
+    [isSkillManager, skillTags, prompts, promptTagCatalog, promptTags],
+  );
 
   const loadPromptTags = useCallback(async () => {
     try {
       setLoading(true);
       const allTags = await window.api.prompt.getAllTags();
-      setPromptTags(mergePromptTagCatalog(prompts, [...promptTagCatalog, ...allTags]));
+      setPromptTags(allTags);
     } catch (error) {
-      console.error('Failed to load tags:', error);
-      showToast(t('common.error', 'Error'), 'error');
+      console.error("Failed to load tags:", error);
+      showToast(t("common.error", "Error"), "error");
     } finally {
       setLoading(false);
     }
-  }, [promptTagCatalog, prompts, showToast, t]);
+  }, [showToast, t]);
 
   useEffect(() => {
     if (isOpen) {
@@ -75,7 +104,7 @@ export function TagManagerModal({
         void loadPromptTags();
       }
     } else {
-      setSearch('');
+      setSearch("");
       setEditingTag(null);
       setProcessingTag(null);
     }
@@ -102,13 +131,17 @@ export function TagManagerModal({
         const results = await Promise.allSettled(
           matchedSkills.map(async (skill) => {
             const nextTags = Array.from(
-              new Set((skill.tags || []).map((tag) => (tag === oldTag ? newTag : tag))),
+              new Set(
+                (skill.tags || []).map((tag) =>
+                  tag === oldTag ? newTag : tag,
+                ),
+              ),
             );
             await updateSkill(skill.id, { tags: nextTags });
           }),
         );
 
-        if (results.some((result) => result.status === 'rejected')) {
+        if (results.some((result) => result.status === "rejected")) {
           throw new Error(`Failed to rename skill tag: ${oldTag}`);
         }
       } else {
@@ -116,13 +149,13 @@ export function TagManagerModal({
         renamePromptTagCatalogEntry(oldTag, newTag);
         await fetchPrompts();
         await loadPromptTags();
-        scheduleAllSaveSync('tag renamed');
+        scheduleAllSaveSync("tag renamed");
       }
 
-      showToast(t('common.success', 'Success'), 'success');
+      showToast(t("common.success", "Success"), "success");
     } catch (error) {
-      console.error('Failed to rename tag:', error);
-      showToast(t('common.error', 'Error'), 'error');
+      console.error("Failed to rename tag:", error);
+      showToast(t("common.error", "Error"), "error");
     } finally {
       setProcessingTag(null);
       setEditingTag(null);
@@ -130,11 +163,16 @@ export function TagManagerModal({
   };
 
   const handleDelete = async (tag: string) => {
-    if (!(await requestConfirmation({
-      message: t('common.confirmDelete', 'Are you sure you want to delete this?'),
-      variant: 'destructive',
-      confirmText: t('common.delete'),
-    }))) {
+    if (
+      !(await requestConfirmation({
+        message: t(
+          "common.confirmDelete",
+          "Are you sure you want to delete this?",
+        ),
+        variant: "destructive",
+        confirmText: t("common.delete"),
+      }))
+    ) {
       return;
     }
 
@@ -153,32 +191,32 @@ export function TagManagerModal({
           }),
         );
 
-        if (results.some((result) => result.status === 'rejected')) {
+        if (results.some((result) => result.status === "rejected")) {
           throw new Error(`Failed to delete skill tag: ${tag}`);
         }
       } else {
         const deleteResult = await window.api.prompt.deleteTag(tag);
         if (!deleteResult.deleted && deleteResult.referenced > 0) {
           showToast(
-            t('prompt.deleteBlockedByTagReference', {
+            t("prompt.deleteBlockedByTagReference", {
               count: deleteResult.referenced,
               defaultValue:
-                'This tag is still used by {{count}} prompt(s) and cannot be deleted while in use.',
+                "This tag is still used by {{count}} prompt(s) and cannot be deleted while in use.",
             }),
-            'error',
+            "error",
           );
           return;
         }
         deletePromptTagCatalogEntry(tag);
         await fetchPrompts();
         await loadPromptTags();
-        scheduleAllSaveSync('tag deleted');
+        scheduleAllSaveSync("tag deleted");
       }
 
-      showToast(t('common.success', 'Success'), 'success');
+      showToast(t("common.success", "Success"), "success");
     } catch (error) {
-      console.error('Failed to delete tag:', error);
-      showToast(t('common.error', 'Error'), 'error');
+      console.error("Failed to delete tag:", error);
+      showToast(t("common.error", "Error"), "error");
     } finally {
       setProcessingTag(null);
     }
@@ -203,18 +241,45 @@ export function TagManagerModal({
     const matched = lowerSearch
       ? tags.filter((tag) => tag.toLowerCase().includes(lowerSearch))
       : [...tags];
+    if (sortMode === "manual") return matched;
     matched.sort((left, right) => {
-      if (sortMode === 'name') {
+      if (sortMode === "name") {
         return left.localeCompare(right);
       }
-      const delta = (usageCounts.get(left) ?? 0) - (usageCounts.get(right) ?? 0);
+      const delta =
+        (usageCounts.get(left) ?? 0) - (usageCounts.get(right) ?? 0);
       if (delta !== 0) {
-        return sortMode === 'usage-desc' ? -delta : delta;
+        return sortMode === "usage-desc" ? -delta : delta;
       }
       return left.localeCompare(right);
     });
     return matched;
   }, [tags, search, sortMode, usageCounts]);
+
+  const moveTag = async (source: string, target: string) => {
+    if (
+      isSkillManager ||
+      sortMode !== "manual" ||
+      processingTag !== null ||
+      editingTag !== null
+    )
+      return;
+    const from = tags.indexOf(source);
+    const to = tags.indexOf(target);
+    if (from < 0 || to < 0 || from === to) return;
+    const reordered = [...tags];
+    reordered.splice(from, 1);
+    reordered.splice(to, 0, source);
+    setProcessingTag(source);
+    try {
+      await reorderPromptTagCatalog(reordered);
+    } catch (error) {
+      console.error("Failed to save tag order:", error);
+      showToast(t("common.error"), "error");
+    } finally {
+      setProcessingTag(null);
+    }
+  };
 
   const handleCreateTag = async () => {
     const nextTag = newTagValue.trim();
@@ -225,16 +290,15 @@ export function TagManagerModal({
     try {
       setProcessingTag(nextTag);
       if (isSkillManager) {
-        throw new Error('Skill tag creation is not supported here');
+        throw new Error("Skill tag creation is not supported here");
       }
 
-      addPromptTagCatalogEntry(nextTag);
-      await loadPromptTags();
-      setNewTagValue('');
-      showToast(t('common.success', 'Success'), 'success');
+      await addPromptTagCatalogEntry(nextTag, tags);
+      setNewTagValue("");
+      showToast(t("common.success", "Success"), "success");
     } catch (error) {
-      console.error('Failed to create tag:', error);
-      showToast(t('common.error', 'Error'), 'error');
+      console.error("Failed to create tag:", error);
+      showToast(t("common.error", "Error"), "error");
     } finally {
       setProcessingTag(null);
     }
@@ -244,7 +308,7 @@ export function TagManagerModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('nav.tags', 'Tags')}
+      title={t("nav.tags", "Tags")}
       size="lg"
     >
       <div className="flex h-[56vh] max-h-[620px] flex-col">
@@ -255,24 +319,31 @@ export function TagManagerModal({
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
             />
             <Input
-              aria-label={t('prompt.filterByTag', 'Filter by tag')}
+              aria-label={t("prompt.filterByTag", "Filter by tag")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t('common.search', 'Search...')}
+              placeholder={t("common.search", "Search...")}
               className="pl-9 w-full"
             />
           </div>
           {!isSkillManager && (
             <Select
-              ariaLabel={t('prompt.tagSortBy')}
+              ariaLabel={t("prompt.tagSortBy")}
               value={sortMode}
-              onChange={(value) =>
-                setSortMode(value as 'usage-desc' | 'usage-asc' | 'name')
-              }
+              onChange={(value) => {
+                if (
+                  value === "manual" ||
+                  value === "usage-desc" ||
+                  value === "usage-asc" ||
+                  value === "name"
+                )
+                  setSortMode(value);
+              }}
               options={[
-                { value: 'usage-desc', label: t('prompt.tagSortUsageDesc') },
-                { value: 'usage-asc', label: t('prompt.tagSortUsageAsc') },
-                { value: 'name', label: t('prompt.tagSortName') },
+                { value: "manual", label: t("prompt.tagSortManual") },
+                { value: "usage-desc", label: t("prompt.tagSortUsageDesc") },
+                { value: "usage-asc", label: t("prompt.tagSortUsageAsc") },
+                { value: "name", label: t("prompt.tagSortName") },
               ]}
               className="w-40 shrink-0"
             />
@@ -284,22 +355,30 @@ export function TagManagerModal({
             <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
               <div className="min-w-0">
                 <div className="text-sm font-medium text-foreground">
-                  {t('settings.tagFilterMode', 'Tag click mode')}
+                  {t("settings.tagFilterMode", "Tag click mode")}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {t(
-                    'settings.tagFilterModeDesc',
-                    'Choose whether clicking a tag replaces the current filter or adds to a multi-select filter',
+                    "settings.tagFilterModeDesc",
+                    "Choose whether clicking a tag replaces the current filter or adds to a multi-select filter",
                   )}
                 </div>
               </div>
               <Select
-                ariaLabel={t('settings.tagFilterMode', 'Tag click mode')}
+                ariaLabel={t("settings.tagFilterMode", "Tag click mode")}
                 value={tagFilterMode}
-                onChange={(value) => setTagFilterMode(value as 'single' | 'multi')}
+                onChange={(value) =>
+                  setTagFilterMode(value as "single" | "multi")
+                }
                 options={[
-                  { value: 'single', label: t('settings.tagFilterModeSingle', 'Single select') },
-                  { value: 'multi', label: t('settings.tagFilterModeMulti', 'Multi select') },
+                  {
+                    value: "single",
+                    label: t("settings.tagFilterModeSingle", "Single select"),
+                  },
+                  {
+                    value: "multi",
+                    label: t("settings.tagFilterModeMulti", "Multi select"),
+                  },
                 ]}
                 className="w-36 shrink-0"
               />
@@ -308,90 +387,155 @@ export function TagManagerModal({
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <Input
-                  aria-label={t('prompt.enterTagHint')}
+                  aria-label={t("prompt.enterTagHint")}
                   value={newTagValue}
                   onChange={(e) => setNewTagValue(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       void handleCreateTag();
                     }
                   }}
-                  placeholder={t('prompt.enterTagHint')}
+                  placeholder={t("prompt.enterTagHint")}
                   className="w-full"
                 />
               </div>
               <Button
                 type="button"
                 onClick={() => void handleCreateTag()}
-                disabled={!newTagValue.trim() || tags.includes(newTagValue.trim()) || processingTag !== null}
+                disabled={
+                  !newTagValue.trim() ||
+                  tags.includes(newTagValue.trim()) ||
+                  processingTag !== null
+                }
                 className="shrink-0"
               >
-                {t('prompt.addTag')}
+                {t("prompt.addTag")}
               </Button>
             </div>
           </div>
         ) : null}
 
         <div className="flex-1 overflow-y-auto min-h-0 pr-2 space-y-1">
-          {loading ? (
+          {loading && tags.length === 0 ? (
             <div className="flex justify-center items-center h-full text-muted-foreground">
               <Loader2Icon className="w-6 h-6 animate-spin" />
             </div>
           ) : filteredTags.length === 0 ? (
             <div className="flex justify-center items-center h-full text-sm text-muted-foreground">
-              {t('common.noData', 'No data')}
+              {t("common.noData", "No data")}
             </div>
           ) : (
             filteredTags.map((tag) => (
               <div
                 key={tag}
-                className="flex items-center justify-between group p-2 hover:bg-muted/50 rounded-lg transition-colors"
+                className={`flex items-center justify-between group p-2 hover:bg-muted/50 rounded-lg transition-colors ${dropTarget === tag ? "ring-2 ring-inset ring-primary" : ""}`}
+                onDragOver={(event) => {
+                  if (draggedTag !== null) {
+                    event.preventDefault();
+                    setDropTarget(tag);
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (draggedTag !== null) void moveTag(draggedTag, tag);
+                  setDraggedTag(null);
+                  setDropTarget(null);
+                }}
               >
+                {!isSkillManager && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mr-1 h-9 w-9 shrink-0 cursor-grab rounded-lg px-0 text-muted-foreground active:cursor-grabbing"
+                    aria-label={t("prompt.reorderTag", { tag })}
+                    title={t("prompt.tagReorderHint")}
+                    disabled={sortMode !== "manual" || editingTag !== null}
+                    aria-disabled={processingTag !== null}
+                    draggable={
+                      sortMode === "manual" &&
+                      processingTag === null &&
+                      editingTag === null
+                    }
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData("text/plain", tag);
+                      event.dataTransfer.effectAllowed = "move";
+                      setDraggedTag(tag);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedTag(null);
+                      setDropTarget(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+                        return;
+                      event.preventDefault();
+                      const target =
+                        tags[
+                          tags.indexOf(tag) + (event.key === "ArrowUp" ? -1 : 1)
+                        ];
+                      if (target !== undefined) void moveTag(tag, target);
+                    }}
+                  >
+                    <GripVerticalIcon className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                )}
                 {editingTag === tag ? (
                   <div className="flex items-center gap-2 flex-1 mr-2">
                     <div className="flex-1 min-w-0">
                       <Input
                         autoFocus
-                        aria-label={`${t('common.edit', 'Edit')} ${tag}`}
+                        aria-label={`${t("common.edit", "Edit")} ${tag}`}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRename(tag);
-                          if (e.key === 'Escape') setEditingTag(null);
-                      }}
-                      className="h-8"
+                          if (e.key === "Enter") handleRename(tag);
+                          if (e.key === "Escape") setEditingTag(null);
+                        }}
+                        className="h-8"
+                        disabled={processingTag === tag}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 shrink-0 rounded-lg px-0 text-green-600 hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900/30"
+                      onClick={() => handleRename(tag)}
                       disabled={processingTag === tag}
-                    />
-                    </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 shrink-0 rounded-lg px-0 text-green-600 hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900/30"
-                        onClick={() => handleRename(tag)}
-                        disabled={processingTag === tag}
-                        aria-label={`${t('common.save', 'Save')} ${tag}`}
-                      >
-                        {processingTag === tag ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <CheckIcon className="w-4 h-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 shrink-0 rounded-lg px-0"
-                        onClick={() => setEditingTag(null)}
-                        disabled={processingTag === tag}
-                        aria-label={`${t('common.cancel', 'Cancel')} ${tag}`}
-                      >
-                        <XIcon className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      aria-label={`${t("common.save", "Save")} ${tag}`}
+                    >
+                      {processingTag === tag ? (
+                        <Loader2Icon className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CheckIcon className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 shrink-0 rounded-lg px-0"
+                      onClick={() => setEditingTag(null)}
+                      disabled={processingTag === tag}
+                      aria-label={`${t("common.cancel", "Cancel")} ${tag}`}
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ) : (
                   <>
-                    <span className="text-sm font-medium truncate flex-1" title={tag}>
+                    <span
+                      className="text-sm font-medium truncate flex-1"
+                      title={tag}
+                    >
                       {tag}
                     </span>
                     {/* usage count badge / 用量计数 */}
-                    <span className="text-xs text-muted-foreground tabular-nums mr-2 shrink-0" title={t('prompt.tagUsedCount', { count: usageCounts.get(tag) ?? 0 })}>
+                    <span
+                      className="text-xs text-muted-foreground tabular-nums mr-2 shrink-0"
+                      title={t("prompt.tagUsedCount", {
+                        count: usageCounts.get(tag) ?? 0,
+                      })}
+                    >
                       {usageCounts.get(tag) ?? 0}
                     </span>
                     <div className="flex items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
@@ -399,16 +543,24 @@ export function TagManagerModal({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`h-9 w-9 rounded-lg px-0 ${filterTags.includes(tag) ? 'text-primary' : 'text-muted-foreground'} hover:bg-background/80 hover:text-foreground`}
+                          className={`h-9 w-9 rounded-lg px-0 ${filterTags.includes(tag) ? "text-primary" : "text-muted-foreground"} hover:bg-background/80 hover:text-foreground`}
                           onClick={() => {
                             setFilterTags([tag]);
                             onClose();
                           }}
                           disabled={processingTag !== null}
-                          title={filterTags.includes(tag) ? t('prompt.tagFilterActive') : t('prompt.tagViewPrompts')}
-                          aria-label={`${filterTags.includes(tag) ? t('prompt.tagFilterActive') : t('prompt.tagViewPrompts')} ${tag}`}
+                          title={
+                            filterTags.includes(tag)
+                              ? t("prompt.tagFilterActive")
+                              : t("prompt.tagViewPrompts")
+                          }
+                          aria-label={`${filterTags.includes(tag) ? t("prompt.tagFilterActive") : t("prompt.tagViewPrompts")} ${tag}`}
                         >
-                          {filterTags.includes(tag) ? <CheckIcon className="h-[18px] w-[18px]" /> : <EyeIcon className="h-[18px] w-[18px]" />}
+                          {filterTags.includes(tag) ? (
+                            <CheckIcon className="h-[18px] w-[18px]" />
+                          ) : (
+                            <EyeIcon className="h-[18px] w-[18px]" />
+                          )}
                         </Button>
                       )}
                       <Button
@@ -420,7 +572,7 @@ export function TagManagerModal({
                           setEditValue(tag);
                         }}
                         disabled={processingTag !== null}
-                        aria-label={`${t('common.edit', 'Edit')} ${tag}`}
+                        aria-label={`${t("common.edit", "Edit")} ${tag}`}
                       >
                         <EditIcon className="h-[18px] w-[18px]" />
                       </Button>
@@ -430,9 +582,13 @@ export function TagManagerModal({
                         className="h-9 w-9 rounded-lg px-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => handleDelete(tag)}
                         disabled={processingTag !== null}
-                        aria-label={`${t('common.delete', 'Delete')} ${tag}`}
+                        aria-label={`${t("common.delete", "Delete")} ${tag}`}
                       >
-                        {processingTag === tag ? <Loader2Icon className="h-[18px] w-[18px] animate-spin" /> : <Trash2Icon className="h-[18px] w-[18px]" />}
+                        {processingTag === tag ? (
+                          <Loader2Icon className="h-[18px] w-[18px] animate-spin" />
+                        ) : (
+                          <Trash2Icon className="h-[18px] w-[18px]" />
+                        )}
                       </Button>
                     </div>
                   </>

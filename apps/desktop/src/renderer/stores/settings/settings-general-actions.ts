@@ -23,6 +23,7 @@ import {
   normalizeDesktopHomeModules,
   normalizeDesktopHomeModuleOrder,
   normalizeLanguage,
+  normalizePromptTagCatalog,
   normalizeSkillListPageSize,
   normalizeSkillTagFilterIncludeFrontmatter,
   normalizeSourceHistory,
@@ -71,6 +72,7 @@ type GeneralActionKey =
   | "addPromptTagCatalogEntry"
   | "renamePromptTagCatalogEntry"
   | "deletePromptTagCatalogEntry"
+  | "reorderPromptTagCatalog"
   | "setLanguage"
   | "setDataPath"
   | "setAutoCheckUpdate"
@@ -437,13 +439,16 @@ function createTagCatalogActions(context: SettingsActionContext) {
   const { get, setTouched } = context;
   return {
     setTagFilterMode: (tagFilterMode) => setTouched({ tagFilterMode }),
-    addPromptTagCatalogEntry: (tag) => {
+    addPromptTagCatalogEntry: async (tag, existingTags) => {
       const normalized = tag.trim();
       if (!normalized || get().promptTagCatalog.includes(normalized)) return;
-      const promptTagCatalog = [...get().promptTagCatalog, normalized].sort(
-        (left, right) => left.localeCompare(right),
-      );
-      savePromptTagCatalog(context, promptTagCatalog);
+      const promptTagCatalog = normalizePromptTagCatalog([
+        ...get().promptTagCatalog,
+        ...existingTags,
+        normalized,
+      ]);
+      await context.persistSettingsToMain({ promptTagCatalog });
+      setTouched({ promptTagCatalog });
     },
     renamePromptTagCatalogEntry: (oldTag, newTag) => {
       const oldValue = oldTag.trim();
@@ -455,13 +460,19 @@ function createTagCatalogActions(context: SettingsActionContext) {
             tag === oldValue ? newValue : tag,
           ),
         ),
-      ).sort((left, right) => left.localeCompare(right));
+      );
       savePromptTagCatalog(context, promptTagCatalog);
+    },
+    reorderPromptTagCatalog: async (tags) => {
+      const promptTagCatalog = normalizePromptTagCatalog(tags);
+      await context.persistSettingsToMain({ promptTagCatalog });
+      setTouched({ promptTagCatalog });
     },
   } satisfies SettingsActionGroup<
     | "setTagFilterMode"
     | "addPromptTagCatalogEntry"
     | "renamePromptTagCatalogEntry"
+    | "reorderPromptTagCatalog"
   >;
 }
 

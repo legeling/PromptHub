@@ -37,14 +37,41 @@ describe("settings prompt tag preferences", () => {
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().tagFilterMode).toBe("multi");
     expect(useSettingsStore.getState().promptTagCatalog).toEqual([
+      "beta",
+      "alpha",
+    ]);
+  });
+
+  it("keeps manual order when adding, renaming and deleting catalog entries", async () => {
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+    useSettingsStore.setState({ promptTagCatalog: ["gamma", "alpha", "beta"] });
+    await useSettingsStore
+      .getState()
+      .addPromptTagCatalogEntry("delta", ["gamma", "alpha", "beta"]);
+    expect(useSettingsStore.getState().promptTagCatalog).toEqual([
+      "gamma",
       "alpha",
       "beta",
+      "delta",
+    ]);
+    useSettingsStore.getState().renamePromptTagCatalogEntry("gamma", "zeta");
+    expect(useSettingsStore.getState().promptTagCatalog).toEqual([
+      "zeta",
+      "alpha",
+      "beta",
+      "delta",
+    ]);
+    useSettingsStore.getState().deletePromptTagCatalogEntry("beta");
+    expect(useSettingsStore.getState().promptTagCatalog).toEqual([
+      "zeta",
+      "alpha",
+      "delta",
     ]);
   });
 });

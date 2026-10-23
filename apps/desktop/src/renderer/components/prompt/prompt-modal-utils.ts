@@ -123,7 +123,8 @@ export function buildPromptPayload(
   form: PromptFormData,
   options: BuildPromptPayloadOptions = {},
 ): CreatePromptDTO | UpdatePromptDTO {
-  const preserveEmptyOptionalFields = options.preserveEmptyOptionalFields === true;
+  const preserveEmptyOptionalFields =
+    options.preserveEmptyOptionalFields === true;
 
   return {
     title: form.title.trim(),
@@ -189,10 +190,10 @@ export function mergePromptTagCatalog(
 ): string[] {
   return Array.from(
     new Set([
-      ...getExistingPromptTags(prompts),
       ...promptTagCatalog.map((tag) => tag.trim()).filter(Boolean),
+      ...getExistingPromptTags(prompts),
     ]),
-  ).sort((a, b) => a.localeCompare(b));
+  );
 }
 
 export function promoteMainEnglishToEnglishVersion(

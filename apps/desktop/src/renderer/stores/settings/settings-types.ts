@@ -293,9 +293,13 @@ export interface SettingsState {
   setShowSaveNotification: (enabled: boolean) => void;
   setLocalSessionIndexEnabled: (enabled: boolean) => void;
   setTagFilterMode: (mode: TagFilterMode) => void;
-  addPromptTagCatalogEntry: (tag: string) => void;
+  addPromptTagCatalogEntry: (
+    tag: string,
+    existingTags: string[],
+  ) => Promise<void>;
   renamePromptTagCatalogEntry: (oldTag: string, newTag: string) => void;
   deletePromptTagCatalogEntry: (tag: string) => void;
+  reorderPromptTagCatalog: (tags: string[]) => Promise<void>;
   setLanguage: (lang: string) => void;
   setDataPath: (path: string) => void;
   setWebdavEnabled: (enabled: boolean) => void;
