@@ -38,6 +38,13 @@ remote closure and publication are recorded separately.
 
 See [the scoped verification record](ISS-20260809-001-remaining-open-issues-roadmap.md#media-and-webdav-follow-up--2026-10-22). No remote issue mutation was made.
 
+### Tag management and custom store follow-up — 2026-10-23
+
+- Remote readback: #145 and #141 remain open; no commit, push or remote mutation in this follow-up.
+- #145: local_done, pending release. Original screenshots request insertion and drag ordering. Authorized isolated macOS acceptance passes creation, append-order preservation, rename, deletion/reference protection, native drag, consecutive keyboard movement with focus retained, light/dark layout, and full-process restart. Acceptance also exposed and repaired stale-list overwrite after creation. No schema change.
+- #141: existing fix accepted. Original blank catalog is traced to `showCatalog: false` in v0.5.6; `e63f9e26` restores `true` in v0.5.7. The 15-card regression detects the injected old defect. Current authorized GUI acceptance adds `https://github.com/anthropics/skills` as `my`, loads all 20 current entries, searches their content, and retains identical card names after full-process restart. `f51eee2f` fixes a separate loading race.
+- Evidence and repeatable commands: [current follow-up](ISS-20260809-001-remaining-open-issues-roadmap.md#tag-management-and-custom-store-follow-up--2026-10-23).
+
 ### Seven-issue audit — 2026-10-22
 
 This dated audit supersedes the older per-issue acceptance descriptions below.
@@ -54,6 +61,13 @@ Remote readback: 30 open / 190 closed. No push or deployment was performed.
 | #141 | open | current source/cache pass, `f51eee2f` (`Refs #141`) | Real original source loads 20 entries and retains cache after restart; historical 15-count empty list not reproduced. |
 
 Commands and evidence are recorded in the [current audit](ISS-20260809-001-remaining-open-issues-roadmap.md#current-seven-issue-acceptance-and-submission).
+
+### Provider follow-up — 2026-10-22
+
+| Issue | GitHub state | Local status | Target release | Remaining boundary |
+| --- | --- | --- | --- | --- |
+| #245 | open | local_done | Unassigned | User confirmed Settings → AI Configuration. Delete confirmation, associated-model/default cleanup, edit-name preservation and real SQLite reopen/failure recovery pass locally. Native GUI/Windows and publication remain unverified; Agent profiles remain independent. See the [verification record](ISS-20260809-001-remaining-open-issues-roadmap.md#provider-follow-up--2026-10-22). |
+| #246 | open | in_progress | Unassigned | Import auth, provider-kind and model precedence fixes verified locally. Claude Definitions supports SubAgent CRUD and scoped Hooks editing. CLI 2.1.307 consumed Skills/Rules, called MCP, loaded/updated/removed a Plugin, executed a harmless Hook and spawned/completed a native child. Isolated Electron save/reopen/delete passed. Reporter gateway/Windows, interactive trust/approval and managed/effective-scope diagnostics remain unverified. See agent-management-workbench/tasks.md for commands and boundaries. |
 
 ### Replacement 0.6.1 follow-up — 2026-10-21
 
@@ -238,7 +252,7 @@ does not establish remote closure, publication or additional platform acceptance
 | #201  | closed       | released     | 0.6.0-beta.1   | `mcp-issues-200-202-implementation`, `pi-agent-separation`                     | Pi shared, `.agents`, native, and project MCP targets shipped in the published prerelease. PromptHub writes compatible `mcpServers` JSON but does not execute the adapter or claim runtime precedence.                                                                                                                               |
 | #200  | closed       | released     | 0.6.0-beta.1   | `mcp-issues-200-202-implementation`, `agent-management-workbench`              | My MCP merged global/project target counts, details, quick deployment, batch deployment, and selection dialogs shipped in the published prerelease.                                                                                                                                                                                  |
 | #199  | closed       | duplicate    |                | `desktop-workspace-live-refresh`                                               | Closed publicly as a duplicate of #198, which retains the broader refresh, draft-protection, statistics, filtering, and cross-workspace acceptance boundary.                                                                                                                                                                         |
-| #198 | open | accepted |  | `desktop-workspace-live-refresh` | 未解决：手动刷新整个工作区。证据与未验收范围见上方链接的 2026-10-19 逐项审查；本轮未更改远端状态。 |
+| #198 | open | in_progress | | [Desktop refresh](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198) | 2026-10-22：实现和自动化验证完成，9 项真实存储集成、132 项桌面单元/组件、52 项 CLI、34 项 Core 回归通过；设计状态 review-pending，待明确 GUI 授权后完成原生 Electron 界面验收。未提交、发布或修改远端状态。 |
 | #197 | open | in_progress | 0.6.0 (partial) | `spec/knowledge/behavior/rules-workspace.md` | 部分完成：跨 Agent 规则目录矩阵。证据与未验收范围见上方链接的 2026-10-19 逐项审查；本轮未更改远端状态。 |
 | #196 | closed | local_done | Next patch | `spec/knowledge/behavior/rules-workspace.md` | `f1faa73f` 修复同平台文件被侧栏去重；35 项定向测试、3 项旧实现红测、类型/构建和隔离 Electron 选择/搜索/重扫/重开通过。提交推送后自动关闭并核实；尚未发布，不属于 0.6.0 二进制修复。 |
 | #195 | open | accepted |  | `prompt-workspace-completion` | 未解决：导出每张 Prompt 参考图片。证据与未验收范围见上方链接的 2026-10-19 逐项审查；本轮未更改远端状态。 |

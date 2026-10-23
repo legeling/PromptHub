@@ -9,6 +9,28 @@
 - Delivery authority: [local overlay](local-github-status.md); behavior and design stay in their existing domain records.
 - Scope: published 0.6.0 review, authorized issue follow-up, local repairs and the later explicitly authorized split commits/push. Release and tag creation remain outside scope. Historical sections retain their original verification boundaries.
 
+## Tag management and custom store follow-up — 2026-10-23
+
+This follow-up supersedes the older #145 screenshot-scope uncertainty and #141 root-cause uncertainty below. Both remote issues remain open on current readback; no remote mutation, commit or push was performed.
+
+- #145: all four original screenshots request insertion and drag ordering. Existing creation remains available; the manager now defaults to manual order, with native drag handles and Up/Down keyboard controls, plus existing usage/name sorts. `promptTagCatalog` is the sole durable order, reused by sidebar and prompt editors. Array normalization preserves order; additions append and rename/delete preserve remaining positions. Filtered moves operate on the complete catalog. One settings write per move, linear array update; no additional dependency or persistence schema. Storage failure leaves the old order and reports an error. Stable contract: `spec/knowledge/behavior/prompt-workspace.md` §2.11.
+- #141: v0.5.6 sets `showCatalog: false` for `selectedCustomSource`, while displaying `sourceRegistrySkills.length`. This exactly explains the original count of 15 and empty card area. Introduced in `c627f5f3`, corrected by `e63f9e26`, included in v0.5.7. Current owner is `skill-store-view-model.ts`. Existing regression now asserts every card, not just the first/last, before and after cache rehydration. A temporary Vite transform reintroduced only the historical `false`; the regression failed on missing `Fixture Skill 0` after its count assertion passed. Production files were never mutated for this check. The loading race in `f51eee2f` remains a separate defect.
+- Verification: five focused files / 45 tests pass across the initial run and affected-file reruns (the initial run had one incomplete test fixture; `getAllTags` returned undefined). Real preload handlers, SQLite and filesystem storage retain manual order after close/reopen. Component checks cover creation, sorting, drag, keyboard, filtered moves and failed persistence, including failed creation retaining the input. Source/test typechecks, scoped ESLint and desktop production build pass; existing bundler warnings and React test act warnings remain.
+- Authorized native acceptance: only a fresh temporary profile, isolated HOME and isolated keyring were used. Real UI creation exposed three gaps, all repaired: non-catalog existing tags moved behind new entries, disabled handles lost keyboard focus, and a stale post-save reload hid newly persisted tags. The manager now derives its list from the live catalog plus database tags, with no second merged-list snapshot. New-tag persistence completes before input clearing. Final UI checks pass append order (including a tag first created on a Prompt), rename, deletion of an unused tag, rejection of a referenced tag, native mouse dragging between visible rows, consecutive Up/Down movements with retained focus, and light/dark layout. Final full-process restart preserves the exact seven-tag sequence and the rename/deletion results.
+- #141 native acceptance: the original URL `https://github.com/anthropics/skills` and source name `my` were entered through the real add-store form, without seeded catalog data. All 20 current cards render, including the last card after scrolling; a `PDF` search returns the three matching descriptions/names. Full-process restarts retain all 20 identical names. This replaces the earlier screenshot-only uncertainty, not the unrelated loading-race diagnosis. No Skill was installed or executed.
+- Harness-only interruptions: one launch overlapped a build and was stopped by exact owned PID before relaunch; a cross-realm assertion and stale locator were corrected. Native drag automation initially auto-scrolled distant endpoints and pressed a different row; captured drag events identified this harness targeting issue, and visible-row drag was verified against exact DOM and saved order. These are not counted as product failures. All task-owned Electron processes were closed; temporary profile and disposable logs were removed. Acceptance screenshots remain in the task temporary artifact directory.
+
+- Failure sensitivity for #145: a separate temporary transform disabled only the order persistence action. The drag/reopen regression failed on the expected saved order (`[]` versus `gamma, alpha, beta`). The regular implementation passes. Both mutation checks ran in memory against temporary test configurations, without changing repository source.
+
+Re-run the regular regression entrypoints:
+
+```sh
+pnpm --filter @prompthub/desktop exec vitest run --minWorkers=1 --maxWorkers=1 tests/unit/components/tag-manager-modal.test.tsx tests/unit/components/prompt-modal-utils.test.ts tests/unit/components/skill-store-remote-source-loading.test.tsx tests/unit/stores/settings-tags.test.ts tests/integration/release-acceptance-desktop-release-settings.test.ts
+pnpm --filter @prompthub/desktop typecheck
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm --filter @prompthub/desktop build
+```
+
 ## Media and WebDAV follow-up — 2026-10-22
 
 - #107: confirmed a second clipboard defect after the browser UUID fallback.
@@ -275,7 +297,7 @@ This table retains all 42 originally reviewed reports; six rows are now closed.
 | [#205](https://github.com/legeling/PromptHub/issues/205) | 部分完成 | 第三方 PR 安全扫描建议 | `1df96686` 已合并 PR #206，`440c5845` 校验报告并使用 pnpm；`.github/workflows/threatcrush-scan.yml` 已纳入 tag。 | 提议已经采纳，可按维护事项回复；扫描器成功运行/SARIF 上传须另核，不把流程接入称为安全无漏洞。 |
 | [#204](https://github.com/legeling/PromptHub/issues/204) | 未解决 | 迁移 npx skills 配置 | 已有本地目录完整包导入，但没有该工具配置/版本/来源元数据的专门迁移合同。 | 确认上游实际结构和版本，再定义冲突、增量及来源更新；不能照 issue 中猜测路径实现。 |
 | [#203](https://github.com/legeling/PromptHub/issues/203) | 部分完成 | 集中管理所有辅助/备份文件 | MCP SQLite 历史、派生配置、legacy sidecar 预览清理已经实现；原 issue 覆盖所有域和所有临时/适配文件。 | 完成跨域文件清单、保留策略与三平台迁移验收后再判整体完成。 |
-| [#198](https://github.com/legeling/PromptHub/issues/198) | 未解决 | 手动刷新整个工作区 | 领域内部刷新不等于跨 Prompt/Skill/Rules 的一致刷新与草稿保护；现有 active change 仍是设计。 | 验证外部 CLI 写入、列表/详情/计数/筛选及未保存草稿共同刷新。 |
+| [#198](https://github.com/legeling/PromptHub/issues/198) | 待原生界面验收 | 手动刷新整个工作区 | 2026-10-22 实现与自动化检查完成；现行设计和可重跑证据见 [Desktop refresh](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198)。 | 获得 GUI 授权后验收原生 Electron 的刷新、草稿确认和空/筛选视图。 |
 | [#197](https://github.com/legeling/PromptHub/issues/197) | 部分完成 | 跨 Agent 规则目录矩阵 | Claude 用户级 `rules/**/*.md` 已支持；其他主要平台、项目级目录和原生优先级实测矩阵不完整。 | 沿用 `rules-agent-source-matrix`；不要把 #196 单平台交付扩大为全部平台。 |
 | [#196](https://github.com/legeling/PromptHub/issues/196) | 已提交并关闭，未发布 | Claude 用户级 Rules 扫描与显示 | `1382d9aa` 扫描已发布；真实 Electron 能读 4 个文件而侧栏仅列 1 个，根因是 platformId 覆盖。`f1faa73f` 修复分组并已推送。 | 定向回归及真实 Electron 搜索/选择/重扫/重开通过，远端自动关闭已核实；不宣称已在 0.6.0 完整修复。 |
 | [#195](https://github.com/legeling/PromptHub/issues/195) | 未解决 | 导出每张 Prompt 参考图片 | 已有生成结果下载，但 `PromptReferenceImages`/预览没有等价的逐张参考媒体导出验收。 | 明确从托管原文件复制到用户选择位置并验字节；不要拿生成图下载代替。 |
@@ -710,7 +732,7 @@ PROMPTHUB_E2E_HEADED=0 pnpm --filter @prompthub/desktop exec playwright test \
 - #188: `skills-my-skills-tag-search` (shipped in 0.6.0); #145: `desktop-tag-manager-usability`.
 - #74: review the scope gap in `desktop-startup-folder-restore` against the
   report before treating its pinned/last-folder feature as complete coverage.
-- #198: retained `desktop-workspace-live-refresh` design.
+- #198: superseded by [Desktop refresh](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198); automated verification complete, native UI review pending.
 - #196/#197: retained `rules-agent-source-matrix` design.
 - #195 and #44's secondary suggestions: retained `prompt-workspace-completion`.
 
