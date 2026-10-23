@@ -13,7 +13,7 @@ A local-first workspace for prompts, skills, and AI coding assets.
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Development](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-The current stable release is `0.6.1`.
+The current development version is `0.6.2` (unreleased). The latest stable release is `0.6.1`.
 
   <br/>
 

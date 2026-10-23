@@ -13,7 +13,7 @@
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![開発版](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-現在の安定版は `0.6.1` です。
+現在の開発バージョンは `0.6.2`（未リリース）、最新の安定版は `0.6.1` です。
 
   <br/>
 

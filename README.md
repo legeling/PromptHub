@@ -15,7 +15,7 @@
 [![许可证](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
 [![开发版本](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](./CHANGELOG.md#unreleased)
 
-当前稳定版为 `0.6.1`。
+当前开发版本为 `0.6.2`（尚未发布），最新稳定版为 `0.6.1`。
 
   <br/>
 

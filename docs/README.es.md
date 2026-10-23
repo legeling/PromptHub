@@ -13,7 +13,7 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Desarrollo](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-La versión estable actual es `0.6.1`.
+La versión de desarrollo actual es `0.6.2` (sin publicar). La última versión estable es `0.6.1`.
 
   <br/>
 

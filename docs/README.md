@@ -59,7 +59,7 @@ docs/
 
 ## 版本与更新说明
 
-版本范围与验证结果见 [0.6.1 发布记录](../spec/releases/0.6.1.md)。
+当前开发版本为 `0.6.2`（尚未发布），范围与验证见 [0.6.2 开发记录](../spec/releases/0.6.2.md)。已发布稳定版的范围与验证结果见 [0.6.1 发布记录](../spec/releases/0.6.1.md)。
 
 截至 2026-10-21，GitHub 当前可下载的稳定版为 [v0.6.1](https://github.com/legeling/PromptHub/releases/tag/v0.6.1)，同版本修复包已公开。
 

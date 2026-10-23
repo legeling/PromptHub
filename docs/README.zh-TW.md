@@ -13,7 +13,7 @@
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![開發版本](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-目前穩定版為 `0.6.1`。
+目前開發版本為 `0.6.2`（尚未發布），最新穩定版為 `0.6.1`。
 
   <br/>
 

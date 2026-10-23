@@ -13,7 +13,7 @@ Ein Local-First-Arbeitsbereich für Prompts, Skills und KI-Coding-Assets.
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Entwicklung](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-Die aktuelle stabile Version ist `0.6.1`.
+Die aktuelle Entwicklungsversion ist `0.6.2` (unveröffentlicht). Die neueste stabile Version ist `0.6.1`.
 
   <br/>
 
