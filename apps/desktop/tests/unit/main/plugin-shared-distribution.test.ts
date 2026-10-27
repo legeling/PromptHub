@@ -16,7 +16,9 @@ describe("shared Plugin distribution", () => {
   let source: string;
   let service: CorePluginLibraryService;
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-shared-plugin-"));
+    root = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-shared-plugin-")),
+    );
     configureRuntimePaths({ userDataPath: root });
     initDatabase(path.join(root, "data", "prompthub.db"));
     source = path.join(root, "incoming");

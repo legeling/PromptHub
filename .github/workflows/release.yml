@@ -340,6 +340,16 @@ jobs:
         working-directory: apps/desktop
         run: node --experimental-strip-types scripts/smoke-windows-packaged-startup.mts dist/win-unpacked/PromptHub.exe
 
+      - name: Verify packaged Windows data recovery and history deletion
+        if: matrix.platform == 'win' && matrix.arch == 'x64'
+        timeout-minutes: 10
+        shell: pwsh
+        working-directory: apps/desktop
+        run: |
+          $env:PROMPTHUB_E2E_EXECUTABLE_PATH = (Resolve-Path dist/win-unpacked/PromptHub.exe).Path
+          $env:PROMPTHUB_E2E_HEADED = '0'
+          pnpm exec playwright test tests/e2e/indexeddb-startup-recovery.spec.ts tests/e2e/image-generation-delete.spec.ts --workers=1
+
       - name: Verify macOS app architecture
         if: matrix.platform == 'mac' && matrix.arch != ''
         shell: bash

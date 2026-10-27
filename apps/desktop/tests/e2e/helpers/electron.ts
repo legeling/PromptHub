@@ -93,19 +93,30 @@ export async function launchPromptHub(
   const mainEntry = getMainEntry();
   const seedPath = seedFileName ? getSeedPath(seedFileName) : undefined;
   const env = getElectronLaunchEnvironment(userDataDir, options.env);
+  const executablePath = process.env.PROMPTHUB_E2E_EXECUTABLE_PATH;
+  if (executablePath && !fs.existsSync(executablePath)) {
+    throw new Error(`Packaged test executable is missing: ${executablePath}`);
+  }
   // Electron resolves these native paths during Windows startup, before the
   // app can create its userData directory. Keep every path inside the fixture.
   for (const directory of [env.HOME, env.APPDATA, env.LOCALAPPDATA]) {
     fs.mkdirSync(directory, { recursive: true });
   }
 
+  const launchArgs = getElectronLaunchArgs(
+    mainEntry,
+    process.platform,
+    Boolean(process.env.CI),
+    options.headed,
+  );
   const app = await electron.launch({
-    args: getElectronLaunchArgs(
-      mainEntry,
-      process.platform,
-      Boolean(process.env.CI),
-      options.headed,
-    ),
+    ...(executablePath ? { executablePath } : {}),
+    // Packaged apps must execute their own entrypoint, never the loose build.
+    args: executablePath
+      ? launchArgs.filter(
+          (argument, index) => index > 1 && argument !== mainEntry,
+        )
+      : launchArgs,
     env: {
       ...env,
       ...(seedPath ? { PROMPTHUB_E2E_SEED_PATH: seedPath } : {}),
