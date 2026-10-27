@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { expect, test } from "@playwright/test";
+import Database from "@prompthub/db/adapter";
+import { SkillDB } from "@prompthub/db/skill";
+import { resolveRuntimeStorageContext } from "@prompthub/core/runtime-storage-context";
 
 import {
   closePromptHub,
@@ -65,12 +68,7 @@ test.describe("E2E: create skill structure", () => {
 
       const skillId = encodeURIComponent(installedSkill!.id);
       const bundlePath = path.join(userDataDir, "data", "skills", skillId);
-      const workspacePath = path.join(
-        userDataDir,
-        "cache",
-        "skill-workspaces",
-        skillId,
-      );
+      const workspacePath = path.join(bundlePath, "files");
       expect(installedSkill!.local_repo_path).toBe(workspacePath);
       const canonicalContent = fs.readFileSync(
         path.join(bundlePath, "files", "SKILL.md"),
@@ -80,13 +78,22 @@ test.describe("E2E: create skill structure", () => {
       expect(
         fs.readFileSync(path.join(workspacePath, "SKILL.md"), "utf8"),
       ).toBe(canonicalContent);
-      expect(
-        JSON.parse(
-          fs.readFileSync(path.join(bundlePath, "skill.json"), "utf8"),
-        ),
-      ).toMatchObject({
-        skill: { id: installedSkill!.id, name: "e2e-created-skill" },
-      });
+      const database = new Database(
+        resolveRuntimeStorageContext(userDataDir).databasePath,
+        { readOnly: true },
+      );
+      try {
+        expect(new SkillDB(database).getById(installedSkill!.id)).toMatchObject(
+          {
+            id: installedSkill!.id,
+            name: "e2e-created-skill",
+            local_repo_path: workspacePath,
+          },
+        );
+      } finally {
+        database.close();
+      }
+      expect(fs.existsSync(path.join(bundlePath, "skill.json"))).toBe(false);
       expect(
         await page.evaluate(
           (id) => window.api.skill.versionGetAll(id),

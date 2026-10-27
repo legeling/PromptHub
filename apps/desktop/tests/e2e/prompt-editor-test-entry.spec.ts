@@ -68,22 +68,17 @@ test("edits in a square inner pane and opens both test modes from the footer", a
       )
       .toBe("Updated through the split editor.");
     await page.getByRole("button", { name: "AI Test", exact: true }).click();
-    const panel = page.locator("aside").filter({
-      has: page.getByRole("button", {
-        name: "Multi-Model Compare",
-        exact: true,
-      }),
-    });
+    const panel = page.getByRole("dialog", { name: "AI Test", exact: true });
     const single = panel
-      .getByRole("button", { name: "AI Test", exact: true })
+      .getByRole("tab", { name: "AI Test", exact: true })
       .first();
-    await expect(single).toHaveAttribute("aria-pressed", "true");
-    const compare = panel.getByRole("button", {
+    await expect(single).toHaveAttribute("aria-selected", "true");
+    const compare = panel.getByRole("tab", {
       name: "Multi-Model Compare",
       exact: true,
     });
     await compare.click();
-    await expect(compare).toHaveAttribute("aria-pressed", "true");
+    await expect(compare).toHaveAttribute("aria-selected", "true");
     await expect(
       panel.getByText("model-a", { exact: true }).first(),
     ).toBeVisible();
@@ -100,7 +95,7 @@ test("edits in a square inner pane and opens both test modes from the footer", a
       animations: "disabled",
     });
     await single.click();
-    await expect(single).toHaveAttribute("aria-pressed", "true");
+    await expect(single).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
   } finally {

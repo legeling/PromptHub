@@ -59,8 +59,13 @@ export function getElectronLaunchArgs(
   mainEntry: string,
   platform = process.platform,
   isCi = Boolean(process.env.CI),
-  headed = isElectronHeaded(),
+  headed?: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): string[] {
+  const showWindow = headed ?? isElectronHeaded(env);
+  if (showWindow && !isElectronHeaded(env)) {
+    throw new Error("Native window display requires PROMPTHUB_E2E_HEADED=1");
+  }
   const args =
     platform === "linux" && isCi
       ? ["--no-sandbox", "--password-store=basic", mainEntry]
@@ -69,6 +74,6 @@ export function getElectronLaunchArgs(
     "-r",
     isolatedKeyringPreload,
     ...args,
-    ...(headed ? [] : ["--hidden"]),
+    ...(showWindow ? [] : ["--hidden"]),
   ];
 }

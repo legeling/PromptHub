@@ -447,6 +447,8 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - `quality.yml` 工作流必须在 `Build` 之后运行 `bundle:budget` 步骤，确保 PR 不会无声地把 renderer 主入口或主要 chunk 顶过预算。
 - 当一次有意的优化让某个 chunk 体积下降并希望把成果固化时，才应在该 PR 中收紧对应阈值。
 
+- 窗口恢复时按需加载工作区刷新流程，避免路由入口提前加载 Skill 状态及 YAML 解析器；自动刷新、草稿保护与错误反馈仍由同一工作区刷新服务负责。
+
 ### 12. Renderer Motion System
 
 - 桌面端 renderer 必须有一份 motion design tokens（`apps/desktop/src/renderer/styles/motion-tokens.ts`），覆盖 duration / easing / scale / translate / stagger 五个维度，并同步暴露到 Tailwind theme 与 CSS 变量。
@@ -571,7 +573,7 @@ SQLite `settings`，键分别为 `marketplaceSources`、`recoveryPaths`、
 
 ## Workspace manual refresh (#198)
 
-Product: Desktop. Status: review-pending (2026-10-22); implementation and automated checks complete, native Electron UI acceptance pending.
+Product: Desktop. Status: release_pending (2026-10-27); implementation, storage integration and isolated native Electron acceptance complete.
 This section supersedes the unimplemented archived
 `2026-08-18-desktop-workspace-live-refresh` design. #209 remains separate.
 
@@ -654,10 +656,13 @@ pnpm --filter @prompthub/cli exec vitest run tests/database-concurrency.test.ts 
 pnpm --dir packages/core exec vitest run tests/canonical-catalog-reconciliation.test.ts tests/database-startup-idempotency.test.ts --minWorkers=1 --maxWorkers=1
 ```
 
-Remaining acceptance: on an isolated native Electron profile, click the refresh
-button after CLI writes and verify list/detail/badges, then cancel and confirm the
-unsaved-draft dialog; repeat for local Skill files and Rules. Check empty/search
-views, pending/error feedback and dark/light layout. AGENTS.md GUI-1 requires
-explicit GUI-control authorization, which has not been given for this task.
-No release-package installation, Windows/Linux UI, commit, push or remote issue
-closure has been performed.
+2026-10-27 native acceptance: all three `workspace-refresh.spec.ts` scenarios
+passed against the built Electron app with isolated profiles and hidden windows.
+An independent CLI process creates, updates, tags, favorites and deletes a Prompt;
+toolbar refresh updates the list, detail, tag count and removed selection. Prompt
+and Skill file editors preserve drafts on cancel and reload on explicit discard.
+External Rule changes appear in conflict review without modifying target bytes.
+The tests use the actual preload, IPC, SQLite and filesystem. The release smoke
+catalog includes these scenarios; component/integration tests retain empty/filter,
+failure/retry, save fencing and delayed-read coverage. Publication and platform
+packaging remain tracked in the 0.6.2 release record.

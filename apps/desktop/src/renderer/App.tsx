@@ -56,7 +56,6 @@ import { Spinner } from "./components/ui/Spinner";
 import { isWebRuntime } from "./runtime";
 import { useBackupImportController } from "./hooks/useBackupImportController";
 import { waitForPersistHydration } from "./utils/persist-hydration";
-import { refreshWorkspace } from "./services/workspace-refresh";
 
 // Lazy load heavy components for better initial load performance
 // 懒加载大型组件以提升初始加载性能
@@ -776,9 +775,11 @@ function App() {
       if (isWindowVisibleRef.current && document.visibilityState !== "hidden") {
         const domain = useUIStore.getState().appModule;
         if (domain === "prompt" || domain === "skill" || domain === "rules") {
-          void refreshWorkspace(domain).catch((error) => {
-            console.error("Failed to refresh workspace after resume:", error);
-          });
+          void import("./services/workspace-refresh")
+            .then(({ refreshWorkspace }) => refreshWorkspace(domain))
+            .catch((error) => {
+              console.error("Failed to refresh workspace after resume:", error);
+            });
         }
       }
       if (

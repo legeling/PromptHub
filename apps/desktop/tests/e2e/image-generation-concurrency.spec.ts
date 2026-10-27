@@ -49,7 +49,9 @@ async function assertCopiedPixels(
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Zoom in", exact: true }).click();
   await dialog.getByRole("button", { name: "Copy image", exact: true }).click();
-  await expect(page.getByText("Image copied", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Image copied", { exact: true }).last(),
+  ).toBeVisible();
   await expect
     .poll(() =>
       app.evaluate(({ clipboard, nativeImage }, data) => {

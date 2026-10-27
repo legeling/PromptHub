@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { test, expect } from "@playwright/test";
+import { nativeWindowTestTag } from "./helpers/electron-launch-options";
 import { createWebDAVFixture } from "./helpers/webdav-fixture";
 import {
   launchPromptHub,
@@ -11,7 +12,7 @@ import {
 } from "./helpers/electron";
 
 // The protocol server is controlled; Electron, startup, preload, SQL and UI are real.
-test("startup sync reviews a nonempty baseline and retains the chosen library across two cold reopens", async () => {
+test("startup sync reviews a nonempty baseline and retains the chosen library across two cold reopens", { tag: nativeWindowTestTag }, async () => {
   test.setTimeout(120000);
   const remote = await createWebDAVFixture();
   const { objects } = remote;

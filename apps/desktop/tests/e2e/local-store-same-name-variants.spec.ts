@@ -48,15 +48,10 @@ function createSameNameVariantSource(baseDir: string): string {
 }
 
 async function dismissQuickInstallModal(page: import("@playwright/test").Page) {
-  const quickInstallDialog = page
-    .locator("div.fixed.inset-0.z-50")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Manage platform installations",
-        exact: true,
-      }),
-    })
-    .last();
+  const quickInstallDialog = page.getByRole("dialog", {
+    name: "Distribute Skill",
+    exact: true,
+  });
   await expect(quickInstallDialog).toBeVisible();
   await quickInstallDialog
     .getByRole("button", { name: "Close", exact: true })

@@ -42,6 +42,10 @@
 
 桌面接口集成可以替换 Electron 消息运输层，但必须调用真实 preload API、注册的 IPC handler 和被测业务服务。使用 mock store、mock editor 或 mock installer 的组件测试，应标明局部契约范围；放在 `integration/` 目录不自动成为完整功能集成。
 
+### 隐藏窗口执行
+
+本地 Electron 自动化默认使用隐藏窗口。只有 runner 显式设置 `PROMPTHUB_E2E_HEADED=1` 才允许显示原生窗口；单个用例的 `headed: true` 不能绕过该开关。依赖窗口可见性的用例必须带 `@native-window` 标签，本地无头运行不执行，发布 CI 在 Xvfb 中执行。截图使用隐藏窗口捕获，不得为了截图调用 show/focus。
+
 ### 正常流程与真实入口
 
 - 持久化 CRUD 覆盖创建、读取、修改、删除及中间状态；安装、导入、同步、恢复等覆盖各自实际成功后的消费方式。断言范围以该能力的产品契约为准。

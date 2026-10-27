@@ -92,7 +92,22 @@ describe("Electron E2E launch options", () => {
     expect(isElectronHeaded({ PROMPTHUB_E2E_HEADED: "0" })).toBe(false);
     expect(isElectronHeaded({ PROMPTHUB_E2E_HEADED: "1" })).toBe(true);
     expect(
-      getElectronLaunchArgs("/app/main.js", "darwin", false, true),
+      getElectronLaunchArgs("/app/main.js", "darwin", false, true, {
+        PROMPTHUB_E2E_HEADED: "1",
+      }),
     ).toEqual([...keyringPreload, "/app/main.js"]);
+  });
+
+  it("rejects a test forcing a visible window without the runner opt-in", () => {
+    for (const env of [{}, { PROMPTHUB_E2E_HEADED: "0" }]) {
+      expect(() =>
+        getElectronLaunchArgs("/app/main.js", "darwin", false, true, env),
+      ).toThrow("Native window display requires PROMPTHUB_E2E_HEADED=1");
+    }
+    expect(
+      getElectronLaunchArgs("/app/main.js", "darwin", false, false, {
+        PROMPTHUB_E2E_HEADED: "1",
+      }),
+    ).toContain("--hidden");
   });
 });

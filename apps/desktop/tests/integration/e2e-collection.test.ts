@@ -35,17 +35,24 @@ it.each([false, true])(
         },
       },
     );
-    for (const file of files) expect(stdout).toContain(`${file}:`);
+    // This file contains only native visibility scenarios; mixed files still
+    // contribute their hidden-safe cases to the local collection.
+    const selectedFiles = headed
+      ? files
+      : files.filter((file) => file !== "causal-sync.spec.ts");
+    for (const file of selectedFiles) expect(stdout).toContain(`${file}:`);
+    if (!headed) expect(stdout).not.toContain("causal-sync.spec.ts:");
     for (const title of [
       "delays startup WebDAV sync until a hidden launch becomes visible",
       "toggles app visibility from the local showApp shortcut",
       "creates an immutable remote backup on startup without replacing the local workspace",
+      "startup sync reviews a nonempty baseline and retains the chosen library across two cold reopens",
     ]) {
       if (headed) expect(stdout).toContain(title);
       else expect(stdout).not.toContain(title);
     }
     expect(stdout).toMatch(
-      new RegExp(`Total: [1-9]\\d* tests in ${files.length} files`),
+      new RegExp(`Total: [1-9]\\d* tests in ${selectedFiles.length} files`),
     );
   },
   collectionTimeoutMs + 5_000,

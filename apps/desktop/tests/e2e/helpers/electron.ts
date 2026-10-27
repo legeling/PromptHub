@@ -114,7 +114,16 @@ export async function launchPromptHub(
 
   try {
     const page = await app.firstWindow();
+    // Finish main's initial loadFile before replacing it with the live renderer.
     await waitForRendererReady(page);
+    // Explicit test opt-in only; never inherit an ordinary development session.
+    const testDevServerUrl = process.env.PROMPTHUB_E2E_DEV_SERVER_URL;
+    if (testDevServerUrl) {
+      await page.goto(testDevServerUrl);
+      await expect(page).toHaveURL(testDevServerUrl);
+      await expect(page.locator('script[src="/@vite/client"]')).toHaveCount(1);
+      await waitForRendererReady(page);
+    }
     return { app, page, userDataDir };
   } catch (error) {
     await closePromptHub(app, userDataDir);

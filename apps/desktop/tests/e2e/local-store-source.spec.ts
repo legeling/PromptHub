@@ -203,20 +203,15 @@ test.describe("E2E: local store source", () => {
         "skills",
         encodeURIComponent(installedSkill!.id),
       );
-      expect(fs.existsSync(path.join(bundlePath, "manifest.json"))).toBe(true);
+      expect(fs.existsSync(path.join(bundlePath, "skill.json"))).toBe(false);
       expect(
         fs.readFileSync(path.join(bundlePath, "files", "SKILL.md"), "utf8"),
       ).toContain("Fresh source content v1");
 
-      const quickInstallDialog = page
-        .locator("div.fixed.inset-0.z-50")
-        .filter({
-          has: page.getByRole("heading", {
-            name: "Manage platform installations",
-            exact: true,
-          }),
-        })
-        .last();
+      const quickInstallDialog = page.getByRole("dialog", {
+        name: "Distribute Skill",
+        exact: true,
+      });
       await expect(quickInstallDialog).toBeVisible();
       await quickInstallDialog
         .getByRole("button", { name: "Close", exact: true })

@@ -4,13 +4,13 @@ import {
   type Page,
   type ElectronApplication,
 } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
 import http from "node:http";
 import { once } from "node:events";
 import {
   launchPromptHub,
   closePromptHub,
   setAppSettings,
+  captureAppPage,
 } from "./helpers/electron";
 
 async function provider(failAt = 3, longAnswer = false, hold = false) {
@@ -266,24 +266,7 @@ async function capture(
   page: Page,
   name: string,
 ): Promise<void> {
-  await app.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows()[0];
-    window.show();
-    window.focus();
-    window.webContents.invalidate();
-  });
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
-  const png = await app.evaluate(async ({ BrowserWindow }) => {
-    return (await BrowserWindow.getAllWindows()[0].webContents.capturePage())
-      .toPNG()
-      .toString("base64");
-  });
-  await writeFile(test.info().outputPath(name), Buffer.from(png, "base64"));
+  await captureAppPage(app, page, test.info().outputPath(name));
 }
 
 test("single and comparison history survives reopen and restart, and supports copying and deletion", async () => {
