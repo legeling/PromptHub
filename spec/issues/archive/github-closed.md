@@ -5,18 +5,20 @@
 - Repository: `legeling/PromptHub`
 - Snapshot date: `2026-10-27`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt` after the authorized push to main.
-- Closed issues captured: `195`
+- Closed issues captured: `197`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery is recorded in `../active/local-github-status.md`.
-- The shared capture contains 220 issues (25 open / 195 closed), below the requested limit; pull requests are excluded.
-- #198 automatic closure was confirmed on 2026-10-27 after pushing `ebb7d66c`. #246 remains open. Closure does not establish publication.
+- The shared capture contains 222 issues (25 open / 197 closed), below the requested limit; pull requests are excluded.
+- #198, #248 and #247 are confirmed closed after their verified fixes entered main; all three fixes are included in published 0.6.2. #246 remains open for its recorded remaining acceptance.
 
 ## Closed Issues Archive
 
 | # | 标题 | 标签 | 创建时间 | 关闭时间 | 链接 |
 | --- | --- | --- | --- | --- | --- |
+| #248 | [Bug]: 生图工作台无法删除历史批次（后端已实现删除，缺少 IPC 通道与 UI 入口） |  | 2026-10-27 | 2026-10-27 | [#248](https://github.com/legeling/PromptHub/issues/248) |
+| #247 | [Bug]: 无法正常启动 | bug, version: 0.6.1 | 2026-10-27 | 2026-10-27 | [#247](https://github.com/legeling/PromptHub/issues/247) |
 | #245 | [Feature]: 供应商无法删除额外的 | enhancement, version: 0.6.1 | 2026-10-21 | 2026-10-23 | [#245](https://github.com/legeling/PromptHub/issues/245) |
 | #243 | [Feature]: 支持第三方插件市场（统一 Claude Code 与 Antigravity 插件的索引及下载） | enhancement, version: 0.6.0 | 2026-10-18 | 2026-10-20 | [#243](https://github.com/legeling/PromptHub/issues/243) |
 | #242 | [Feature]: [Bug / 功能建议] antigravity官方插件商店支持 | enhancement, version: 版本: 0.6.0 · 稳定版通道 | 2026-10-18 | 2026-10-20 | [#242](https://github.com/legeling/PromptHub/issues/242) |

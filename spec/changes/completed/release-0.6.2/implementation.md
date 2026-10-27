@@ -6,7 +6,7 @@ Delivery
 
 ## Status
 
-review-pending
+completed
 
 ## Scope and sequence
 
@@ -18,7 +18,18 @@ Publish the implemented 0.6.2 Desktop, CLI, self-hosted Web and Worker source ch
 4. Create the 0.6.2 tag only after the local gate passes. Require CI platform build, signing/notarization, Windows startup and artifact integrity checks before promoting the draft.
 5. Verify published CLI, Desktop assets, self-hosted container tags, repository docs and official website readback. Do not replace customer services or invent a Worker deployment target.
 
-## Evidence
+## Final delivery — 2026-10-27
+
+- Published stable v0.6.2 at commit 6e43b17a, with 20 uploaded and verified assets. Both failed candidates and their CI records are retained.
+- Tagged CI 40486270039 passed all 40 release checks and five platform builds, including both macOS signing/notarization checks. Windows ARM64 is packaging evidence only.
+- Actual Windows x64 installer acceptance 40488658011 passed all three IndexedDB recovery flows through NSIS install, uninstall, reinstall and repeated process restarts with isolated data. The first draft-download failure is retained in 40488215843.
+- Downloaded release CLI tarball passed isolated production dependency/runtime verification. Linux AppImage and Debian package bytes match SHA256 digests, and their update manifest passes verification. Homebrew version and both DMG hashes match the public release.
+- Self-hosted image run 40489397340 passed verification, build, publication and archive export. Anonymous GHCR readback confirms 0.6.2, v0.6.2 and latest all resolve to sha256:f1745c017f9f70cb53c717b4f493d0bdca326f1df0306c7d3df6e201cd4f689f.
+- Official website metadata commit 4eedf99 passed 24 Web tests, lint, typecheck and build locally; Cloud quality run 40490837057 passed all gates. Web-only Railway deployment d3dc6a72-c4ab-43c8-9e68-3e08688223b2 succeeded; public Chinese/English pages and download links select 0.6.2. Backend/admin and production migrations were not changed.
+- Seven README locales, repository website, release records and issue snapshots are synchronized. #198, #247 and #248 are confirmed closed and included in the release. Remaining unrelated Agent/architecture requirements retain their own active records.
+- Task-owned verification processes and deploy staging/download files were cleaned up. Logs and test reports are retained in the task evidence directory; pre-existing user files and services were preserved.
+
+## Earlier candidate evidence
 
 Local release gate passed: 40/40 checks, exit 0, 1,741.7 seconds, concurrency two. Command: `pnpm verify:release --concurrency 2`. Task logs: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-release-062-dfDjRw. Candidate tag v0.6.2 points to 0fbac670; CI run 40461243995 failed. No release or image has been published.
 

@@ -43,7 +43,7 @@ build pass. GitHub confirmed #248 closed on 2026-10-27. Tagged run 40486270039 a
 
 ### IndexedDB startup recovery — 2026-10-27 (#247)
 
-`released` in 0.6.2: the startup repair passed macOS acceptance and all three Windows x64 actual NSIS install/uninstall/reinstall recovery workflows in run 40488658011. Verification submission closes #247; remote closure is checked separately.
+`released` in 0.6.2: the startup repair passed macOS acceptance and all three Windows x64 actual NSIS install/uninstall/reinstall recovery workflows in run 40488658011. GitHub confirmed #247 closed after pushing `e1bb0316`; release and closure were independently verified.
 
 The same startup error was reproduced before the fix. Normalized merge now
 accepts unrelated SQLite records and equivalent timestamps; true conflicts have

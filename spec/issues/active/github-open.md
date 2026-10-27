@@ -10,8 +10,8 @@
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery is recorded in `local-github-status.md`.
-- The shared capture contains 220 issues (25 open / 195 closed), below the requested limit; pull requests are excluded.
-- #198 automatic closure was confirmed on 2026-10-27 after pushing `ebb7d66c`. #246 remains open. Closure does not establish publication.
+- The shared capture contains 222 issues (25 open / 197 closed), below the requested limit; pull requests are excluded.
+- #198, #248 and #247 are confirmed closed after their verified fixes entered main; all three fixes are included in published 0.6.2. #246 remains open for its recorded remaining acceptance.
 
 ## Open Issues
 
