@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { parseGitRepo, parseGitHubTreeLocation } from "../utils/git-repo.ts";
+import { parseGitRepo, parseGitHubTreeLocation } from "@prompthub/shared/utils/git-repo";
 
 describe("Git repository namespaces", () => {
   for (const base of [
