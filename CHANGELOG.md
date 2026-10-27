@@ -28,6 +28,10 @@ The current development version is `0.6.2`, which is unreleased. The latest stab
 
 ### 问题修复 / Fixes
 
+- **历史数据恢复**：修复历史浏览器数据阻塞启动的问题，自动合并不冲突的 Prompt，并在内容冲突时提供逐项选择，保留恢复副本。
+  - **Historical data recovery**: Recover startup blocked by historical browser data, merge non-conflicting Prompts, and offer explicit choices for conflicting content while retaining recovery copies.
+- **图片生成历史删除**：支持确认删除生成批次及失败记录，清理对应原图，同时保留已经复制到 Prompt 的图片。
+  - **Image generation history deletion**: Delete generation batches and failed records with confirmation, removing their original assets while preserving images copied to Prompts.
 - **旧版升级启动**：修复数据目录迁移后仍使用旧数据库路径、导致升级后无法启动的问题。
   - **Upgrade startup**: Fix startup failures caused by reusing an old database path after migrating the data directory.
 - **CLI 安装检测**：修复从系统桌面启动时找不到已安装的 npm、pnpm 或 CLI、导致安装按钮不可用的问题。

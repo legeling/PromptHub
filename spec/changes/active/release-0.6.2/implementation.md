@@ -74,3 +74,21 @@ imports now use the package export; both affected application typechecks and all
 101 shared cases passed. The failed run is retained; publication awaits the corrected
 platform checks. Updating the unpublished tag is explicitly authorized, preserving
 the original candidate in an archive reference.
+
+## Additional startup and history changes — 2026-10-27
+
+Commits 949a3d20 and 4e2c9d83 add historical IndexedDB conflict recovery (#247)
+and safe image generation history deletion (#248). Their real Electron flows now
+join the normal release smoke command and the Windows x64 packaged gate. The
+test launcher can select an explicit packaged executable; it retains isolated
+profiles and hidden windows and executes the package's own entrypoint.
+Public release notes include both changes. The local shared Plugin fixture now
+resolves macOS's temporary-directory alias before checking symlink boundaries;
+production path validation remains unchanged.
+
+Run 40467666335 passed every verification group, Windows x64 upgrade startup,
+Windows ARM64 and Linux packaging, and Intel macOS signing/notarization. Apple
+Silicon failed while stapling on a CloudKit network disconnect (Error 68).
+The new commits require another complete gate and platform candidate; this run
+cannot certify them. Local full-run failures were the already-corrected shared
+test import and the temporary-directory fixture; retained reports are unchanged.
