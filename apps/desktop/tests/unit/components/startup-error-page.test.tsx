@@ -3,10 +3,59 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { StartupErrorPage } from "../../../src/renderer/components/app/StartupErrorPage";
 import { formatStartupErrorLog } from "../../../src/renderer/utils/startup-error-log";
 import { renderWithI18n } from "../../helpers/i18n";
+import { useState } from "react";
+import * as indexedDbMigration from "../../../src/renderer/services/migrations/indexeddb";
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("startup error diagnostics", () => {
+  it("keeps IndexedDB recovery choices when the startup parent rerenders", async () => {
+    const migrate = vi
+      .spyOn(indexedDbMigration, "migrateIndexedDbSource")
+      .mockResolvedValue({
+        status: "conflict",
+        review: {
+          fingerprint: "review",
+          reappeared: false,
+          sourceFileCount: 0,
+          conflicts: [
+            {
+              key: "prompt",
+              id: "prompt",
+              kind: "prompt",
+              title: "Conflicting prompt",
+              differingFields: ["userPrompt"],
+              variants: [
+                { source: "database", fields: { userPrompt: "Current" } },
+                { source: "indexeddb", fields: { userPrompt: "Historical" } },
+              ],
+            },
+          ],
+        },
+      });
+    const error = new indexedDbMigration.IndexedDbRecoveryRequired();
+    function Parent(): JSX.Element {
+      const [revision, setRevision] = useState(0);
+      return (
+        <>
+          <button onClick={() => setRevision(revision + 1)}>
+            Rerender parent {revision}
+          </button>
+          <StartupErrorPage error={error} />
+        </>
+      );
+    }
+    await renderWithI18n(<Parent />);
+    const radio = await screen.findByRole("radio", {
+      name: "Historical browser data",
+    });
+    fireEvent.click(radio);
+    fireEvent.click(screen.getByRole("button", { name: "Rerender parent 0" }));
+    await screen.findByRole("button", { name: "Rerender parent 1" });
+    expect(radio).toBeChecked();
+    expect(migrate).toHaveBeenCalledOnce();
+  });
+
   it("retains the failure and stack while redacting credentials and home paths", () => {
     const error = new Error("Unprotected proxy secret in settings");
     error.stack =

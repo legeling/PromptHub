@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateLegacyIndexedDbToMainProcess } from "../../../src/renderer/services/migrations/indexeddb";
+import type { IndexedDbMigrationResponse } from "@prompthub/shared/types/indexeddb-migration";
+import {
+  IndexedDbRecoveryRequired,
+  migrateIndexedDbSource,
+  migrateLegacyIndexedDbToMainProcess,
+} from "../../../src/renderer/services/migrations/indexeddb";
 
 const prompt = {
   id: "p",
@@ -16,7 +21,9 @@ const version = {
 };
 const source = { prompts: [prompt], folders: [folder], versions: [version] };
 
-function installSource(data = source) {
+function installSource(
+  data: { prompts: object[]; folders: object[]; versions: object[] } = source,
+) {
   const close = vi.fn();
   const transaction = vi.fn((names: string[], mode: string) => {
     expect(mode).toBe("readonly");
@@ -69,10 +76,19 @@ function installTarget() {
   };
   const mark = vi.fn().mockResolvedValue(undefined);
   const status = vi.fn().mockResolvedValue(false);
-  const migrate = vi.fn(async (input: typeof source) => {
-    target = structuredClone(input);
-    return { imported: true };
-  });
+  const migrate = vi.fn(
+    async (input: typeof source): Promise<IndexedDbMigrationResponse> => {
+      target = structuredClone(input);
+      return {
+        status: "completed" as const,
+        imported: true,
+        promptCount: input.prompts.length,
+        folderCount: input.folders.length,
+        versionCount: input.versions.length,
+        recoveryPath: null,
+      };
+    },
+  );
   const api = {
     prompt: {
       migrateIdbBatch: migrate,
@@ -141,29 +157,88 @@ describe("historical IndexedDB conversion", () => {
     const target = installTarget();
     target.setTarget(structuredClone(source));
     await migrateLegacyIndexedDbToMainProcess();
-    expect(target.migrate).not.toHaveBeenCalled();
+    expect(target.migrate).toHaveBeenCalledOnce();
     expect(target.mark).toHaveBeenCalledOnce();
   });
 
-  it.each(["missing-version", "changed-content"])(
-    "rejects %s instead of declaring ready",
-    async (scenario) => {
-      const input = installSource();
-      const target = installTarget();
-      target.setTarget({
-        ...source,
-        ...(scenario === "missing-version"
-          ? { versions: [] }
-          : { prompts: [{ ...prompt, userPrompt: "Different" }] }),
-      });
-      await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
-        /incomplete|conflict/i,
-      );
-      expect(target.mark).not.toHaveBeenCalled();
-      expect(target.migrate).not.toHaveBeenCalled();
-      expect(input.close).toHaveBeenCalledOnce();
-    },
-  );
+  it("#247 continues migration when SQLite contains unrelated current prompts", async () => {
+    installSource();
+    const target = installTarget();
+    target.setTarget({
+      prompts: [{ ...prompt, id: "current" }],
+      folders: [],
+      versions: [],
+    });
+    await expect(migrateLegacyIndexedDbToMainProcess()).resolves.toMatchObject({
+      migrated: true,
+    });
+    expect(target.migrate).toHaveBeenCalledOnce();
+  });
+
+  it("#247 accepts equivalent timestamp representations after SQL conversion", async () => {
+    installSource({
+      ...source,
+      prompts: [{ ...prompt, createdAt: "2026-04-21T00:00:00Z" }],
+    });
+    const target = installTarget();
+    target.setTarget({
+      ...source,
+      prompts: [{ ...prompt, createdAt: "2026-04-21T00:00:00.000Z" }],
+    });
+    target.migrate.mockResolvedValue({
+      status: "completed",
+      imported: false,
+      promptCount: 1,
+      folderCount: 1,
+      versionCount: 1,
+      recoveryPath: null,
+    });
+    await expect(migrateLegacyIndexedDbToMainProcess()).resolves.toMatchObject({
+      migrated: false,
+    });
+    expect(target.mark).toHaveBeenCalledOnce();
+  });
+
+  it("opens explicit recovery for a main-process conflict without marking complete", async () => {
+    const input = installSource();
+    const target = installTarget();
+    target.migrate.mockImplementation(async () => {
+      // Simulate the typed IPC conflict response; SQL comparison is exercised in Core tests.
+      return {
+        status: "conflict",
+        review: {
+          fingerprint: "review",
+          reappeared: false,
+          sourceFileCount: 0,
+          conflicts: [],
+        },
+      };
+    });
+    await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toBeInstanceOf(
+      IndexedDbRecoveryRequired,
+    );
+    expect(target.mark).not.toHaveBeenCalled();
+    expect(input.close).toHaveBeenCalledOnce();
+  });
+
+  it("re-reads the browser snapshot and forwards explicit recovery choices", async () => {
+    const input = installSource();
+    const target = installTarget();
+    const resolution = { fingerprint: "review", choices: [] };
+    await migrateIndexedDbSource(resolution);
+    expect(target.migrate).toHaveBeenCalledWith({ ...source, resolution });
+    expect(input.close).toHaveBeenCalledOnce();
+  });
+
+  it("does not report completion when writing the marker fails", async () => {
+    const input = installSource();
+    const target = installTarget();
+    target.mark.mockRejectedValue(new Error("marker failed"));
+    await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
+      "marker failed",
+    );
+    expect(input.close).toHaveBeenCalledOnce();
+  });
 
   it("propagates import failure and preserves the completion state", async () => {
     const input = installSource();
@@ -176,12 +251,15 @@ describe("historical IndexedDB conversion", () => {
     expect(input.close).toHaveBeenCalledOnce();
   });
 
-  it("verifies data even when import claims success", async () => {
+  it("rejects an incomplete IPC response", async () => {
     installSource();
     const target = installTarget();
-    target.migrate.mockImplementation(async () => ({ imported: true }));
+    // Intentionally malformed transport response exercises runtime IPC validation.
+    target.migrate.mockResolvedValue({
+      imported: true,
+    } as IndexedDbMigrationResponse);
     await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
-      /verification/i,
+      /response/i,
     );
     expect(target.mark).not.toHaveBeenCalled();
   });

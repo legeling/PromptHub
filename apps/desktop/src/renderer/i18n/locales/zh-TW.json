@@ -1,5 +1,7 @@
 {
   "startupRecovery": {
+    "indexedDbDescription": "歷史瀏覽器資料與目前資料庫存在內容衝突。請逐筆檢視並選擇要保留的內容。套用前會儲存兩份資料的復原副本，不會刪除瀏覽器中的原資料。",
+    "indexedDbSummary": "有 {{conflicts}} 筆記錄需要選擇。",
     "title": "核對歷史提示詞資料",
     "description": "PromptHub 發現目前資料庫與舊提示詞工作區存在差異，正常編輯已暫停。請為每項衝突選擇要保留的來源；確認前不會修改資料。",
     "differences": "差異欄位：{{fields}}",
@@ -23,6 +25,7 @@
     "confirmMessage": "原始歷史檔案和資料庫復原點將被保留。所選內容將成為目前資料庫資料，必要時會新增歷史版本。重新啟動前正常編輯仍將暫停。",
     "confirm": "套用選擇",
     "source": {
+      "indexeddb": "歷史瀏覽器資料",
       "database": "目前資料庫",
       "workspace": "歷史工作區",
       "data": "歷史資料目錄"

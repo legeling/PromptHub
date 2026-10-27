@@ -1,5 +1,7 @@
 {
   "startupRecovery": {
+    "indexedDbDescription": "Historical browser data conflicts with the current database. Review each record and choose which content to keep. Both sources are saved before applying your choices; browser data is not deleted.",
+    "indexedDbSummary": "{{conflicts}} records need your choice.",
     "title": "Review historical Prompt data",
     "description": "PromptHub found differences between the current database and an old Prompt workspace. Normal editing is paused. Choose the source to keep for each conflict; no data is changed until you confirm.",
     "differences": "Different fields: {{fields}}",
@@ -23,6 +25,7 @@
     "confirmMessage": "The original historical files and a database recovery point will be preserved. Your choices will become the current database data; a new history version is created when needed. Normal editing stays paused until restart.",
     "confirm": "Apply choices",
     "source": {
+      "indexeddb": "Historical browser data",
       "database": "Current database",
       "workspace": "Historical workspace",
       "data": "Historical data directory"

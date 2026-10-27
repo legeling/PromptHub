@@ -1,5 +1,7 @@
 {
   "startupRecovery": {
+    "indexedDbDescription": "Les anciennes données du navigateur sont en conflit avec la base actuelle. Vérifiez chaque entrée et choisissez le contenu à conserver. Les deux sources sont sauvegardées avant application ; les données du navigateur ne sont pas supprimées.",
+    "indexedDbSummary": "{{conflicts}} entrées nécessitent votre choix.",
     "title": "Vérifier les anciennes données de prompts",
     "description": "Des différences existent entre la base actuelle et un ancien espace de prompts. L’édition normale est suspendue. Choisissez la source à conserver pour chaque conflit. Rien ne sera modifié avant confirmation.",
     "differences": "Champs différents : {{fields}}",
@@ -23,6 +25,7 @@
     "confirmMessage": "Les fichiers historiques originaux et un point de récupération de la base seront conservés. Vos choix deviendront les données actuelles ; une version d’historique sera créée si nécessaire. L’édition restera suspendue jusqu’au redémarrage.",
     "confirm": "Appliquer les choix",
     "source": {
+      "indexeddb": "Anciennes données du navigateur",
       "database": "Base actuelle",
       "workspace": "Ancien espace de travail",
       "data": "Ancien répertoire de données"

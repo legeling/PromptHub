@@ -1,5 +1,7 @@
 {
   "startupRecovery": {
+    "indexedDbDescription": "Los datos históricos del navegador entran en conflicto con la base de datos actual. Revise cada registro y elija qué contenido conservar. Se guardan ambas fuentes antes de aplicar los cambios; los datos del navegador no se eliminan.",
+    "indexedDbSummary": "{{conflicts}} registros requieren su elección.",
     "title": "Revisar datos históricos de prompts",
     "description": "Hay diferencias entre la base de datos actual y un antiguo espacio de prompts. La edición normal está pausada. Elige la fuente que conservar para cada conflicto. No se modificará nada hasta que confirmes.",
     "differences": "Campos diferentes: {{fields}}",
@@ -23,6 +25,7 @@
     "confirmMessage": "Se conservarán los archivos históricos originales y un punto de recuperación de la base de datos. Tus elecciones se convertirán en los datos actuales; se creará una versión del historial si es necesario. La edición seguirá pausada hasta reiniciar.",
     "confirm": "Aplicar opciones",
     "source": {
+      "indexeddb": "Datos históricos del navegador",
       "database": "Base de datos actual",
       "workspace": "Espacio de trabajo histórico",
       "data": "Directorio de datos histórico"

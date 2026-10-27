@@ -4,6 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../ui/Button";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { formatStartupErrorLog } from "../../utils/startup-error-log";
+import { IndexedDbRecoveryRequired } from "../../services/migrations/indexeddb";
+import { IndexedDbRecovery } from "./IndexedDbRecovery";
+
+function reloadWindow(): void {
+  window.location.reload();
+}
 
 function StartupErrorActions({
   log,
@@ -47,13 +53,15 @@ function StartupErrorActions({
 
 export function StartupErrorPage({
   error,
-  reload = () => window.location.reload(),
+  reload = reloadWindow,
 }: {
   error: Error;
   reload?: () => void;
 }): ReactElement {
   const { t } = useTranslation();
   const log = useMemo(() => formatStartupErrorLog(error), [error]);
+  if (error instanceof IndexedDbRecoveryRequired)
+    return <IndexedDbRecovery reload={reload} />;
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground">
       <div role="alert" className="max-w-2xl space-y-4">

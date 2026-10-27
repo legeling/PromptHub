@@ -29,6 +29,23 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### IndexedDB startup recovery — 2026-10-27 (#247)
+
+`in_progress`: the startup defect is locally repaired and macOS acceptance is
+complete; Windows x64 packaged install/reinstall acceptance remains. GitHub
+readback at intake confirmed #247 OPEN. Local submission with `Refs #247` is
+authorized while Windows acceptance remains pending; no push, release or remote
+issue mutation.
+
+The same startup error was reproduced before the fix. Normalized merge now
+accepts unrelated SQLite records and equivalent timestamps; true conflicts have
+explicit recovery choices with both originals preserved, atomic writes/readback
+and a SQL receipt preventing replay. 30 Core, 34 desktop and 51 related regression
+cases pass; 3 real Electron workflows pass through repeated full-process restarts,
+with additional dark-theme acceptance. All cases and workflows passed again before
+submission. Exact commands and remaining boundaries:
+[data recovery acceptance](../../knowledge/behavior/data-recovery.md#acceptance--2026-10-27).
+
 ### Workspace refresh acceptance — 2026-10-27 (#198)
 
 `release_pending`: the built Electron app passed all three isolated hidden-window

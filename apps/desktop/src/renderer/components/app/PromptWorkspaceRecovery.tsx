@@ -10,6 +10,12 @@ import type {
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
+export type RecoveryControls = Pick<
+  PromptWorkspaceRecoveryApi,
+  "review" | "resolve" | "restart"
+> &
+  Partial<Pick<PromptWorkspaceRecoveryApi, "openDataDirectory" | "quit">>;
+
 function ConflictChoices({
   conflict,
   selected,
@@ -83,7 +89,7 @@ function ConflictChoices({
   );
 }
 
-function useRecovery(api: PromptWorkspaceRecoveryApi) {
+function useRecovery(api: RecoveryControls) {
   const { t } = useTranslation();
   const [review, setReview] = useState<PromptWorkspaceReview | null>(null);
   const [choices, setChoices] = useState<Record<string, PromptWorkspaceSource>>(
@@ -158,8 +164,12 @@ function useRecovery(api: PromptWorkspaceRecoveryApi) {
 
 export default function PromptWorkspaceRecovery({
   api = window.api.promptWorkspaceRecovery,
+  description,
+  summaryKey = "startupRecovery.summary",
 }: {
-  api?: PromptWorkspaceRecoveryApi;
+  api?: RecoveryControls;
+  description?: string;
+  summaryKey?: string;
 }): JSX.Element {
   const { t } = useTranslation();
   const state = useRecovery(api);
@@ -180,7 +190,7 @@ export default function PromptWorkspaceRecovery({
             {t("startupRecovery.title")}
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            {t("startupRecovery.description")}
+            {description ?? t("startupRecovery.description")}
           </p>
         </header>
         {state.error && (
@@ -226,7 +236,7 @@ export default function PromptWorkspaceRecovery({
             {state.review && (
               <section className="space-y-5">
                 <p className="text-sm text-muted-foreground">
-                  {t("startupRecovery.summary", {
+                  {t(summaryKey, {
                     files: state.review.sourceFileCount,
                     conflicts: state.review.conflicts.length,
                   })}
@@ -295,26 +305,35 @@ export default function PromptWorkspaceRecovery({
           </>
         )}
         <footer className="flex flex-wrap gap-3 border-t border-border pt-5">
-          <Button
-            variant="secondary"
-            disabled={state.busy}
-            onClick={() =>
-              void state.action(async () => {
-                const result = await api.openDataDirectory();
-                if (!result.success)
-                  throw new Error(result.error ?? t("startupRecovery.failed"));
-              })
-            }
-          >
-            {t("startupRecovery.openDirectory")}
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={state.busy}
-            onClick={() => void state.action(api.quit)}
-          >
-            {t("startupRecovery.quit")}
-          </Button>
+          {api.openDataDirectory && (
+            <Button
+              variant="secondary"
+              disabled={state.busy}
+              onClick={() =>
+                void state.action(async () => {
+                  if (!api.openDataDirectory) return;
+                  const result = await api.openDataDirectory();
+                  if (!result.success)
+                    throw new Error(
+                      result.error ?? t("startupRecovery.failed"),
+                    );
+                })
+              }
+            >
+              {t("startupRecovery.openDirectory")}
+            </Button>
+          )}
+          {api.quit && (
+            <Button
+              variant="ghost"
+              disabled={state.busy}
+              onClick={() => {
+                if (api.quit) void state.action(api.quit);
+              }}
+            >
+              {t("startupRecovery.quit")}
+            </Button>
+          )}
         </footer>
       </div>
       <ConfirmDialog

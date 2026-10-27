@@ -8,6 +8,7 @@ import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import type { IndexedDbMigrationResponse } from "@prompthub/shared/types/indexeddb-migration";
 import type {
   Folder,
   OutputFormatItem,
@@ -16,13 +17,10 @@ import type {
   PromptVersion,
 } from "@prompthub/shared/types";
 
-import DatabaseAdapter from "../../../src/main/database/sqlite";
+import { initDatabase, closeDatabase } from "@prompthub/db";
+import type DatabaseAdapter from "../../../src/main/database/sqlite";
 import { FolderDB } from "../../../src/main/database/folder";
 import { PromptDB } from "../../../src/main/database/prompt";
-import {
-  SCHEMA_INDEXES,
-  SCHEMA_TABLES,
-} from "../../../src/main/database/schema";
 import { registerPromptIPC } from "../../../src/main/ipc/prompt.ipc";
 import {
   configureRuntimePaths,
@@ -52,11 +50,7 @@ describe("prompt IPC IDB migration", () => {
     );
     configureRuntimePaths({ userDataPath: tempDir });
 
-    rawDb = new DatabaseAdapter(":memory:");
-    rawDb.pragma("journal_mode = WAL");
-    rawDb.pragma("foreign_keys = ON");
-    rawDb.exec(SCHEMA_TABLES);
-    rawDb.exec(SCHEMA_INDEXES);
+    rawDb = initDatabase(path.join(tempDir, "data", "prompthub.db"));
 
     promptDb = new PromptDB(rawDb);
     folderDb = new FolderDB(rawDb);
@@ -64,7 +58,7 @@ describe("prompt IPC IDB migration", () => {
   });
 
   afterEach(() => {
-    rawDb.close();
+    closeDatabase();
     resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -155,7 +149,8 @@ describe("prompt IPC IDB migration", () => {
       versionCount: number;
     };
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
+      status: "completed",
       imported: true,
       folderCount: 2,
       promptCount: 1,
@@ -221,6 +216,45 @@ describe("prompt IPC IDB migration", () => {
         .prepare("SELECT id FROM prompt_output_format_items WHERE id = ?")
         .get(outputFormatItem.id),
     ).toEqual({ id: outputFormatItem.id });
+  });
+
+  it("#247 resolves an IPC payload containing review choices and preserves both originals", async () => {
+    const handler = handleMock.mock.calls.find(
+      ([channel]) => channel === IPC_CHANNELS.PROMPT_MIGRATE_IDB_BATCH,
+    )?.[1];
+    if (!handler) throw new Error("Missing migration IPC");
+    const current = promptDb.create({
+      title: "Current",
+      userPrompt: "Current body",
+    });
+    const payload = {
+      folders: [],
+      prompts: [{ ...current, userPrompt: "Historical body" }],
+      versions: [],
+    };
+    const review: IndexedDbMigrationResponse = await handler(null, payload);
+    if (review.status !== "conflict") throw new Error("Expected a conflict");
+    const resolved: IndexedDbMigrationResponse = await handler(null, {
+      ...payload,
+      resolution: {
+        fingerprint: review.review.fingerprint,
+        choices: review.review.conflicts.map(({ key }) => ({
+          key,
+          source: "indexeddb",
+        })),
+      },
+    });
+    expect(resolved.status).toBe("completed");
+    expect(promptDb.getById(current.id)?.userPrompt).toBe("Historical body");
+    expect(
+      promptDb.getVersions(current.id).map((version) => version.userPrompt),
+    ).toEqual(["Historical body", "Current body"]);
+    if (resolved.status !== "completed" || !resolved.recoveryPath)
+      throw new Error("Missing recovery path");
+    const archive = JSON.parse(
+      fs.readFileSync(path.join(resolved.recoveryPath, "source.json"), "utf8"),
+    );
+    expect(archive).toEqual(payload);
   });
 
   it("rolls back the complete prompt graph when atomic restore fails", async () => {

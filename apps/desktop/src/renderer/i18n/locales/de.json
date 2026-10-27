@@ -1,5 +1,7 @@
 {
   "startupRecovery": {
+    "indexedDbDescription": "Frühere Browserdaten stehen im Konflikt mit der aktuellen Datenbank. Prüfen Sie jeden Eintrag und wählen Sie den zu behaltenden Inhalt. Beide Quellen werden vor der Anwendung gesichert; die Browserdaten werden nicht gelöscht.",
+    "indexedDbSummary": "Für {{conflicts}} Einträge ist eine Auswahl erforderlich.",
     "title": "Historische Prompt-Daten prüfen",
     "description": "Die aktuelle Datenbank und ein alter Prompt-Arbeitsbereich unterscheiden sich. Die normale Bearbeitung ist pausiert. Wählen Sie für jeden Konflikt die Quelle, die erhalten bleiben soll. Vor Ihrer Bestätigung wird nichts geändert.",
     "differences": "Abweichende Felder: {{fields}}",
@@ -23,6 +25,7 @@
     "confirmMessage": "Die historischen Originaldateien und ein Datenbank-Wiederherstellungspunkt bleiben erhalten. Ihre Auswahl wird zum aktuellen Datenbestand; bei Bedarf entsteht eine neue Verlaufsversion. Die Bearbeitung bleibt bis zum Neustart pausiert.",
     "confirm": "Auswahl anwenden",
     "source": {
+      "indexeddb": "Frühere Browserdaten",
       "database": "Aktuelle Datenbank",
       "workspace": "Historischer Arbeitsbereich",
       "data": "Historisches Datenverzeichnis"

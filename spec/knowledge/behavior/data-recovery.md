@@ -6,6 +6,93 @@
 
 ## Stable Requirements
 
+### Historical IndexedDB startup migration (#247)
+
+- Desktop reads the retired `PromptHubDB` schema 1 without upgrading or deleting
+  it. SQLite is authoritative; Core owns validation, normalization, conflict
+  review, transactional import and readback through the existing migration IPC.
+- An unrelated current record does not block import. Compare represented legacy
+  fields after applying the existing SQLite codecs (including timestamps,
+  optional values and version aliases). Missing records/history are merged;
+  differing content is never selected by modification time or overwritten silently.
+- True conflicts open the startup recovery UI with explicit current-database or
+  historical-browser choices for every conflicting record. Re-read browser data
+  on review/resolve and bind choices to a fingerprint of both sources. A stale,
+  incomplete or invalid selection fails before mutation.
+- Before writing, create a database safety point and journal-publish raw
+  `source.json` and normalized `current.json` under
+  `recovery/indexeddb-prompts-v1/<operation-id>/`. SQL writes, graph verification
+  and the `schema_migrations` receipt `indexeddb-prompts-v1` commit together.
+  No table layout changes are required. Failure rolls back and remains retryable.
+- The SQL receipt prevents replay if writing the renderer completion marker
+  fails, including after subsequent edits/deletions. Legacy localStorage flags
+  alone are not proof of conversion. Existing verified renderer markers remain
+  valid. No normal startup deletes the original IndexedDB.
+- Rollback: preserve current data first; restore the pre-migration safety point
+  in an isolated root with its matching browser profile. Do not remove completion
+  markers or copy legacy records into a live database to force a replay.
+- Merge uses maps and linear dependency ordering, with O(n) working memory and
+  one staged SQLite normalization pass. Snapshot I/O occurs only on migration,
+  not on ordinary startup after completion. Tests use synthetic disk databases,
+  transaction faults, conflicts, repeated opens and isolated Electron profiles.
+  Windows packaged acceptance is separate from macOS Electron acceptance.
+- Graph hashing retains the existing O(n log n) canonical sort. Existing DB
+  codecs and publication/recovery infrastructure remain the single owners;
+  no parallel serializer, storage journal or runtime fallback is introduced.
+  Migration orchestration, publication and row merging remain cohesive functions
+  slightly above 50 lines so the ordered safety/transaction steps and paired
+  conflict alternatives stay visible together. The regressions below cover them.
+
+#### Acceptance — 2026-10-27
+
+- Original renderer logic reproduced the exact #247 error for a nonempty,
+  unrelated SQLite target and equivalent differently formatted timestamps:
+  2 expected-behavior failures before the fix. No reporter database was accessed.
+- Core: 30 real disk-SQLite cases pass, including equivalent/partial conversion,
+  explicit and mixed conflict choices, original-source archives, preserved
+  relations/output formats, stale/invalid requests, null bytes and malformed
+  graphs, SQL/publication/readback faults, retry, reopen and no resurrection.
+  V8 coverage of the two new migration files: 99.03% lines, 94.48% branches,
+  100% functions. Unexecuted branches include the normalization-identity invariant
+  and the second pre-publication concurrent-change guard; coverage is not Windows
+  or reporter-data acceptance.
+- Desktop: 34 focused cases pass across browser-source handoff, registered IPC
+  with real SQLite, recovery interaction/seven locales and generic startup errors.
+  Recovery choices survive parent rerenders. Browser unit cases stub IndexedDB
+  and IPC; SQL behavior is covered separately.
+  Related renderer persistence, workspace upgrade, SQLite migration and durable
+  publication regression suites: 51 pass, including process-exit recovery.
+- Built macOS Electron: 3 isolated workflows pass through real IndexedDB,
+  preload, IPC, SQLite and UI choices: automatic merge, keep current, keep
+  historical. Each includes full-process restarts, source retention and deletion
+  followed by a lost renderer marker without resurrection. Two conflict flows
+  additionally pass with verified dark theme. Screenshots were inspected.
+- Representative 500-Prompt / 1,500-version import: 330 ms without coverage on
+  this host; after reopening, every current body and version count matches.
+  This is a measurement, not a cross-platform performance promise.
+- Source/test typecheck, scoped desktop/shared/core ESLint, production build,
+  file-size gate and spec governance checks pass. Build has existing chunk and
+  deprecation warnings. No package release or full release harness was run.
+- Pre-submission reacceptance repeated all 115 relevant regression cases and
+  all 3 isolated Electron restart workflows successfully against a fresh build.
+  The same 500-Prompt / 1,500-version import measured 464 ms during this run.
+- Remaining: Windows x64 packaged install/reinstall verification; the reporter's
+  original data was not supplied. Local submission is authorized with `Refs #247`;
+  keep the issue in progress until Windows acceptance. No push, remote issue change
+  or user-data mutation. Test processes and synthetic profiles are closed/removed; retained
+  screenshots/coverage are test reports, not user-data backups.
+
+Reproduce from the repository root:
+
+```sh
+pnpm --dir packages/core exec vitest run tests/indexeddb-migration.test.ts --maxWorkers=1 --minWorkers=1
+pnpm --dir apps/desktop exec vitest run tests/unit/services/idb-migration.test.ts tests/unit/main/prompt-ipc-idb-migration.test.ts tests/unit/components/startup-error-page.test.tsx tests/unit/components/prompt-workspace-recovery.test.tsx --maxWorkers=1 --minWorkers=1
+pnpm --dir packages/core exec vitest run tests/renderer-persistence-migration.test.ts tests/prompt-workspace-upgrade.test.ts tests/sqlite-entry-publication.test.ts tests/prompt-sqlite-migration.test.ts --maxWorkers=1 --minWorkers=1
+pnpm typecheck:tests
+pnpm build
+pnpm --dir apps/desktop exec playwright test tests/e2e/indexeddb-startup-recovery.spec.ts --workers=1
+```
+
 ### 1. Recovery Safety
 
 Layout migration must invalidate the runtime storage context when publishing its

@@ -1,17 +1,24 @@
+import type {
+  IndexedDbMigrationRequest,
+  IndexedDbMigrationResponse,
+} from "@prompthub/shared/types/indexeddb-migration";
 import { ipcRenderer } from "electron";
-import type { PromptTestHistoryReply, PromptTestRunInput, PromptTestRun, PromptTestRunSummary } from "@prompthub/shared/types/prompt-test-history";
+import type {
+  PromptTestHistoryReply,
+  PromptTestRunInput,
+  PromptTestRun,
+  PromptTestRunSummary,
+} from "@prompthub/shared/types/prompt-test-history";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
   CreateOutputFormatItemDTO,
   CreatePromptRelationDTO,
   CreatePromptDTO,
-  Folder,
   OutputFormatItemQuery,
   OutputFormatItem,
   Prompt,
   PromptRelation,
   PromptRelationQuery,
-  PromptVersion,
   RestorePromptGraphInput,
   RestorePromptGraphResult,
   SearchQuery,
@@ -52,19 +59,10 @@ export const promptApi = {
       payload,
     ) as Promise<RestorePromptGraphResult>,
   syncWorkspace: () => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_SYNC_WORKSPACE),
-  /**
-   * Atomically migrate legacy IndexedDB data into SQLite via a single
-   * main-process transaction. Safe to call multiple times — the handler
-   * returns { imported: false } when the target already has data.
-   *
-   * 原子批量迁移：通过单事务将 IndexedDB 数据写入 SQLite。
-   * 幂等：目标已有数据时返回 { imported: false }。
-   */
-  migrateIdbBatch: (payload: {
-    folders: Folder[];
-    prompts: Prompt[];
-    versions: PromptVersion[];
-  }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_MIGRATE_IDB_BATCH, payload),
+  migrateIdbBatch: (
+    payload: IndexedDbMigrationRequest,
+  ): Promise<IndexedDbMigrationResponse> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_MIGRATE_IDB_BATCH, payload),
   move: (promptId: string, newParentId: string | null, newOrder: number) =>
     ipcRenderer.invoke(
       IPC_CHANNELS.PROMPT_MOVE,

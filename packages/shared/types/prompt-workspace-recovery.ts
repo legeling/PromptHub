@@ -1,4 +1,8 @@
-export type PromptWorkspaceSource = "database" | "workspace" | "data";
+export type PromptWorkspaceSource =
+  | "database"
+  | "workspace"
+  | "data"
+  | "indexeddb";
 export type PromptWorkspaceRecordKind = "prompt" | "folder" | "version";
 
 export interface PromptWorkspaceVariant {

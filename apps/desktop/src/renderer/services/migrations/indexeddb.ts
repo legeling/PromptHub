@@ -1,15 +1,22 @@
-import type { Folder, Prompt, PromptVersion } from "@prompthub/shared/types";
+import type {
+  LegacyIndexedDbSnapshot,
+  IndexedDbMigrationResponse,
+} from "@prompthub/shared/types/indexeddb-migration";
+import type { PromptWorkspaceResolution } from "@prompthub/shared/types/prompt-workspace-recovery";
+
+export class IndexedDbRecoveryRequired extends Error {
+  constructor() {
+    super(
+      "Historical IndexedDB contains conflicting records; review the recovery choices",
+    );
+    this.name = "IndexedDbRecoveryRequired";
+  }
+}
 
 const LEGACY_DATABASE_NAME = "PromptHubDB";
 // Frozen source schema used by the retired browser backend.
 const LAST_INDEXEDDB_SCHEMA_VERSION = 1;
 const SOURCE_STORES = ["prompts", "folders", "versions"] as const;
-
-interface LegacySnapshot {
-  prompts: Prompt[];
-  folders: Folder[];
-  versions: PromptVersion[];
-}
 
 export interface IndexedDbMigrationResult {
   migrated: boolean;
@@ -41,7 +48,7 @@ function openSource(): Promise<IDBDatabase> {
   });
 }
 
-function readSource(database: IDBDatabase): Promise<LegacySnapshot> {
+function readSource(database: IDBDatabase): Promise<LegacyIndexedDbSnapshot> {
   return new Promise((resolve, reject) => {
     const stores = SOURCE_STORES.filter((name) =>
       Array.from(database.objectStoreNames).includes(name),
@@ -51,7 +58,11 @@ function readSource(database: IDBDatabase): Promise<LegacySnapshot> {
       return;
     }
     const transaction = database.transaction(stores, "readonly");
-    const snapshot: LegacySnapshot = { prompts: [], folders: [], versions: [] };
+    const snapshot: LegacyIndexedDbSnapshot = {
+      prompts: [],
+      folders: [],
+      versions: [],
+    };
     for (const store of stores) {
       const request = transaction.objectStore(store).getAll();
       request.onsuccess = () => {
@@ -67,82 +78,10 @@ function readSource(database: IDBDatabase): Promise<LegacySnapshot> {
   });
 }
 
-function validateSource(snapshot: LegacySnapshot): void {
-  for (const name of SOURCE_STORES) {
-    const ids = new Set<string>();
-    for (const record of snapshot[name]) {
-      if (
-        !record ||
-        typeof record.id !== "string" ||
-        !record.id ||
-        ids.has(record.id)
-      ) {
-        throw new Error(`Invalid or duplicate historical ${name} ID`);
-      }
-      ids.add(record.id);
-    }
-  }
-  const promptIds = new Set(snapshot.prompts.map((prompt) => prompt.id));
-  for (const version of snapshot.versions) {
-    if (!promptIds.has(version.promptId))
-      throw new Error("Historical version has no prompt");
-  }
-}
-
-function sameValue(source: unknown, target: unknown): boolean {
-  if (source === target || (source == null && target == null)) return true;
-  if (Array.isArray(source)) {
-    return (
-      Array.isArray(target) &&
-      source.length === target.length &&
-      source.every((value, index) => sameValue(value, target[index]))
-    );
-  }
-  if (
-    source &&
-    target &&
-    typeof source === "object" &&
-    typeof target === "object"
-  ) {
-    return Object.entries(source).every(([key, value]) =>
-      sameValue(value, Reflect.get(target, key)),
-    );
-  }
-  return false;
-}
-
-function containsSource(
-  source: LegacySnapshot,
-  target: LegacySnapshot,
-): boolean {
-  return SOURCE_STORES.every((store) => {
-    const records = new Map<string, Prompt | Folder | PromptVersion>();
-    for (const record of target[store]) records.set(record.id, record);
-    return source[store].every((record) =>
-      sameValue(record, records.get(record.id)),
-    );
-  });
-}
-
-async function readTarget(source: LegacySnapshot): Promise<LegacySnapshot> {
-  const [prompts, folders] = await Promise.all([
-    window.api.prompt.getAll(),
-    window.api.folder.getAll(),
-  ]);
-  const versions: PromptVersion[] = [];
-  for (const prompt of source.prompts) {
-    versions.push(...(await window.api.version.getAll(prompt.id)));
-  }
-  return { prompts, folders, versions };
-}
-
 function requireMigrationApi(): void {
   const api = window.api;
   const methods = {
     migrateIdbBatch: api?.prompt?.migrateIdbBatch,
-    getPrompts: api?.prompt?.getAll,
-    getFolders: api?.folder?.getAll,
-    getVersions: api?.version?.getAll,
     isIndexedDbMigrationDone:
       api?.settings?.rendererPersistence?.isIndexedDbMigrationDone,
     markIndexedDbMigrationDone:
@@ -154,19 +93,24 @@ function requireMigrationApi(): void {
   }
 }
 
-async function convertSource(source: LegacySnapshot): Promise<boolean> {
-  const target = await readTarget(source);
-  if (containsSource(source, target)) return false;
-  if (target.prompts.length || target.folders.length) {
-    throw new Error(
-      "Historical IndexedDB migration is incomplete or has a content conflict",
-    );
+export async function migrateIndexedDbSource(
+  resolution?: PromptWorkspaceResolution,
+): Promise<IndexedDbMigrationResponse> {
+  const database = await openSource();
+  try {
+    const source = await readSource(database);
+    const result = await window.api.prompt.migrateIdbBatch({
+      ...source,
+      ...(resolution ? { resolution } : {}),
+    });
+    if (result.status === "completed")
+      await window.api.settings.rendererPersistence.markIndexedDbMigrationDone();
+    else if (result.status !== "conflict")
+      throw new Error("Invalid IndexedDB migration response");
+    return result;
+  } finally {
+    database.close();
   }
-  const result = await window.api.prompt.migrateIdbBatch(source);
-  if (!containsSource(source, await readTarget(source))) {
-    throw new Error("Historical IndexedDB migration verification failed");
-  }
-  return result.imported;
 }
 
 export async function migrateLegacyIndexedDbToMainProcess(): Promise<IndexedDbMigrationResult> {
@@ -184,19 +128,12 @@ export async function migrateLegacyIndexedDbToMainProcess(): Promise<IndexedDbMi
     await marker.markIndexedDbMigrationDone();
     return empty;
   }
-  const database = await openSource();
-  try {
-    const source = await readSource(database);
-    validateSource(source);
-    const migrated = await convertSource(source);
-    await marker.markIndexedDbMigrationDone();
-    return {
-      migrated,
-      promptCount: source.prompts.length,
-      folderCount: source.folders.length,
-      versionCount: source.versions.length,
-    };
-  } finally {
-    database.close();
-  }
+  const result = await migrateIndexedDbSource();
+  if (result.status === "conflict") throw new IndexedDbRecoveryRequired();
+  return {
+    migrated: result.imported,
+    promptCount: result.promptCount,
+    folderCount: result.folderCount,
+    versionCount: result.versionCount,
+  };
 }

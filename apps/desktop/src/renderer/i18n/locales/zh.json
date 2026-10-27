@@ -1,5 +1,7 @@
 {
   "startupRecovery": {
+    "indexedDbDescription": "历史浏览器数据与当前数据库存在内容冲突。请逐条查看并选择要保留的内容。应用前会保存两份数据的恢复副本，不会删除浏览器中的原数据。",
+    "indexedDbSummary": "有 {{conflicts}} 条记录需要选择。",
     "title": "核对历史提示词数据",
     "description": "PromptHub 发现当前数据库与旧提示词工作区存在差异，正常编辑已暂停。请为每项冲突选择要保留的来源；确认前不会修改数据。",
     "differences": "差异字段：{{fields}}",
@@ -23,6 +25,7 @@
     "confirmMessage": "原始历史文件和数据库恢复点将被保留。所选内容将成为当前数据库数据，必要时会新增历史版本。重启前正常编辑仍将暂停。",
     "confirm": "应用选择",
     "source": {
+      "indexeddb": "历史浏览器数据",
       "database": "当前数据库",
       "workspace": "历史工作区",
       "data": "历史数据目录"
