@@ -15,6 +15,7 @@ import {
 
 type SeedDatabase = {
   exec: (sql: string) => void;
+  all: (sql: string) => Array<Record<string, unknown>>;
   close: () => void;
 };
 
@@ -44,6 +45,12 @@ function seedUpgradeProfile(appDataPath: string): string {
   try {
     database.exec("CREATE TABLE startup_smoke (value TEXT NOT NULL)");
     database.exec("INSERT INTO startup_smoke (value) VALUES ('0.5.9')");
+    database.exec(
+      "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+    );
+    database.exec(
+      "INSERT INTO settings (key, value) VALUES ('startup-smoke-preserved', '0.5.9')",
+    );
   } finally {
     database.close();
   }
@@ -74,6 +81,25 @@ function readStartupEvents(logPath: string): StartupEvent[] {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
+  }
+}
+
+function verifyUpgradeData(userDataPath: string): void {
+  const file = path.join(userDataPath, "data", "prompthub.db");
+  if (!fs.existsSync(file)) throw new Error("Migrated database is missing");
+  if (fs.existsSync(path.join(userDataPath, "prompthub.db"))) {
+    throw new Error("Startup recreated a stale root-level database");
+  }
+  const database = new SeedDatabase(file);
+  try {
+    const rows = database.all(
+      "SELECT value FROM settings WHERE key = 'startup-smoke-preserved'",
+    );
+    if (rows.length !== 1 || rows[0].value !== "0.5.9") {
+      throw new Error("Upgrade did not preserve the original database row");
+    }
+  } finally {
+    database.close();
   }
 }
 
@@ -144,7 +170,9 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-type ExpectedCanonicalStatus = "waiting-renderer-migration" | "already-canonical";
+type ExpectedCanonicalStatus =
+  | "waiting-renderer-migration"
+  | "already-canonical";
 type ExpectedMigrationStatus = "migrated" | "already-complete";
 
 interface LaunchResult {
@@ -352,6 +380,7 @@ async function main(): Promise<void> {
       expectedCanonicalStatus: "waiting-renderer-migration",
       expectedMigrationStatus: "migrated",
     });
+    verifyUpgradeData(userDataPath);
     const secondLaunch = await launchPackagedApp({
       executablePath,
       environment,
@@ -361,7 +390,10 @@ async function main(): Promise<void> {
       expectedCanonicalStatus: "already-canonical",
       expectedMigrationStatus: "already-complete",
     });
-    console.log("Packaged Windows 0.5.9 upgrade startup passed two launches.");
+    verifyUpgradeData(userDataPath);
+    console.log(
+      "Packaged Windows 0.5.9 upgrade startup preserved data across two launches.",
+    );
     console.log(
       JSON.stringify(
         { firstLaunch: firstLaunch.events, secondLaunch: secondLaunch.events },

@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 
 import DatabaseAdapter from "../database/sqlite";
+import { refreshRuntimeStorageContext } from "../runtime-paths";
 import {
   createUpgradeDataSnapshot,
   getUpgradeBackup,
@@ -681,6 +682,9 @@ function writeMarker(
   };
 
   fs.writeFileSync(markerPath, JSON.stringify(payload, null, 2), "utf8");
+  // Path lookups before migration may cache the legacy database location.
+  // Publish the completed/partial layout before any caller reopens storage.
+  refreshRuntimeStorageContext();
   return markerPath;
 }
 

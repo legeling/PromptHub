@@ -8,6 +8,14 @@
 
 ### 1. Recovery Safety
 
+Layout migration must invalidate the runtime storage context when publishing its
+completion or partial-failure marker. Startup and recovery retries must reopen
+the migrated database, never recreate the cached legacy path. Regression coverage
+uses a populated legacy database with a primed path cache and verifies original
+rows across two opens; packaged Windows acceptance repeats that check across two
+application launches. This changes no persisted schema; pre-migration safety
+snapshots remain the rollback source.
+
 #### Unified full snapshot
 
 2026-10-26 确认：全量备份、全量导出和全量导入以同一份完整数据快照为单位。

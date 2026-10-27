@@ -54,6 +54,38 @@ describe("data-layout-migration", () => {
     fs.rmSync(tmpBase, { recursive: true, force: true });
   });
 
+  it("reopens the populated migrated database after startup cached the legacy path", async () => {
+    const userDataPath = path.join(tmpBase, "PromptHub");
+    fs.mkdirSync(userDataPath);
+    const legacyPath = path.join(userDataPath, "prompthub.db");
+    const seed = new DatabaseAdapter(legacyPath);
+    seed.exec("CREATE TABLE startup_smoke (value TEXT NOT NULL)");
+    seed.run("INSERT INTO startup_smoke (value) VALUES (?)", [
+      "Preserved 中文",
+    ]);
+    seed.close();
+    configureRuntimePaths({ userDataPath });
+    expect(getDatabasePath()).toBe(legacyPath);
+
+    const migration = await migrateLegacyDataLayout(userDataPath, "0.6.2");
+    expect(migration.status).toBe("migrated");
+    const canonicalPath = path.join(userDataPath, "data", "prompthub.db");
+    expect(getDatabasePath()).toBe(canonicalPath);
+    for (const _launch of [1, 2]) {
+      const database = initDatabase();
+      expect(database.all("SELECT value FROM startup_smoke")).toEqual([
+        { value: "Preserved 中文" },
+      ]);
+      expect(database.pragma("quick_check")).toEqual([{ quick_check: "ok" }]);
+      closeDatabase();
+    }
+    expect(fs.existsSync(legacyPath)).toBe(false);
+    expect((await migrateLegacyDataLayout(userDataPath, "0.6.2")).status).toBe(
+      "already-migrated",
+    );
+    expect(getDatabasePath()).toBe(canonicalPath);
+  });
+
   it("migrates legacy root entries into data/config and writes a marker after snapshotting", async () => {
     const userDataPath = path.join(tmpBase, "PromptHub");
     fs.mkdirSync(path.join(userDataPath, "workspace", "prompts", "ops"), {
