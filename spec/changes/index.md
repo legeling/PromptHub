@@ -7,7 +7,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 37 |
+| Active | 38 |
 | Completed | 12 |
 | Archived | 235 |
 | Legacy | 1 |
@@ -82,6 +82,7 @@ No independent active change. Cross-product work is listed under Shared.
 | `infistar-sponsor-promotion` | release-pending | [spec/changes/active/infistar-sponsor-promotion/](active/infistar-sponsor-promotion/) |
 | `r2-direct-downloads` | blocked | [spec/changes/active/r2-direct-downloads/](active/r2-direct-downloads/) |
 | `release-0-6-1-preparation` | blocked | [spec/changes/active/release-0-6-1-preparation/](active/release-0-6-1-preparation/) |
+| `release-0.6.2` | review-pending | [spec/changes/active/release-0.6.2/](active/release-0.6.2/) |
 | `risk-aware-verification-harness` | review-pending | [spec/changes/active/risk-aware-verification-harness/](active/risk-aware-verification-harness/) |
 
 ## Completed

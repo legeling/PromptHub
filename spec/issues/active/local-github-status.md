@@ -29,6 +29,35 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Workspace refresh acceptance — 2026-10-27 (#198)
+
+`release_pending`: the built Electron app passed all three isolated hidden-window
+refresh scenarios, including independent CLI writes, Prompt and Skill draft
+cancel/discard, deleted selection and Rules conflict preservation. Earlier real
+storage integration covers filters/counts, slow reads and failure recovery.
+See [Desktop acceptance](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198).
+GitHub readback on 2026-10-27 still reports #198 open. Closure and publication
+will be recorded after the corresponding remote actions.
+
+### Claude gateway import follow-up — 2026-10-26 (#246)
+
+The remaining default-auth defect is locally repaired: new third-party Claude
+imports use Auth Token by default; official Anthropic imports use API Key.
+Explicit choices and saved profiles remain unchanged. Existing API-key imports
+for Bearer gateways need their credential type edited to Auth Token and reactivated.
+
+Installed Claude 2.1.307 completed a fresh unsigned-in interactive terminal turn
+and a second turn after reopening, using the imported native configuration and a
+local deterministic gateway. Authorized isolated Electron import/default-choice,
+activation, native request and full restart also passed. 58 distinct scoped tests
+passed across focused runs, with old-default failure sensitivity demonstrated.
+See [acceptance record](../../changes/active/agent-management-workbench/tasks.md#claude-gateway-default-and-interactive-acceptance--2026-10-26-246).
+
+The default-auth repair is `release_pending`, committed in `3291609c` and unpublished. #246 remains
+remotely open; the reporter's gateway and Windows interactive/API-key approval
+have not been tested. These are not implied by local synthetic-gateway success.
+The broader extension/managed-scope gaps remain separate workbench tasks.
+
 ### Batched submission and remote readback — 2026-10-23
 
 This entry supersedes the commit/push and remote-state statements in the dated

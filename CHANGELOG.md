@@ -2,11 +2,38 @@
 
 ### 开发中 / In development
 
-当前开发版本为 `0.6.2`，尚未发布；最新稳定版为 `0.6.1`。尚无已确认的 0.6.2 更新条目。
+当前开发版本为 `0.6.2`，尚未发布；最新稳定版为 `0.6.1`。
 
-The current development version is `0.6.2`, which is unreleased. The latest stable release is `0.6.1`. No confirmed 0.6.2 release entries yet.
+The current development version is `0.6.2`, which is unreleased. The latest stable release is `0.6.1`.
 
 ## [0.6.2]
+
+### 新功能 / Features
+
+- **工作区刷新**：CLI 或外部工具写入数据后可手动刷新列表、详情、标签和数量，无需重启，并保护未保存的编辑。
+  - **Workspace refresh**: Refresh lists, details, tags and counts after changes made by the CLI or external tools without restarting or losing unsaved edits.
+- **标签排序**：支持手动调整标签顺序，重新打开应用后保持排序。
+  - **Tag ordering**: Reorder tags manually and keep the order after reopening the app.
+- **Agent 原生配置**：在 Agent 管理中编辑受支持平台的子 Agent 和 Hook 配置，保存前预览变更。
+  - **Native Agent configuration**: Edit subagent and Hook configuration for supported platforms in Agent management and preview changes before saving.
+
+### 改进 / Improvements
+
+- **完整工作区备份**：本地全量备份、WebDAV、S3 和自部署 Web 备份使用同一套工作区快照，保留数据库、版本历史及完整资源文件。恢复时迁移旧数据，失败时保留原工作区；设备凭据和部署路径继续由当前设备管理。自部署服务器需同步升级至 0.6.2。
+  - **Complete workspace backups**: Local full backups, WebDAV, S3 and self-hosted Web use the same workspace snapshot to preserve the database, version history and complete resource files. Restore migrates older data and preserves the original workspace on failure. Credentials and deployment paths remain device-managed. Update the self-hosted server to 0.6.2 as well.
+- **Antigravity 平台识别**：区分桌面应用与 Antigravity CLI 的配置、会话和安装状态，迁移已有 CLI 记录，避免将 CLI 设置写入桌面应用。
+  - **Antigravity platform detection**: Separate desktop and CLI configuration, sessions and installation status, migrating existing CLI records and preventing CLI settings from being written to the desktop app.
+
+### 问题修复 / Fixes
+
+- **CLI 安装检测**：修复从系统桌面启动时找不到已安装的 npm、pnpm 或 CLI、导致安装按钮不可用的问题。
+  - **CLI installation detection**: Fix detection of installed npm, pnpm and CLI commands when launching from the desktop, which could leave installation buttons unavailable.
+- **备份与恢复**：修复远程恢复的数据交接及完整 Skill 包处理，选择性导出后可重新导入并保留所选内容。
+  - **Backup and restore**: Fix remote restore handoff and complete Skill package handling; selected export content remains available after importing it again.
+- **模型服务配置**：修复 Claude 网关鉴权与模型选择、Codex 激活配置时的鉴权冲突及 OpenCode 原生服务配置处理。删除模型服务时同步清理关联模型设置。
+  - **Model provider configuration**: Fix Claude gateway authentication and model selection, conflicting authentication when activating Codex configuration, and OpenCode native provider configuration. Removing a provider also removes its associated model settings.
+- **Skill 商店与 Web 图片**：修复切换商店来源后的加载状态，以及 Web 粘贴图片未保留服务器文件名的问题。
+  - **Skill stores and Web images**: Fix loading state when switching store sources and retain server filenames for pasted Web images.
 
 ## [0.6.1] - 2026-10-21
 
