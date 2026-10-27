@@ -3,12 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { LaunchedElectronApp } from "./helpers/electron";
+import { reinstallPackagedWindowsForAcceptance } from "./helpers/windows-installer";
 import {
   launchPromptHub,
   closePromptHub,
   setAppSettings,
   captureAppPage,
 } from "./helpers/electron";
+
+const RECOVERY_TIMEOUT_MS = 120_000;
+const INSTALLED_RECOVERY_TIMEOUT_MS = 240_000;
 
 async function seedLegacy(
   instance: LaunchedElectronApp,
@@ -87,7 +91,11 @@ function requireMigration(root: string): void {
 
 for (const choice of ["automatic", "database", "indexeddb"] as const) {
   test(`#247 upgrades, resolves ${choice} and survives real process restarts`, async ({}, info) => {
-    test.setTimeout(120_000);
+    test.setTimeout(
+      process.env.PROMPTHUB_E2E_INSTALLER_PATH
+        ? INSTALLED_RECOVERY_TIMEOUT_MS
+        : RECOVERY_TIMEOUT_MS,
+    );
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-idb-e2e-"));
     let instance: LaunchedElectronApp | undefined;
     const stop = async () => {
@@ -100,6 +108,7 @@ for (const choice of ["automatic", "database", "indexeddb"] as const) {
       instance = await launchPromptHub(null, { userDataDir: root });
       const currentId = await seedLegacy(instance, choice !== "automatic");
       await stop();
+      reinstallPackagedWindowsForAcceptance();
       requireMigration(root);
       instance = await launchPromptHub(null, { userDataDir: root });
       const { page, app } = instance;

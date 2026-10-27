@@ -1,0 +1,75 @@
+name: Windows Installer Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing candidate release tag (drafts are supported)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  installed-recovery:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Require the same application source as the candidate
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'Expected a stable candidate tag' }
+          git diff --exit-code $env:RELEASE_TAG HEAD -- apps/desktop/src packages/core/src packages/db/src packages/shared pnpm-lock.yaml
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate application source differs from acceptance checkout' }
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+      - name: Locate dependency cache
+        id: cache
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v5
+        with:
+          path: ${{ steps.cache.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Download the exact candidate installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG.Substring(1)
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern "PromptHub-Setup-$version-x64.exe" --dir "$env:RUNNER_TEMP/candidate-download"
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate installer download failed' }
+      - name: Install and verify recovery across uninstall and reinstall
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG.Substring(1)
+          $installer = Join-Path $env:RUNNER_TEMP "candidate-download/PromptHub-Setup-$version-x64.exe"
+          $installRoot = Join-Path $env:RUNNER_TEMP 'prompthub-installed-acceptance'
+          $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$installRoot") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer exited $($process.ExitCode)" }
+          $env:PROMPTHUB_E2E_EXECUTABLE_PATH = Join-Path $installRoot 'PromptHub.exe'
+          if (!(Test-Path $env:PROMPTHUB_E2E_EXECUTABLE_PATH)) { throw 'Installed executable is missing' }
+          $env:PROMPTHUB_E2E_INSTALLER_PATH = $installer
+          $env:PROMPTHUB_E2E_HEADED = '0'
+          pnpm exec playwright test tests/e2e/indexeddb-startup-recovery.spec.ts --workers=1 --trace retain-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Installed recovery acceptance failed' }
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: installed-windows-recovery-evidence
+          path: apps/desktop/test-results
+          if-no-files-found: ignore
+          retention-days: 7

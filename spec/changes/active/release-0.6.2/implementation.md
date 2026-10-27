@@ -132,3 +132,15 @@ A temporary external Vitest configuration re-enabled disk logging; the real
 three-case runtime suite then failed the new no-log assertion with exit 1. This
 confirms the regression detects the cause rather than masking cleanup errors.
 The corrected tagged gate remains pending.
+
+## Installed Windows acceptance
+
+The normal package gate starts the unpacked executable. The additional manual
+`windows-installer-acceptance.yml` downloads the exact draft NSIS installer,
+installs it into the disposable runner's temporary directory and runs all three
+historical recovery flows with the installed executable. Each flow closes the
+app, uninstalls and reinstalls the binary while preserving its isolated SQLite
+and IndexedDB profile, then verifies recovery, further restarts and no replay.
+The workflow rejects a different application source tree. Installer execution
+requires GitHub-hosted Windows and an installation beneath the runner temp root;
+ordinary local E2E never invokes it. This adds acceptance only, not product code.
