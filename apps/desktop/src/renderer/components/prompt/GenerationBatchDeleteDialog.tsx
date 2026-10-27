@@ -21,7 +21,7 @@ export function GenerationBatchDeleteDialog({
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   const inFlight = useRef(false);
-  const confirm = async () => {
+  const confirmDeletion = async () => {
     if (inFlight.current) return;
     inFlight.current = true;
     setPending(true);
@@ -74,7 +74,7 @@ export function GenerationBatchDeleteDialog({
       variant="destructive"
       isLoading={pending}
       onClose={onClose}
-      onConfirm={() => void confirm()}
+      onConfirm={() => void confirmDeletion()}
     />
   );
 }
