@@ -31,6 +31,22 @@ function createRegistrySkillFixture(
 }
 
 describe("skill source resolver", () => {
+  it("preserves the complete GitLab namespace and explicit package directory", () => {
+    expect(
+      resolveRegistrySkillGitPackage(
+        createRegistrySkillFixture({
+          source_url: "http://172.26.0.18/eCore-ai/Skills/design",
+          source_branch: "main",
+          source_directory: "tools/writer",
+        }),
+      ),
+    ).toEqual({
+      repoUrl: "http://172.26.0.18/eCore-ai/Skills/design",
+      branch: "main",
+      directory: "tools/writer",
+    });
+  });
+
   it("classifies remote zip, git package, raw content URL, linked local, and managed copy sources", () => {
     expect(
       getRegistrySkillSourceResolverKind(

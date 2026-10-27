@@ -124,7 +124,7 @@ function normalizeRemoteGitUrl(url: string): string {
 }
 
 function isSshStyleGitUrl(url: string): boolean {
-  return /^git@[^:]+:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?$/.test(url);
+  return parseGitRepo(url)?.protocol === "ssh";
 }
 
 async function validateRemoteGitTransportUrl(

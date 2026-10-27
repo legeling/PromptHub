@@ -440,7 +440,7 @@ export class SkillInstaller {
     const parsedRepo = source && parseGitRepo(source.cloneUrl);
     if (!parsedRepo || !source) {
       throw new Error(
-        "Invalid git repository URL: must be https://<host>/{owner}/{repo} or git@<host>:{owner}/{repo}.git",
+        "Invalid git repository URL: expected HTTP(S) or git@<host>:<namespace>/<repo>.git; nested namespaces are supported",
       );
     }
     const userDir = parsedRepo.owner;
@@ -767,11 +767,16 @@ export class SkillInstaller {
     const parsedRepo = parseGitRepo(repoUrl);
     if (!parsedRepo) {
       throw new Error(
-        "Invalid git repository URL: must be https://<host>/{owner}/{repo} or git@<host>:{owner}/{repo}.git",
+        "Invalid git repository URL: expected HTTP(S) or git@<host>:<namespace>/<repo>.git; nested namespaces are supported",
       );
     }
 
-    if (parsedRepo.protocol === "ssh") {
+    // Multi-level namespaces cannot use the two-segment Gitea API contract.
+    if (
+      parsedRepo.protocol === "ssh" ||
+      parsedRepo.owner.includes("/") ||
+      parsedRepo.host === "gitlab.com"
+    ) {
       return this.scanRemoteGitRepoViaClone(
         parsedRepo,
         registrySkills,
@@ -916,10 +921,7 @@ export class SkillInstaller {
     const tempRoot = await fs.mkdtemp(
       path.join(this.skillsDir, ".remote-scan-"),
     );
-    const repoDir = path.join(
-      tempRoot,
-      `${parsedRepo.owner}-${parsedRepo.repo}`,
-    );
+    const repoDir = path.join(tempRoot, "checkout");
 
     try {
       await gitClone(parsedRepo.cloneUrl, repoDir, branch, directory);
@@ -975,10 +977,7 @@ export class SkillInstaller {
             builtin?.description ||
             parsedSkill?.frontmatter.description ||
             `${name} skill`;
-          const sourceUrl =
-            parsedRepo.protocol === "ssh"
-              ? parsedRepo.cloneUrl
-              : `${parsedRepo.repositoryUrl}/tree/${encodeURIComponent(normalizedBranch)}/${sourceDirectory}`;
+          const sourceUrl = parsedRepo.cloneUrl;
           const sourceId = buildSkillSourceId({
             sourceType: "git-repo",
             sourceUrl: parsedRepo.repositoryUrl,
@@ -986,11 +985,14 @@ export class SkillInstaller {
             directory: sourceDirectory,
             skillPath: canonicalSkillPath,
           });
-          const rawUrl = buildRemoteGitStoreUrls(
-            parsedRepo,
-            normalizedBranch,
-            canonicalSkillPath,
-          ).rawUrl;
+          const rawUrl =
+            parsedRepo.owner.includes("/") || parsedRepo.host === "gitlab.com"
+              ? undefined
+              : buildRemoteGitStoreUrls(
+                  parsedRepo,
+                  normalizedBranch,
+                  canonicalSkillPath,
+                ).rawUrl;
 
           return {
             slug,

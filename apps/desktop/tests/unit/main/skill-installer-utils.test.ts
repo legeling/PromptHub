@@ -1077,7 +1077,7 @@ describe("skill-installer-utils", () => {
       } as unknown as childProcess.ChildProcess);
 
       const promise = gitClone(
-        "git@gitea.example.com:icelemon/skills.git",
+        "git@gitea.example.com:icelemon/team/skills.git",
         "/tmp/dest",
       );
       await vi.waitFor(() => expect(childProcess.spawn).toHaveBeenCalled());

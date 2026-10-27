@@ -251,7 +251,7 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     ]);
     expect(skillInstallerUtils.gitClone).toHaveBeenCalledWith(
       "https://gitea.example.com/team/skills",
-      expect.stringContaining("team-skills"),
+      expect.stringContaining("checkout"),
       "main",
       "skills/writer",
     );

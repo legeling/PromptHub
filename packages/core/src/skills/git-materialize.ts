@@ -84,7 +84,7 @@ export async function materializeRemoteGitRepository(
 ): Promise<string> {
   if (requestedDirectory !== undefined)
     validateSkillGitDirectory(requestedDirectory);
-  const cloneDir = path.join(tempRoot, `${repo.owner}-${repo.repo}`);
+  const cloneDir = path.join(tempRoot, "checkout");
   try {
     await clone(repo.cloneUrl, cloneDir, branch, requestedDirectory);
   } catch (gitError) {

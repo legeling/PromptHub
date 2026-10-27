@@ -73,7 +73,7 @@ function parseRequiredGitRepo(repoUrl: string) {
   const parsedRepo = parseGitRepo(repoUrl);
   if (!parsedRepo) {
     throw new Error(
-      "Invalid git repository URL: must be https://<host>/{owner}/{repo} or git@<host>:{owner}/{repo}.git",
+      "Invalid git repository URL: expected HTTP(S) or git@<host>:<namespace>/<repo>.git; nested namespaces are supported",
     );
   }
   return parsedRepo;

@@ -1081,7 +1081,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     expect(result).toHaveLength(1);
     expect(cloneSpy).toHaveBeenCalledWith(
       "git@github.com:icelemon/skills.git",
-      expect.stringContaining("icelemon-skills"),
+      expect.stringContaining("checkout"),
       undefined,
       undefined,
     );

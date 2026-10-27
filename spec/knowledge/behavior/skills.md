@@ -39,6 +39,38 @@
 - Skill package fingerprint 必须使用显式忽略规则，而不是笼统忽略所有隐藏文件。PromptHub 内部目录（`.prompthub/`）、VCS 元数据、依赖目录、缓存、日志、临时文件、本地环境密钥（例如 `.env` / `.env.local`）、虚拟环境与运行态 pid/socket 文件不参与 fingerprint；可分发模板文件（例如 `.env.example` / `.env.sample` / `.env.template`）仍然参与 fingerprint。
 - 仅写入 `SKILL.md` 内容的 API 只适用于新建 UI 原生 Skill 或编辑入口文件；不得作为已有包来源导入/安装的最终持久化路径。
 
+### Git Repository Namespace Contract
+
+- Desktop 显式 Git 来源接受 HTTPS、内网 HTTP 和 `git@host:namespace/repo.git`。
+  `namespace` 可以包含 GitLab 多级分组；不得以私有 IP、非 GitHub 域名、
+  数字名称或超过两段的仓库路径为由拒绝合法来源。
+- Shared `parseGitRepo` 是唯一仓库路径解析入口；`owner` 表示完整 namespace，
+  `repo` 为最后一段。已有两段仓库及 `/tree/<ref>/...` 链接继续按原语义解析。
+  空段、`.` / `..`、控制字符和非 Git 传输输入仍拒绝。网络策略仍由传输层负责。
+  来源解析器优先识别已有 Gitea `/src/branch/` 页面，再解析通用仓库根路径，
+  不得把页面内的 branch 和文件路径误认作多级 namespace。
+- Desktop 对多级 namespace 和 GitLab.com 使用现有 Git clone 扫描，不套用
+  Gitea `/api/v1/repos/owner/repo`。扫描记录保留 clone 地址、实际 branch 与
+  package directory，不为 GitLab 伪造 Gitea raw URL。既有两段 Gitea API 扫描不变。
+- 临时 checkout 使用所属临时根目录下的固定子目录，不将完整 namespace 拼成
+  磁盘路径。SQLite、IPC、持久化布局和既有来源身份不变，无数据迁移；回滚代码
+  不删除已导入包，但旧解析器无法重新获取新支持的多级来源。
+- 解析时间和空间均为 O(URL 长度)，没有额外请求或重试；扫描复用一次浅克隆，
+  按现有目录发现与整包校验规则导入，结束及失败时清理临时 checkout。
+- 回归入口：`packages/shared/tests/git-repo.test.ts`；Desktop
+  `tests/integration/skill-gitlab-namespace.test.ts` 使用本机 Git smart-HTTP 服务，
+  经真实 preload/IPC handler 扫描、安装、SQLite 重开并核对嵌套文本及二进制文件。
+  SSH 用 Git 进程环境中的 URL rewrite 指向本地仓库，不验证远端 SSH 认证。
+  Electron 消息运输由已有集成 fixture 替换，用户 GitLab 与原生 UI 需单独验收。
+- 2026-10-27 验证：共享解析 31 项、Core Git 传输/物化 6 项、Desktop
+  原有扫描/安装/认证回归 153 项通过；新增真实 HTTP 与本地重定向 SSH 流程
+  均完成扫描、安装、重开和失败后的原包保全。来源解析 11 项、远程整包 18 项、
+  导入弹窗 20 项和语言回归 7 项通过，`typecheck:tests` 与触及源码的 ESLint 通过。
+  Gitea 页面被误判为多级根地址的回归已修正；临时 checkout 名称断言已按新路径更新。
+  重跑主要缺陷验收：
+  `pnpm --dir packages/shared exec node --experimental-strip-types --test tests/git-repo.test.ts`；
+  `pnpm --dir apps/desktop exec vitest run tests/integration/skill-gitlab-namespace.test.ts tests/unit/services/skill-source-resolver.test.ts --maxWorkers=1 --minWorkers=1`。
+
 ### 1.1 Skill File Contract
 
 - 已发布 canonical Skill bundle 的 inventory 必须完整校验，未声明的目录

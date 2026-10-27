@@ -250,7 +250,9 @@ export function resolveRegistrySkillGitPackage(
   const location = sourceLocation || contentLocation;
   const repoUrl = sourceUrl?.startsWith("git@")
     ? sourceUrl
-    : parsedRepo?.repositoryUrl || location?.repoUrl;
+    : sourceLocation?.repoUrl ||
+      parsedRepo?.repositoryUrl ||
+      contentLocation?.repoUrl;
   if (!repoUrl) return null;
   const directory =
     getRegistrySkillDirectory(regSkill) || location?.directory || undefined;

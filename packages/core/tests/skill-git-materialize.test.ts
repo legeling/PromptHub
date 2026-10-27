@@ -30,7 +30,7 @@ it("passes the selected package directory to Git before any archive request", as
   );
   expect(clone).toHaveBeenCalledWith(
     repo.cloneUrl,
-    path.join(root, "owner-skills"),
+    path.join(root, "checkout"),
     "release",
     "skills/writer",
   );
