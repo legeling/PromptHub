@@ -107,10 +107,10 @@ installed 布尔值或复制一份平台名称。核心查询是按目标查所�
 `.gemini/antigravity-cli/skills`，IDE 还支持历史目录。审查基线中的 FR-AGENT-021 把
 config 称为 CLI 与桌面的共享 Skill 根目录，与该证据不符；本轮已纠正文档，代码待调整。
 
-建议保留现有 `antigravity` 身份用于当前桌面能力；CLI 若继续作为受支持产品，
-在现有 registry 中使用独立目标和能力声明，不新增一层 profile/surface 路由框架。
-具体 CLI 标识与已有供应商、会话索引的归属必须在第一批完成清单中冻结，属于
-本方案的待评审产品选择，不得把旧 `antigravity` 数据整包改名或按目录名盲猜。
+2026-10-26 已确认拆分：保留 `antigravity` 桌面身份，新增 `antigravity-cli`。
+复用现有 registry 和能力声明，不新增 profile/surface 路由层。SQLite 迁移只
+移动已确认由 CLI 适配器产生的模型配置和会话标注；资产、根覆盖和原生账户不搬移。
+当前权威要求与验收见 spec.md 的 Provider native-contract completion 小节。
 `gemini` 现有身份及其数据保留，不充当 Antigravity 的备用目标。
 
 桌面额度只使用该产品当前已验证来源；会话、供应商、MCP、Rules、Plugin 分别记录

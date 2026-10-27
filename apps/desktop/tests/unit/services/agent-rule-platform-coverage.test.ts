@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import path from "node:path";
 
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import {
@@ -13,14 +14,24 @@ describe("Agent rule platform coverage", () => {
         (template) => template.platformId,
       ),
     );
-    const missingPlatformIds = SKILL_PLATFORMS.filter(
-      (platform) =>
-        platform.globalRuleFile &&
-        platform.id !== "antigravity" &&
-        !registeredPlatformIds.has(platform.id),
-    ).map((platform) => platform.id);
-
-    expect(missingPlatformIds).toEqual([]);
+    for (const osKey of ["darwin", "win32", "linux"] as const) {
+      const paths = osKey === "win32" ? path.win32 : path.posix;
+      const rulePath = (platform: (typeof SKILL_PLATFORMS)[number]) =>
+        paths.normalize(
+          paths.join(platform.rootDir[osKey], platform.globalRuleFile ?? ""),
+        );
+      // Multiple Agents can consume one native rule file owned by a single record.
+      const registeredPaths = new Set(
+        SKILL_PLATFORMS.filter((platform) =>
+          registeredPlatformIds.has(platform.id),
+        ).map(rulePath),
+      );
+      const missingPlatformIds = SKILL_PLATFORMS.filter(
+        (platform) =>
+          platform.globalRuleFile && !registeredPaths.has(rulePath(platform)),
+      ).map((platform) => platform.id);
+      expect(missingPlatformIds, osKey).toEqual([]);
+    }
   });
 
   it("keeps every registered rule platform in deterministic display order", () => {

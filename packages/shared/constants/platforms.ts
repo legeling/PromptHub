@@ -129,6 +129,7 @@ export const DEFAULT_SKILL_PLATFORM_ORDER = [
   "augment",
   "zcode",
   "antigravity",
+  "antigravity-cli",
   "gemini",
   "opencode",
   "pi",

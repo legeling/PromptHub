@@ -35,7 +35,7 @@ describe("initial Agent support scope", () => {
         .map(({ id }) => id)
         .sort();
     expect(available("providerModel")).toEqual([
-      "antigravity",
+      "antigravity-cli",
       "claude",
       "codex",
       "opencode",

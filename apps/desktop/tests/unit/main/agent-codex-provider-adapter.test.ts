@@ -138,7 +138,7 @@ describe("Codex unified Provider Profile adapter", () => {
       provider: "legacy",
       endpoint: "https://legacy.example.com/v1",
       protocol: "responses",
-      model: "gpt-5.3-codex",
+      model: "gpt-5.3",
       credentialStatus: "configured",
     });
     expect(JSON.stringify(state)).not.toContain("native-secret");
@@ -155,7 +155,7 @@ describe("Codex unified Provider Profile adapter", () => {
         secretRef: null,
         source: "native-import",
       },
-      modelMappings: [{ routeKey: "primary", modelId: "gpt-5.3-codex" }],
+      modelMappings: [{ routeKey: "primary", modelId: "gpt-5.3" }],
     });
     expect(imported.warnings).toContain("native-credential-not-imported");
     expect(JSON.stringify(imported)).not.toContain("native-secret");
@@ -818,7 +818,7 @@ describe("Codex unified Provider Profile adapter", () => {
     expect(updated).toContain("[features]");
     expect(updated).toContain("[model_providers.work-gateway]");
     expect(updated).toContain('experimental_bearer_token = "secret-token"');
-    expect(updated).toContain("[profiles.work-gateway]");
+    expect(updated).not.toContain("[profiles.work-gateway]");
     expect(updated).toContain('model_provider = "work-gateway"');
     await expect(fs.readFile(auth, "utf8")).resolves.toBe(
       '{"tokens":"do-not-touch"}\n',

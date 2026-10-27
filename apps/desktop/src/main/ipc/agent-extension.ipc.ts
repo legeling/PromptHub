@@ -76,7 +76,11 @@ export function registerAgentExtensionIPC(
 ): void {
   function root(request: AgentExtensionScope): string {
     return request.scope === "user"
-      ? getAgentConfigContext(request.agentId).rootPath
+      ? path.resolve(
+          getAgentConfigContext(request.agentId).rootPath,
+          getAgentExtensionCapability(request.agentId)?.userRootRelativePath ??
+            ".",
+        )
       : path.join(
           readProjectRoot(database, request.projectId!),
           getAgentExtensionCapability(request.agentId)!.projectDirectory,

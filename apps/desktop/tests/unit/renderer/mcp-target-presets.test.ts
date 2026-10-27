@@ -150,6 +150,14 @@ describe("mcp target presets", () => {
         platformId: "antigravity",
       },
       {
+        id: "project:project_docs:antigravity-cli",
+        target: "antigravity-cli",
+        scope: "workspace",
+        label: "Docs / Antigravity CLI",
+        path: "/workspace/docs/.agents/mcp_config.json",
+        platformId: "antigravity-cli",
+      },
+      {
         id: "project:project_docs:reasonix",
         target: "reasonix",
         scope: "workspace",

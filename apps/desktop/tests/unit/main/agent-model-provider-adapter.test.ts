@@ -111,14 +111,28 @@ describe("Agent model Provider Profile adapter", () => {
       const context = { agentId: "claude", platformId: "claude", rootPath };
       const adapter = createAgentModelProviderAdapter("claude", {
         backupRoot: path.join(rootPath, "backups"),
-        inspect: vi.fn().mockResolvedValue(modelConfiguration({ status: "missing", model: null, sourceRelativePath: null })),
+        inspect: vi
+          .fn()
+          .mockResolvedValue(
+            modelConfiguration({
+              status: "missing",
+              model: null,
+              sourceRelativePath: null,
+            }),
+          ),
       });
       const before = await adapter.inspect(context);
-      await expect(adapter.rollback(context, {
-        platformId: "claude", adapterVersion: before.adapterVersion,
-        profileId: "profile-1", nativeDigestBefore: before.nativeDigest,
-        nativeDigestAfter: before.nativeDigest, backupRef: null, appliedAt: 1,
-      })).resolves.toMatchObject({ restored: true });
+      await expect(
+        adapter.rollback(context, {
+          platformId: "claude",
+          adapterVersion: before.adapterVersion,
+          profileId: "profile-1",
+          nativeDigestBefore: before.nativeDigest,
+          nativeDigestAfter: before.nativeDigest,
+          backupRef: null,
+          appliedAt: 1,
+        }),
+      ).resolves.toMatchObject({ restored: true });
       await expect(fs.stat(path.join(rootPath, targetPath))).rejects.toThrow();
     } finally {
       config.relativePaths = originalPaths;
@@ -508,7 +522,7 @@ describe("Agent model Provider Profile adapter", () => {
       createAgentModelProviderAdapter("antigravity", {
         backupRoot: path.join(rootPath, "backups"),
       }),
-    ).not.toThrow();
+    ).toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
     const context = {
       agentId: "claude",
       platformId: "claude",

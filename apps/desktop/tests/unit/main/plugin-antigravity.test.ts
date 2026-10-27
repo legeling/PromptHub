@@ -82,8 +82,8 @@ async function invokePluginIpc(
 
 describe("Antigravity native Plugin workflow (#226)", () => {
   beforeEach(() => {
-    fixture.root = fs.mkdtempSync(
-      path.join(os.tmpdir(), "plugin-antigravity-"),
+    fixture.root = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "plugin-antigravity-")),
     );
     configureRuntimePaths({
       userDataPath: path.join(fixture.root, "userdata"),
@@ -157,8 +157,8 @@ describe("Antigravity native Plugin workflow (#226)", () => {
   });
 
   it("keeps CLI discovery scoped and rejects invalid manifests and unregistered links (#237)", () => {
-    const root = path.join(fixture.root, "custom", "config");
-    const cliPlugins = path.resolve(root, "../antigravity-cli/plugins");
+    const root = path.join(fixture.root, "custom", "antigravity-cli");
+    const cliPlugins = path.resolve(root, "../config/plugins");
     writeJson(path.join(cliPlugins, "valid", "plugin.json"), { name: "valid" });
     writeJson(path.join(cliPlugins, "invalid", "plugin.json"), {
       name: "../escape",
@@ -172,7 +172,7 @@ describe("Antigravity native Plugin workflow (#226)", () => {
       "dir",
     );
     expect(
-      scanInstalledPluginsForTarget("antigravity", root).map(
+      scanInstalledPluginsForTarget("antigravity-cli", root).map(
         (plugin) => plugin.name,
       ),
     ).toEqual(["valid"]);
@@ -206,6 +206,35 @@ describe("Antigravity native Plugin workflow (#226)", () => {
     expect(fs.readFileSync(path.join(target, "plugin.json"), "utf8")).toBe(
       original,
     );
+  });
+
+  it("preserves a shared native plugin while the other Agent still owns its distribution", () => {
+    const { source } = createZoteroPackage();
+    const target = path.join(
+      fixture.root,
+      "shared-config",
+      "plugins",
+      "zotero",
+    );
+    const service = new CorePluginLibraryService({
+      resolvePluginTargetPath: () => target,
+    });
+    const imported = service.importLocalPluginPackage({ sourcePath: source });
+    service.distributePlugin({
+      pluginId: imported.plugin.id,
+      targetIds: ["antigravity", "antigravity-cli"],
+      mode: "copy",
+    });
+    service.removePluginDistribution({
+      pluginId: imported.plugin.id,
+      targetIds: ["antigravity"],
+    });
+    expect(fs.existsSync(path.join(target, "plugin.json"))).toBe(true);
+    service.removePluginDistribution({
+      pluginId: imported.plugin.id,
+      targetIds: ["antigravity-cli"],
+    });
+    expect(fs.existsSync(target)).toBe(false);
   });
 
   it.each(["copy", "symlink"] as const)(

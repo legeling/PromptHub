@@ -114,8 +114,10 @@ describe("Antigravity CLI conversation sessions", () => {
     ]);
     const service = createAgentSessionService({ homeDir });
 
-    await expect(service.list("antigravity", { limit: 1 })).resolves.toEqual({
-      agentId: "antigravity",
+    await expect(
+      service.list("antigravity-cli", { limit: 1 }),
+    ).resolves.toEqual({
+      agentId: "antigravity-cli",
       adapter: "antigravity-cli-transcript-v1",
       sessions: [
         {
@@ -141,7 +143,7 @@ describe("Antigravity CLI conversation sessions", () => {
       hasMore: true,
     });
     await expect(
-      service.list("antigravity", {
+      service.list("antigravity-cli", {
         limit: 20,
         search: "rollback checkpoint",
       }),
@@ -151,9 +153,12 @@ describe("Antigravity CLI conversation sessions", () => {
       hasMore: false,
     });
 
-    const detail = await service.read("antigravity", SESSION_WITH_TRANSCRIPT);
+    const detail = await service.read(
+      "antigravity-cli",
+      SESSION_WITH_TRANSCRIPT,
+    );
     expect(detail).toEqual({
-      agentId: "antigravity",
+      agentId: "antigravity-cli",
       adapter: "antigravity-cli-transcript-v1",
       sessionId: SESSION_WITH_TRANSCRIPT,
       entries: [
@@ -187,7 +192,7 @@ describe("Antigravity CLI conversation sessions", () => {
     const service = createAgentSessionService({ homeDir });
 
     await expect(
-      service.list("antigravity", { limit: 20 }),
+      service.list("antigravity-cli", { limit: 20 }),
     ).resolves.toMatchObject({
       sessions: [
         {
@@ -202,9 +207,9 @@ describe("Antigravity CLI conversation sessions", () => {
       ],
     });
     await expect(
-      service.read("antigravity", SESSION_DATABASE_ONLY),
+      service.read("antigravity-cli", SESSION_DATABASE_ONLY),
     ).resolves.toEqual({
-      agentId: "antigravity",
+      agentId: "antigravity-cli",
       adapter: "antigravity-cli-transcript-v1",
       sessionId: SESSION_DATABASE_ONLY,
       entries: [],
@@ -246,16 +251,16 @@ describe("Antigravity CLI conversation sessions", () => {
     ]);
     const service = createAgentSessionService({ homeDir });
 
-    const list = await service.list("antigravity", { limit: 20 });
+    const list = await service.list("antigravity-cli", { limit: 20 });
     expect(list.sessions.map((session) => session.id)).toEqual([safeId]);
-    const detail = await service.read("antigravity", safeId);
+    const detail = await service.read("antigravity-cli", safeId);
     expect(detail.entries).toHaveLength(1);
     expect(detail.entries[0]?.text).toHaveLength(64 * 1024);
-    await expect(service.read("antigravity", "../outside")).rejects.toThrow(
+    await expect(service.read("antigravity-cli", "../outside")).rejects.toThrow(
       "AGENT_SESSION_ID_INVALID",
     );
     await expect(
-      service.read("antigravity", "11111111-1111-4111-8111-111111111111"),
+      service.read("antigravity-cli", "11111111-1111-4111-8111-111111111111"),
     ).rejects.toThrow("AGENT_SESSION_NOT_FOUND");
   });
 });

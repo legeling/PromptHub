@@ -698,7 +698,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
-        "claudeAuthHint": "Wählen Sie den vom Gateway benötigten Header: API-Schlüssel nutzt x-api-key, Auth-Token nutzt Authorization: Bearer. Die interaktive API-Schlüssel-Freigabe erfolgt in Claude Code.",
+        "claudeAuthHint": "Drittanbieter-Gateways verwenden standardmäßig Auth token (Authorization: Bearer). API key (x-api-key) nur wählen, wenn das Gateway ihn verlangt. Die interaktive Bestätigung übernimmt Claude Code. Bestehende Importe behalten ihre Auswahl.",
         "open": "Aus PromptHub importieren",
         "title": "PromptHub-Anbieter importieren",
         "hint": "Fuegt einen unabhaengigen Agent-Anbieter aus PromptHub hinzu. Die Aktivierung bleibt ein separater Pruefschritt.",

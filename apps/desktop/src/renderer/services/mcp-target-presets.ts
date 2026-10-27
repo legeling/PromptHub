@@ -159,6 +159,14 @@ export function deriveProjectMcpTargetPresets(
         platformId: "antigravity",
       },
       {
+        id: `project:${project.id}:antigravity-cli`,
+        target: "antigravity-cli",
+        scope: "workspace",
+        label: `${project.name} / Antigravity CLI`,
+        path: joinProjectPath(rootPath, ".agents/mcp_config.json"),
+        platformId: "antigravity-cli",
+      },
+      {
         id: `project:${project.id}:reasonix`,
         target: "reasonix",
         scope: "workspace",

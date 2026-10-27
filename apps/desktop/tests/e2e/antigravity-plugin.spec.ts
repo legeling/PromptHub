@@ -29,7 +29,7 @@ test("imports and distributes the reported Antigravity plugin.json package and r
       2,
     ) + "\n";
   fs.mkdirSync(path.join(source, "assets"), { recursive: true });
-  fs.mkdirSync(home);
+  fs.mkdirSync(path.join(home, ".gemini", "config"), { recursive: true });
   fs.writeFileSync(path.join(source, "plugin.json"), manifest);
   const icon = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOioAAAAASUVORK5CYII=",
@@ -81,7 +81,7 @@ test("imports and distributes the reported Antigravity plugin.json package and r
       .click();
     await picker
       .getByRole("button", {
-        name: "Distribute to selected Agents",
+        name: "Apply changes",
         exact: true,
       })
       .click();

@@ -57,6 +57,7 @@ import {
 } from "./agent-codex-native-provider-probe";
 import {
   removeTopLevelScalar,
+  removeTableFields,
   setTopLevelNumber,
   setTopLevelString,
   upsertTableEntries,
@@ -192,13 +193,11 @@ function nativeDigest(raw: string | null): string {
 function activeProviderData(data: JsonRecord): {
   providerId: string;
   provider: JsonRecord | undefined;
-  profile: JsonRecord | undefined;
 } {
   const providerId = getString(data, "model_provider") ?? "openai";
   return {
     providerId,
     provider: getRecord(getRecord(data, "model_providers"), providerId),
-    profile: getRecord(getRecord(data, "profiles"), providerId),
   };
 }
 
@@ -220,8 +219,7 @@ function comparableState(
     provider: active.providerId,
     endpoint,
     protocol,
-    model:
-      getString(active.profile, "model") ?? getString(data, "model") ?? null,
+    model: getString(data, "model") ?? null,
     reasoningEffort: getString(data, "model_reasoning_effort"),
     contextWindow: getPositiveInteger(data, "model_context_window"),
     credentialStatus:
@@ -524,20 +522,18 @@ function renderConfig(
     set.push(["env_key", desired.envKey!]);
     remove.push("experimental_bearer_token");
   }
-  next = upsertTableEntries(
+  // Activating an explicitly selected credential replaces this provider's auth
+  // mechanism; keep the original in the existing encrypted rollback bundle.
+  next = removeTableFields(
+    next,
+    ["model_providers", desired.providerId],
+    ["auth", "requires_openai_auth"],
+  );
+  return upsertTableEntries(
     next,
     ["model_providers", desired.providerId],
     set,
     remove,
-  );
-  return upsertTableEntries(
-    next,
-    ["profiles", desired.providerId],
-    [
-      ["model", desired.model],
-      ["model_provider", desired.providerId],
-    ],
-    [],
   );
 }
 
@@ -547,6 +543,16 @@ function verifyDesired(
 ): boolean {
   return Object.entries(publicDesiredValues(desired)).every(
     ([field, value]) => state.values[field] === value,
+  );
+}
+
+function hasConflictingNativeAuth(data: JsonRecord): boolean {
+  const provider = activeProviderData(data).provider;
+  return Boolean(
+    provider?.auth &&
+    (provider.env_key ||
+      provider.experimental_bearer_token ||
+      provider.requires_openai_auth),
   );
 }
 
@@ -690,8 +696,7 @@ export function createAgentCodexProviderAdapter(
         "experimental_bearer_token",
       );
       const envKey = getString(active.provider, "env_key");
-      const model =
-        getString(active.profile, "model") ?? getString(native.data, "model");
+      const model = getString(native.data, "model");
       const reasoningEffort = getString(native.data, "model_reasoning_effort");
       const contextWindow = getPositiveInteger(
         native.data,
@@ -802,7 +807,10 @@ export function createAgentCodexProviderAdapter(
         await atomicWrite(targetPath, nextText);
         await options.hooks?.afterWrite?.(targetPath);
         const after = await readNative(context);
-        if (!verifyDesired(after.state, resolved.desired)) {
+        if (
+          hasConflictingNativeAuth(after.data) ||
+          !verifyDesired(after.state, resolved.desired)
+        ) {
           throw new Error("verification");
         }
         return {
@@ -820,13 +828,15 @@ export function createAgentCodexProviderAdapter(
       }
     },
     async verify(context, plan, receipt): Promise<AgentProviderVerification> {
-      const state = (await readNative(context)).state;
+      const native = await readNative(context);
+      const state = native.state;
       const fieldsMatch = plan.decisions.every(
         (decision) =>
           decision.status !== "apply" ||
           state.values[decision.field] === decision.desired,
       );
       const verified =
+        !hasConflictingNativeAuth(native.data) &&
         receipt.platformId === "codex" &&
         receipt.profileId === plan.profileId &&
         receipt.adapterVersion === ADAPTER_VERSION &&

@@ -246,18 +246,26 @@ function ProfileDetail({
             <AgentProviderDetailRow
               label={t("agents.providerProfiles.credential")}
             >
-              <span
-                className={`inline-flex items-center gap-1.5 ${secretStateClass(profile.secretState)}`}
-              >
-                {profile.secretState === "missing" ? (
-                  <ShieldAlertIcon className="h-4 w-4" />
-                ) : (
-                  <KeyRoundIcon className="h-4 w-4" />
-                )}
-                {t(
-                  `agents.providerProfiles.secretState.${profile.secretState}`,
-                )}
-              </span>
+              {profile.platformId === "antigravity-cli" ? (
+                <span className="text-muted-foreground">
+                  {t(
+                    "agents.providerProfiles.currentNative.credentialStatus.platform-managed",
+                  )}
+                </span>
+              ) : (
+                <span
+                  className={`inline-flex items-center gap-1.5 ${secretStateClass(profile.secretState)}`}
+                >
+                  {profile.secretState === "missing" ? (
+                    <ShieldAlertIcon className="h-4 w-4" />
+                  ) : (
+                    <KeyRoundIcon className="h-4 w-4" />
+                  )}
+                  {t(
+                    `agents.providerProfiles.secretState.${profile.secretState}`,
+                  )}
+                </span>
+              )}
             </AgentProviderDetailRow>
           </dl>
         </AgentProviderDetailSection>
@@ -375,8 +383,10 @@ export function AgentProviderProfileWorkbench({
     setRenameTarget(null);
     setRenameValue("");
     setActivationTargetId(null);
-    void store.load(agent.id);
-  }, [agent.id, store.load]);
+    if (["supported", "partial"].includes(agent.capabilities.provider.status)) {
+      void store.load(agent.id);
+    }
+  }, [agent.id, agent.capabilities.provider.status, store.load]);
 
   const selectedProfile = useMemo(
     () =>
@@ -465,7 +475,11 @@ export function AgentProviderProfileWorkbench({
           <AgentProviderToolbarActions
             busy={busy}
             onAdd={() => setEditing(null)}
-            onImport={webRuntime ? undefined : () => setSourceDialogOpen(true)}
+            onImport={
+              webRuntime || agent.id === "antigravity-cli"
+                ? undefined
+                : () => setSourceDialogOpen(true)
+            }
           />
         }
         sidebar={
@@ -681,7 +695,11 @@ export function AgentProviderProfileWorkbench({
         busy={busy}
         position={contextMenuPosition}
         onAdd={() => setEditing(null)}
-        onImport={webRuntime ? undefined : () => setSourceDialogOpen(true)}
+        onImport={
+          webRuntime || agent.id === "antigravity-cli"
+            ? undefined
+            : () => setSourceDialogOpen(true)
+        }
         onClose={() => setContextMenuPosition(null)}
       />
 

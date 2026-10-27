@@ -27,6 +27,7 @@ export const MCP_TARGET_KINDS = [
   "openclaw",
   "qoder",
   "antigravity",
+  "antigravity-cli",
   "reasonix",
   "custom-json",
   "custom-toml",

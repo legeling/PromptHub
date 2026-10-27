@@ -58,7 +58,7 @@ describe.skipIf(process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1")(
         root,
         process.platform,
         environment,
-      ).find((entry) => entry.id === "antigravity");
+      ).find((entry) => entry.id === "antigravity-cli");
       if (!preset) throw new Error("Antigravity MCP preset is missing");
       expect(preset.path).toBe(
         path.join(root, ".gemini", "config", "mcp_config.json"),

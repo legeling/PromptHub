@@ -27,6 +27,7 @@ const expectedIds = [
   "kiro",
   "gemini",
   "antigravity",
+  "antigravity-cli",
   "trae",
   "trae-cn",
   "trae-work",
@@ -134,7 +135,12 @@ test("exposes Qwen Work assets without disabled implemented depth capabilities",
   for (const key of ["skills", "mcp", "rules"] as const) {
     assert.equal(inventory[key].status, "partial", key);
   }
-  for (const key of ["providerModel", "sessions", "usage", "appearance"] as const) {
+  for (const key of [
+    "providerModel",
+    "sessions",
+    "usage",
+    "appearance",
+  ] as const) {
     assert.equal(definition.capabilities[key].enabled, false, key);
     assert.ok(
       ["planned", "unsupported"].includes(definition.capabilities[key].status),
@@ -176,7 +182,7 @@ test("preserves the initial product scope independently of adapter maturity", ()
       .map(({ platform }) => platform.id)
       .sort();
   assert.deepEqual(enabledIds("providerModel"), [
-    "antigravity",
+    "antigravity-cli",
     "claude",
     "codex",
     "opencode",

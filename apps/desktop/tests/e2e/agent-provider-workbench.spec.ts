@@ -7,9 +7,8 @@ import {
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { readPersistedProvider } from "./helpers/provider-persistence";
 
-import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
 import {
   closePromptHub,
   launchPromptHub,
@@ -61,15 +60,6 @@ async function createClaudeProvider(
 async function listClaudeProviders(page: Page) {
   return page.evaluate(() =>
     window.api.agent.listProviderProfiles({ platformId: "claude" }),
-  );
-}
-
-function readProviderResource(userDataDir: string, profileId: string) {
-  return JSON.parse(
-    fs.readFileSync(
-      path.join(userDataDir, "data", "agents", profileId, "agent.json"),
-      "utf8",
-    ),
   );
 }
 
@@ -426,11 +416,7 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-provider-lifecycle-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "a".repeat(64),
-    operationId: "provider-lifecycle-e2e",
-  });
+
   const homeDir = path.join(userDataDir, "home");
   const claudeDir = path.join(homeDir, ".claude");
   const nativeConfigPath = path.join(claudeDir, "settings.json");
@@ -521,18 +507,16 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
         }),
       ]),
     );
-    const createdResource = readProviderResource(userDataDir, created.id);
+    const createdResource = readPersistedProvider(userDataDir, created.id);
     expect(createdResource).toMatchObject({
-      kind: "prompthub-agent-provider-resource",
-      schemaVersion: 1,
-      requiresSecret: false,
       profile: {
         id: created.id,
+        secretRef: null,
         name: "E2E Provider Lifecycle",
         endpoint: "http://127.0.0.1:43119/v1",
       },
     });
-    expect(JSON.stringify(createdResource)).not.toContain("secretRef");
+    expect(fs.existsSync(path.join(userDataDir, "data", "agents"))).toBe(false);
     const exported = await launched.page.evaluate(
       (profileId) => window.api.agent.exportProviderProfile(profileId),
       created.id,
@@ -631,15 +615,12 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
         }),
       ]),
     );
-    const updatedResourceText = fs.readFileSync(
-      path.join(userDataDir, "data", "agents", created.id, "agent.json"),
-      "utf8",
-    );
-    expect(JSON.parse(updatedResourceText)).toMatchObject({
-      requiresSecret: false,
+    const updatedResource = readPersistedProvider(userDataDir, created.id);
+    expect(updatedResource).toMatchObject({
       profile: {
         id: created.id,
         name: "E2E Provider Updated",
+        secretRef: null,
         endpoint: "http://127.0.0.1:43121/v1",
       },
       modelMappings: expect.arrayContaining([
@@ -660,12 +641,9 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
     });
     currentApp = null;
     expect(fs.readFileSync(nativeConfigPath, "utf8")).toBe(nativeConfigBefore);
-    expect(
-      fs.readFileSync(
-        path.join(userDataDir, "data", "agents", created.id, "agent.json"),
-        "utf8",
-      ),
-    ).toBe(updatedResourceText);
+    expect(readPersistedProvider(userDataDir, created.id)).toEqual(
+      updatedResource,
+    );
 
     launched = await launchPromptHub(null, {
       userDataDir,
@@ -675,6 +653,10 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
     await launched.page.setViewportSize({ width: 1440, height: 900 });
     await sendAppCommand(launched.app, { type: "agent:manage" });
     await openClaudeProviderWorkbench(launched.page);
+    await launched.page
+      .getByTestId("agent-provider-workbench-sidebar")
+      .getByRole("button", { name: /^E2E Provider Updated\b/ })
+      .click();
     await expect(
       launched.page.getByRole("heading", {
         name: "E2E Provider Updated",
@@ -703,11 +685,10 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
       .click();
     await expect(deleteDialog).toBeHidden();
     await expect.poll(() => listClaudeProviders(launched.page)).toHaveLength(0);
-    await expect
-      .poll(() =>
-        fs.existsSync(path.join(userDataDir, "data", "agents", created.id)),
-      )
-      .toBe(false);
+    expect(readPersistedProvider(userDataDir, created.id)).toEqual({
+      profile: null,
+      modelMappings: [],
+    });
     expect(fs.readFileSync(nativeConfigPath, "utf8")).toBe(nativeConfigBefore);
   } finally {
     if (currentApp) {
@@ -720,103 +701,107 @@ test("creates, updates, restarts, and deletes a Claude provider without changing
   }
 });
 
-test("keeps credential writes atomic when system encryption is unavailable", async () => {
-  const userDataDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "prompthub-provider-credential-e2e-"),
-  );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "c".repeat(64),
-    operationId: "provider-credential-e2e",
-  });
-  const homeDir = path.join(userDataDir, "home");
-  const claudeDir = path.join(homeDir, ".claude");
-  const nativeConfigPath = path.join(claudeDir, "settings.json");
-  const secretStorePath = path.join(userDataDir, "agent-secrets.json");
-  fs.mkdirSync(claudeDir, { recursive: true });
-  fs.writeFileSync(nativeConfigPath, '{"model":"claude-native"}\n', "utf8");
-  const nativeConfigBefore = fs.readFileSync(nativeConfigPath, "utf8");
-  const credential = ["e2e", "provider", "credential", "value"].join("-");
-  let app: ElectronApplication | null = null;
-
-  try {
-    const launched = await launchPromptHub(null, {
-      userDataDir,
-      env: { HOME: homeDir, USERPROFILE: homeDir },
-    });
-    app = launched.app;
-    const encryptionAvailable = await launched.app.evaluate(({ safeStorage }) =>
-      safeStorage.isEncryptionAvailable(),
+for (const unavailable of [false, true]) {
+  test(`keeps credential writes private and atomic with encryption ${unavailable ? "unavailable" : "available"}`, async () => {
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-provider-credential-e2e-"),
     );
-    await setAppLanguage(launched.page, "en");
-    await launched.page.setViewportSize({ width: 1440, height: 900 });
-    await sendAppCommand(launched.app, { type: "agent:manage" });
-    await openClaudeProviderWorkbench(launched.page);
-    await launched.page
-      .getByTestId("agent-provider-workbench-toolbar")
-      .getByRole("button", { name: "Add custom provider" })
-      .click();
-    const editor = launched.page.getByRole("region", { name: "Add provider" });
-    await editor.getByLabel("Name").fill("Credential Boundary Provider");
-    await editor.getByLabel("Provider kind").fill("openai-compatible");
-    await editor
-      .getByLabel("Endpoint (optional)")
-      .fill("http://127.0.0.1:43141/v1");
-    await editor.getByLabel("Primary model").fill("credential-model");
-    await editor.getByLabel("Credential (write-only)").fill(credential);
-    await editor.getByRole("button", { name: "Save provider" }).click();
 
-    if (!encryptionAvailable) {
-      await expect(launched.page.getByRole("alert")).toHaveText(
-        "Provider operation failed",
-      );
-      await expect(editor).toBeVisible();
-      expect(await listClaudeProviders(launched.page)).toHaveLength(0);
-      expect(fs.existsSync(path.join(userDataDir, "data", "agents"))).toBe(
-        false,
-      );
-      expect(fs.existsSync(secretStorePath)).toBe(false);
-    } else {
-      await expect(editor).toBeHidden();
-      const profiles = await listClaudeProviders(launched.page);
-      expect(profiles).toHaveLength(1);
-      expect(profiles[0].secretState).toBe("available");
-      const resource = readProviderResource(userDataDir, profiles[0].id);
-      expect(resource.requiresSecret).toBe(true);
-      expect(JSON.stringify(resource)).not.toContain(credential);
-      expect(fs.readFileSync(secretStorePath, "utf8")).not.toContain(
-        credential,
-      );
-      const exported = await launched.page.evaluate(
-        (profileId) => window.api.agent.exportProviderProfile(profileId),
-        profiles[0].id,
-      );
-      expect(exported.requiresSecret).toBe(true);
-      expect(JSON.stringify(exported)).not.toContain(credential);
-    }
+    const homeDir = path.join(userDataDir, "home");
+    const claudeDir = path.join(homeDir, ".claude");
+    const nativeConfigPath = path.join(claudeDir, "settings.json");
+    const secretStorePath = path.join(userDataDir, "agent-secrets.json");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(nativeConfigPath, '{"model":"claude-native"}\n', "utf8");
+    const nativeConfigBefore = fs.readFileSync(nativeConfigPath, "utf8");
+    const credential = ["e2e", "provider", "credential", "value"].join("-");
+    let app: ElectronApplication | null = null;
 
-    await expect(launched.page.locator("body")).not.toContainText(credential);
-    expect(fs.readFileSync(nativeConfigPath, "utf8")).toBe(nativeConfigBefore);
-  } finally {
-    if (app) {
-      await closePromptHub(app, userDataDir).catch(() => {
-        fs.rmSync(userDataDir, { recursive: true, force: true });
+    try {
+      const launched = await launchPromptHub(null, {
+        userDataDir,
+        env: { HOME: homeDir, USERPROFILE: homeDir },
       });
-    } else {
-      fs.rmSync(userDataDir, { recursive: true, force: true });
+      app = launched.app;
+      const encryptionAvailable = await launched.app.evaluate(
+        ({ safeStorage }, failEncryption) => {
+          if (failEncryption)
+            Reflect.set(safeStorage, "isEncryptionAvailable", () => false);
+          return safeStorage.isEncryptionAvailable();
+        },
+        unavailable,
+      );
+      expect(encryptionAvailable).toBe(!unavailable);
+      await setAppLanguage(launched.page, "en");
+      await launched.page.setViewportSize({ width: 1440, height: 900 });
+      await sendAppCommand(launched.app, { type: "agent:manage" });
+      await openClaudeProviderWorkbench(launched.page);
+      await launched.page
+        .getByTestId("agent-provider-workbench-toolbar")
+        .getByRole("button", { name: "Add custom provider" })
+        .click();
+      const editor = launched.page.getByRole("region", {
+        name: "Add provider",
+      });
+      await editor.getByLabel("Name").fill("Credential Boundary Provider");
+      await editor.getByLabel("Provider kind").fill("openai-compatible");
+      await editor
+        .getByLabel("Endpoint (optional)")
+        .fill("http://127.0.0.1:43141/v1");
+      await editor.getByLabel("Primary model").fill("credential-model");
+      await editor.getByLabel("Credential (write-only)").fill(credential);
+      await editor.getByRole("button", { name: "Save provider" }).click();
+
+      if (!encryptionAvailable) {
+        await expect(launched.page.getByRole("alert")).toHaveText(
+          "Provider operation failed",
+        );
+        await expect(editor).toBeVisible();
+        expect(await listClaudeProviders(launched.page)).toHaveLength(0);
+        expect(fs.existsSync(path.join(userDataDir, "data", "agents"))).toBe(
+          false,
+        );
+        expect(fs.existsSync(secretStorePath)).toBe(false);
+      } else {
+        await expect(editor).toBeHidden();
+        const profiles = await listClaudeProviders(launched.page);
+        expect(profiles).toHaveLength(1);
+        expect(profiles[0].secretState).toBe("available");
+        const resource = readPersistedProvider(userDataDir, profiles[0].id);
+        expect(resource.profile?.secretRef).toBeTruthy();
+        expect(JSON.stringify(resource)).not.toContain(credential);
+        expect(fs.readFileSync(secretStorePath, "utf8")).not.toContain(
+          credential,
+        );
+        const exported = await launched.page.evaluate(
+          (profileId) => window.api.agent.exportProviderProfile(profileId),
+          profiles[0].id,
+        );
+        expect(exported.requiresSecret).toBe(true);
+        expect(JSON.stringify(exported)).not.toContain(credential);
+      }
+
+      await expect(launched.page.locator("body")).not.toContainText(credential);
+      expect(fs.readFileSync(nativeConfigPath, "utf8")).toBe(
+        nativeConfigBefore,
+      );
+    } finally {
+      if (app) {
+        await closePromptHub(app, userDataDir).catch(() => {
+          fs.rmSync(userDataDir, { recursive: true, force: true });
+        });
+      } else {
+        fs.rmSync(userDataDir, { recursive: true, force: true });
+      }
     }
-  }
-});
+  });
+}
 
 test("keeps duplicate provider display names as separate stable profiles", async () => {
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-provider-duplicate-name-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "b".repeat(64),
-    operationId: "provider-duplicate-name-e2e",
-  });
+
   const homeDir = path.join(userDataDir, "home");
   const claudeDir = path.join(homeDir, ".claude");
   const nativeConfigPath = path.join(claudeDir, "settings.json");
@@ -876,7 +861,7 @@ test("keeps duplicate provider display names as separate stable profiles", async
       profiles.filter((profile) => profile.name === "duplicate display name"),
     ).toHaveLength(1);
     expect(
-      profiles.map((profile) => readProviderResource(userDataDir, profile.id)),
+      profiles.map((profile) => readPersistedProvider(userDataDir, profile.id)),
     ).toHaveLength(3);
     expect(fs.readFileSync(nativeConfigPath, "utf8")).toBe(nativeConfigBefore);
 

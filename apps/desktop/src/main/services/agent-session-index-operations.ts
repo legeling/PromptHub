@@ -26,6 +26,8 @@ function rootOption(agentId: string, rootPath: string) {
       return { cursorRootDir: rootPath };
     case "gemini":
       return { geminiRootDir: rootPath };
+    case "antigravity-cli":
+      return { antigravityRootDir: rootPath };
     case "augment":
       return { augmentRootDir: rootPath };
     case "cherry-studio":
@@ -56,8 +58,6 @@ function explicitRuntimeRootOption(agentId: string, rootPath: string) {
   // distinct from the asset root. Only a user override replaces them.
   if (!getBuiltinAgentOverride(agentId)?.rootPath) return {};
   switch (agentId) {
-    case "antigravity":
-      return { antigravityRootDir: rootPath };
     case "hermes":
       return { hermesRootDir: rootPath };
     case "reasonix":

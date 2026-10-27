@@ -386,7 +386,7 @@ describe("OpenCode unified Provider Profile adapter", () => {
     },
   );
 
-  it("fails closed for v2 config, native custom headers, missing secrets, and stale plans", async () => {
+  it("supports native v2 config and rejects native custom headers, missing secrets, and stale plans", async () => {
     const root = await temporaryRoot();
     const configPath = path.join(root, "opencode.jsonc");
     await fs.writeFile(
@@ -405,10 +405,7 @@ describe("OpenCode unified Provider Profile adapter", () => {
         baseline: await adapter.inspect(context(root)),
       }),
     ).resolves.toMatchObject({
-      canApply: false,
-      blockedReasons: expect.arrayContaining([
-        "opencode-v2-provider-config-unsupported",
-      ]),
+      canApply: true,
     });
 
     await fs.writeFile(
@@ -477,6 +474,114 @@ describe("OpenCode unified Provider Profile adapter", () => {
         modelMappings: mappings(),
       }),
     ).rejects.toThrow("AGENT_PROVIDER_PLAN_STALE");
+  });
+
+  it("activates a V2 provider without editing accounts or V1 entries and restores exact files", async () => {
+    const root = await temporaryRoot();
+    const configPath = path.join(root, "opencode.jsonc");
+    const original =
+      "// retained\n" +
+      JSON.stringify({
+        provider: {
+          "team-gateway": {
+            npm: "@ai-sdk/openai",
+            options: { baseURL: "https://old.example" },
+          },
+        },
+        providers: { other: { settings: { apiKey: "unrelated" } } },
+        agents: { title: { description: "Keep title settings" } },
+      });
+    await fs.writeFile(configPath, original);
+    const adapter = createAgentOpenCodeProviderAdapter(options(root));
+    const target = { profile: profile(), modelMappings: mappings() };
+    const plan = await adapter.planActivation({
+      context: context(root),
+      ...target,
+      baseline: await adapter.inspect(context(root)),
+    });
+    expect(plan.canApply).toBe(true);
+    const receipt = await adapter.apply(context(root), plan, target);
+    expect((await adapter.verify(context(root), plan, receipt)).verified).toBe(
+      true,
+    );
+    const written = await fs.readFile(configPath, "utf8");
+    expect(written).toContain("// retained");
+    expect(jsonc(written)).toMatchObject({
+      provider: {
+        "team-gateway": { options: { baseURL: "https://old.example" } },
+      },
+      providers: {
+        "team-gateway": {
+          package: "@opencode/ai/providers/openai-compatible",
+          settings: {
+            baseURL: "https://gateway.example/v1",
+            apiKey: "main-only-opencode-key",
+          },
+          models: { "gpt-main": { name: "gpt-main" } },
+        },
+        other: { settings: { apiKey: "unrelated" } },
+      },
+      model: "team-gateway/gpt-main",
+      agents: {
+        title: {
+          model: "team-gateway/gpt-small",
+          description: "Keep title settings",
+        },
+      },
+    });
+    expect(
+      await fs.readFile(options(root).authPath, "utf8").catch(() => null),
+    ).toBeNull();
+    expect((await adapter.rollback(context(root), receipt)).restored).toBe(
+      true,
+    );
+    expect(await fs.readFile(configPath, "utf8")).toBe(original);
+  });
+
+  it("restores an imported V2 selection including its title model without replacing credentials", async () => {
+    const root = await temporaryRoot();
+    const configPath = path.join(root, "opencode.jsonc");
+    const original = JSON.stringify({
+      model: "team-gateway/gpt-main",
+      agents: { title: { model: "team-gateway/gpt-small" } },
+      providers: {
+        "team-gateway": {
+          package: "@opencode/ai/providers/openai-compatible",
+          settings: {
+            baseURL: "https://gateway.example/v1",
+            apiKey: "native-key",
+          },
+          models: { "gpt-main": {}, "gpt-small": {} },
+        },
+      },
+    });
+    await fs.writeFile(configPath, original);
+    const adapter = createAgentOpenCodeProviderAdapter(options(root));
+    const preview = await adapter.importCurrent(context(root));
+    expect(preview.profile).toBeTruthy();
+    const target = {
+      profile: profile(preview.profile!),
+      modelMappings: mappings("gpt-small", "gpt-main"),
+    };
+    const plan = await adapter.planActivation({
+      context: context(root),
+      ...target,
+      baseline: await adapter.inspect(context(root)),
+    });
+    expect(plan.canApply).toBe(true);
+    const receipt = await adapter.apply(context(root), plan, target);
+    expect((await adapter.verify(context(root), plan, receipt)).verified).toBe(
+      true,
+    );
+    expect(jsonc(await fs.readFile(configPath, "utf8"))).toMatchObject({
+      model: "team-gateway/gpt-small",
+      agents: { title: { model: "team-gateway/gpt-main" } },
+      providers: { "team-gateway": { settings: { apiKey: "native-key" } } },
+    });
+    expect((await adapter.rollback(context(root), receipt)).restored).toBe(
+      true,
+    );
+    expect(await fs.readFile(configPath, "utf8")).toBe(original);
   });
 
   it("restores both native files after a partial write failure", async () => {

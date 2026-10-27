@@ -3,9 +3,6 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
-
 import {
   closePromptHub,
   launchPromptHub,
@@ -73,11 +70,7 @@ test.describe("E2E: Agent settings dialog", () => {
     const userDataDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "prompthub-agent-settings-persistence-e2e-"),
     );
-    writeRuntimeLayoutState(userDataDir);
-    writeCanonicalStorageAuthority(userDataDir, {
-      consistencyId: "e".repeat(64),
-      operationId: "agent-settings-persistence-e2e",
-    });
+
     const homeDir = path.join(userDataDir, "home");
     const claudeDir = path.join(homeDir, ".claude");
     const codexDir = path.join(homeDir, ".codex");

@@ -73,6 +73,7 @@ describe("Agent session index operation factory", () => {
     ["augment", "augmentRootDir"],
     ["cherry-studio", "cherryStudioRootDir"],
     ["qoder", "qoderRootDir"],
+    ["antigravity-cli", "antigravityRootDir"],
   ])(
     "passes the verified %s root through its native option",
     (agentId, key) => {
@@ -119,7 +120,6 @@ describe("Agent session index operation factory", () => {
   });
 
   it.each([
-    ["antigravity", "antigravityRootDir"],
     ["hermes", "hermesRootDir"],
     ["reasonix", "reasonixStateRootDir"],
     ["qwen", "qwenRuntimeDir"],

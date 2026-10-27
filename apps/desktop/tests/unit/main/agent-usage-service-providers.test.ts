@@ -29,7 +29,6 @@ const COPILOT_HOSTS_PATH = path.join(
   "github-copilot",
   "hosts.json",
 );
-const CLOUDCODE_BASE = "https://cloudcode-pa.googleapis.com/v1internal";
 
 interface Harness {
   service: ReturnType<typeof createAgentUsageService>;
@@ -559,30 +558,6 @@ function antigravityKeychainPayload(
   return `account-reference:${Buffer.from(payload).toString("base64url")}`;
 }
 
-function loadCodeAssistPayload(overrides: Record<string, unknown> = {}) {
-  return {
-    cloudaicompanionProject: "projects/proj-123",
-    currentTier: { id: "tier-pro", name: "Pro" },
-    ...overrides,
-  };
-}
-
-function antigravityModelsPayload() {
-  return {
-    models: {
-      "gemini-2.5-pro": {
-        quotaInfo: {
-          remainingFraction: 0.25,
-          resetTime: "2027-01-02T00:00:00.000Z",
-        },
-      },
-      "gemini-2.5-flash": {
-        quotaInfo: { remainingFraction: 1 },
-      },
-    },
-  };
-}
-
 describe("Agent usage service (Antigravity adapter)", () => {
   describe("credential resolution", () => {
     it("does not probe an Agent whose configured root is not detected", async () => {
@@ -678,294 +653,33 @@ describe("Agent usage service (Antigravity adapter)", () => {
       expect(h.fetchImpl).not.toHaveBeenCalled();
     });
 
-    it("uses the current Antigravity macOS Keychain session before stale legacy files", async () => {
-      const h = createHarness({ platform: "darwin" });
-      h.commandRunner.resolve.mockResolvedValue("/usr/bin/security");
-      h.commandRunner.run.mockResolvedValue({
-        stdout: antigravityKeychainPayload(),
-        stderr: "",
-      });
-      h.setFile(
-        ANTIGRAVITY_TOKEN_PATH,
-        antigravityTokenPayload({ expiry: "2020-01-01T00:00:00.000Z" }),
-      );
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(200, antigravityModelsPayload()));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("ok");
-      expect(h.commandRunner.run).toHaveBeenCalledWith(
-        "/usr/bin/security",
-        ["find-generic-password", "-s", "gemini", "-a", "antigravity", "-w"],
-        expect.objectContaining({ timeout: 10_000 }),
-      );
-      expectNoTokenLeak(quota, ANTIGRAVITY_TOKEN);
-    });
-
-    it("continues past an expired legacy token to a valid shared credential", async () => {
-      const h = createHarness();
-      h.setFile(
-        ANTIGRAVITY_TOKEN_PATH,
-        antigravityTokenPayload({ expiry: "2020-01-01T00:00:00.000Z" }),
-      );
-      h.setFile(GEMINI_CREDENTIALS_PATH, geminiCredentialsPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(200, antigravityModelsPayload()));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("ok");
-      expect(h.fetchImpl).toHaveBeenCalledTimes(2);
-    });
-
-    it("falls back when the Keychain item is malformed instead of claiming the session expired", async () => {
-      const h = createHarness({ platform: "darwin" });
-      h.commandRunner.resolve.mockResolvedValue("/usr/bin/security");
-      h.commandRunner.run.mockResolvedValue({
-        stdout: "account-reference:not-valid-json",
-        stderr: "",
-      });
-      h.setFile(GEMINI_CREDENTIALS_PATH, geminiCredentialsPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(200, antigravityModelsPayload()));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("ok");
-    });
-
-    it("returns no-credentials without a network call when the token file is missing", async () => {
-      const h = createHarness();
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota).toMatchObject({
-        agentId: "antigravity",
-        adapter: "antigravity-oauth-v1",
-        status: "no-credentials",
-        metrics: [],
-      });
-      expect(h.fetchImpl).not.toHaveBeenCalled();
-    });
-
-    it("returns no-credentials for a token file without token.access_token", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, JSON.stringify({ token: {} }));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("no-credentials");
-      expect(h.fetchImpl).not.toHaveBeenCalled();
-    });
-
-    it("short-circuits to expired when the token expiry has passed, without a network call", async () => {
-      const h = createHarness();
-      h.setFile(
-        ANTIGRAVITY_TOKEN_PATH,
-        antigravityTokenPayload({ expiry: "2020-01-01T00:00:00.000Z" }),
-      );
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota).toMatchObject({ status: "expired", metrics: [] });
-      expect(h.fetchImpl).not.toHaveBeenCalled();
-    });
-
-    it("falls back to the shared Gemini credential file for Antigravity 2.0 installs", async () => {
-      const h = createHarness();
-      h.setFile(GEMINI_CREDENTIALS_PATH, geminiCredentialsPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(200, antigravityModelsPayload()));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("ok");
-      expect(h.fetchImpl).toHaveBeenCalledTimes(2);
-      expect(h.fetchImpl).toHaveBeenNthCalledWith(
-        1,
-        `${CLOUDCODE_BASE}:loadCodeAssist`,
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: `Bearer ${GEMINI_TOKEN}`,
-          }),
-        }),
-      );
-    });
-
-    it("returns no-credentials when both the Antigravity token and the shared Gemini file are missing", async () => {
-      const h = createHarness();
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("no-credentials");
-      expect(h.fetchImpl).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("request and response mapping", () => {
-    it("calls loadCodeAssist then fetchAvailableModels with Bearer auth", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(200, antigravityModelsPayload()));
-
-      await h.service.getUsage("antigravity");
-
-      expect(h.fetchImpl).toHaveBeenCalledTimes(2);
-      expect(h.fetchImpl).toHaveBeenNthCalledWith(
-        1,
-        `${CLOUDCODE_BASE}:loadCodeAssist`,
-        expect.objectContaining({
-          method: "POST",
-          headers: expect.objectContaining({
-            Authorization: `Bearer ${ANTIGRAVITY_TOKEN}`,
-          }),
-          body: JSON.stringify({ metadata: { ideType: "ANTIGRAVITY" } }),
-        }),
-      );
-      expect(h.fetchImpl).toHaveBeenNthCalledWith(
-        2,
-        `${CLOUDCODE_BASE}:fetchAvailableModels`,
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({ project: "projects/proj-123" }),
-        }),
-      );
-    });
-
-    it("maps the models dict to per-model quota metrics and the tier to plan", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(200, antigravityModelsPayload()));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota).toMatchObject({
-        agentId: "antigravity",
-        adapter: "antigravity-oauth-v1",
-        status: "ok",
-        plan: "Pro",
-      });
-      expect(metricById(quota, "model:gemini-2.5-pro")).toEqual({
-        id: "model:gemini-2.5-pro",
-        label: "Model quota",
-        scope: {
-          kind: "model",
-          id: "gemini-2.5-pro",
-          label: "gemini-2.5-pro",
-        },
-        period: { kind: "provider-defined", label: "Provider quota" },
-        value: { kind: "percentage", remainingPercent: 25 },
-        resetsAt: Date.parse("2027-01-02T00:00:00.000Z"),
-      });
-      expect(metricById(quota, "model:gemini-2.5-flash")).toEqual({
-        id: "model:gemini-2.5-flash",
-        label: "Model quota",
-        scope: {
-          kind: "model",
-          id: "gemini-2.5-flash",
-          label: "gemini-2.5-flash",
-        },
-        period: { kind: "provider-defined", label: "Provider quota" },
-        value: { kind: "percentage", remainingPercent: 100 },
-        resetsAt: null,
-      });
-    });
-
-    it("accepts a project object and a models list defensively", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(
-          fakeResponse(
-            200,
-            loadCodeAssistPayload({
-              cloudaicompanionProject: { id: "proj-obj" },
-              currentTier: { id: "tier-free" },
-            }),
-          ),
-        )
-        .mockResolvedValueOnce(
-          fakeResponse(200, {
-            models: [
-              { name: "gemini-2.5-pro", quotaInfo: { remainingFraction: 0.5 } },
-            ],
-          }),
+    it.each(["not-running", "unavailable"] as const)(
+      "never borrows CLI or Gemini credentials when desktop is %s",
+      async (kind) => {
+        const h = createHarness({
+          antigravityLocalResult:
+            kind === "not-running"
+              ? { kind }
+              : { kind, errorCode: "antigravity-session-unavailable" },
+        });
+        h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
+        h.setFile(
+          GEMINI_CREDENTIALS_PATH,
+          JSON.stringify({ access_token: GEMINI_TOKEN }),
         );
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota.status).toBe("ok");
-      expect(quota.plan).toBe("tier-free");
-      expect(metricById(quota, "model:gemini-2.5-pro")).toMatchObject({
-        value: { kind: "percentage", remainingPercent: 50 },
-      });
-      expect(h.fetchImpl).toHaveBeenNthCalledWith(
-        2,
-        `${CLOUDCODE_BASE}:fetchAvailableModels`,
-        expect.objectContaining({
-          body: JSON.stringify({ project: "proj-obj" }),
-        }),
-      );
-    });
-  });
-
-  describe("error mapping and secret isolation", () => {
-    it("maps a 401 from loadCodeAssist to expired", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
-      h.fetchImpl.mockResolvedValueOnce(fakeResponse(401, {}));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota).toMatchObject({ status: "expired" });
-      expect(h.fetchImpl).toHaveBeenCalledTimes(1);
-      expectNoTokenLeak(quota, ANTIGRAVITY_TOKEN);
-    });
-
-    it("maps an HTTP 500 from fetchAvailableModels to unavailable with http-error", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
-      h.fetchImpl
-        .mockResolvedValueOnce(fakeResponse(200, loadCodeAssistPayload()))
-        .mockResolvedValueOnce(fakeResponse(500, {}));
-
-      const quota = await h.service.getUsage("antigravity");
-
-      expect(quota).toMatchObject({
-        status: "unavailable",
-        errorCode: "http-error",
-      });
-    });
-
-    it("maps a rejected fetch to network-error and an abort to timeout", async () => {
-      const h = createHarness();
-      h.setFile(ANTIGRAVITY_TOKEN_PATH, antigravityTokenPayload());
-      h.fetchImpl.mockRejectedValueOnce(new Error("socket hang up"));
-
-      const network = await h.service.getUsage("antigravity");
-      expect(network).toMatchObject({
-        status: "unavailable",
-        errorCode: "network-error",
-      });
-
-      h.fetchImpl.mockRejectedValueOnce(abortError());
-      const timeout = await h.service.getUsage("antigravity", {
-        forceRefresh: true,
-      });
-      expect(timeout).toMatchObject({
-        status: "unavailable",
-        errorCode: "timeout",
-      });
-    });
+        const quota = await h.service.getUsage("antigravity");
+        expect(quota).toMatchObject({
+          status: "unavailable",
+          errorCode:
+            kind === "not-running"
+              ? "antigravity-not-running"
+              : "antigravity-session-unavailable",
+        });
+        expect(h.fetchImpl).not.toHaveBeenCalled();
+        expect(h.commandRunner.resolve).not.toHaveBeenCalled();
+        expectNoTokenLeak(quota, ANTIGRAVITY_TOKEN);
+      },
+    );
   });
 });
 

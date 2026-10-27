@@ -115,6 +115,28 @@ function harness(read = vi.fn(() => config())) {
 }
 
 describe("Agent Provider source service", () => {
+  it("defaults a third-party Claude import to Bearer without changing its source", async () => {
+    const source = config();
+    source.providers[1].apiUrl = "https://gateway.example.com/apps/anthropic";
+    source.models[2].apiUrl = source.providers[1].apiUrl;
+    const before = structuredClone(source);
+    const { service, create } = harness(vi.fn(() => source));
+    await service.importSource({
+      platformId: "claude",
+      sourceId: "provider-anthropic",
+      modelId: "model-anthropic",
+      protocol: "anthropic-messages",
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          config: { credentialEnvKey: "ANTHROPIC_AUTH_TOKEN" },
+        }),
+      }),
+    );
+    expect(source).toEqual(before);
+  });
+
   it.each(["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] as const)(
     "imports a custom Claude gateway with explicit %s authentication",
     async (credentialEnvKey) => {

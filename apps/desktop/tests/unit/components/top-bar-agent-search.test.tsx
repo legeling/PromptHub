@@ -1,6 +1,7 @@
 import { act, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { TopBar } from "../../../src/renderer/components/layout/TopBar";
 import { useFolderStore } from "../../../src/renderer/stores/folder.store";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
@@ -55,12 +56,16 @@ describe("TopBar Agent Skill search", () => {
   it("uses one global Agent Skill search box without showing library no-result state", async () => {
     await act(async () => {
       await renderWithI18n(
-        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        <ToastProvider>
+          <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />
+        </ToastProvider>,
         { language: "zh" },
       );
     });
 
-    expect(screen.getByPlaceholderText("搜索 Agent Skill...")).toHaveValue("ada");
+    expect(screen.getByPlaceholderText("搜索 Agent Skill...")).toHaveValue(
+      "ada",
+    );
     expect(screen.queryByText("无结果")).not.toBeInTheDocument();
   });
 });

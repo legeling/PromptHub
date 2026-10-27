@@ -3,8 +3,6 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
 import { readPersistedMcp } from "./helpers/mcp-persistence";
 
 import {
@@ -75,11 +73,7 @@ test("imports and removes an external Pi MCP without leaking its secret or coupl
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-agent-pi-mcp-import-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "c".repeat(64),
-    operationId: "agent-pi-mcp-import-e2e",
-  });
+
   const homeDir = path.join(userDataDir, "home");
   const piRoot = path.join(homeDir, ".pi", "agent");
   const mcpPath = path.join(piRoot, "mcp.json");

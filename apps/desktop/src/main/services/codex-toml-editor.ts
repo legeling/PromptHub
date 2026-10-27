@@ -497,3 +497,29 @@ export function removeTable(raw: string, tablePath: string[]): string {
   }
   return lines.join("\n");
 }
+
+/** Remove owned fields in either inline-value or explicit-subtable form. */
+export function removeTableFields(
+  raw: string,
+  tablePath: string[],
+  keys: string[],
+): string {
+  let next = raw;
+  for (const key of keys) next = removeTable(next, [...tablePath, key]);
+  const structure = scanToml(next);
+  const section = structure.sections.find(
+    (candidate) =>
+      !candidate.isArray && segmentsEqual(candidate.segments, tablePath),
+  );
+  if (!section) return next;
+  const entries = scanSectionEntries(
+    structure.lines,
+    section.start + 1,
+    section.end,
+  );
+  for (const entry of entries.reverse()) {
+    if (keys.includes(entry.key))
+      structure.lines.splice(entry.start, entry.end - entry.start);
+  }
+  return structure.lines.join("\n");
+}

@@ -1,4 +1,5 @@
 export interface AgentExtensionCapability {
+  userRootRelativePath?: string;
   projectDirectory: string;
   subagentExtension: ".md" | ".toml";
   hooksPath: "settings.json" | "hooks.json" | null;
@@ -71,6 +72,11 @@ const CAPABILITIES: Record<string, AgentExtensionCapability> = {
     subagentsUrl: "https://antigravity.google/docs/subagents",
     hooksUrl: "https://antigravity.google/docs/hooks",
   },
+};
+
+CAPABILITIES["antigravity-cli"] = {
+  ...CAPABILITIES.antigravity,
+  userRootRelativePath: "../config",
 };
 
 export function getAgentExtensionCapability(

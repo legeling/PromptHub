@@ -697,7 +697,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
-        "claudeAuthHint": "ゲートウェイの要件に合わせて選択：API キーは x-api-key、認証トークンは Authorization: Bearer を使用します。対話モードの API キー承認は Claude Code が処理します。",
+        "claudeAuthHint": "サードパーティゲートウェイの既定は Auth token（Authorization: Bearer）です。x-api-key が必要な場合のみ API key を選択してください。対話式のキー承認は Claude Code が処理します。既存のインポート設定は保持されます。",
         "open": "PromptHub からインポート",
         "title": "PromptHub プロバイダーをインポート",
         "hint": "PromptHub の既存プロバイダーを現在の Agent に追加します。適用は別途確認が必要です。",

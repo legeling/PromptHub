@@ -1,4 +1,8 @@
 import { migrateGenerationMetadata } from "./generation-schema";
+import {
+  ANTIGRAVITY_CLI_IDENTITY_MIGRATION,
+  migrateAntigravityCliIdentity,
+} from "./antigravity-cli-identity-migration";
 import { migratePromptTestHistory } from "./prompt-test-history";
 import { migrateRuleOwnership } from "./rule-schema";
 import Database from "./adapter";
@@ -464,6 +468,11 @@ export function initDatabase(
         Date.now(),
       );
     };
+
+    if (!hasMigration(ANTIGRAVITY_CLI_IDENTITY_MIGRATION)) {
+      migrateAntigravityCliIdentity(db!);
+      markMigration(ANTIGRAVITY_CLI_IDENTITY_MIGRATION);
+    }
 
     if (!hasMigration("agent_provider_profiles_v1")) {
       const requiredProviderTables = [

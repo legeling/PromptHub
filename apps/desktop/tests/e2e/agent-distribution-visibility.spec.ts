@@ -95,7 +95,9 @@ test("MCP and Plugin distribution show only available Agents", async () => {
     await pluginTarget.click();
     await expect(pluginTarget).toHaveAttribute("aria-pressed", "true");
     await expect(
-      page.getByRole("button", { name: "Distribute to selected Agents" }),
+      page.getByRole("button", {
+        name: "Apply changes",
+      }),
     ).toBeEnabled();
     await page.screenshot({
       path: test.info().outputPath("plugin-targets.png"),

@@ -11,7 +11,7 @@ import {
 } from "@prompthub/shared/constants/platforms";
 
 const expectedProviderAdapters = [
-  "antigravity",
+  "antigravity-cli",
   "claude",
   "codex",
   "opencode",
@@ -39,7 +39,7 @@ const expectedSessionAdapters = [
 ];
 
 const expectedPartialSessionReaders = [
-  "antigravity",
+  "antigravity-cli",
   "cherry-studio",
   "cline",
   "copilot",
@@ -50,6 +50,7 @@ const expectedPartialSessionReaders = [
 
 const expectedPlannedSessionAdapters = [
   "amp",
+  "antigravity",
   "autoclaw",
   "codebuddy",
   "deepseek-harness",
@@ -185,7 +186,7 @@ describe("Agent platform capability inventory", () => {
     expect(supportedPlatformIds("usage")).toEqual(expectedUsageAdapters);
     expect(
       getAgentPlatformCapabilityInventory(
-        SKILL_PLATFORMS.find((platform) => platform.id === "antigravity")!,
+        SKILL_PLATFORMS.find((platform) => platform.id === "antigravity-cli")!,
       ).sessions,
     ).toEqual({
       status: "partial",
@@ -347,7 +348,7 @@ describe("Agent platform capability inventory", () => {
       .sort();
 
     expect(diagnosticIds).toEqual([
-      "antigravity",
+      "antigravity-cli",
       "claude",
       "codex",
       "deepseek-harness",

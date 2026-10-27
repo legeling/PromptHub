@@ -49,6 +49,7 @@ export const MCP_JSON_TARGETS: McpTargetKind[] = [
   "openclaw",
   "qoder",
   "antigravity",
+  "antigravity-cli",
   "reasonix",
   "custom-json",
 ];
@@ -933,7 +934,7 @@ export function getMcpTargetEntryObject(
   if (target === "openclaw") {
     return toOpenClawMcpEntry(server, options);
   }
-  if (target === "antigravity") {
+  if (target === "antigravity" || target === "antigravity-cli") {
     return toAntigravityMcpEntry(server, options);
   }
   if (target === "codex" || target === "custom-toml" || target === "grok") {

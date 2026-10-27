@@ -1,5 +1,91 @@
 # Tasks
 
+## Provider native-contract completion — 2026-10-26
+
+Scope: [Provider native-contract completion](specs/agent-management/spec.md#provider-native-contract-completion--2026-10-26).
+Status: in progress. Codex auth/model and OpenCode V2 changes are implemented,
+with focused and native-CLI verification passed. Claude and Pi retain their existing implementation.
+Antigravity desktop/CLI identity and a supported desktop model-write interface
+remain unresolved; the CLI model writer is not desktop acceptance.
+
+Native fixtures use isolated homes, synthetic credentials and loopback servers;
+the OpenCode V2 binary is installed only in a disposable test directory.
+No user-native configuration, database schema, account credentials or global CLI
+installation is migrated. Existing encrypted backup/digest/rollback owns writes.
+The adapter edits remain linear in document/model size; no polling, cache or
+background service is added. V2 native tests run `--standalone` to avoid leaving
+the upstream shared daemon running. The protocol fixture and test orchestration
+may exceed 50 lines to keep stream event order and the activation/restart/rollback
+assertions together; they remain below the file-size limits.
+
+Verification on 2026-10-26:
+
+- 94 tests passed in eight suites: OpenCode adapter (9), native codec (6),
+  adapter boundaries (28), config ownership (5), Pi writes (25), Pi model
+  resolution (6), provider native contract (9), and Claude import/IPC (6).
+  The unchanged Codex adapter/current-contract suites also passed earlier
+  in this implementation batch (20 tests); they were not rerun unnecessarily.
+- Native consumption: Codex 0.163.0; OpenCode 1.18.21 and isolated 2.1.4,
+  each with Chat Completions and Responses; Pi 0.83.0 with Chat Completions,
+  Responses, Anthropic Messages and Google Generative AI. Each starts twice
+  from persisted configuration and sends the selected model and synthetic
+  credential to the loopback gateway. Codex/OpenCode restore original files.
+- Claude 2.1.307 passes unsigned-in interactive startup/reopen, both credential
+  modes, real storage/IPC import and activation, stale-state rejection,
+  SQLite-failure rollback and native 401 propagation. The PTY fixture allows
+  a bounded normal-exit grace after terminal EOF before terminating its child;
+  completion and zero-exit assertions remain mandatory.
+- `pnpm --filter @prompthub/desktop typecheck:tests`, scoped ESLint and
+  `git diff --check` passed. No desktop GUI, commercial upstream or full release
+  acceptance was run in this batch. Antigravity remains incomplete.
+
+## Claude gateway default and interactive acceptance — 2026-10-26 (#246)
+
+- [x] Default newly imported third-party gateways to `ANTHROPIC_AUTH_TOKEN`;
+  official `api.anthropic.com` imports retain API Key. Share the default between
+  renderer and source service; retain explicit selections and existing profiles.
+- [x] Verify installed Claude 2.1.307 through a real interactive PTY with no
+  official login, a fresh disposable home, and imported/activated native settings.
+  Complete theme/security/workspace prompts, receive the gateway response,
+  exit normally, reopen storage and Claude, and receive another response without
+  a login or repeated workspace-trust prompt. Assert exact model and Bearer header.
+- [x] Authorized native Electron clicks: keep the untouched default, import,
+  review/activate, inspect written settings, invoke real Claude, and restart
+  PromptHub. Auth Token and activation persist; unrelated settings are preserved.
+
+58 distinct focused tests passed across separate runs: 57 in the original batch
+and the new interactive startup/reopen case after repairing its terminal driver.
+The initial driver sent input before Claude mounted the trust listener and then
+missed its second Ctrl-D exit confirmation. The fixture now waits briefly for
+input mounting, paces keystrokes and follows the observed exit prompt; assertions
+and product behavior were not weakened. The POSIX-only native test is opt-in and
+uses an existing uv Python interpreter without dependency downloads. Its explicit
+CLI argument/PTY ownership functions exceed 50 lines to keep launch, bounded
+capture and child cleanup together; the startup/reopen test covers that lifecycle.
+
+Failure sensitivity: a temporary Vitest transform restoring the old API-key
+default made the third-party default assertion fail while the official-endpoint
+case remained green. No production source was changed for that check. Explicit
+API-key `-p`, Auth Token `-p`, malformed auth, stale activation, audit-failure
+rollback, source preservation, IPC, preload, component and locale checks passed.
+
+Commands from the repository root:
+
+```sh
+PROMPTHUB_NATIVE_AGENT_TESTS=1 pnpm --filter @prompthub/desktop exec vitest run tests/integration/claude-provider-import.test.ts tests/unit/main/agent-provider-source-service.test.ts tests/unit/main/agent-provider-source-ipc.test.ts tests/unit/preload/agent-provider-source-api.test.ts tests/unit/main/agent-claude-provider-adapter.test.ts tests/unit/main/claude-model-precedence.test.ts tests/unit/components/agent-provider-source-dialog.test.tsx tests/unit/services/agent-workspace-locales.test.ts --minWorkers=1 --maxWorkers=1 --silent
+PROMPTHUB_NATIVE_AGENT_TESTS=1 pnpm --filter @prompthub/desktop exec vitest run tests/integration/claude-provider-import.test.ts -t 'unsigned-in interactive' --minWorkers=1 --maxWorkers=1 --silent
+pnpm --filter @prompthub/desktop typecheck:tests
+pnpm build
+```
+
+Test/source typecheck, scoped ESLint, production build, file-size limits,
+spec governance/index/traceability and whitespace checks passed. GUI screenshots,
+snapshots and reproduction script are retained at `/tmp/prompthub-246-accept-eqHAgv`.
+The gateway is a local deterministic fixture, not the reporter's paid service.
+Windows interactive startup and API-key approval remain unverified; no official
+login/approval state is seeded or bypassed. This completes the local default-auth
+fix, not the broader Agent workbench scope. No commit, push or release this round.
+
 ## Cross-Agent extension configuration — 2026-10-22
 
 Contract: [Cross-Agent Extension Settings](specs/agent-management/spec.md#cross-agent-extension-settings-2026-10-22).
@@ -813,5 +899,49 @@ Registry、shell、allowlisted raw config、非敏感 model config 和只读 ses
 设备文件仅在升级及恢复边界转换；正常 hydration、保存和分发读取已移除对应旧键
 回退与双写。配置生命周期、真实 CLI 启动、恢复和迁移故障变异已有通过证据，见
 current-contract-design.md 的第一批实施记录。统一 checksum 升级清单、Web 合同、
-完整旧版本 authority 清单及 Antigravity 身份冻结尚未完成，因此 T-AGENT-229 和
+完整旧版本 authority 清单仍未完成；Antigravity 身份于 2026-10-26 确认拆分，因此 T-AGENT-229 和
 TEST-AGENT-219 保持未勾选，后续批次不得据此宣称已完成。
+
+### Antigravity desktop / CLI split (2026-10-26)
+
+- Implemented separate registry identities, install detection, model/session routing,
+  Skill targets and inventory; shared Plugins, MCP, Rules and extension files remain
+  references, not copied state. Desktop usage no longer borrows CLI/Gemini tokens.
+- Added a transactional versioned migration for proven CLI profiles and conversation
+  annotations, preserving unknown profiles, native files and snapshot audit data.
+  Restore the pre-migration database safety point before rolling back application code.
+- Verification completed on macOS with agy 1.4.6:
+  - Split registry (7 shared tests), versioned SQLite upgrade/reopen and conflict
+    rollback (2 tests), platform detection/model/session/usage regressions passed.
+  - Plugin inventory, shared-reference removal, entrypoints, extension file lifecycle
+    and native discovery rerun: 5 files / 24 tests passed before adding the model probe.
+    Native MCP listing passed separately. agy discovers the shared subagent and plugin.
+  - The added real CLI request passed against a loopback Gemini protocol fixture:
+    PromptHub writes the model label, agy sends a Gemini 3.1 Pro request with synthetic
+    API-key authentication and receives the fixture reply. The request contains CLI
+    Skill discovery metadata and shared GEMINI.md content; a PreInvocation hook
+    written by the extension service executes and produces a filesystem receipt.
+    The native acceptance test keeps setup, launch and receipts in one sequential
+    case longer than 50 lines so the isolated resource lifecycle is explicit.
+  - Rules workspace (14), Overview (17), asset adapters (8), provider workbench (27)
+    and model-only form (1) tests passed. Source/test typechecks, Desktop build and
+    scoped Desktop ESLint passed; no full release harness or Windows/Linux native run.
+  - Authorized isolated Electron GUI: independent Agent list/roots and Skills,
+    shared Plugins/Rules, subagent create/save/reopen, CLI model profile create,
+    activation preview/apply, native settings readback and process-restart persistence.
+    Both Overview Rules badges show 1 for the same shared file; CLI credentials are
+    displayed as platform-managed. Desktop model/history tabs stay unavailable.
+    A final capability guard prevents the transient unsupported provider request
+    when switching from CLI to desktop; covered by the component regression and
+    scoped ESLint after the GUI run. The last full build preceded this guard.
+  - Isolated Electron instances were stopped and the disposable profile/fixtures
+    removed. Native-test processes and loopback servers exited; no retained dev
+    server, account credentials, native daily configuration changes or Git commits.
+- Remaining: desktop model switching/private history and CLI quota lack verified
+  native adapters. Custom-model generation via customModelsConfig was rejected by
+  agy 1.4.6 with `tModel: model is empty` after selecting the configured label; no
+  gateway request arrived. This is not a successful third-party-model acceptance.
+  The supported built-in-model/Gemini API path passes with GOOGLE_GEMINI_BASE_URL,
+  documented in the official CLI changelog. No commercial upstream/account request,
+  desktop native execution or full Skill instruction execution was verified.
+  Full Antigravity adaptation and T-AGENT-232 remain incomplete.

@@ -1,6 +1,8 @@
 import {
   applyEdits,
   modify,
+  findNodeAtLocation,
+  parseTree,
   parse as parseJsonc,
   type ParseError,
 } from "jsonc-parser";
@@ -29,6 +31,34 @@ export interface OpenCodeDirectProjection {
   name: string;
   model: string;
   secondaryModel: string | null;
+  v2ProviderConfig?: boolean;
+  secret?: string;
+}
+
+const NATIVE_PACKAGES: Record<string, string> = {
+  "@ai-sdk/openai-compatible": "@opencode/ai/providers/openai-compatible",
+  "@ai-sdk/openai": "@opencode/ai/providers/openai",
+};
+
+function canonicalPackage(value: string | null): string | null {
+  if (!value) return null;
+  const native = Object.entries(NATIVE_PACKAGES).find(
+    ([, name]) => name === value,
+  );
+  return (
+    native?.[0] ??
+    (value.startsWith("aisdk:") ? value.slice("aisdk:".length) : value)
+  );
+}
+
+export function openCodeProvider(
+  config: JsonRecord,
+  providerId: string,
+): JsonRecord | undefined {
+  return (
+    recordAt(recordAt(config, "providers"), providerId) ??
+    recordAt(recordAt(config, "provider"), providerId)
+  );
 }
 
 const formatting = { insertSpaces: true, tabSize: 2, eol: "\n" };
@@ -142,18 +172,27 @@ export function projectOpenCodeState(
   const primary = splitModel(textAt(config, "model"));
   const providerId = primary.providerId;
   const provider = providerId
-    ? recordAt(recordAt(config, "provider"), providerId)
+    ? openCodeProvider(config, providerId)
     : undefined;
-  const options = recordAt(provider, "options");
-  const ownership = authOwnership(auth, providerId);
+  const native = Boolean(
+    providerId && recordAt(recordAt(config, "providers"), providerId),
+  );
+  const options = recordAt(provider, native ? "settings" : "options");
+  const ownership = textAt(options, "apiKey")
+    ? "api"
+    : authOwnership(auth, providerId);
   return {
     providerId,
-    packageName: textAt(provider, "npm"),
+    packageName: canonicalPackage(textAt(provider, native ? "package" : "npm")),
     endpoint: sanitizeEndpoint(
       textAt(options, "baseURL") ?? textAt(options, "baseUrl"),
     ),
     model: primary.model,
-    secondaryModel: stripProvider(textAt(config, "small_model"), providerId),
+    secondaryModel: stripProvider(
+      textAt(recordAt(recordAt(config, "agents"), "title"), "model") ??
+        textAt(config, "small_model"),
+      providerId,
+    ),
     authOwnership: ownership,
     credentialStatus: ownership === "missing" ? "missing" : "platform-managed",
     authorizationHeaderConflict: providerAuthorizationHeaderConflict(provider),
@@ -162,6 +201,8 @@ export function projectOpenCodeState(
 }
 
 function edit(raw: string, segments: (string | number)[], value: unknown) {
+  if (value === undefined && !findNodeAtLocation(parseTree(raw), segments))
+    return raw;
   return applyEdits(
     raw,
     modify(raw, segments, value, { formattingOptions: formatting }),
@@ -174,17 +215,19 @@ export function renderOpenCodeSelection(
   model: string,
   secondaryModel: string | null,
   inheritedSecondary = false,
+  native = false,
 ): string {
   let next = edit(original ?? "{}\n", ["model"], `${providerId}/${model}`);
   next = edit(
     next,
-    ["small_model"],
+    native ? ["agents", "title", "model"] : ["small_model"],
     secondaryModel
       ? `${providerId}/${secondaryModel}`
       : inheritedSecondary
         ? ""
         : undefined,
   );
+  if (native) next = edit(next, ["small_model"], undefined);
   return next.endsWith("\n") ? next : `${next}\n`;
 }
 
@@ -192,9 +235,10 @@ function existingModel(
   config: JsonRecord,
   providerId: string,
   modelId: string,
+  native: boolean,
 ): JsonRecord {
   const models = recordAt(
-    recordAt(recordAt(config, "provider"), providerId),
+    recordAt(recordAt(config, native ? "providers" : "provider"), providerId),
     "models",
   );
   const model = models?.[modelId];
@@ -208,29 +252,44 @@ export function renderOpenCodeConfig(
   inheritedSecondary = false,
 ): string {
   let next = original ?? "{}\n";
-  const providerPath = ["provider", desired.providerId];
+  const native = desired.v2ProviderConfig === true;
+  const providerPath = [native ? "providers" : "provider", desired.providerId];
+  const optionsKey = native ? "settings" : "options";
   next = edit(next, [...providerPath, "name"], desired.name);
-  next = edit(next, [...providerPath, "npm"], desired.packageName);
-  next = edit(next, [...providerPath, "options", "baseURL"], desired.endpoint);
+  next = edit(
+    next,
+    [...providerPath, native ? "package" : "npm"],
+    native ? NATIVE_PACKAGES[desired.packageName] : desired.packageName,
+  );
+  next = edit(next, [...providerPath, optionsKey, "baseURL"], desired.endpoint);
   const options = recordAt(
-    recordAt(recordAt(config, "provider"), desired.providerId),
-    "options",
+    recordAt(
+      recordAt(config, native ? "providers" : "provider"),
+      desired.providerId,
+    ),
+    optionsKey,
   );
   if (options && Object.hasOwn(options, "baseUrl")) {
-    next = edit(next, [...providerPath, "options", "baseUrl"], undefined);
+    next = edit(next, [...providerPath, optionsKey, "baseUrl"], undefined);
   }
-  if (options && Object.hasOwn(options, "apiKey")) {
-    next = edit(next, [...providerPath, "options", "apiKey"], undefined);
+  if (native || (options && Object.hasOwn(options, "apiKey"))) {
+    next = edit(
+      next,
+      [...providerPath, optionsKey, "apiKey"],
+      native ? desired.secret : undefined,
+    );
   }
   const modelIds = [desired.model, desired.secondaryModel].filter(
     (value): value is string => Boolean(value),
   );
   for (const modelId of modelIds) {
     next = edit(next, [...providerPath, "models", modelId], {
-      ...existingModel(config, desired.providerId, modelId),
+      ...existingModel(config, desired.providerId, modelId, native),
       name:
-        textAt(existingModel(config, desired.providerId, modelId), "name") ??
-        modelId,
+        textAt(
+          existingModel(config, desired.providerId, modelId, native),
+          "name",
+        ) ?? modelId,
     });
   }
   next = renderOpenCodeSelection(
@@ -239,6 +298,7 @@ export function renderOpenCodeConfig(
     desired.model,
     desired.secondaryModel,
     inheritedSecondary,
+    native,
   );
   parseOpenCodeConfig(next);
   return next.endsWith("\n") ? next : `${next}\n`;

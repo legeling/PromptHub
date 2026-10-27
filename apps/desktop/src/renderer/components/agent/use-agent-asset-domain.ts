@@ -178,6 +178,7 @@ export function useAgentAssetInventoryMap(
   const mcpError = useMcpStore((state) => state.targetInventoryError);
   const loadMcp = useMcpStore((state) => state.loadTargetInventory);
   const ruleFiles = useRulesStore((state) => state.files);
+  const availableRuleFiles = useRulesStore((state) => state.availableFiles);
   const rulesLoaded = useRulesStore((state) => state.hasLoadedFiles);
   const rulesLoading = useRulesStore((state) => state.isLoading);
   const rulesError = useRulesStore((state) => state.error);
@@ -259,6 +260,7 @@ export function useAgentAssetInventoryMap(
       mcpStatus,
       pluginTargets,
       ruleFiles,
+      availableRuleFiles,
       skillLibrary,
       skillScan?.result,
     ],
@@ -295,6 +297,7 @@ export function useAgentAssetInventoryMap(
     mcpStatus,
     pluginTargets,
     ruleFiles,
+    availableRuleFiles,
     skillLibrary,
     skillScan?.result,
   ]);

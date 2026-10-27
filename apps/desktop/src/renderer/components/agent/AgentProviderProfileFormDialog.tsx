@@ -363,7 +363,7 @@ export function AgentProviderProfileFormDialog({
                 ? form.protocol !== "platform-native"
                 : platformId === "opencode"
                   ? form.protocol !== "platform-native"
-                  : true;
+                  : platformId !== "antigravity-cli";
   const credentialReplacementValueMissing =
     Boolean(profile) &&
     acceptsManagedCredential &&
@@ -679,7 +679,8 @@ export function AgentProviderProfileFormDialog({
                     platformId === "opencode"
                   }
                 />
-                {platformId !== "qwen" || qwenManaged ? (
+                {(platformId !== "qwen" || qwenManaged) &&
+                platformId !== "antigravity-cli" ? (
                   <Input
                     variant="outlined"
                     label={t(

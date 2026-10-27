@@ -698,7 +698,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
-        "claudeAuthHint": "Elija la cabecera requerida por la pasarela: la clave API usa x-api-key y el token usa Authorization: Bearer. Claude Code gestiona la aprobación interactiva de la clave API.",
+        "claudeAuthHint": "Las pasarelas de terceros usan Auth token (Authorization: Bearer) de forma predeterminada. Selecciona API key (x-api-key) solo si lo exige la pasarela; Claude Code gestiona la aprobación interactiva. Las importaciones existentes conservan su selección.",
         "open": "Importar desde PromptHub",
         "title": "Importar proveedor de PromptHub",
         "hint": "Añade al Agent un proveedor independiente ya configurado en PromptHub. La activacion sigue siendo un paso de revision separado.",

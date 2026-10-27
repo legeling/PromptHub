@@ -438,6 +438,15 @@ test.describe("E2E: Agent workspace", () => {
       await expect(migration).toHaveCount(0);
       expect(fs.readFileSync(codexConfigPath, "utf8")).toBe(initialCodexConfig);
       await expect(page.getByText("legacy-e2e-secret")).toHaveCount(0);
+      await expect(
+        page.getByText("Configured auth token", { exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", {
+          name: "Legacy Gateway gpt-5.3-codex",
+          exact: true,
+        })
+        .click();
       await expect(page.getByText("Credential available")).toBeVisible();
 
       await page.getByRole("button", { name: "Add custom provider" }).click();

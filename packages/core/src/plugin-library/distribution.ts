@@ -432,7 +432,10 @@ function canPassthroughNativePluginPackage(
     return false;
   }
   const { manifest } = readLocalPluginManifest(markerPath);
-  if (targetId === "antigravity" && !isAntigravityPluginManifest(manifest)) {
+  if (
+    ["antigravity", "antigravity-cli"].includes(targetId) &&
+    !isAntigravityPluginManifest(manifest)
+  ) {
     throw new CorePluginError(
       "INVALID_MANIFEST",
       "Invalid Antigravity native plugin.json",
@@ -560,6 +563,17 @@ const PLUGIN_TARGET_MATRIX: PluginTargetCompatibility[] = [
     installSurface: "~/.gemini/config/plugins/<name>/plugin.json",
     description:
       "Copy native Antigravity IDE Plugin packages without manifest conversion.",
+  },
+  {
+    id: "antigravity-cli",
+    displayName: "Antigravity CLI",
+    status: "native",
+    enabled: true,
+    requiresNativeManifest: true,
+    nativeMarker: "plugin.json",
+    installSurface: "~/.gemini/config/plugins/<name>/plugin.json",
+    description:
+      "Copy native Antigravity CLI Plugin packages without manifest conversion.",
   },
   {
     id: "kiro",
@@ -801,6 +815,15 @@ function removeTargets(
   );
   const removedTargetIds: string[] = [];
   const skippedTargetIds: string[] = [];
+  const requested = new Set(targetIds);
+  const retainedPaths = new Set(
+    [...distributed]
+      .filter((id) => !requested.has(id))
+      .flatMap((id) => {
+        const targetPath = resolver(id, plugin);
+        return targetPath ? [path.resolve(targetPath)] : [];
+      }),
+  );
   for (const targetId of targetIds) {
     if (!distributed.has(targetId)) {
       skippedTargetIds.push(targetId);
@@ -820,7 +843,9 @@ function removeTargets(
       targetPath,
       plugin.id,
     );
-    deletePluginPackageTarget(targetPath);
+    // Desktop and CLI may reference the same native package directory.
+    if (!retainedPaths.has(path.resolve(targetPath)))
+      deletePluginPackageTarget(targetPath);
     removedTargetIds.push(targetId);
   }
   return { removedTargetIds, skippedTargetIds };

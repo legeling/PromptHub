@@ -74,7 +74,9 @@ export function findLocalPluginMarkerForTarget(
 ): string | null {
   const root = path.join(packagePath, "plugin.json");
   if (
-    ["codex", "antigravity", "github-copilot"].includes(targetId) &&
+    ["codex", "antigravity", "antigravity-cli", "github-copilot"].includes(
+      targetId,
+    ) &&
     fs.existsSync(root)
   ) {
     const portable = isCodexPortablePluginManifest(
@@ -124,7 +126,7 @@ export function inspectLocalPluginNativeTargets(
       );
       const { manifest } = readLocalPluginManifest(markerPath);
       if (
-        targetId === "antigravity" &&
+        ["antigravity", "antigravity-cli"].includes(targetId) &&
         !isAntigravityPluginManifest(manifest)
       ) {
         throw new CorePluginError(

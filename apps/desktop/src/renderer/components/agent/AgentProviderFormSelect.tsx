@@ -89,6 +89,7 @@ export function protocolOptions(
   const options: SelectOption[] = [
     { value: "platform-native", label: labels.platformNative },
   ];
+  if (platformId === "antigravity-cli") return options;
 
   if (platformId === "claude") {
     return [

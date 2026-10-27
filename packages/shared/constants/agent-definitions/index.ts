@@ -9,6 +9,7 @@ import { windsurfAgentDefinition } from "@prompthub/shared/constants/agent-defin
 import { kiroAgentDefinition } from "@prompthub/shared/constants/agent-definitions/kiro";
 import { geminiAgentDefinition } from "@prompthub/shared/constants/agent-definitions/gemini";
 import { antigravityAgentDefinition } from "@prompthub/shared/constants/agent-definitions/antigravity";
+import { antigravityCliAgentDefinition } from "@prompthub/shared/constants/agent-definitions/antigravity-cli";
 import { traeAgentDefinition } from "@prompthub/shared/constants/agent-definitions/trae";
 import { traeCnAgentDefinition } from "@prompthub/shared/constants/agent-definitions/trae-cn";
 import { traeWorkAgentDefinition } from "@prompthub/shared/constants/agent-definitions/trae-work";
@@ -49,6 +50,7 @@ export const AGENT_DEFINITIONS: AgentPlatformDefinition[] = [
   kiroAgentDefinition,
   geminiAgentDefinition,
   antigravityAgentDefinition,
+  antigravityCliAgentDefinition,
   traeAgentDefinition,
   traeCnAgentDefinition,
   traeWorkAgentDefinition,

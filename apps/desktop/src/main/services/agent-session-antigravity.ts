@@ -259,7 +259,7 @@ export function createAntigravitySessionAdapter(cliRoot: string) {
         ? sessions.slice(offset, offset + limit)
         : sessions;
       return {
-        agentId: "antigravity",
+        agentId: "antigravity-cli",
         adapter: ADAPTER,
         sessions: page,
         total,
@@ -279,7 +279,7 @@ export function createAntigravitySessionAdapter(cliRoot: string) {
         MAX_SESSION_DETAIL_BYTES,
       );
       return {
-        agentId: "antigravity",
+        agentId: "antigravity-cli",
         adapter: ADAPTER,
         sessionId,
         ...parsed,

@@ -103,6 +103,7 @@ export const TARGET_PLUGIN_MARKER_PATHS: Record<string, string> = {
   cursor: ".cursor-plugin/plugin.json",
   "gemini-cli": "gemini-extension.json",
   antigravity: "plugin.json",
+  "antigravity-cli": "plugin.json",
   kiro: "POWER.md",
   "github-copilot": "plugin.json",
 };

@@ -20,7 +20,7 @@ afterEach(() => runtime?.dispose());
 
 it("discovers CLI plugins without an IDE root and preserves both inventories after reopen (#237)", async () => {
   const ideRoot = runtime.platformRoot("antigravity");
-  const cliPlugin = path.resolve(ideRoot, "../antigravity-cli/plugins/zotero");
+  const cliPlugin = path.resolve(ideRoot, "../config/plugins/zotero");
   fs.mkdirSync(cliPlugin, { recursive: true });
   fs.writeFileSync(
     path.join(cliPlugin, "plugin.json"),
@@ -29,7 +29,7 @@ it("discovers CLI plugins without an IDE root and preserves both inventories aft
   const original = fileInventory(cliPlugin);
   expect(fs.existsSync(ideRoot)).toBe(false);
   const cliTarget = (await pluginApi.getTargetMatrix()).find(
-    (target) => target.id === "antigravity",
+    (target) => target.id === "antigravity-cli",
   );
   expect(cliTarget?.installedPlugins).toEqual([
     expect.objectContaining({
@@ -51,24 +51,30 @@ it("discovers CLI plugins without an IDE root and preserves both inventories aft
     target?.installedPlugins
       ?.map((entry) => fs.realpathSync(entry.sourcePath))
       .sort(),
-  ).toEqual(
-    [cliPlugin, idePlugin]
-      .map((directory) => fs.realpathSync(directory))
-      .sort(),
-  );
+  ).toEqual([idePlugin].map((directory) => fs.realpathSync(directory)).sort());
   expect(target?.enabled).toBe(true);
   expect(new Set(target?.installedPlugins?.map((entry) => entry.id)).size).toBe(
-    2,
+    1,
   );
+  expect(
+    targets
+      .find((entry) => entry.id === "antigravity-cli")
+      ?.installedPlugins?.map((entry) => fs.realpathSync(entry.sourcePath)),
+  ).toEqual([fs.realpathSync(cliPlugin)]);
   expect(
     targets.find((entry) => entry.id === "gemini-cli")?.installedPlugins,
   ).toBeUndefined();
   expect(fileInventory(cliPlugin)).toEqual(original);
 });
 
-it.each(["copy", "symlink"] as const)(
-  "preserves the reported Zotero package at the registered Antigravity root using %s (#226)",
-  async (mode) => {
+it.each([
+  ["antigravity", "copy"],
+  ["antigravity", "symlink"],
+  ["antigravity-cli", "copy"],
+  ["antigravity-cli", "symlink"],
+] as const)(
+  "preserves the reported Zotero package at the registered %s root using %s (#226)",
+  async (targetId, mode) => {
     const sourcePath = path.join(runtime.root, "incoming", "zotero");
     const manifest = {
       name: "zotero",
@@ -88,7 +94,11 @@ it.each(["copy", "symlink"] as const)(
       Buffer.from([0, 128, 255, 10]),
     );
     const original = fileInventory(sourcePath);
-    const targetRoot = runtime.platformRoot("antigravity");
+    const configuredRoot = runtime.platformRoot(targetId);
+    const targetRoot =
+      targetId === "antigravity-cli"
+        ? path.resolve(configuredRoot, "../config")
+        : configuredRoot;
     const targetPath = path.join(targetRoot, "plugins", "zotero");
     const sibling = path.join(targetRoot, "plugins", "unrelated.txt");
     fs.mkdirSync(path.dirname(sibling), { recursive: true });
@@ -96,20 +106,20 @@ it.each(["copy", "symlink"] as const)(
 
     const imported = await pluginApi.importLocalPluginPackage({
       sourcePath,
-      sourceTargetId: "antigravity",
+      sourceTargetId: targetId,
     });
     const pluginId = imported.plugin.id;
-    expect(imported.plugin.nativeTargetIds).toContain("antigravity");
+    expect(imported.plugin.nativeTargetIds).toContain(targetId);
     expect(fileInventory(imported.plugin.localPackagePath)).toEqual(original);
     const distribution = await pluginApi.distributePlugin({
       pluginId,
-      targetIds: ["antigravity"],
+      targetIds: [targetId],
       mode,
     });
     expect(distribution.failures).toEqual([]);
     expect(distribution.targets).toEqual([
       expect.objectContaining({
-        targetId: "antigravity",
+        targetId: targetId,
         path: targetPath,
         mode,
       }),
@@ -140,10 +150,10 @@ it.each(["copy", "symlink"] as const)(
     ).toMatchObject({
       name: "zotero",
       version: "0.1.2",
-      distributedTargetIds: ["antigravity"],
+      distributedTargetIds: [targetId],
     });
     const target = (await pluginApi.getTargetMatrix()).find(
-      (entry) => entry.id === "antigravity",
+      (entry) => entry.id === targetId,
     );
     expect(target?.installedPlugins).toEqual([
       expect.objectContaining({ name: "zotero", sourcePath: targetPath }),
@@ -152,7 +162,7 @@ it.each(["copy", "symlink"] as const)(
 
     await pluginApi.removePluginDistribution({
       pluginId,
-      targetIds: ["antigravity"],
+      targetIds: [targetId],
     });
     expect(fs.existsSync(targetPath)).toBe(false);
     expect(fs.readFileSync(sibling, "utf8")).toBe(
@@ -165,9 +175,9 @@ it.each(["copy", "symlink"] as const)(
       (await pluginApi.getLibrary()).plugins[0].distributedTargetIds,
     ).toEqual([]);
     const emptyTarget = (await pluginApi.getTargetMatrix()).find(
-      (entry) => entry.id === "antigravity",
+      (entry) => entry.id === targetId,
     );
-    expect(emptyTarget).toMatchObject({ id: "antigravity", enabled: true });
+    expect(emptyTarget).toMatchObject({ id: targetId, enabled: true });
     // Empty inventories are omitted by the shared target-matrix contract.
     expect(emptyTarget?.installedPlugins).toBeUndefined();
   },

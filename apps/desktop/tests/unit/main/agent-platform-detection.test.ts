@@ -18,7 +18,8 @@ describe("Agent platform detection", () => {
         candidate === "agy" ? "/Users/test/.local/bin/agy" : null,
       ),
     });
-    expect(detected).toContain("antigravity");
+    expect(detected).toContain("antigravity-cli");
+    expect(detected).not.toContain("antigravity");
   });
 
   it("does not infer Antigravity from an unrelated Gemini root", async () => {
@@ -29,6 +30,14 @@ describe("Agent platform detection", () => {
       resolveExecutable: vi.fn().mockResolvedValue(null),
     });
     expect(detected).not.toContain("antigravity");
+  });
+  it("does not infer desktop installation from shared customization files", async () => {
+    const detected = await detectInstalledPlatforms({
+      pathExists: async (candidate) => candidate.endsWith("/.gemini/config"),
+      resolveExecutable: async () => null,
+    });
+    expect(detected).not.toContain("antigravity");
+    expect(detected).not.toContain("antigravity-cli");
   });
   it("detects plugin Harness agents by CLI even before the profile root exists", async () => {
     const detected = await detectInstalledPlatforms({

@@ -697,7 +697,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
-        "claudeAuthHint": "依閘道要求選擇認證標頭：API Key 使用 x-api-key，Auth Token 使用 Authorization: Bearer。互動模式下的 API Key 確認由 Claude Code 處理。",
+        "claudeAuthHint": "第三方閘道預設使用 Auth Token（Authorization: Bearer）。僅當閘道要求 x-api-key 時選擇 API Key；互動式金鑰確認由 Claude Code 處理。既有匯入保留原認證選擇。",
         "open": "從 PromptHub 匯入",
         "title": "匯入 PromptHub 供應商",
         "hint": "將 PromptHub 中已有的供應商加入目前 Agent。匯入不會修改 Agent，啟用仍需另行預覽確認。",

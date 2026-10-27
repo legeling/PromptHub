@@ -258,9 +258,30 @@ export async function detectInstalledPlatforms(
     options.resolveExecutable ?? createNativeCommandRunner().resolve;
 
   for (const platform of getSupportedPlatforms()) {
+    if (platform.id === "antigravity") {
+      // Shared customizations can be created by the CLI; they are not desktop installation evidence.
+      const osKey =
+        process.platform === "darwin" || process.platform === "win32"
+          ? process.platform
+          : "linux";
+      const appPaths = (platform.launchPaths?.[osKey] ?? []).map((candidate) =>
+        candidate.replace(/^~/, os.homedir()),
+      );
+      const desktopRuntime = path.resolve(
+        getPlatformRootDir(platform),
+        "../antigravity",
+      );
+      if (
+        (await Promise.all([...appPaths, desktopRuntime].map(pathExists))).some(
+          Boolean,
+        )
+      )
+        installed.push(platform.id);
+      continue;
+    }
     if (
       platform.assetModel === "plugin-harness" ||
-      platform.id === "antigravity"
+      platform.id === "antigravity-cli"
     ) {
       const rootExists = await pathExists(getPlatformRootDir(platform));
       let cliExists = false;

@@ -8,6 +8,8 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAgentProviderStore } from "../../../src/renderer/stores/agent-provider.store";
+import { AgentProviderProfileWorkbench } from "../../../src/renderer/components/agent/AgentProviderProfileWorkbench";
+import { renderWithI18n } from "../../helpers/i18n";
 import {
   activationPlan,
   chooseProviderFormOption,
@@ -20,6 +22,27 @@ import {
 describe("AgentProviderProfileWorkbench", () => {
   beforeEach(() => {
     resetProviderWorkbenchTestState();
+  });
+
+  it("does not request native profiles during a transition to an unsupported Agent", async () => {
+    const agent = createAgent("antigravity");
+    agent.capabilities.provider = { status: "planned" };
+    await renderWithI18n(<AgentProviderProfileWorkbench agent={agent} />);
+    expect(window.api.agent.listProviderProfiles).not.toHaveBeenCalled();
+  });
+
+  it("keeps CLI authentication platform-managed and hides unsupported provider import", async () => {
+    window.api.agent.listProviderProfiles = vi
+      .fn()
+      .mockResolvedValue([
+        profile({ platformId: "antigravity-cli", secretState: "none" }),
+      ]);
+    await renderWorkbench(createAgent("antigravity-cli"));
+    expect(screen.getByText("Managed by the platform")).toBeVisible();
+    expect(
+      screen.queryByText("No credential configured"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Import from PromptHub")).not.toBeInTheDocument();
   });
 
   it("loads the selected platform profile and shows only public readiness data", async () => {
@@ -189,7 +212,9 @@ describe("AgentProviderProfileWorkbench", () => {
     expect(screen.getByText("Configured auth token")).toBeVisible();
     expect(screen.queryByText(/sk-|agent-provider:/i)).not.toBeInTheDocument();
     const nativeRow = screen.getByTestId("provider-native-card");
-    const nativeTitle = within(nativeRow).getByText("Current native configuration");
+    const nativeTitle = within(nativeRow).getByText(
+      "Current native configuration",
+    );
     expect(nativeTitle).not.toHaveClass("truncate");
     expect(nativeTitle).toHaveClass("break-words");
     expect(nativeTitle.parentElement).toHaveClass("flex-col", "items-start");
@@ -1430,5 +1455,4 @@ describe("AgentProviderProfileWorkbench", () => {
     ).toBeVisible();
     expect(screen.getByText("Provider operation failed")).toBeVisible();
   });
-
 });

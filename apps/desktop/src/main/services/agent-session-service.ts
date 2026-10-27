@@ -952,7 +952,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
   const copawAdapter = createCoPawSessionAdapter(copawRoots);
   const qoderAdapter = createQoderSessionAdapter(qoderRoot);
   const nativeRoots = new Map<string, string[]>([
-    ["antigravity", [antigravityRoot]],
+    ["antigravity-cli", [antigravityRoot]],
     ["augment", [augmentRoot]],
     ["cline", [clineRoot]],
     ["copaw", copawRoots],
@@ -1098,7 +1098,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
         );
       }
 
-      if (agentId === "antigravity") {
+      if (agentId === "antigravity-cli") {
         return enrichSessionResult(
           agentId,
           await antigravityAdapter.list(input.limit, offset, input.search),
@@ -1416,7 +1416,7 @@ export function createAgentSessionService(options: AgentSessionServiceOptions) {
         return cursorAdapter.read(sessionId);
       }
 
-      if (agentId === "antigravity") {
+      if (agentId === "antigravity-cli") {
         return antigravityAdapter.read(sessionId);
       }
 

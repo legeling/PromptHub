@@ -3,9 +3,6 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { writeCanonicalStorageAuthority } from "@prompthub/core/canonical-storage-authority";
-import { writeRuntimeLayoutState } from "@prompthub/core/runtime-storage-context";
-
 import {
   closePromptHub,
   launchPromptHub,
@@ -121,11 +118,7 @@ test("saves, restores, and reloads Agent rule history", async () => {
   const userDataDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "prompthub-agent-rule-history-e2e-"),
   );
-  writeRuntimeLayoutState(userDataDir);
-  writeCanonicalStorageAuthority(userDataDir, {
-    consistencyId: "f".repeat(64),
-    operationId: "agent-rule-history-e2e",
-  });
+
   const homeDir = path.join(userDataDir, "home");
   const codexDir = path.join(homeDir, ".codex");
   const rulePath = path.join(codexDir, "AGENTS.md");

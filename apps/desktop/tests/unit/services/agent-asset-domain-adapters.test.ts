@@ -10,6 +10,9 @@ import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
 import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
 import { useRulesStore } from "../../../src/renderer/stores/rules.store";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
+import { useAgentStore } from "../../../src/renderer/stores/agent.store";
+import { buildManagedAgents } from "@prompthub/core/agent-management/agent-query";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import {
   createScannedSkillFixture,
   createSkillFixture,
@@ -126,7 +129,40 @@ function seedCanonicalDomains(): void {
 
 describe("renderer Agent asset domain adapters", () => {
   beforeEach(() => {
+    useAgentStore.setState({ agents: [] });
+    useRulesStore.setState({ availableFiles: [] });
     seedCanonicalDomains();
+  });
+
+  it("counts the shared native Rules file for both Antigravity identities", () => {
+    useAgentStore.setState({
+      agents: buildManagedAgents({
+        platforms: SKILL_PLATFORMS,
+        detectedPlatformIds: ["antigravity", "antigravity-cli"],
+        pinnedPlatformIds: [],
+        builtinOverrides: {},
+        osKey: "darwin",
+      }),
+    });
+    const source = useRulesStore.getState().files[0];
+    useRulesStore.setState({
+      files: [],
+      availableFiles: [
+        {
+          ...source,
+          id: "gemini-global",
+          platformId: "gemini",
+          path: "~/.gemini/GEMINI.md",
+        },
+      ],
+    });
+    for (const id of ["antigravity", "antigravity-cli"]) {
+      const rules = readAgentAssetAggregate(id).domains.find(
+        (domain) => domain.kind === "rule",
+      );
+      expect(rules?.items).toHaveLength(1);
+      expect(rules?.items[0].id).toBe("gemini-global");
+    }
   });
 
   it("aggregates all four domains from their owning stores", async () => {

@@ -102,6 +102,13 @@ const PLUGIN_TARGET_SCAN_CONFIGS: PluginTargetScanConfig[] = [
     directPackages: true,
   },
   {
+    targetId: "antigravity-cli",
+    platformId: "antigravity-cli",
+    markerPaths: ["plugin.json"],
+    recursiveRoots: [],
+    directPackages: true,
+  },
+  {
     targetId: "kiro",
     platformId: "kiro",
     markerPaths: ["POWER.md"],
@@ -403,7 +410,7 @@ export function buildTargetPlugin(
     safeString(manifest?.description);
   const inventory = getPluginInventory(packageDir, manifest, markerPath);
 
-  if (targetId === "antigravity") {
+  if (targetId === "antigravity" || targetId === "antigravity-cli") {
     if (!isAntigravityPluginManifest(manifest)) return null;
   } else if (pluginInventoryTotal(inventory) === 0) return null;
 
@@ -553,11 +560,10 @@ function scanInstalledPluginsAtRoot(
   if (!config) return [];
   const platform = getPlatformById(config.platformId);
   if (!platform) return [];
-  const resolvedRootDir = safeRealPath(
-    rootPathOverride ?? getPlatformRootDir(platform),
-  );
-  if (!resolvedRootDir) return [];
-  const rootDir = resolvedRootDir;
+  const configuredRoot = rootPathOverride ?? getPlatformRootDir(platform);
+  const resolvedRootDir = safeRealPath(configuredRoot);
+  if (!resolvedRootDir && !config.directPackages) return [];
+  const rootDir = resolvedRootDir ?? path.resolve(configuredRoot);
   const pluginDir = getPluginDirForScan(
     config.platformId,
     rootDir,
@@ -573,7 +579,7 @@ function scanInstalledPluginsAtRoot(
   if (config.directPackages && fs.existsSync(pluginDir)) {
     for (const entry of getDirectPluginScanEntries(
       pluginDir,
-      rootDir,
+      fs.realpathSync(pluginDir),
       targetId,
     )) {
       addTargetPluginPackage({

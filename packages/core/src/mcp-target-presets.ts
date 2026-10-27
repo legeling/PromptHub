@@ -27,6 +27,7 @@ const PRIMARY_TARGET_IDS = [
   "openclaw",
   "qoder",
   "antigravity",
+  "antigravity-cli",
   "kimi",
   "augment",
   "amp",

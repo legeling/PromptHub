@@ -37,7 +37,7 @@ function dependencies(
 
 describe("Agent CLI diagnostic service", () => {
   it("diagnoses the native Antigravity executable through the platform registry", async () => {
-    const antigravity = getPlatformById("antigravity");
+    const antigravity = getPlatformById("antigravity-cli");
     if (!antigravity) throw new Error("Missing Antigravity platform");
     const deps = dependencies({
       run: vi.fn(async () => ({
@@ -47,7 +47,7 @@ describe("Agent CLI diagnostic service", () => {
     });
     const result = await diagnoseAgentCli(antigravity, deps);
     expect(result).toMatchObject({
-      agentId: "antigravity",
+      agentId: "antigravity-cli",
       status: "installed",
       executablePath: "/Users/test/.local/bin/agy",
       version: "Antigravity CLI 2.0.0",

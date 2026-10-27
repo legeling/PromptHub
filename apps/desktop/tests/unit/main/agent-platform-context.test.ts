@@ -61,19 +61,24 @@ describe("Agent platform context", () => {
     },
   );
 
-  it("separates Antigravity's CLI model root from its shared asset root", async () => {
-    getSupportedPlatformsMock.mockReturnValue([{ id: "antigravity" }]);
-    getPlatformRootDirMock.mockReturnValue("/Users/test/.gemini/config");
+  it("uses the explicit CLI identity without redirecting the desktop", async () => {
+    getSupportedPlatformsMock.mockReturnValue([{ id: "antigravity-cli" }]);
+    getPlatformRootDirMock.mockReturnValue(
+      "/Users/test/.gemini/antigravity-cli",
+    );
     const { resolveAgentProviderContext } = await loadModule();
 
-    expect(resolveAgentProviderContext("antigravity")).toEqual({
-      agentId: "antigravity",
-      platformId: "antigravity",
+    expect(() => resolveAgentProviderContext("antigravity")).toThrow(
+      "AGENT_PROVIDER_ADAPTER_UNSUPPORTED",
+    );
+    expect(resolveAgentProviderContext("antigravity-cli")).toEqual({
+      agentId: "antigravity-cli",
+      platformId: "antigravity-cli",
       rootPath: "/Users/test/.gemini/antigravity-cli",
     });
 
     getPlatformRootDirMock.mockReturnValue("/custom/antigravity-models");
-    expect(resolveAgentProviderContext("antigravity").rootPath).toBe(
+    expect(resolveAgentProviderContext("antigravity-cli").rootPath).toBe(
       "/custom/antigravity-models",
     );
   });

@@ -219,6 +219,13 @@ const CURRENT_DATABASE_SCHEMA_INVARIANTS: DatabaseSchemaInvariants =
             "56b5ced9ab22768e44352785ff0df6ca5157a11470140797f4b4d7e906c12735",
           destructive: true,
         },
+        {
+          migrationId: "legacy-014",
+          name: "split_antigravity_cli_identity_v1",
+          checksum:
+            "a6639a84d5e3006b9ca24d4a106bf602f58ffb3e78a3ba59d0c5a10fc93c6387",
+          destructive: false,
+        },
       ].map((entry) => Object.freeze(entry)),
     ),
   });
@@ -302,34 +309,52 @@ export const DATABASE_MIGRATION_MANIFEST: readonly DatabaseMigrationManifestEntr
     Object.freeze({
       migrationId: 6,
       name: "rule-tenant-ownership-v6",
-      checksum: "b2683c9d953283b4cabccfcc37016f8fef109da79cd3e86c131fad72abb55c9f",
+      checksum:
+        "b2683c9d953283b4cabccfcc37016f8fef109da79cd3e86c131fad72abb55c9f",
       appVersion: "0.6.0",
       destructive: false,
       invariants: Object.freeze({
         ...MCP_DATABASE_SCHEMA_INVARIANTS,
-        tables: Object.freeze([...MCP_DATABASE_SCHEMA_INVARIANTS.tables, "storage_publication_receipts"]),
+        tables: Object.freeze([
+          ...MCP_DATABASE_SCHEMA_INVARIANTS.tables,
+          "storage_publication_receipts",
+        ]),
         columns: Object.freeze({
           ...MCP_DATABASE_SCHEMA_INVARIANTS.columns,
           rules: Object.freeze(["owner_user_id"]),
           rule_versions: Object.freeze(["owner_user_id"]),
-          storage_publication_receipts: Object.freeze(["operation_key", "operation_id", "committed_at"]),
+          storage_publication_receipts: Object.freeze([
+            "operation_key",
+            "operation_id",
+            "committed_at",
+          ]),
         }),
       }),
     }),
     Object.freeze({
       migrationId: 7,
       name: "generation-metadata-v7",
-      checksum: "b5aaf8cb9ee82366ce3894eb288eb15af72904e68161181b764f3b0ece996cce",
+      checksum:
+        "b5aaf8cb9ee82366ce3894eb288eb15af72904e68161181b764f3b0ece996cce",
       appVersion: "0.6.0",
       destructive: false,
       invariants: Object.freeze({
         ...MCP_DATABASE_SCHEMA_INVARIANTS,
-        tables: Object.freeze([...MCP_DATABASE_SCHEMA_INVARIANTS.tables, "storage_publication_receipts", "generation_batches", "generation_outputs"]),
+        tables: Object.freeze([
+          ...MCP_DATABASE_SCHEMA_INVARIANTS.tables,
+          "storage_publication_receipts",
+          "generation_batches",
+          "generation_outputs",
+        ]),
         columns: Object.freeze({
           ...MCP_DATABASE_SCHEMA_INVARIANTS.columns,
           rules: Object.freeze(["owner_user_id"]),
           rule_versions: Object.freeze(["owner_user_id"]),
-          storage_publication_receipts: Object.freeze(["operation_key", "operation_id", "committed_at"]),
+          storage_publication_receipts: Object.freeze([
+            "operation_key",
+            "operation_id",
+            "committed_at",
+          ]),
           generation_batches: Object.freeze(["request_json"]),
           generation_outputs: Object.freeze(["error_json", "revised_prompt"]),
         }),
@@ -338,18 +363,35 @@ export const DATABASE_MIGRATION_MANIFEST: readonly DatabaseMigrationManifestEntr
     Object.freeze({
       migrationId: SYNC_TARGET_SCHEMA_VERSION,
       name: "causal-sync-state-v8",
-      checksum: "543517c2f0bd580eebaca92b17a544e281aba49fc9342a8001950475fa565f81",
+      checksum:
+        "543517c2f0bd580eebaca92b17a544e281aba49fc9342a8001950475fa565f81",
       appVersion: "0.6.0",
       destructive: false,
       invariants: Object.freeze({
         ...MCP_DATABASE_SCHEMA_INVARIANTS,
-        tables: Object.freeze([...MCP_DATABASE_SCHEMA_INVARIANTS.tables, "storage_publication_receipts", "generation_batches", "generation_outputs", "sync_targets"]),
+        tables: Object.freeze([
+          ...MCP_DATABASE_SCHEMA_INVARIANTS.tables,
+          "storage_publication_receipts",
+          "generation_batches",
+          "generation_outputs",
+          "sync_targets",
+        ]),
         columns: Object.freeze({
           ...MCP_DATABASE_SCHEMA_INVARIANTS.columns,
           rules: Object.freeze(["owner_user_id"]),
           rule_versions: Object.freeze(["owner_user_id"]),
-          storage_publication_receipts: Object.freeze(["operation_key", "operation_id", "committed_at"]),
-          sync_targets: Object.freeze(["id", "device_id", "sync_id", "base_json", "pending_json"]),
+          storage_publication_receipts: Object.freeze([
+            "operation_key",
+            "operation_id",
+            "committed_at",
+          ]),
+          sync_targets: Object.freeze([
+            "id",
+            "device_id",
+            "sync_id",
+            "base_json",
+            "pending_json",
+          ]),
           generation_batches: Object.freeze(["request_json"]),
           generation_outputs: Object.freeze(["error_json", "revised_prompt"]),
         }),
@@ -358,22 +400,54 @@ export const DATABASE_MIGRATION_MANIFEST: readonly DatabaseMigrationManifestEntr
     Object.freeze({
       migrationId: PLUGIN_SCHEMA_VERSION,
       name: "plugin-metadata-v9",
-      checksum: "caac97634f3ccdf4590493dc6ec4be09ebf18d51e5ca3455b47f18dfef791281",
+      checksum:
+        "caac97634f3ccdf4590493dc6ec4be09ebf18d51e5ca3455b47f18dfef791281",
       appVersion: "0.6.0",
       destructive: false,
       invariants: Object.freeze({
         ...MCP_DATABASE_SCHEMA_INVARIANTS,
-        tables: Object.freeze([...MCP_DATABASE_SCHEMA_INVARIANTS.tables, "storage_publication_receipts", "generation_batches", "generation_outputs", "sync_targets", "plugins", "plugin_versions"]),
+        tables: Object.freeze([
+          ...MCP_DATABASE_SCHEMA_INVARIANTS.tables,
+          "storage_publication_receipts",
+          "generation_batches",
+          "generation_outputs",
+          "sync_targets",
+          "plugins",
+          "plugin_versions",
+        ]),
         columns: Object.freeze({
           ...MCP_DATABASE_SCHEMA_INVARIANTS.columns,
           rules: Object.freeze(["owner_user_id"]),
           rule_versions: Object.freeze(["owner_user_id"]),
-          storage_publication_receipts: Object.freeze(["operation_key", "operation_id", "committed_at"]),
-          sync_targets: Object.freeze(["id", "device_id", "sync_id", "base_json", "pending_json"]),
+          storage_publication_receipts: Object.freeze([
+            "operation_key",
+            "operation_id",
+            "committed_at",
+          ]),
+          sync_targets: Object.freeze([
+            "id",
+            "device_id",
+            "sync_id",
+            "base_json",
+            "pending_json",
+          ]),
           generation_batches: Object.freeze(["request_json"]),
           generation_outputs: Object.freeze(["error_json", "revised_prompt"]),
-          plugins: Object.freeze(["id", "name", "installed_at", "updated_at", "metadata_json"]),
-          plugin_versions: Object.freeze(["id", "plugin_id", "version", "created_at", "metadata_json", "has_package_snapshot"]),
+          plugins: Object.freeze([
+            "id",
+            "name",
+            "installed_at",
+            "updated_at",
+            "metadata_json",
+          ]),
+          plugin_versions: Object.freeze([
+            "id",
+            "plugin_id",
+            "version",
+            "created_at",
+            "metadata_json",
+            "has_package_snapshot",
+          ]),
         }),
       }),
     }),

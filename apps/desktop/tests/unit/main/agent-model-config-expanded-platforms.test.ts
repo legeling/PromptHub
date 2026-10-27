@@ -46,7 +46,7 @@ describe("expanded native model configuration adapters", () => {
     const root = await createRoot();
 
     await expect(
-      inspectAgentModelConfig({ agentId: "antigravity", rootPath: root }),
+      inspectAgentModelConfig({ agentId: "antigravity-cli", rootPath: root }),
     ).resolves.toMatchObject({
       adapter: "antigravity-settings-v1",
       status: "missing",
@@ -88,7 +88,7 @@ describe("expanded native model configuration adapters", () => {
     );
 
     await expect(
-      inspectAgentModelConfig({ agentId: "antigravity", rootPath: root }),
+      inspectAgentModelConfig({ agentId: "antigravity-cli", rootPath: root }),
     ).resolves.toMatchObject({
       adapter: "antigravity-settings-v1",
       status: "configured",
@@ -100,7 +100,7 @@ describe("expanded native model configuration adapters", () => {
     });
 
     await updateAgentModelConfig(
-      { agentId: "antigravity", rootPath: root, model: "gemini-3-flash" },
+      { agentId: "antigravity-cli", rootPath: root, model: "gemini-3-flash" },
       { backupRoot: path.join(root, "backups") },
     );
     const saved = await fs.readFile(path.join(root, "settings.json"), "utf8");
@@ -114,7 +114,7 @@ describe("expanded native model configuration adapters", () => {
     await fs.writeFile(path.join(root, "settings.json"), "{}\n");
 
     await expect(
-      inspectAgentModelConfig({ agentId: "antigravity", rootPath: root }),
+      inspectAgentModelConfig({ agentId: "antigravity-cli", rootPath: root }),
     ).resolves.toMatchObject({
       status: "not-configured",
       model: null,

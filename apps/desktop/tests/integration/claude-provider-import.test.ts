@@ -22,6 +22,7 @@ import {
   NATIVE_REPLY,
   runNativeClaude,
 } from "./helpers/claude-native-gateway";
+import { runInteractiveClaude } from "./helpers/claude-interactive";
 
 let runtime: SkillTestRuntime;
 let gateway: Awaited<ReturnType<typeof createClaudeGateway>>;
@@ -112,7 +113,7 @@ afterEach(async () => {
   runtime?.dispose();
 });
 
-async function prepare(credentialEnvKey: ClaudeCredentialEnvKey) {
+async function prepare(credentialEnvKey?: ClaudeCredentialEnvKey) {
   const candidates = await agentApi.listProviderSources("claude");
   expect(candidates[0]).toMatchObject({
     compatible: true,
@@ -128,7 +129,7 @@ async function prepare(credentialEnvKey: ClaudeCredentialEnvKey) {
   });
   expect(profile).toMatchObject({
     providerKind: "anthropic-compatible",
-    config: { credentialEnvKey },
+    config: { credentialEnvKey: credentialEnvKey ?? "ANTHROPIC_AUTH_TOKEN" },
   });
   const input = { agentId: "claude", profileId: profile.id };
   const plan = await agentApi.previewProviderActivation(input);
@@ -158,6 +159,41 @@ async function prepare(credentialEnvKey: ClaudeCredentialEnvKey) {
     },
   };
 }
+
+it.skipIf(
+  process.env.PROMPTHUB_NATIVE_AGENT_TESTS !== "1" ||
+    process.platform === "win32",
+)(
+  "starts an unsigned-in interactive Claude session from the default imported gateway and reopens it (#246)",
+  async () => {
+    const { request } = await prepare();
+    await agentApi.activateProvider(request);
+    const home = path.join(runtime.root, "interactive-home");
+    const config = runtime.platformRoot("claude");
+    expect(fs.existsSync(path.join(config, ".claude.json"))).toBe(false);
+    expect(fs.existsSync(path.join(config, ".credentials.json"))).toBe(false);
+    const first = await runInteractiveClaude(home, config);
+    expect(first).toMatchObject({ exitCode: 0, completed: true });
+    expect(first.output).not.toMatch(
+      /Not logged in|Please run \/login|Select login method/,
+    );
+    expect(first.prompts).toContain("Enter y/n:");
+    await runtime.reopen();
+    register();
+    const second = await runInteractiveClaude(home, config);
+    expect(second).toMatchObject({ exitCode: 0, completed: true });
+    expect(second.prompts).not.toContain("Enter y/n:");
+    expect(gateway.requests.length).toBeGreaterThanOrEqual(2);
+    for (const observed of gateway.requests)
+      expect(observed).toMatchObject({
+        model: MODEL,
+        apiKey: undefined,
+        authorization: `Bearer ${SECRET}`,
+      });
+    expect(fs.existsSync(path.join(config, ".credentials.json"))).toBe(false);
+  },
+  NATIVE_ACCEPTANCE_TIMEOUT_MS * 2,
+);
 
 it.each(["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] as const)(
   "imports, activates and reopens %s through real storage/IPC (optional native CLI)",

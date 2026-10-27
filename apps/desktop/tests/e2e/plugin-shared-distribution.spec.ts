@@ -79,9 +79,7 @@ test("shared Plugin copy persists across reopen and removal keeps the library pa
     });
     await expect(shared).toHaveAttribute("aria-pressed", "false");
     await shared.click();
-    await page
-      .getByRole("button", { name: "Distribute to selected Agents" })
-      .click();
+    await page.getByRole("button", { name: "Apply changes" }).click();
     await expect(
       advanced.getByText("Installed", { exact: true }),
     ).toBeVisible();

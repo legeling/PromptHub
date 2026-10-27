@@ -27,7 +27,7 @@ const candidates: AgentProviderSourceCandidate[] = [
   },
 ];
 
-it("imports the explicitly selected Claude authentication mode and disables it while importing", async () => {
+it("preserves an explicitly selected API key instead of the gateway default", async () => {
   const onImport = vi.fn().mockResolvedValue({ id: "profile" });
   const props = {
     isOpen: true,
@@ -42,7 +42,7 @@ it("imports the explicitly selected Claude authentication mode and disables it w
   const view = await renderWithI18n(<AgentProviderSourceDialog {...props} />);
   fireEvent.click(screen.getByRole("button", { name: "Credential type" }));
   fireEvent.click(
-    screen.getByRole("option", { name: "Auth token (ANTHROPIC_AUTH_TOKEN)" }),
+    screen.getByRole("option", { name: "API key (ANTHROPIC_API_KEY)" }),
   );
   fireEvent.click(screen.getByRole("button", { name: "Import" }));
   await waitFor(() =>
@@ -51,7 +51,7 @@ it("imports the explicitly selected Claude authentication mode and disables it w
       sourceId: "gateway",
       modelId: "selected",
       protocol: "anthropic-messages",
-      credentialEnvKey: "ANTHROPIC_AUTH_TOKEN",
+      credentialEnvKey: "ANTHROPIC_API_KEY",
     }),
   );
   view.rerender(<AgentProviderSourceDialog {...props} importing />);
@@ -59,6 +59,35 @@ it("imports the explicitly selected Claude authentication mode and disables it w
     screen.getByRole("button", { name: "Credential type" }),
   ).toBeDisabled();
 });
+
+it.each([
+  ["https://gateway.example.com", "ANTHROPIC_AUTH_TOKEN"],
+  ["https://api.anthropic.com", "ANTHROPIC_API_KEY"],
+])(
+  "chooses the native default for %s before import",
+  async (endpoint, credentialEnvKey) => {
+    const onImport = vi.fn().mockResolvedValue({ id: "profile" });
+    const sources = [{ ...candidates[0], endpoint }];
+    await renderWithI18n(
+      <AgentProviderSourceDialog
+        isOpen
+        platformId="claude"
+        candidates={sources}
+        loading={false}
+        importing={false}
+        onLoad={vi.fn().mockResolvedValue(sources)}
+        onImport={onImport}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() =>
+      expect(onImport).toHaveBeenCalledWith(
+        expect.objectContaining({ credentialEnvKey }),
+      ),
+    );
+  },
+);
 
 it("does not send Claude authentication settings for another Agent", async () => {
   const onImport = vi.fn().mockResolvedValue({ id: "profile" });

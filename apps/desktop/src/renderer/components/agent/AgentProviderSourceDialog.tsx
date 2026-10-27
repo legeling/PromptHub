@@ -12,6 +12,7 @@ import type {
   ClaudeCredentialEnvKey,
   ImportAgentProviderSourceRequest,
 } from "@prompthub/shared";
+import { getClaudeImportCredentialEnvKey } from "@prompthub/shared/utils/claude-config";
 import { Button, Modal, Select, getCategoryIcon } from "../ui";
 import { AgentProviderFormSelect } from "./AgentProviderFormSelect";
 import {
@@ -68,10 +69,9 @@ export function AgentProviderSourceDialog({
   const [modelId, setModelId] = useState("");
   const [protocol, setProtocol] = useState("");
   const [credentialEnvKey, setCredentialEnvKey] =
-    useState<ClaudeCredentialEnvKey>("ANTHROPIC_API_KEY");
+    useState<ClaudeCredentialEnvKey>(getClaudeImportCredentialEnvKey(null));
 
   useEffect(() => {
-    setCredentialEnvKey("ANTHROPIC_API_KEY");
     if (isOpen) void onLoad(platformId);
   }, [isOpen, onLoad, platformId]);
 
@@ -80,7 +80,14 @@ export function AgentProviderSourceDialog({
     setSourceId(selection.sourceId);
     setModelId(selection.modelId);
     setProtocol(selection.protocol);
-  }, [candidates]);
+    setCredentialEnvKey(
+      getClaudeImportCredentialEnvKey(
+        candidates.find(
+          (candidate) => candidate.sourceId === selection.sourceId,
+        )?.endpoint ?? null,
+      ),
+    );
+  }, [candidates, isOpen]);
 
   const selected = useMemo(
     () => candidates.find((candidate) => candidate.sourceId === sourceId),
@@ -91,7 +98,7 @@ export function AgentProviderSourceDialog({
     const model =
       candidate.models.find((item) => item.isDefault) ?? candidate.models[0];
     setSourceId(candidate.sourceId);
-    setCredentialEnvKey("ANTHROPIC_API_KEY");
+    setCredentialEnvKey(getClaudeImportCredentialEnvKey(candidate.endpoint));
     setModelId(model?.id ?? "");
     setProtocol(candidate.protocol ?? candidate.protocols[0] ?? "");
   }

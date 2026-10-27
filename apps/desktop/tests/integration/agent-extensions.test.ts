@@ -35,6 +35,41 @@ beforeEach(async () => {
 afterEach(() => runtime.dispose());
 const body =
   "---\nname: reviewer\ndescription: Review fixture\nmemory: user\n---\nNATIVE_AGENT_MARKER\n";
+it("routes CLI user extensions to the sibling shared config, not CLI settings", async () => {
+  const target = {
+    agentId: "antigravity-cli",
+    scope: "user" as const,
+    kind: "hooks" as const,
+    relativePath: "hooks.json",
+  };
+  const content =
+    '{"audit":{"enabled":false,"SessionStart":[{"command":"printf fixture"}]}}';
+  const saved = await agentApi.writeAgentExtension({ ...target, content });
+  const sharedPath = path.resolve(
+    runtime.platformRoot("antigravity-cli"),
+    "../config/hooks.json",
+  );
+  expect(JSON.parse(fs.readFileSync(sharedPath, "utf8"))).toEqual(
+    JSON.parse(content),
+  );
+  expect(
+    fs.existsSync(
+      path.join(runtime.platformRoot("antigravity-cli"), "hooks.json"),
+    ),
+  ).toBe(false);
+  await runtime.reopen();
+  register();
+  expect(
+    JSON.parse((await agentApi.readAgentExtension(target)).content),
+  ).toEqual(JSON.parse(content));
+  await agentApi.writeAgentExtension({
+    ...target,
+    expectedRevision: saved.revision!,
+    content: "{}",
+  });
+  expect(JSON.parse(fs.readFileSync(sharedPath, "utf8"))).toEqual({});
+});
+
 it("real preload and IPC preserve user/project isolation through save, reopen and delete", async () => {
   const project = path.join(runtime.root, "project");
   fs.mkdirSync(project);
@@ -183,6 +218,12 @@ it("routes every mainstream adapter through real preload, registered projects an
     { agentId: "gemini", directory: ".gemini", extension: "md", content: body },
     {
       agentId: "antigravity",
+      directory: ".agents",
+      extension: "md",
+      content: body,
+    },
+    {
+      agentId: "antigravity-cli",
       directory: ".agents",
       extension: "md",
       content: body,

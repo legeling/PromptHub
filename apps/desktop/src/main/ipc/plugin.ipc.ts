@@ -2,13 +2,12 @@ import { importChildMcpServersForPlugin as importPluginChildMcp } from "@prompth
 import { readPluginDistributionStatus } from "@prompthub/core/plugin-distribution-status";
 import { isNativePluginRegistered } from "../services/plugin-native-installation";
 import { ipcMain } from "electron";
-import path from "path";
-import { CorePluginLibraryService, getPluginLibraryFilePath } from "@prompthub/core";
+import { CorePluginLibraryService } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import { redactMcpServerConfig } from "@prompthub/shared/utils/mcp-config";
 import type { PluginDeleteOptions, PluginImportChildMcpResult, PluginImportSourceRequest, PluginLibrarySnapshot, PluginMarketSource } from "@prompthub/shared/types/plugin";
 import { createDesktopMcpLibraryService } from "../services/desktop-mcp-library";
-import { exportAgentAssetDirectorySnapshot, restoreAgentAssetDirectorySnapshot } from "../services/agent-asset-file-snapshot";
+import { exportPluginStorageFiles, restorePluginStorageFiles } from "@prompthub/core/plugin-storage-file-snapshot";
 import { fetchWithNetworkProxy } from "../services/network-proxy";
 import { resolveAgentPluginTargetPath } from "./plugin-target-paths";
 import { distributeDesktopPlugin, removeDesktopPluginDistribution, deleteDesktopPlugin } from "../services/desktop-plugin-distribution";
@@ -43,15 +42,12 @@ export function registerPluginIPC(
       service.restoreSnapshot(snapshot),
   );
   ipcMain.handle(IPC_CHANNELS.PLUGIN_LIBRARY_EXPORT_FILES, async () =>
-    exportAgentAssetDirectorySnapshot(path.dirname(getPluginLibraryFilePath())),
+    exportPluginStorageFiles(),
   );
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_LIBRARY_RESTORE_FILES,
     async (_event, files) =>
-      restoreAgentAssetDirectorySnapshot(
-        path.dirname(getPluginLibraryFilePath()),
-        Array.isArray(files) ? files : [],
-      ),
+      restorePluginStorageFiles(files),
   );
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_MARKET_LIST,

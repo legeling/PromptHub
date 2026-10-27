@@ -13,6 +13,8 @@ import { useMcpStore } from "../stores/mcp.store";
 import { usePluginStore } from "../stores/plugin.store";
 import { useRulesStore } from "../stores/rules.store";
 import { useSkillStore } from "../stores/skill.store";
+import { useAgentStore } from "../stores/agent.store";
+import { findAgentGlobalRule } from "@prompthub/shared/utils/agent-rule-target";
 
 function unsupportedPlan(
   kind: AgentAssetKind,
@@ -86,9 +88,21 @@ function listMcpServers(platformId: string): AgentAssetTargetState[] {
 }
 
 function listRules(platformId: string): AgentAssetTargetState[] {
-  return useRulesStore
+  const { files, availableFiles } = useRulesStore.getState();
+  const agent = useAgentStore
     .getState()
-    .files.filter((file) => file.platformId === platformId && file.exists)
+    .agents.find((item) => item.id === platformId);
+  const shared = agent ? findAgentGlobalRule(agent, availableFiles) : null;
+  const targets =
+    shared && !files.some((file) => file.id === shared.id)
+      ? [...files, shared]
+      : files;
+  return targets
+    .filter(
+      (file) =>
+        (file.platformId === platformId || file.id === shared?.id) &&
+        file.exists,
+    )
     .map((file) => ({
       id: file.id,
       kind: "rule",

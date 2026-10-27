@@ -1,3 +1,16 @@
+import type { ClaudeCredentialEnvKey } from "../types/agent";
+
+/** Used only for new imports; stored credential choices are never migrated. */
+export function getClaudeImportCredentialEnvKey(
+  endpoint: string | null,
+): ClaudeCredentialEnvKey {
+  return endpoint &&
+    URL.canParse(endpoint) &&
+    new URL(endpoint).hostname.toLowerCase() === "api.anthropic.com"
+    ? "ANTHROPIC_API_KEY"
+    : "ANTHROPIC_AUTH_TOKEN";
+}
+
 /** Claude cloud switches use explicit Boolean spellings, not string presence. */
 export function isClaudeCloudProviderEnabled(value: unknown): boolean {
   return (

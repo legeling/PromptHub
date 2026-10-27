@@ -12,6 +12,7 @@ const PLUGIN_TARGET_PLATFORM_IDS: Record<string, string> = {
   cursor: "cursor",
   "gemini-cli": "gemini",
   antigravity: "antigravity",
+  "antigravity-cli": "antigravity-cli",
   kiro: "kiro",
   "github-copilot": "copilot",
 };
@@ -58,7 +59,7 @@ export function resolvePluginPackageTargetPath(
   const name = normalizePluginDirectorySegment(
     plugin.name || plugin.displayName || plugin.id,
   );
-  if (targetId === "antigravity" || targetId === "gemini-cli")
+  if (["antigravity", "antigravity-cli", "gemini-cli"].includes(targetId))
     return path.join(paths.plugins, name);
   const version = normalizePluginDirectorySegment(
     plugin.version || plugin.id.replace(/:/g, "-"),

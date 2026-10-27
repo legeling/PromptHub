@@ -698,7 +698,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
-        "claudeAuthHint": "按网关要求选择认证头：API Key 使用 x-api-key，Auth Token 使用 Authorization: Bearer。交互模式下的 API Key 确认由 Claude Code 处理。",
+        "claudeAuthHint": "第三方网关默认使用 Auth Token（Authorization: Bearer）。仅当网关要求 x-api-key 时选择 API Key；交互式密钥确认由 Claude Code 处理。已有导入保留原认证选择。",
         "open": "从 PromptHub 导入",
         "title": "导入 PromptHub 供应商",
         "hint": "将 PromptHub 中已有的供应商添加到当前 Agent。导入不会修改 Agent，激活仍需单独预览确认。",

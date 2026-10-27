@@ -365,15 +365,19 @@ function inspectAntigravity(
   relativePath: string,
 ): AgentModelConfiguration {
   const model = getString(data, "model");
-  return emptyResult("antigravity", model ? "configured" : "not-configured", {
-    adapter: "antigravity-settings-v1",
-    model,
-    provider: "google-antigravity",
-    availableModels: model ? [model] : [],
-    credentialStatus: "platform-managed",
-    sourceRelativePath: relativePath,
-    canSetModel: true,
-  });
+  return emptyResult(
+    "antigravity-cli",
+    model ? "configured" : "not-configured",
+    {
+      adapter: "antigravity-settings-v1",
+      model,
+      provider: "google-antigravity",
+      availableModels: model ? [model] : [],
+      credentialStatus: "platform-managed",
+      sourceRelativePath: relativePath,
+      canSetModel: true,
+    },
+  );
 }
 
 function qoderCustomModels(data: JsonRecord): JsonRecord[] {
@@ -586,7 +590,7 @@ function inspectJsonAdapter(
   data: JsonRecord,
   relativePath: string,
 ): AgentModelConfiguration {
-  if (agentId === "antigravity") {
+  if (agentId === "antigravity-cli") {
     return inspectAntigravity(data, relativePath);
   }
   if (agentId === "autoclaw") return inspectAutoClaw(data, relativePath);
@@ -602,7 +606,7 @@ function inspectJsonAdapter(
 }
 
 function jsonAdapterId(agentId: string): string {
-  if (agentId === "antigravity") return "antigravity-settings-v1";
+  if (agentId === "antigravity-cli") return "antigravity-settings-v1";
   if (agentId === "autoclaw") return "autoclaw-setting-v1";
   if (agentId === "copilot") return "copilot-settings-v1";
   if (agentId === "kiro") return "kiro-cli-settings-v1";

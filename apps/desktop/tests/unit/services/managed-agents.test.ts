@@ -254,7 +254,7 @@ describe("managed Agent projection", () => {
         platform("cline", "Cline"),
         platform("openclaw", "OpenClaw"),
         platform("qwen", "Qwen Code"),
-        platform("antigravity", "Antigravity"),
+        platform("antigravity-cli", "Antigravity CLI"),
         platform("cursor", "Cursor"),
       ],
       detectedPlatformIds: [],
@@ -297,7 +297,8 @@ describe("managed Agent projection", () => {
       reason: "verified-readonly-agent-transcripts",
     });
     expect(
-      agents.find((agent) => agent.id === "antigravity")?.capabilities.sessions,
+      agents.find((agent) => agent.id === "antigravity-cli")?.capabilities
+        .sessions,
     ).toEqual({
       status: "partial",
       reason: "verified-antigravity-cli-transcripts",

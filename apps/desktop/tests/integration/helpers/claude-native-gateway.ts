@@ -170,6 +170,7 @@ export function isolatedClaudeEnvironment(
     PATH: process.env.PATH,
     HOME: home,
     USERPROFILE: home,
+    CFFIXED_USER_HOME: home,
     CLAUDE_CONFIG_DIR: config,
     XDG_CONFIG_HOME: path.join(home, ".config"),
     LANG: "en_US.UTF-8",

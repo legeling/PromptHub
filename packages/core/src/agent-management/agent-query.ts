@@ -19,6 +19,7 @@ const COMMON_AGENT_ORDER = [
   "codex",
   "deepseek-harness",
   "antigravity",
+  "antigravity-cli",
   "gemini",
   "kimi",
   "qwen",

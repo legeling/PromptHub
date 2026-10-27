@@ -977,7 +977,7 @@ export interface ImportAgentProviderSourceRequest {
   sourceId: string;
   modelId: string;
   protocol: string;
-  /** Claude-only native header choice; omission retains API-key authentication. */
+  /** Claude-only header choice; defaults to Bearer for gateways, API key for api.anthropic.com. */
   credentialEnvKey?: ClaudeCredentialEnvKey;
 }
 

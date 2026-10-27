@@ -19,7 +19,7 @@ const SHARED_DATABASE_SESSION_AGENTS = new Set([
   "hermes",
 ]);
 const NATIVE_DELETE_AGENT_IDS = new Set([
-  "antigravity",
+  "antigravity-cli",
   "augment",
   "cherry-studio",
   "claude",

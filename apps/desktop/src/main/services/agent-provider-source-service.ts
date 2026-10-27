@@ -13,6 +13,7 @@ import type {
   ImportAgentProviderSourceRequest,
 } from "@prompthub/shared";
 import { normalizeAgentProviderEndpoint } from "@prompthub/shared/utils/agent-provider-config";
+import { getClaudeImportCredentialEnvKey } from "@prompthub/shared/utils/claude-config";
 import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 import { getAgentDirectProviderProtocols } from "@prompthub/shared/utils/agent-provider-protocol-route";
 
@@ -130,7 +131,7 @@ function projectionFor(
   platformId: string,
   provider: CoreAIProviderConfig,
   requestedProtocol?: string,
-  credentialEnvKey: ClaudeCredentialEnvKey = "ANTHROPIC_API_KEY",
+  credentialEnvKey?: ClaudeCredentialEnvKey,
 ): ProviderProjection | null {
   const protocols = protocolOptionsFor(platformId, provider);
   const protocol = requestedProtocol ?? protocols[0];
@@ -157,7 +158,10 @@ function projectionFor(
           ? "anthropic"
           : "anthropic-compatible",
       protocol,
-      config: { credentialEnvKey },
+      config: {
+        credentialEnvKey:
+          credentialEnvKey ?? getClaudeImportCredentialEnvKey(provider.apiUrl),
+      },
     };
   }
   if (platformId === "gemini") {

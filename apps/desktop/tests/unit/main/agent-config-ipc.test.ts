@@ -60,13 +60,13 @@ vi.mock("../../../src/main/services/skill-installer", () => ({
         configFiles: ["settings.json", "models.json"],
       },
       {
-        id: "antigravity",
-        name: "Antigravity",
+        id: "antigravity-cli",
+        name: "Antigravity CLI",
         icon: "Sparkles",
         rootDir: {
-          darwin: "~/.gemini/config",
-          win32: "%USERPROFILE%\\.gemini\\config",
-          linux: "~/.gemini/config",
+          darwin: "~/.gemini/antigravity-cli",
+          win32: "%USERPROFILE%\\.gemini\\antigravity-cli",
+          linux: "~/.gemini/antigravity-cli",
         },
         skillsRelativePath: "skills",
       },
@@ -156,21 +156,43 @@ async function setup(usageService?: AgentUsageService) {
 describe("Agent config file IPC", () => {
   it("reads the model-root redirect from the Agent definition and preserves custom roots", async () => {
     const { handlers, IPC_CHANNELS } = await setup();
-    const { getAgentDefinitionById } = await import("@prompthub/shared/constants/agent-definitions");
-    const definition = getAgentDefinitionById("antigravity");
-    if (!definition?.modelConfig) throw new Error("Missing Antigravity model fixture");
+    const { getAgentDefinitionById } =
+      await import("@prompthub/shared/constants/agent-definitions");
+    const definition = getAgentDefinitionById("antigravity-cli");
+    if (!definition?.modelConfig)
+      throw new Error("Missing Antigravity model fixture");
     const config = definition.modelConfig;
     const redirect = config.defaultRootRelativePath;
     config.defaultRootRelativePath = "../test-model-root";
     try {
-      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
-      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({ agentId: "antigravity", rootPath: "/Users/test/.gemini/test-model-root" });
-      getPlatformRootDirMock.mockReturnValue("/Users/test/.gemini/config/");
-      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
-      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({ agentId: "antigravity", rootPath: "/Users/test/.gemini/test-model-root" });
+      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](
+        null,
+        "antigravity-cli",
+      );
+      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({
+        agentId: "antigravity-cli",
+        rootPath: "/Users/test/.gemini/test-model-root",
+      });
+      getPlatformRootDirMock.mockReturnValue(
+        "/Users/test/.gemini/antigravity-cli/",
+      );
+      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](
+        null,
+        "antigravity-cli",
+      );
+      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({
+        agentId: "antigravity-cli",
+        rootPath: "/Users/test/.gemini/test-model-root",
+      });
       getPlatformRootDirMock.mockReturnValue("/Users/test/custom-agent");
-      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
-      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({ agentId: "antigravity", rootPath: "/Users/test/custom-agent" });
+      await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](
+        null,
+        "antigravity-cli",
+      );
+      expect(inspectAgentModelConfigMock).toHaveBeenLastCalledWith({
+        agentId: "antigravity-cli",
+        rootPath: "/Users/test/custom-agent",
+      });
     } finally {
       config.defaultRootRelativePath = redirect;
     }
@@ -178,7 +200,8 @@ describe("Agent config file IPC", () => {
 
   it("rejects every Pi model/provider action when its product switch is disabled", async () => {
     const { handlers, IPC_CHANNELS } = await setup();
-    const { getAgentDefinitionById } = await import("@prompthub/shared/constants/agent-definitions");
+    const { getAgentDefinitionById } =
+      await import("@prompthub/shared/constants/agent-definitions");
     const definition = getAgentDefinitionById("pi");
     if (!definition) throw new Error("Missing Pi fixture");
     const capability = definition.capabilities.providerModel;
@@ -197,7 +220,9 @@ describe("Agent config file IPC", () => {
         IPC_CHANNELS.AGENT_PI_CREDENTIAL_SET,
       ];
       for (const channel of channels) {
-        await expect(handlers[channel](null, { agentId: "pi" })).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+        await expect(
+          handlers[channel](null, { agentId: "pi" }),
+        ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
       }
       expect(getPlatformRootDirMock).not.toHaveBeenCalled();
       expect(updatePiCustomProviderMock).not.toHaveBeenCalled();
@@ -229,7 +254,8 @@ describe("Agent config file IPC", () => {
     getPlatformRootDirMock.mockImplementation((platform: { id: string }) => {
       if (platform.id === "kimi") return "/Users/test/.kimi-code";
       if (platform.id === "pi") return "/Users/test/.pi/agent";
-      if (platform.id === "antigravity") return "/Users/test/.gemini/config";
+      if (platform.id === "antigravity-cli")
+        return "/Users/test/.gemini/antigravity-cli";
       return "/Users/test/.codex";
     });
     listConfigFilesMock.mockImplementation(
@@ -427,19 +453,22 @@ describe("Agent config file IPC", () => {
   it("routes Antigravity model IPC to its CLI settings root", async () => {
     const { handlers, IPC_CHANNELS } = await setup();
 
-    await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](null, "antigravity");
+    await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_GET](
+      null,
+      "antigravity-cli",
+    );
     await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_SET](null, {
-      agentId: "antigravity",
+      agentId: "antigravity-cli",
       model: "gemini-3-pro",
     });
 
     expect(inspectAgentModelConfigMock).toHaveBeenCalledWith({
-      agentId: "antigravity",
+      agentId: "antigravity-cli",
       rootPath: "/Users/test/.gemini/antigravity-cli",
     });
     expect(updateAgentModelConfigMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        agentId: "antigravity",
+        agentId: "antigravity-cli",
         rootPath: "/Users/test/.gemini/antigravity-cli",
         model: "gemini-3-pro",
       }),

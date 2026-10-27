@@ -22,16 +22,10 @@ import { useRulesStore } from "../../stores/rules.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { RulesManager } from "../rules/RulesManager";
 
-function normalizeRulePath(filePath: string | undefined): string {
-  const normalized = (filePath ?? "")
-    .trim()
-    .replace(/\\/g, "/")
-    .replace(/\/+$/, "");
-
-  return /^[a-zA-Z]:\//.test(normalized) || normalized.startsWith("//")
-    ? normalized.toLowerCase()
-    : normalized;
-}
+import {
+  normalizeAgentRulePath as normalizeRulePath,
+  findAgentGlobalRule as findAgentRule,
+} from "@prompthub/shared/utils/agent-rule-target";
 
 function joinRulePath(rootPath: string, relativePath: string): string {
   const root = rootPath.trim().replace(/[\\/]+$/, "");
@@ -41,26 +35,6 @@ function joinRulePath(rootPath: string, relativePath: string): string {
     .filter(Boolean)
     .join(separator);
   return `${root}${separator}${relative}`;
-}
-
-function findAgentRule(
-  agent: ManagedAgentSummary,
-  files: RuleFileDescriptor[],
-): RuleFileDescriptor | null {
-  const expectedPath = normalizeRulePath(agent.paths.rules);
-  const globalFiles = files.filter((file) => !file.id.startsWith("project:"));
-  const pathMatch = expectedPath
-    ? globalFiles.find((file) => normalizeRulePath(file.path) === expectedPath)
-    : undefined;
-
-  if (pathMatch) {
-    return pathMatch;
-  }
-
-  const expectedPlatformId = agent.isCustom ? `custom:${agent.id}` : agent.id;
-  return (
-    globalFiles.find((file) => file.platformId === expectedPlatformId) ?? null
-  );
 }
 
 interface AgentRuleSyncInput {

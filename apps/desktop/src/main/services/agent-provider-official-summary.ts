@@ -20,7 +20,7 @@ const SERVICES: Record<
   },
   codex: { name: "OpenAI", providerKind: "openai", kinds: ["openai"] },
   kimi: { name: "Kimi Code", providerKind: "kimi", kinds: ["kimi"] },
-  antigravity: {
+  "antigravity-cli": {
     name: "Google Antigravity",
     providerKind: "google-antigravity",
     kinds: ["google-antigravity"],

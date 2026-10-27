@@ -110,17 +110,10 @@ const GROK_BILLING_ENDPOINT =
   "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 const GROK_USAGE_ADAPTER = "grok-oauth-v1";
 const ANTIGRAVITY_USAGE_ADAPTER = "antigravity-oauth-v1";
-const ANTIGRAVITY_KEYCHAIN_SERVICE = "gemini";
-const ANTIGRAVITY_KEYCHAIN_ACCOUNT = "antigravity";
 const GEMINI_USAGE_ADAPTER = "gemini-oauth-v1";
 const COPILOT_USAGE_ENDPOINT = "https://api.github.com/copilot_internal/user";
 const COPILOT_USAGE_ADAPTER = "copilot-oauth-v1";
 const CLOUDCODE_BASE_URL = "https://cloudcode-pa.googleapis.com/v1internal";
-const ANTIGRAVITY_TOKEN_RELATIVE_PATH = path.join(
-  ".gemini",
-  "antigravity-cli",
-  "antigravity-oauth-token",
-);
 const GEMINI_CREDENTIALS_RELATIVE_PATH = path.join(
   ".gemini",
   "oauth_creds.json",
@@ -410,44 +403,6 @@ function mapGrokWeeklyMetric(body: unknown): AgentUsageMetric[] {
   ];
 }
 
-function parseAntigravityCredentials(raw: string): TokenCredentials | null {
-  const value = parseJsonObject(raw);
-  if (!value || !isRecord(value.token)) return null;
-  const accessToken = value.token.access_token;
-  if (typeof accessToken !== "string" || !accessToken.trim()) return null;
-  return {
-    accessToken,
-    expiresAt: parseResetTime(value.token.expiry),
-    renewable:
-      typeof value.token.refresh_token === "string" &&
-      Boolean(value.token.refresh_token.trim()),
-  };
-}
-
-function parseAntigravityKeychainCredentials(
-  raw: string,
-): TokenCredentials | null {
-  const direct = parseAntigravityCredentials(raw);
-  if (direct) return direct;
-
-  // Antigravity 2.x stores `<account-ref>:<base64url-json>` in the macOS
-  // Keychain. Decode candidates defensively so a future prefix change does
-  // not expose or invalidate the credential payload.
-  for (const candidate of raw.split(":").reverse()) {
-    if (!candidate.trim()) continue;
-    try {
-      const decoded = Buffer.from(candidate.trim(), "base64url").toString(
-        "utf8",
-      );
-      const parsed = parseAntigravityCredentials(decoded);
-      if (parsed) return parsed;
-    } catch {
-      // Continue to the next candidate or the file-based fallbacks.
-    }
-  }
-  return null;
-}
-
 function parseGeminiCredentials(raw: string): TokenCredentials | null {
   const value = parseJsonObject(raw);
   if (!value) return null;
@@ -471,42 +426,6 @@ function extractCloudCodeTier(body: unknown): string | null {
   if (!isRecord(body) || !isRecord(body.currentTier)) return null;
   const tier = body.currentTier;
   return toNonEmptyString(tier.name) ?? toNonEmptyString(tier.id);
-}
-
-// The models payload is a dict keyed by model name in current responses,
-// but a list shape is accepted defensively.
-function mapAntigravityModelMetrics(body: unknown): AgentUsageMetric[] {
-  if (!isRecord(body)) return [];
-  const models = body.models;
-  const entries: Array<[string, unknown]> = [];
-  if (isRecord(models)) {
-    entries.push(...Object.entries(models));
-  } else if (Array.isArray(models)) {
-    for (const item of models) {
-      if (!isRecord(item)) continue;
-      const name =
-        toNonEmptyString(item.name) ??
-        toNonEmptyString(item.model) ??
-        toNonEmptyString(item.id);
-      if (name) entries.push([name, item]);
-    }
-  }
-  const metrics: AgentUsageMetric[] = [];
-  for (const [name, value] of entries) {
-    if (!isRecord(value) || !isRecord(value.quotaInfo)) continue;
-    const quotaInfo = value.quotaInfo;
-    const remainingFraction = toFiniteNumber(quotaInfo.remainingFraction);
-    if (remainingFraction === null) continue;
-    metrics.push({
-      id: `model:${name}`,
-      label: "Model quota",
-      scope: { kind: "model", id: name, label: name },
-      period: { kind: "provider-defined", label: "Provider quota" },
-      value: percentageFromRemaining(remainingFraction * 100),
-      resetsAt: parseResetTime(quotaInfo.resetTime),
-    });
-  }
-  return metrics;
 }
 
 function mapGeminiBucketMetrics(body: unknown): AgentUsageMetric[] {
@@ -1040,51 +959,6 @@ export function createAgentUsageService(
     }
   }
 
-  async function readAntigravityKeychainCredentials(): Promise<TokenCredentials | null> {
-    if (platform !== "darwin") return null;
-    const security = await commandRunner.resolve("security");
-    if (!security) return null;
-    try {
-      const result = await commandRunner.run(
-        security,
-        [
-          "find-generic-password",
-          "-s",
-          ANTIGRAVITY_KEYCHAIN_SERVICE,
-          "-a",
-          ANTIGRAVITY_KEYCHAIN_ACCOUNT,
-          "-w",
-        ],
-        { timeout: KEYCHAIN_TIMEOUT_MS, maxBuffer: KEYCHAIN_MAX_BUFFER },
-      );
-      return parseAntigravityKeychainCredentials(result.stdout.trim());
-    } catch {
-      return null;
-    }
-  }
-
-  async function resolveAntigravityCredentialCandidates(): Promise<
-    TokenCredentials[]
-  > {
-    const candidates = await Promise.all([
-      readAntigravityKeychainCredentials(),
-      readHomeCredentials(
-        ANTIGRAVITY_TOKEN_RELATIVE_PATH,
-        parseAntigravityCredentials,
-      ),
-      readHomeCredentials(
-        GEMINI_CREDENTIALS_RELATIVE_PATH,
-        parseGeminiCredentials,
-      ),
-    ]);
-    const seen = new Set<string>();
-    return candidates.filter((candidate): candidate is TokenCredentials => {
-      if (!candidate || seen.has(candidate.accessToken)) return false;
-      seen.add(candidate.accessToken);
-      return true;
-    });
-  }
-
   // Shared Cloud Code Assist preamble for the Google-backed adapters:
   // resolves the managed project id and the subscription tier label.
   async function loadCodeAssist(
@@ -1132,74 +1006,12 @@ export function createAgentUsageService(
       });
     }
 
-    // Prefer the current Antigravity desktop session, then retain the 1.x CLI
-    // and shared Gemini files as compatibility sources. A stale source must
-    // never hide a later valid one.
-    const candidates = await resolveAntigravityCredentialCandidates();
-    if (candidates.length === 0) {
-      return buildAntigravityQuota("no-credentials");
-    }
-    let sawExpiredCredential = false;
-    let sawRenewableCredential = false;
-    for (const credentials of candidates) {
-      if (credentials.expiresAt !== null && credentials.expiresAt <= now()) {
-        sawExpiredCredential = true;
-        sawRenewableCredential ||= credentials.renewable === true;
-        continue;
-      }
-
-      const assist = await loadCodeAssist(
-        credentials.accessToken,
-        JSON.stringify({ metadata: { ideType: "ANTIGRAVITY" } }),
-      );
-      if (assist.kind === "expired") {
-        sawExpiredCredential = true;
-        sawRenewableCredential ||= credentials.renewable === true;
-        continue;
-      }
-      if (assist.kind === "unavailable") {
-        return buildAntigravityQuota("unavailable", {
-          errorCode: assist.errorCode,
-        });
-      }
-
-      const modelsResult = await fetchJson(
-        `${CLOUDCODE_BASE_URL}:fetchAvailableModels`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${credentials.accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ project: assist.projectId }),
-        },
-      );
-      if (modelsResult.kind === "expired") {
-        sawExpiredCredential = true;
-        sawRenewableCredential ||= credentials.renewable === true;
-        continue;
-      }
-      if (modelsResult.kind === "unavailable") {
-        return buildAntigravityQuota("unavailable", {
-          errorCode: modelsResult.errorCode,
-        });
-      }
-      return buildAntigravityQuota("ok", {
-        metrics: mapAntigravityModelMetrics(modelsResult.body),
-        plan: assist.plan,
-      });
-    }
-    if (sawRenewableCredential) {
-      return buildAntigravityQuota("unavailable", {
-        errorCode:
-          localUsage.kind === "not-running"
-            ? "antigravity-not-running"
-            : "antigravity-session-unavailable",
-      });
-    }
-    return buildAntigravityQuota(
-      sawExpiredCredential ? "expired" : "no-credentials",
-    );
+    return buildAntigravityQuota("unavailable", {
+      errorCode:
+        localUsage.kind === "not-running"
+          ? "antigravity-not-running"
+          : localUsage.errorCode,
+    });
   }
 
   async function queryGeminiUsage(agentId: string): Promise<AgentUsageQuota> {

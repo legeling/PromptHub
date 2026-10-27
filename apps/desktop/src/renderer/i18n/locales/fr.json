@@ -698,7 +698,7 @@
     },
     "providerProfiles": {
       "sourceImport": {
-        "claudeAuthHint": "Choisissez l’en-tête requis par la passerelle : la clé API utilise x-api-key ; le jeton utilise Authorization: Bearer. Claude Code gère l’approbation interactive de la clé API.",
+        "claudeAuthHint": "Les passerelles tierces utilisent Auth token (Authorization: Bearer) par défaut. Choisissez API key (x-api-key) uniquement si la passerelle l’exige ; Claude Code gère l’approbation interactive. Les imports existants conservent leur choix.",
         "open": "Importer depuis PromptHub",
         "title": "Importer un fournisseur PromptHub",
         "hint": "Ajoute à l'Agent un fournisseur indépendant déjà configuré dans PromptHub. L'activation reste une etape de validation distincte.",

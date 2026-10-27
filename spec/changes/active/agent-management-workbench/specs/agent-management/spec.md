@@ -4224,8 +4224,17 @@ new stored website, notes, icon, proxy or request-conversion fields.
 
 2026-10-22 confirmed follow-up (#246), locally implemented and verified: imported Claude
 providers must expose the native credential choice before import. The request's
-optional `credentialEnvKey` accepts only `ANTHROPIC_API_KEY` (the existing default,
-`x-api-key`) or `ANTHROPIC_AUTH_TOKEN` (`Authorization: Bearer`), only for Claude.
+optional `credentialEnvKey` accepts only `ANTHROPIC_API_KEY` (`x-api-key`) or
+`ANTHROPIC_AUTH_TOKEN` (`Authorization: Bearer`), only for Claude.
+2026-10-26 interactive-start follow-up: new third-party imports default to Auth
+Token, as recommended by the official gateway guide when no header was specified.
+Only the official `api.anthropic.com` endpoint defaults to API Key. Renderer and
+source service share this decision in `getClaudeImportCredentialEnvKey`; an
+explicit selection always wins. Existing profiles/source credentials are not
+migrated or changed. A previously imported API-key gateway can be edited to
+Auth Token and reactivated after reviewing its preview; API-key-only gateways
+must retain their explicit mode and Claude-owned approval. Reverting this
+default changes only future imports; there is no storage/schema migration.
 The selected value is stored in the existing Profile config; credentials remain
 write-only in the existing secret owner. Arbitrary source provider labels must
 project to Claude's `anthropic-compatible` kind rather than become invalid native
@@ -4243,6 +4252,13 @@ Interactive API-key approval remains Claude-owned, not a PromptHub-written
 `customApiKeyResponses` bypass. Both static modes require native-process tests
 against a controlled gateway; reporter gateway and Windows acceptance remain
 separate from those tests.
+
+Native acceptance must include default-mode interactive startup without saved
+official login, not only `claude -p`. A 2.1.307 fresh-profile API-key probe exited
+before contacting the fixture gateway because its Anthropic startup request
+returned 403; the equivalent Auth Token probe reached the gateway and completed.
+This does not make API Key an invalid format or authorize suppressing native
+trust/approval. Source: [official gateway authentication](https://code.claude.com/docs/en/llm-gateway-connect#set-the-credential-variable).
 
 The custom-provider editor for Claude Code MUST expose the model routes that
 Claude Code natively supports: the required primary model and optional Sonnet,
@@ -4570,3 +4586,67 @@ infer those capabilities from the presence of Doubao runtime files.
 - When the user installs the Skill for Doubao Work
 - Then PromptHub copies the complete package into `.user_skills/<skill-name>`
 - And does not modify `.skills`, `~/.codex/skills`, or `~/.agents/skills`
+
+## Provider native-contract completion — 2026-10-26
+
+The confirmed scope is model/provider configuration for Claude Code, Codex,
+OpenCode, Pi and Antigravity, with native consumption evidence rather than file
+readback alone. Existing #246 behavior and unrelated pending changes remain intact.
+
+- Codex default model state comes from top-level `model`, not an inactive legacy
+  `profiles.<providerId>` table. Activation must not create those legacy tables.
+  Choosing a managed credential replaces the target provider's command-backed
+  auth and OpenAI-auth requirement; encrypted backup and exact rollback preserve
+  the previous configuration. Invalid combined auth must never verify successfully.
+- OpenCode V1 and native V2 declarations are supported at the single native-file
+  adapter boundary. Preserve the target document's format and unrelated providers;
+  V2 uses `providers/package/settings` and `agents.title.model`, with its explicit
+  API key in provider settings, not by taking ownership of the V2 account store.
+  A fresh V1 document remains V1; no global CLI upgrade or whole-file migration.
+  Existing profile contracts remain unchanged and normalize runtime package names
+  only at this native boundary. Native V2 declarations take precedence over V1.
+- Acceptance includes installed native CLI requests carrying the selected model
+  and credential, fresh startup and restart, unrelated file preservation and exact
+  rollback. Loopback protocol fixtures do not prove commercial upstream availability.
+- Antigravity desktop (`antigravity`) and `agy` CLI (`antigravity-cli`) are separate
+  Agent identities, confirmed on 2026-10-26. Keep existing desktop identity and
+  assets; the CLI owns model settings and CLI conversation history. Do not infer
+  desktop installation or activation from a CLI binary/configuration.
+- Desktop Skills remain under `.gemini/config`; CLI Skills use
+  `.gemini/antigravity-cli`. Shared native Plugins, MCP, Hooks and subagent declarations
+  under `.gemini/config`, plus `GEMINI.md`, are referenced rather than copied.
+  No native account, file or desktop-private storage migration is authorized.
+  Native `agy 1.4.6 plugin list --json` consumes `.gemini/config/plugins`, not
+  `.gemini/antigravity-cli/plugins`; this contradicts the official filesystem
+  paragraph but agrees with the settings reference and command-output example. Keep CLI staging files
+  untouched. Removing one distribution reference preserves the shared package
+  while the other Agent still has a registered distribution to the same path.
+- A transactional, versioned SQLite migration moves proven CLI model profiles
+  (`config.adapter = antigravity-settings-v1`) and existing CLI conversation
+  annotations to the CLI identity, preserving IDs, mappings and audit history.
+  Unclassified profiles and asset registrations remain intact; old desktop root
+  overrides are not copied to CLI. A uniqueness conflict aborts the migration.
+  Rollback uses the existing pre-migration database safety point, not reverse
+  guessing. Native session indices are derived and rescan under the new identity.
+- Desktop model writes/history and CLI quota must not borrow another product's
+  configuration or credential. Unsupported native contracts stay visibly unavailable
+  until verified. Desktop usage uses its local native service only, with no CLI or
+  Gemini credential fallback. Each supported surface requires separate acceptance.
+- CLI provider profiles currently select native model labels only. Authentication
+  remains owned by agy/environment; the form must not offer unsupported endpoint,
+  secret or PromptHub provider import controls. Shared Rules detail and Overview
+  use the same native-path selector, including files whose canonical Rules owner
+  is hidden from the global sidebar. No duplicate Rules record is created.
+
+Implementation status and executed checks are recorded only in `tasks.md`.
+
+Native contract references (checked 2026-10-26):
+[Codex config reference](https://learn.chatgpt.com/docs/config-file/config-reference),
+[OpenCode V2 provider migration](https://opencode.ai/v2/docs/migrate-v1/),
+[Pi custom models](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md),
+[Antigravity settings](https://antigravity.google/docs/settings),
+[settings schema](https://antigravity.google/schemas/v1/settings.json) and
+[model selection](https://antigravity.google/docs/models).
+CC Switch comparison used v4.0.20 (`85ad4969b3399500baaea9d46b1e08f87aba80e1`),
+specifically the Codex live projection, OpenCode config and Pi config modules.
+Its behavior is comparison evidence, not the upstream native contract.

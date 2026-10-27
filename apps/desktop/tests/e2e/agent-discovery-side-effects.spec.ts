@@ -43,7 +43,7 @@ test("Agent discovery does not create or report absent platform roots", async ()
       page.getByRole("button", { name: "Claude Code", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Antigravity", exact: true }),
+      page.getByRole("button", { name: "Antigravity CLI", exact: true }),
     ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Gemini CLI", exact: true }),
