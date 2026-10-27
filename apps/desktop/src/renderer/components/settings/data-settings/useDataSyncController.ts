@@ -167,7 +167,7 @@ function useSelfHostedActions(
       showToast(
         t(
           "toast.selfHostedSyncConnectionSuccess",
-          "Backup endpoint ready. Desktop and Web are both version {{version}}; up to {{retention}} snapshots are retained.",
+          "Backup endpoint ready. Server version {{version}}; up to {{retention}} snapshots are retained.",
           {
             version: capabilities.serverVersion,
             retention: capabilities.retentionLimit,

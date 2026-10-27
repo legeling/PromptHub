@@ -99,6 +99,15 @@ function createRestoreSafetyGuard(): {
 }
 
 async function downloadExportFile(): Promise<void> {
+  if (window.electron?.workspaceSnapshot) {
+    const result = await window.electron.workspaceSnapshot({
+      action: "export",
+    });
+    if (!result.success)
+      throw new Error(result.error || "Full snapshot export failed");
+    if (result.canceled) throw new Error("Export canceled");
+    return;
+  }
   await downloadSelectiveExport({
     prompts: true,
     folders: true,

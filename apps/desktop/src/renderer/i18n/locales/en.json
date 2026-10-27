@@ -3883,7 +3883,7 @@
     "batchMoved": "Batch moved",
     "batchDeleted": "Batch deleted",
     "imageSaved": "Image saved to preview",
-    "selfHostedSyncConnectionSuccess": "Backup endpoint ready. Desktop and Web are both version {{version}}; up to {{retention}} snapshots are retained.",
+    "selfHostedSyncConnectionSuccess": "Backup endpoint ready. Server version {{version}}; up to {{retention}} snapshots are retained.",
     "selfHostedSyncPushSuccess": "Created a remote backup with {{prompts}} prompts, {{folders}} folders, {{rules}} rules, and {{skills}} skills.",
     "selfHostedSyncPullSuccess": "Restored {{prompts}} prompts, {{folders}} folders, {{rules}} rules, and {{skills}} skills from the latest verified backup."
   },

@@ -144,6 +144,13 @@ export async function startSelfHostedTestServer(): Promise<SelfHostedTestServer>
         JWT_SECRET: jwtSecret,
         ALLOW_REGISTRATION: "false",
         LOG_LEVEL: "error",
+        ...(process.env.PROMPTHUB_E2E_DEV_SERVER_URL
+          ? {
+              DESKTOP_DEV_ORIGIN: new URL(
+                process.env.PROMPTHUB_E2E_DEV_SERVER_URL,
+              ).origin,
+            }
+          : {}),
       },
       stdio: "pipe",
     },

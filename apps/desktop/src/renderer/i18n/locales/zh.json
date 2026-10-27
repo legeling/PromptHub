@@ -3883,7 +3883,7 @@
     "batchMoved": "已批量移动",
     "batchDeleted": "已批量删除",
     "imageSaved": "图片已保存到预览",
-    "selfHostedSyncConnectionSuccess": "备份端点可用。桌面版与 Web 版均为 {{version}}，最多保留 {{retention}} 个快照。",
+    "selfHostedSyncConnectionSuccess": "备份端点可用。服务器版本 {{version}}，最多保留 {{retention}} 个快照。",
     "selfHostedSyncPushSuccess": "已创建远程备份，包含 {{prompts}} 条 Prompt、{{folders}} 个文件夹、{{rules}} 条规则和 {{skills}} 个 Skill。",
     "selfHostedSyncPullSuccess": "已从最近的已验证备份恢复 {{prompts}} 条 Prompt、{{folders}} 个文件夹、{{rules}} 条规则和 {{skills}} 个 Skill。"
   },

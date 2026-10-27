@@ -2,7 +2,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createHash } from "node:crypto";
 import { unzipSync, gzipSync } from "fflate";
 import { File as NodeFile } from "node:buffer";
 import { JSDOM } from "jsdom";
@@ -19,10 +18,13 @@ import {
   AgentSettingsRepository,
   createPortableSkillResource,
   createPortablePluginResourceEntry,
-  readResourceBundle,
   type PortableLogicalEnvelope,
 } from "@prompthub/core";
-import { AgentProviderProfileDB, AgentSessionIndexDB } from "@prompthub/db";
+import {
+  AgentProviderProfileDB,
+  AgentSessionIndexDB,
+  DatabaseAdapter,
+} from "@prompthub/db";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import {
   closeDatabase,
@@ -58,7 +60,15 @@ import {
   previewImportFile,
   restoreFromFile,
 } from "../../src/renderer/services/database-backup";
-import { runFullExportBackup } from "../../src/renderer/services/backup-orchestrator";
+import { registerImageIPC } from "../../src/main/ipc/image.ipc";
+import { registerWebDAVIPC } from "../../src/main/webdav";
+import { registerBackupIPC } from "../../src/main/ipc/backup.ipc";
+import { createWebDAVFixture } from "../e2e/helpers/webdav-fixture";
+import {
+  runWebDAVUpload,
+  runWebDAVDownload,
+  runFullExportBackup,
+} from "../../src/renderer/services/backup-orchestrator";
 import {
   legacyExportZip,
   legacyExportText,
@@ -72,10 +82,19 @@ import {
   legacyBinary,
 } from "../fixtures/legacy-export";
 import "../../src/preload";
+import {
+  inventory,
+  writeFiles,
+  seedSkill,
+  seedMcp,
+  seedProviderAndGeneration,
+  providerGenerationSnapshot,
+} from "./helpers/portable-workspace-fixtures";
 
 const transport = vi.hoisted(() => ({
   handlers: new Map<string, (...args: unknown[]) => unknown>(),
   home: "",
+  profile: "",
   archive: "",
   relaunches: 0,
   // A deterministic OS-vault codec exercises secret references and byte
@@ -130,7 +149,12 @@ vi.mock("electron", () => ({
   },
   safeStorage: transport.encryption,
   session: { defaultSession: { setProxy: async () => undefined } },
-  app: {},
+  app: {
+    getPath: () => transport.profile,
+    getVersion: () => "0.6.1",
+    relaunch: vi.fn(),
+    quit: vi.fn(),
+  },
   webUtils: { getPathForFile: () => transport.archive },
 }));
 
@@ -138,6 +162,8 @@ let storageWindow: JSDOM;
 let root: string;
 let profile: string;
 let database: ReturnType<typeof initDatabase>;
+let handlersReady: Promise<void>;
+let databaseChannels: string[] = [];
 const settings = {
   language: "en",
   themeMode: "dark",
@@ -153,35 +179,6 @@ const videoBytes = Buffer.from([
   0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50, 0, 128, 255,
 ]);
 
-function inventory(directory: string): Record<string, string> {
-  const files: Record<string, string> = {};
-  function visit(current: string): void {
-    if (!fs.existsSync(current)) return;
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      const file = path.join(current, entry.name);
-      if (entry.isDirectory()) visit(file);
-      else if (entry.isFile())
-        files[path.relative(directory, file)] = createHash("sha256")
-          .update(fs.readFileSync(file))
-          .digest("hex");
-      else throw new Error(`Unexpected non-regular fixture file: ${file}`);
-    }
-  }
-  visit(directory);
-  return files;
-}
-
-function writeFiles(
-  directory: string,
-  files: Record<string, string | Buffer>,
-): void {
-  for (const [name, bytes] of Object.entries(files)) {
-    const file = path.join(directory, name);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, bytes);
-  }
-}
-
 function persistence() {
   return createRendererPersistenceStore({
     database: database,
@@ -196,7 +193,7 @@ async function openHandlers(): Promise<void> {
   const folders = new FolderDB(database);
   registerPromptIPC(prompts, folders, database);
   registerFolderIPC(folders);
-  await registerSkillIPC(new SkillDB(database));
+  const skillsReady = registerSkillIPC(new SkillDB(database));
   registerRulesIPC();
   registerPluginIPC(new CorePluginLibraryService());
   registerMcpIPC();
@@ -223,15 +220,27 @@ async function openHandlers(): Promise<void> {
       transaction: (operation) => database.transaction(operation)(),
     }),
   );
-  registerPortableSnapshotIPC(() => {
-    transport.relaunches += 1;
-  });
+  registerImageIPC();
+  registerBackupIPC((nextDatabase) => {
+    database = nextDatabase;
+  }, rebindHandlers);
+  databaseChannels = [...transport.handlers.keys()].filter(
+    (channel) => !channel.startsWith("webdav:") && !channel.startsWith("data:"),
+  );
+  await skillsReady;
+}
+
+function rebindHandlers(): void {
+  for (const channel of databaseChannels) transport.handlers.delete(channel);
+  handlersReady = openHandlers();
 }
 
 async function startProfile(destination: string, fresh = false): Promise<void> {
+  await handlersReady;
   transport.handlers.clear();
   closeDatabase();
   profile = destination;
+  transport.profile = destination;
   configureRuntimePaths({ userDataPath: profile });
   invalidateCustomPathsCache();
   if (fresh) {
@@ -263,7 +272,12 @@ async function startProfile(destination: string, fresh = false): Promise<void> {
       ["already-canonical", "catalog-rebuilt"],
       JSON.stringify(startup),
     ).toContain(startup.status);
-  await openHandlers();
+  handlersReady = openHandlers();
+  await handlersReady;
+  registerPortableSnapshotIPC(() => {
+    transport.relaunches += 1;
+  }, rebindHandlers);
+  registerWebDAVIPC();
 }
 
 async function seedPrompts(): Promise<void> {
@@ -298,38 +312,6 @@ async function seedPrompts(): Promise<void> {
     kind: "depends_on",
     note: "Retain relation",
   });
-}
-
-async function seedSkill(): Promise<void> {
-  const source = path.join(root, "skill-source");
-  const content =
-    "---\nname: portable-skill\ndescription: Portable fixture\n---\nInstructions\n";
-  writeFiles(source, {
-    "SKILL.md": content,
-    "docs/nested/readme.md": "Complete package",
-    "assets/blob.bin": Buffer.from([0, 128, 255]),
-  });
-  const installed = await window.api.skill.runPackageOperation({
-    operation: "install",
-    registrySkill: {
-      name: "portable-skill",
-      slug: "portable-skill",
-      description: "Portable fixture",
-      category: "general",
-      author: "Test",
-      version: "1.0.0",
-      tags: [],
-      source_id: "portable-fixture",
-      source_url: source,
-      content,
-    },
-    content,
-    source: { kind: "local-directory", directory: source },
-  });
-  expect(installed.status, JSON.stringify(installed)).toBe("completed");
-  if (installed.status !== "completed")
-    throw new Error(JSON.stringify(installed));
-  await window.api.skill.versionCreate(installed.skill.id, "Package history");
 }
 
 async function seedRuleAndPlugin(sourceBase = root): Promise<void> {
@@ -447,7 +429,8 @@ beforeEach(async () => {
   await startProfile(path.join(root, "source-profile"), true);
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await handlersReady;
   vi.restoreAllMocks();
   transport.handlers.clear();
   closeDatabase();
@@ -457,6 +440,7 @@ afterEach(() => {
   storageWindow?.window.close();
   vi.unstubAllGlobals();
   transport.home = "";
+  transport.profile = "";
 });
 
 function historicalBackupFile(format: "zip" | "json" | "phub.gz"): File {
@@ -583,7 +567,12 @@ it("full manual export creates a readable ZIP without an extra managed safety po
   const backupsBefore = inventory(path.join(profile, "backups"));
   await runFullExportBackup({
     currentVersion: "0.6.0",
-    recordManualBackup: false,
+    recordManualBackup: true,
+  });
+  await handlersReady;
+  expect(await window.api.settings.get()).toMatchObject({
+    lastManualBackupVersion: "0.6.0",
+    lastManualBackupAt: expect.any(String),
   });
   expect(fs.existsSync(transport.archive)).toBe(true);
   expect(inventory(path.join(profile, "backups"))).toEqual(backupsBefore);
@@ -591,31 +580,9 @@ it("full manual export creates a readable ZIP without an extra managed safety po
     transport.archive,
   );
   expect(preview?.success).toBe(true);
-  await startProfile(profile);
   const updated = await window.api.prompt.getAll();
   expect(updated).toHaveLength(2);
 });
-
-function seedMcp(id: string): string {
-  const bundlePath = path.join(profile, "data", "mcp", id);
-  const server = {
-    id,
-    name: id,
-    displayName: id,
-    transport: "stdio" as const,
-    command: "fixture-command",
-    args: [],
-    enabled: true,
-    env: { TOKEN: "synthetic-fixture-secret" },
-    source: { type: "manual" as const },
-    createdAt: 1,
-    updatedAt: 2,
-  };
-  const service = new CoreMcpLibraryService();
-  service.createServer({ ...server, args: ["first-version"] });
-  service.updateServer(id, server);
-  return bundlePath;
-}
 
 function partialEnvelope(
   selected: boolean,
@@ -696,7 +663,7 @@ it.each([
   "preserves nonempty unselected domains and device state (selected=$selected, failure=$failPublication)",
   async ({ selected, failPublication }) => {
     await seedPrompts();
-    await seedSkill();
+    await seedSkill(root);
     await seedRuleAndPlugin();
     await persistence().replaceSettings({
       ...settings,
@@ -704,11 +671,11 @@ it.each([
     });
     const expected = await consumerSnapshot();
     const agentSettings = new AgentSettingsRepository(database).read();
-    const retained = seedMcp("retained");
+    const retained = seedMcp("retained", profile);
     exportMcpStorageSnapshot(path.join(root, MCP_STORAGE_SNAPSHOT_FILE), {
       database,
     });
-    seedMcp("removed");
+    seedMcp("removed", profile);
     const metadata = {
       "data/mcp/market-sources.json": JSON.stringify({
         kind: "prompthub-mcp-market-sources",
@@ -822,7 +789,7 @@ it.each(["complete", "current-removed", "all-removed"])(
   "exports all nonempty content domains through the renderer and restores the real ZIP across two normal startups (Rule history %s)",
   async (historyMode) => {
     await seedPrompts();
-    await seedSkill();
+    await seedSkill(root);
     await seedRuleAndPlugin();
     if (historyMode !== "complete") {
       const rule = (await window.api.rules.list()).find((entry) =>
@@ -936,100 +903,6 @@ it.each(["complete", "current-removed", "all-removed"])(
   },
 );
 
-async function seedProviderAndGeneration(name: string): Promise<void> {
-  const prompts = await window.api.prompt.getAll();
-  const source = prompts.find((prompt) => prompt.currentVersion === 2);
-  if (!source) throw new Error("Generation fixture requires a revised Prompt");
-  await window.api.agent.createProviderProfile({
-    profile: {
-      platformId: "codex",
-      name,
-      providerKind: "openai",
-      protocol: "openai",
-      endpoint: "https://fixture.invalid/v1",
-      config: { fixture: name },
-      source: "manual",
-    },
-    modelMappings: [
-      {
-        routeKey: "primary",
-        modelId: "fixture-image",
-        parameters: { reasoningEffort: "high" },
-      },
-    ],
-  });
-  const batch = await window.api.generation.create({
-    title: name,
-    sourcePromptId: source.id,
-    sourcePromptVersion: source.currentVersion,
-    variableValues: { subject: name },
-    referenceImages: [
-      { source: "prompt", fileName: "pixel.png", promptId: source.id },
-    ],
-    prompt: `Fixture output ${name}`,
-    model: {
-      id: "fixture-image",
-      provider: "openai",
-      model: "fixture-image",
-      name: "Fixture image",
-    },
-    targetCount: 1,
-    quality: "hd",
-    aspectRatio: "1:1",
-  });
-  await window.api.generation.markSlotRunning(batch.id, 0);
-  const completed = await window.api.generation.commitOutput({
-    batchId: batch.id,
-    slotIndex: 0,
-    mimeType: "image/png",
-    base64: imageBytes.toString("base64"),
-    revisedPrompt: name,
-  });
-  const output = completed.slots[0].output;
-  if (!output) throw new Error("Generation fixture output is missing");
-  await window.api.generation.setFavorite({
-    batchId: batch.id,
-    outputId: output.id,
-    favorite: true,
-  });
-}
-
-async function providerGenerationSnapshot() {
-  const batches = await window.api.generation.list();
-  const generationRoot = path.join(profile, "data", "generations");
-  const files = inventory(generationRoot);
-  return {
-    providers: await window.api.agent.listProviderProfiles({
-      includeArchived: true,
-    }),
-    batches,
-    outputs: await Promise.all(
-      batches.flatMap((batch) =>
-        batch.slots.flatMap((slot) =>
-          slot.output
-            ? [
-                window.api.generation.readOutputReference({
-                  batchId: batch.id,
-                  outputId: slot.output.id,
-                }),
-              ]
-            : [],
-        ),
-      ),
-    ),
-    files,
-    bundleManifests: Object.fromEntries(
-      Object.keys(files)
-        .filter((file) => file.endsWith("/manifest.json"))
-        .map((file) => [
-          file,
-          readResourceBundle(path.dirname(path.join(generationRoot, file)))
-            .manifest,
-        ]),
-    ),
-  };
-}
-
 it.each([
   { selectedSettings: true, failPublication: false },
   { selectedSettings: false, failPublication: false },
@@ -1038,14 +911,14 @@ it.each([
   "joins nonempty Provider and Generation in one ZIP (settings=$selectedSettings, failure=$failPublication)",
   async ({ selectedSettings, failPublication }) => {
     await seedPrompts();
-    await seedSkill();
+    await seedSkill(root);
     await seedRuleAndPlugin();
-    await seedProviderAndGeneration("Source provider");
+    await seedProviderAndGeneration("Source provider", imageBytes);
     const sourceRoot = profile;
     const normalize = (value: unknown): unknown =>
       JSON.parse(JSON.stringify(value).split(sourceRoot).join("<profile>"));
     const source = normalize(await consumerSnapshot());
-    const sourceExtra = await providerGenerationSnapshot();
+    const sourceExtra = await providerGenerationSnapshot(profile);
     expect(sourceExtra.providers).toHaveLength(1);
     expect(sourceExtra.providers[0].modelMappings).toHaveLength(1);
     expect(sourceExtra.batches).toHaveLength(1);
@@ -1080,23 +953,27 @@ it.each([
       ),
     ).toBe(true);
     expect(
-      Object.keys(entries).some((entry) => entry.startsWith("data/agents/")),
+      selectedSettings
+        ? Boolean(entries["data/prompthub.db"])
+        : Object.keys(entries).some((entry) =>
+            entry.startsWith("data/agents/"),
+          ),
     ).toBe(true);
     await startProfile(sourceRoot);
     expect(normalize(await consumerSnapshot())).toEqual(source);
-    expect(await providerGenerationSnapshot()).toEqual(sourceExtra);
+    expect(await providerGenerationSnapshot(profile)).toEqual(sourceExtra);
     closeDatabase();
     const sourceInventory = inventory(path.join(sourceRoot, "data"));
     const destination = path.join(root, "provider-generation-target");
     await startProfile(destination, true);
     await seedPrompts();
-    await seedSkill();
+    await seedSkill(root);
     await seedRuleAndPlugin(path.join(root, "target-inputs"));
-    await seedProviderAndGeneration("Target provider");
+    await seedProviderAndGeneration("Target provider", imageBytes);
     const targetSettings = { ...settings, themeMode: "light", language: "fr" };
     await persistence().replaceSettings(targetSettings);
     const target = await consumerSnapshot();
-    const targetExtra = await providerGenerationSnapshot();
+    const targetExtra = await providerGenerationSnapshot(profile);
     closeDatabase();
     const targetData = inventory(path.join(destination, "data"));
     const targetConfig = inventory(path.join(destination, "config"));
@@ -1130,6 +1007,9 @@ it.each([
     expect(inventory(path.join(sourceRoot, "data"))).toEqual(sourceInventory);
     expect(fs.readFileSync(transport.archive)).toEqual(archiveBytes);
     if (failPublication) {
+      await handlersReady;
+      expect(await consumerSnapshot()).toEqual(target);
+      closeDatabase();
       expect(inventory(path.join(destination, "data"))).toEqual(targetData);
       expect(inventory(path.join(destination, "config"))).toEqual(targetConfig);
       expect(inventory(path.join(destination, "secrets"))).toEqual(
@@ -1151,7 +1031,7 @@ it.each([
             ? target.settings
             : expected.settings,
       });
-      const extra = await providerGenerationSnapshot();
+      const extra = await providerGenerationSnapshot(profile);
       expect
         .soft(extra, startup)
         .toEqual(failPublication ? targetExtra : sourceExtra);
@@ -1176,5 +1056,420 @@ it.each([
     }
     expect(inventory(path.join(sourceRoot, "data"))).toEqual(sourceInventory);
     expect(fs.readFileSync(transport.archive)).toEqual(archiveBytes);
+  },
+);
+
+it.each([true, false])(
+  "exports every populated domain with Prompt history=%s and remains usable without restarting",
+  async (versions) => {
+    await seedPrompts();
+    await seedSkill(root);
+    await seedRuleAndPlugin();
+    seedMcp("export-mcp", profile);
+    await seedProviderAndGeneration("export-provider", imageBytes);
+    const before = await consumerSnapshot();
+    const providers = await providerGenerationSnapshot(profile);
+    await downloadSelectiveExport({
+      prompts: true,
+      folders: true,
+      versions,
+      images: true,
+      videos: true,
+      settings: true,
+      aiConfig: true,
+      skills: true,
+      rules: true,
+      mcp: true,
+      plugins: true,
+      agents: true,
+    });
+    await handlersReady;
+    expect(await consumerSnapshot()).toEqual(before);
+    expect(await providerGenerationSnapshot(profile)).toEqual(providers);
+    expect(
+      await window.electron.previewPortableBackup?.(transport.archive),
+    ).toMatchObject({ success: true });
+    if (versions) {
+      const preview = await previewImportFile(
+        new NodeFile([fs.readFileSync(transport.archive)], "backup.zip", {
+          type: "application/zip",
+        }) as unknown as File,
+      );
+      expect(preview.summary.counts.rules).toBe(before.rules.length);
+    }
+    const prompt = before.prompts[0];
+    await window.api.prompt.update(prompt.id, { title: "Edited after export" });
+    expect(
+      (await window.api.prompt.getAll()).find((item) => item.id === prompt.id)
+        ?.title,
+    ).toBe("Edited after export");
+  },
+);
+
+it.each([true, false])(
+  "uploads and restores real WebDAV data with a safety snapshot (incremental=%s)",
+  async (incrementalSync) => {
+    const remote = await createWebDAVFixture();
+    try {
+      await seedPrompts();
+      await seedSkill(root);
+      await seedRuleAndPlugin();
+      seedMcp("remote-mcp", profile);
+      const normalize = (value: unknown): unknown =>
+        JSON.parse(JSON.stringify(value).split(profile).join("<profile>"));
+      const expected = normalize(await consumerSnapshot());
+      const config = {
+        url: remote.url,
+        username: "fixture",
+        password: "fixture",
+      };
+      const options = { incrementalSync };
+      const uploaded = await runWebDAVUpload({ config, options });
+      expect(uploaded, JSON.stringify(uploaded)).toMatchObject({
+        success: true,
+      });
+      const destination = path.join(root, "remote-destination");
+      await startProfile(destination, true);
+      await window.api.prompt.create({
+        title: "Local before restore",
+        userPrompt: "Retain in safety snapshot",
+        visibility: "shared",
+      });
+      const downloaded = await runWebDAVDownload({ config, options });
+      expect(downloaded, JSON.stringify(downloaded)).toMatchObject({
+        success: true,
+        localChanged: true,
+      });
+      expect(transport.relaunches).toBe(1);
+      await startProfile(destination);
+      expect(normalize(await consumerSnapshot())).toEqual(expected);
+      const snapshots = await window.api.upgradeBackup.list();
+      expect(snapshots).toHaveLength(1);
+      const safety = new DatabaseAdapter(
+        path.join(snapshots[0].backupPath, "data", "prompthub.db"),
+        { readOnly: true },
+      );
+      try {
+        expect(new PromptDB(safety).getAll().map((item) => item.title)).toEqual(
+          ["Local before restore"],
+        );
+      } finally {
+        safety.close();
+      }
+      expect(database.all("PRAGMA foreign_key_check")).toEqual([]);
+      await startProfile(destination);
+      expect(normalize(await consumerSnapshot())).toEqual(expected);
+      const objectKey = [...remote.objects.keys()].find((key) =>
+        key.endsWith("manifest.json"),
+      );
+      if (!objectKey) throw new Error("Published remote object is missing");
+      const object = remote.objects.get(objectKey)!;
+      remote.objects.set(objectKey, { ...object, data: "invalid JSON" });
+      const failed = await runWebDAVDownload({ config, options });
+      expect(failed.success).toBe(false);
+      expect(transport.relaunches).toBe(1);
+      expect(await window.api.upgradeBackup.list()).toHaveLength(1);
+      expect(normalize(await consumerSnapshot())).toEqual(expected);
+    } finally {
+      await remote.close();
+    }
+  },
+);
+
+it("preserves data and success status after an export destination failure, then retries without restarting", async () => {
+  await seedPrompts();
+  const before = await consumerSnapshot();
+  const priorStatus = await window.api.settings.get();
+  transport.archive = path.join(root, "occupied-destination");
+  fs.mkdirSync(transport.archive);
+  fs.writeFileSync(
+    path.join(transport.archive, "keep.txt"),
+    "Keep existing destination",
+  );
+  await expect(
+    runFullExportBackup({ currentVersion: "0.6.1", recordManualBackup: true }),
+  ).rejects.toThrow();
+  await handlersReady;
+  expect(
+    fs.readFileSync(path.join(transport.archive, "keep.txt"), "utf8"),
+  ).toBe("Keep existing destination");
+  expect(await consumerSnapshot()).toEqual(before);
+  expect(await window.api.settings.get()).toEqual(priorStatus);
+  transport.archive = path.join(root, "retry.zip");
+  await runFullExportBackup({
+    currentVersion: "0.6.1",
+    recordManualBackup: true,
+  });
+  await handlersReady;
+  expect(
+    await window.electron.previewPortableBackup?.(transport.archive),
+  ).toMatchObject({ success: true });
+  expect((await window.api.settings.get()).lastManualBackupVersion).toBe(
+    "0.6.1",
+  );
+  expect(await window.api.prompt.getAll()).toEqual(before.prompts);
+});
+
+it.each(["local", "remote"] as const)(
+  "preserves unenumerated tables, fields and resource files through the %s full snapshot entrypoint",
+  async (transportKind) => {
+    await seedPrompts();
+    database.exec(
+      "CREATE TABLE future_feature (id TEXT PRIMARY KEY, payload TEXT NOT NULL); ALTER TABLE prompts ADD COLUMN future_field TEXT;",
+    );
+    database.run(
+      "INSERT INTO future_feature VALUES (?,?)",
+      "new-kind",
+      "new-record-value",
+    );
+    database.run("UPDATE prompts SET future_field=?", "new-field-value");
+    const resource = path.join(profile, "data/future-feature/nested/value.bin");
+    fs.mkdirSync(path.dirname(resource), { recursive: true });
+    fs.writeFileSync(resource, Buffer.from([0, 255, 42]));
+    const remote =
+      transportKind === "remote" ? await createWebDAVFixture() : null;
+    const config = {
+      url: remote?.url ?? "",
+      username: "fixture",
+      password: "fixture",
+    };
+    try {
+      if (remote)
+        expect(
+          await runWebDAVUpload({ config, options: { incrementalSync: true } }),
+        ).toMatchObject({ success: true });
+      else await runFullExportBackup({ currentVersion: "0.6.2" });
+      const target = path.join(root, "extension-target");
+      await startProfile(target, true);
+      if (remote)
+        expect(
+          await runWebDAVDownload({
+            config,
+            options: { incrementalSync: true },
+          }),
+        ).toMatchObject({ success: true });
+      else
+        await restoreFromFile(
+          new NodeFile(
+            [fs.readFileSync(transport.archive)],
+            "snapshot.zip",
+          ) as unknown as File,
+        );
+      for (let reopen = 0; reopen < 2; reopen++) {
+        await startProfile(target);
+        expect(
+          database.get(
+            "SELECT payload FROM future_feature WHERE id=?",
+            "new-kind",
+          ),
+        ).toEqual({ payload: "new-record-value" });
+        expect(database.all("SELECT future_field FROM prompts")).toEqual([
+          { future_field: "new-field-value" },
+          { future_field: "new-field-value" },
+        ]);
+        expect(
+          fs.readFileSync(
+            path.join(target, "data/future-feature/nested/value.bin"),
+          ),
+        ).toEqual(Buffer.from([0, 255, 42]));
+      }
+    } finally {
+      await remote?.close();
+    }
+  },
+);
+
+it("preserves the published backup after a failed upload and verifies encrypted multi-chunk restore before mutation", async () => {
+  const remote = await createWebDAVFixture();
+  try {
+    await seedPrompts();
+    const { randomBytes } = await import("node:crypto");
+    const { WORKSPACE_SNAPSHOT_CHUNK_BYTES } =
+      await import("@prompthub/shared/types/workspace-snapshot");
+    const bytes = randomBytes(WORKSPACE_SNAPSHOT_CHUNK_BYTES * 2);
+    const resource = path.join(profile, "data/unknown-resource.bin");
+    fs.writeFileSync(resource, bytes);
+    const expected = await window.api.prompt.getAll();
+    const config = {
+      url: remote.url,
+      username: "fixture",
+      password: "fixture",
+    };
+    const options = {
+      encryptionPassword: "fixture-backup-passphrase",
+      incrementalSync: true,
+    };
+    expect(await runWebDAVUpload({ config, options })).toMatchObject({
+      success: true,
+    });
+    const headKey = [...remote.objects.keys()].find((key) =>
+      key.endsWith("manifest.json"),
+    )!;
+    const priorHead = remote.objects.get(headKey)!;
+    const manifest = JSON.parse(priorHead.data);
+    expect(manifest.chunks.length).toBeGreaterThan(2);
+    const upload = window.electron.webdav.upload;
+    const rejected = vi
+      .spyOn(window.electron.webdav, "upload")
+      .mockImplementation(async (url, ...args) =>
+        url.endsWith("manifest.json")
+          ? { success: false, conflict: true, error: "injected HEAD conflict" }
+          : upload(url, ...args),
+      );
+    try {
+      expect(await runWebDAVUpload({ config, options })).toMatchObject({
+        success: false,
+      });
+    } finally {
+      rejected.mockRestore();
+    }
+    expect(remote.objects.get(headKey)).toEqual(priorHead);
+    const target = path.join(root, "encrypted-target");
+    await startProfile(target, true);
+    const local = await window.api.prompt.create({
+      title: "Keep on failure",
+      userPrompt: "Original target",
+      visibility: "shared",
+    });
+    expect(
+      await runWebDAVDownload({
+        config,
+        options: { ...options, encryptionPassword: "wrong" },
+      }),
+    ).toMatchObject({ success: false });
+    expect(await window.api.prompt.getAll()).toEqual([local]);
+    expect(await window.api.upgradeBackup.list()).toHaveLength(0);
+    const chunkKey = [...remote.objects.keys()].find((key) =>
+      key.endsWith(manifest.chunks[0].objectId),
+    )!;
+    const originalChunk = remote.objects.get(chunkKey)!;
+    remote.objects.set(chunkKey, {
+      ...originalChunk,
+      data: originalChunk.data + "corrupt",
+    });
+    expect(await runWebDAVDownload({ config, options })).toMatchObject({
+      success: false,
+    });
+    expect(await window.api.prompt.getAll()).toEqual([local]);
+    remote.objects.set(chunkKey, originalChunk);
+    expect(await runWebDAVDownload({ config, options })).toMatchObject({
+      success: true,
+    });
+    await startProfile(target);
+    expect(await window.api.prompt.getAll()).toEqual(expected);
+    expect(
+      fs.readFileSync(path.join(target, "data/unknown-resource.bin")),
+    ).toEqual(bytes);
+  } finally {
+    await remote.close();
+  }
+});
+
+it("previews and migrates an older SQLite full snapshot through the real desktop restore entrypoint", async () => {
+  await seedPrompts();
+  const expected = await window.api.prompt.getAll();
+  database.exec(
+    "DROP TABLE plugin_versions; DROP TABLE plugins; DELETE FROM database_migration_history WHERE migration_id > 8; PRAGMA user_version = 8;",
+  );
+  closeDatabase();
+  const { createPortableSnapshot } =
+    await import("@prompthub/core/portable-snapshot");
+  const { writeSnapshotZip } =
+    await import("../../src/main/services/portable-snapshot-archive");
+  const snapshot = createPortableSnapshot({
+    sourceRoot: profile,
+    destinationPath: path.join(root, "old-snapshot"),
+    scopes: [
+      {
+        id: "workspace",
+        sourcePath: path.join(profile, "data"),
+        archivePath: "data",
+      },
+    ],
+    generatedFiles: [
+      {
+        archivePath: "workspace-snapshot.json",
+        content: Buffer.from(
+          JSON.stringify({
+            kind: "prompthub-workspace-snapshot",
+            version: 1,
+            databaseSchemaVersion: 8,
+            layoutEpoch: 1,
+          }),
+        ),
+      },
+    ],
+  });
+  await writeSnapshotZip(snapshot.path, transport.archive);
+  const target = path.join(root, "old-schema-target");
+  await startProfile(target, true);
+  const file = new NodeFile(
+    [fs.readFileSync(transport.archive)],
+    "old-snapshot.zip",
+  ) as unknown as File;
+  const preview = await previewImportFile(file);
+  expect(preview.summary.counts.prompts).toBe(expected.length);
+  await restoreFromFile(file);
+  for (let reopen = 0; reopen < 2; reopen++) {
+    await startProfile(target);
+    expect(await window.api.prompt.getAll()).toEqual(expected);
+    expect(database.all("SELECT * FROM plugins")).toEqual([]);
+    expect(database.pragma("foreign_key_check")).toEqual([]);
+  }
+});
+
+it.each([false, true])(
+  "preserves a remotely published snapshot after a lost acknowledgement (readback unavailable=%s)",
+  async (readbackUnavailable) => {
+    const remote = await createWebDAVFixture();
+    try {
+      await seedPrompts();
+      const expected = await window.api.prompt.getAll();
+      const config = {
+        url: remote.url,
+        username: "fixture",
+        password: "fixture",
+      };
+      const upload = window.electron.webdav.upload;
+      const download = window.electron.webdav.download;
+      let publicationAttempted = false;
+      const lost = vi
+        .spyOn(window.electron.webdav, "upload")
+        .mockImplementation(async (url, ...args) => {
+          const result = await upload(url, ...args);
+          if (url.endsWith("manifest.json") && result.success) {
+            publicationAttempted = true;
+            return { success: false, error: "Injected lost acknowledgement" };
+          }
+          return result;
+        });
+      const unreadable = vi
+        .spyOn(window.electron.webdav, "download")
+        .mockImplementation(async (url, ...args) => {
+          if (
+            publicationAttempted &&
+            readbackUnavailable &&
+            url.endsWith("manifest.json")
+          )
+            return { success: false, error: "Injected readback disconnection" };
+          return download(url, ...args);
+        });
+      try {
+        expect(
+          await runWebDAVUpload({ config, options: { incrementalSync: true } }),
+        ).toMatchObject({ success: !readbackUnavailable });
+      } finally {
+        lost.mockRestore();
+        unreadable.mockRestore();
+      }
+      await startProfile(path.join(root, "lost-response-target"), true);
+      expect(
+        await runWebDAVDownload({ config, options: { incrementalSync: true } }),
+      ).toMatchObject({ success: true });
+      await startProfile(profile);
+      expect(await window.api.prompt.getAll()).toEqual(expected);
+    } finally {
+      await remote.close();
+    }
   },
 );

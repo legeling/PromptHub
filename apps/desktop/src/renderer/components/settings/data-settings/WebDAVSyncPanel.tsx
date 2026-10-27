@@ -259,21 +259,6 @@ export function WebDAVSyncPanel() {
                   />
                 </div>
 
-                {/* 包含图片 */}
-                <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <div className="flex-1 mr-4">
-                    <p className="text-sm font-medium">
-                      {t("settings.webdavIncludeImages", "包含图片")}
-                    </p>
-                  </div>
-                  <ToggleSwitch
-                    ariaLabel={t("settings.webdavIncludeImages", "包含图片")}
-                    checked={settings.webdavIncludeImages}
-                    onChange={settings.setWebdavIncludeImages}
-                    disabled={!settings.webdavEnabled}
-                  />
-                </div>
-
                 {/* 增量同步 */}
                 <div className="flex items-center justify-between pt-3 border-t border-border">
                   <div className="flex-1 mr-4">

@@ -51,6 +51,24 @@ describe("storage inventory", () => {
     return value;
   }
 
+  it("excludes whole directory trees without scanning their contents and preserves neighboring data", () => {
+    const source = canonicalFixture();
+    write(
+      source,
+      "data/recovery/nested/original.db",
+      "private recovery source",
+    );
+    write(source, "data/recovery-notes/document.txt", "business data");
+    const inventory = createStorageInventory(source, {
+      includeSecrets: false,
+      excludeRelativePaths: ["data/recovery", "config"],
+    });
+    expect(inventory.files.map((entry) => entry.relativePath)).toEqual([
+      "data/prompts/prompt.json",
+      "data/recovery-notes/document.txt",
+    ]);
+  });
+
   it("classifies missing, empty, invalid, unknown, canonical, legacy, and mixed roots", () => {
     const base = root();
     expect(classifyStorageRoot(path.join(base, "missing")).kind).toBe(

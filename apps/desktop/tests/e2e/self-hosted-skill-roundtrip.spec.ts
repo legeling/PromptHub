@@ -97,14 +97,16 @@ test("restores a local Skill package and history repeatedly through a live serve
     await expect(page.getByText(/Backup endpoint ready/i)).toBeVisible();
     const uploaded = page.waitForResponse(
       (response) =>
-        response.url().endsWith("/api/backups/desktop") &&
-        response.request().method() === "POST",
+        response
+          .url()
+          .endsWith("/api/backups/desktop/workspace/manifest.json") &&
+        response.request().method() === "PUT",
     );
     await page
       .getByRole("button", { name: "Create remote backup", exact: true })
       .click();
     const uploadResponse = await uploaded;
-    expect(uploadResponse.status(), await uploadResponse.text()).toBe(201);
+    expect(uploadResponse.status(), await uploadResponse.text()).toBe(200);
     await expect(
       page.getByText(/Created a remote backup with.*1 skills/i),
     ).toBeVisible();

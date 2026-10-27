@@ -1,10 +1,11 @@
+import { registerWorkspaceSnapshotIPC } from "./workspace-snapshot-ipc";
 import path from "path";
 
 import { dialog, ipcMain, safeStorage } from "electron";
 
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 
-import { closeDatabase } from "../database";
+import { closeDatabase, initDatabase } from "../database";
 import {
   getCacheDir,
   getDataDir,
@@ -12,14 +13,12 @@ import {
   getImagesDir,
   getPromptsWorkspaceDir,
   getRulesDir,
-  getSecretsDir,
   getSkillsDir,
   getUserDataPath,
   getVideosDir,
   getWorkspaceDir,
 } from "../runtime-paths";
-import { createCheckpointedPortableSnapshotZip } from "./canonical-portable-export";
-import { createMcpResourceSecretStore } from "./mcp-resource-secret-store";
+import { exportWorkspaceArchive } from "./workspace-snapshot-service";
 import {
   createPortableSnapshotZip,
   isCompleteCanonicalPortableScope,
@@ -84,29 +83,20 @@ function registerExportHandler(onDatabaseReopened?: () => void): void {
           ...scope,
           generations: scope.generations ?? scope.images,
         };
-        const result = isCompleteCanonicalPortableScope(normalizedScope)
-          ? await createCheckpointedPortableSnapshotZip({
-              activeRoot: getUserDataPath(),
-              databasePath: getDatabasePath(),
-              cachePath: getCacheDir(),
-              destinationPath: selected.filePath,
-              sourcePaths: portableSourcePaths(),
-              scope: normalizedScope,
-              onDatabaseReopened,
-              persistExtractedMcpSecrets: (secrets) =>
-                createMcpResourceSecretStore({
-                  filePath: path.join(
-                    getSecretsDir(),
-                    "mcp-resource-secrets.json",
-                  ),
-                  encryption: safeStorage,
-                }).writeMany(secrets),
-            })
-          : await createPortableSnapshotZip({
-              destinationPath: selected.filePath,
-              sourcePaths: portableSourcePaths(),
-              scope: normalizedScope,
-            });
+        if (
+          isCompleteCanonicalPortableScope(normalizedScope) &&
+          normalizedScope.config &&
+          normalizedScope.settingsJson &&
+          normalizedScope.aiConfigJson
+        ) {
+          await exportWorkspaceArchive(selected.filePath, onDatabaseReopened);
+          return { canceled: false, filePath: selected.filePath };
+        }
+        const result = await createPortableSnapshotZip({
+          destinationPath: selected.filePath,
+          sourcePaths: portableSourcePaths(),
+          scope: normalizedScope,
+        });
         return { canceled: false, filePath: result.filePath };
       } catch (error) {
         return {
@@ -150,6 +140,7 @@ export function registerPortableSnapshotIPC(
   scheduleRelaunch: (delayMs: number) => void,
   onDatabaseReopened?: () => void,
 ): void {
+  registerWorkspaceSnapshotIPC(scheduleRelaunch, onDatabaseReopened);
   registerExportHandler(onDatabaseReopened);
   registerPreviewHandler();
   ipcMain.handle(
@@ -169,7 +160,11 @@ export function registerPortableSnapshotIPC(
         cacheRoot: getCacheDir(),
         encryption: safeStorage,
       });
-      scheduleRelaunch(500);
+      if (result.success) scheduleRelaunch(500);
+      else {
+        initDatabase();
+        onDatabaseReopened?.();
+      }
       return result;
     },
   );
@@ -189,7 +184,11 @@ export function registerPortableSnapshotIPC(
         activeRoot: getUserDataPath(),
         encryption: safeStorage,
       });
-      scheduleRelaunch(500);
+      if (result.success) scheduleRelaunch(500);
+      else {
+        initDatabase();
+        onDatabaseReopened?.();
+      }
       return result;
     },
   );

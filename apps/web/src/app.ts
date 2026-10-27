@@ -1,4 +1,7 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { config } from "./config.js";
+import { SKILL_SNAPSHOT_CAPABILITY_HEADER } from "@prompthub/shared/utils/skill-file-snapshot";
 import { getWebRuntime } from "@prompthub/shared/utils/web-runtime";
 import rootPackage from "../../../package.json";
 import { getServerDatabase } from "./database.js";
@@ -30,6 +33,16 @@ export function createApp(): Hono {
 
   app.use("*", logger());
   app.use("*", securityHeaders());
+  if (config.desktopDevOrigin) {
+    const desktopCors = cors({
+      origin: config.desktopDevOrigin,
+      allowMethods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
+      allowHeaders: ["Authorization", "Content-Type", "If-Match", "If-None-Match", SKILL_SNAPSHOT_CAPABILITY_HEADER],
+      exposeHeaders: ["ETag"],
+    });
+    app.use("/api/*", desktopCors);
+    app.use("/health", desktopCors);
+  }
   app.onError(errorHandler);
 
   app.route("/api/auth", authRoutes);

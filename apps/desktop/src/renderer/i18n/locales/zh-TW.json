@@ -3845,7 +3845,7 @@
   "toast": {
     "movedPromptToFolder": "已移動到「{{folder}}」",
     "movedPromptsToFolder": "已將 {{count}} 個 Prompt 移動到「{{folder}}」",
-    "selfHostedSyncConnectionSuccess": "備份端點可用。桌面版與 Web 版均為 {{version}}，最多保留 {{retention}} 個快照。",
+    "selfHostedSyncConnectionSuccess": "備份端點可用。伺服器版本 {{version}}，最多保留 {{retention}} 個快照。",
     "selfHostedSyncPushSuccess": "已建立遠端備份，包含 {{prompts}} 條 Prompt、{{folders}} 個資料夾、{{rules}} 條規則和 {{skills}} 個 Skill。",
     "selfHostedSyncPullSuccess": "已從最近的已驗證備份還原 {{prompts}} 條 Prompt、{{folders}} 個資料夾、{{rules}} 條規則和 {{skills}} 個 Skill。"
   },

@@ -1,3 +1,8 @@
+import {
+  uploadWorkspaceBackup,
+  downloadWorkspaceBackup,
+} from "./workspace-snapshot-remote";
+import { createWorkspaceHttpAdapter } from "./workspace-snapshot-http";
 import { SELF_HOSTED_BACKUP_PROTOCOL_VERSION } from "@prompthub/shared/types";
 import {
   SKILL_SNAPSHOT_CAPABILITY_HEADER,
@@ -1054,13 +1059,59 @@ export async function testSelfHostedConnection(
 export async function testSelfHostedBackupConnection(
   config: SelfHostedSyncConfig,
 ): Promise<SelfHostedBackupCapabilities> {
-  const { capabilities } = await openCompatibleBackupSession(config);
+  const { capabilities } = window.electron?.workspaceSnapshot
+    ? await openWorkspaceBackupSession(config)
+    : await openCompatibleBackupSession(config);
   return capabilities;
+}
+
+function workspaceSummary(
+  counts: Record<string, number> = {},
+): SelfHostedSyncSummary {
+  return {
+    prompts: counts.prompts ?? 0,
+    folders: counts.folders ?? 0,
+    rules: counts.rules ?? 0,
+    skills: counts.skills ?? 0,
+    promptRelations: counts.promptRelations ?? 0,
+    outputFormatItems: counts.outputFormatItems ?? 0,
+    mcpServers: counts.mcpServers ?? 0,
+    plugins: counts.plugins ?? 0,
+  };
+}
+async function openWorkspaceBackupSession(config: SelfHostedSyncConfig) {
+  const session = await loginToSelfHostedWeb(config);
+  const capabilities = await apiGet<SelfHostedBackupCapabilities>(
+    session.baseUrl,
+    session.accessToken,
+    "/api/backups/desktop/capabilities",
+  );
+  if (capabilities.workspaceSnapshotVersion !== 1)
+    throw new SelfHostedBackupCompatibilityError(
+      "Update the self-hosted server to support complete workspace snapshots",
+    );
+  return {
+    ...session,
+    capabilities,
+    adapter: createWorkspaceHttpAdapter(session.baseUrl, session.accessToken),
+  };
 }
 
 export async function createSelfHostedRemoteBackup(
   config: SelfHostedSyncConfig,
 ): Promise<SelfHostedRemoteBackupResult> {
+  if (window.electron?.workspaceSnapshot) {
+    const session = await openWorkspaceBackupSession(config);
+    const result = await uploadWorkspaceBackup(session.adapter);
+    if (!result.success) throw new Error(result.message);
+    return {
+      ...workspaceSummary(result.snapshotCounts),
+      id: result.timestamp!,
+      createdAt: result.timestamp!,
+      clientVersion: await readDesktopVersion(),
+      serverVersion: session.capabilities.serverVersion,
+    };
+  }
   const { baseUrl, accessToken, clientVersion } =
     await openCompatibleBackupSession(config);
   const backup = await exportDatabase();
@@ -1083,6 +1134,22 @@ export async function restoreLatestSelfHostedRemoteBackup(
     rollbackRestore?: () => Promise<void>;
   },
 ): Promise<SelfHostedSyncSummary> {
+  if (window.electron?.workspaceSnapshot) {
+    const session = await openWorkspaceBackupSession(config);
+    const backups = await apiGet<Array<{ format?: string }>>(
+      session.baseUrl,
+      session.accessToken,
+      "/api/backups/desktop",
+    );
+    const result =
+      backups[0]?.format === "workspace-snapshot"
+        ? await downloadWorkspaceBackup(session.adapter, safety)
+        : null;
+    if (result) {
+      if (!result.success) throw new Error(result.message);
+      return workspaceSummary(result.snapshotCounts);
+    }
+  }
   const { baseUrl, accessToken, clientVersion } =
     await openCompatibleBackupSession(config);
   const envelope = await apiGet<SelfHostedBackupEnvelope>(

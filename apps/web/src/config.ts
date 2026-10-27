@@ -7,6 +7,18 @@ loadEnv();
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
+  DESKTOP_DEV_ORIGIN: z.preprocess(
+    (value) => value === '' ? undefined : value,
+    z.string().url().refine((value) => {
+      try {
+        const url = new URL(value);
+        return url.origin === value && ['http:', 'https:'].includes(url.protocol)
+          && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+      } catch {
+        return false;
+      }
+    }, 'Use an exact loopback HTTP(S) origin without a path').optional(),
+  ),
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
@@ -53,6 +65,7 @@ function loadConfig(): Config {
   return {
     port: env.PORT,
     host: env.HOST,
+    desktopDevOrigin: env.DESKTOP_DEV_ORIGIN,
 
     jwt: {
       secret: env.JWT_SECRET,
@@ -87,6 +100,7 @@ function loadConfig(): Config {
 export interface Config {
   port: number;
   host: string;
+  desktopDevOrigin?: string;
 
   jwt: {
     secret: string;

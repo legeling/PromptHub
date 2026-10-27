@@ -46,6 +46,9 @@ not just migration. Each business fact has one authoritative representation.
 - Backups preserve the SQLite database and referenced files consistently; they
   are recovery copies, not another live store. The business database is no longer
   considered disposable merely because a file catalog can be rebuilt.
+  Full import/export and future schema preservation follow the single
+  [full snapshot contract](../../../../../knowledge/behavior/data-recovery.md#unified-full-snapshot),
+  including its pending implementation and acceptance boundary.
 
 This replaces the previous requirement to store every user asset in canonical
 files and treat SQLite as only a projection. Implementation is pending: existing

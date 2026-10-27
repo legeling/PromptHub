@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { expect, test } from "@playwright/test";
+import Database from "@prompthub/db/adapter";
+import { PromptDB } from "@prompthub/db/prompt";
+import { resolveRuntimeStorageContext } from "@prompthub/core/runtime-storage-context";
 
 import {
   closePromptHub,
@@ -269,13 +272,6 @@ test.describe("E2E: backup restore", () => {
         "videos",
         "backup-video.mp4",
       );
-      const promptFile = path.join(
-        userDataDir,
-        "data",
-        "prompts",
-        encodeURIComponent(restored.promptId),
-        "prompt.json",
-      );
       const skillFilePath = path.join(
         restored.skillRepoPath,
         "notes",
@@ -284,13 +280,21 @@ test.describe("E2E: backup restore", () => {
 
       expect(fs.existsSync(imagePath)).toBe(true);
       expect(fs.existsSync(videoPath)).toBe(true);
-      expect(
-        JSON.parse(fs.readFileSync(promptFile, "utf8")).prompt,
-      ).toMatchObject({
-        id: restored.promptId,
-        title: "Backup Prompt",
-        notes: "Backup note",
-      });
+      const database = new Database(
+        resolveRuntimeStorageContext(userDataDir).databasePath,
+        { readOnly: true },
+      );
+      try {
+        expect(new PromptDB(database).getById(restored.promptId)).toMatchObject(
+          {
+            id: restored.promptId,
+            title: "Backup Prompt",
+            notes: "Backup note",
+          },
+        );
+      } finally {
+        database.close();
+      }
       expect(fs.existsSync(skillFilePath)).toBe(true);
       expect(fs.readFileSync(skillFilePath, "utf8")).toBe(
         "Backed up skill note",

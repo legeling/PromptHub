@@ -1,3 +1,4 @@
+import { workspaceBackups, listWorkspaceBackups, MAX_DESKTOP_BACKUP_REQUEST_BYTES } from "./workspace-backups.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import rootPackage from "../../../../package.json";
@@ -18,7 +19,7 @@ import { parseJsonBody } from "../utils/validation.js";
 
 const backups = new Hono();
 const backupStore = new DesktopBackupStore();
-const MAX_DESKTOP_BACKUP_REQUEST_BYTES = 50 * 1024 * 1024;
+backups.route("/desktop/workspace", workspaceBackups);
 
 const createBackupRequestSchema = z.object({
   clientVersion: z.string().trim().min(1).max(64),
@@ -34,12 +35,14 @@ backups.get("/desktop/capabilities", (c) => {
     serverVersion: getServerVersion(),
     protocolVersion: SELF_HOSTED_BACKUP_PROTOCOL_VERSION,
     retentionLimit: backupStore.retentionLimit,
+    workspaceSnapshotVersion: 1,
   });
 });
 
 backups.get("/desktop", (c) => {
   try {
-    return success(c, backupStore.list(getAuthUser(c).userId));
+    const userId = getAuthUser(c).userId;
+    return success(c, [...listWorkspaceBackups(userId),...backupStore.list(userId)].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,backupStore.retentionLimit));
   } catch (routeError) {
     return toBackupRouteError(c, routeError);
   }

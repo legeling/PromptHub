@@ -406,6 +406,7 @@ export const IPC_CHANNELS = {
   DATA_PERFORM_RECOVERY: "data:performRecovery",
   DATA_DISMISS_RECOVERY: "data:dismissRecovery",
   DATA_EXPORT_ZIP: "data:exportZip",
+  DATA_WORKSPACE_SNAPSHOT: "data:workspaceSnapshot",
   DATA_PORTABLE_PREVIEW: "data:portablePreview",
   DATA_PORTABLE_RESTORE: "data:portableRestore",
   DATA_PORTABLE_LOGICAL_RESTORE: "data:portableLogicalRestore",

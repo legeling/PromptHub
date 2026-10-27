@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-function fsyncDirectory(directoryPath: string): void {
+export function fsyncDirectory(directoryPath: string): void {
   if (process.platform === "win32") {
     return;
   }

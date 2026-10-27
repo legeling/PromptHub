@@ -322,11 +322,11 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       await Promise.resolve();
     });
 
-    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(
-      function (this: HTMLInputElement) {
-        input = this;
-      },
-    );
+    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function (
+      this: HTMLInputElement,
+    ) {
+      input = this;
+    });
 
     const importButton = screen.getByRole("button", { name: "Import Data" });
     expect(importButton).toHaveAttribute("aria-label", "Import Data");
@@ -417,11 +417,11 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       await Promise.resolve();
     });
 
-    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(
-      function (this: HTMLInputElement) {
-        input = this;
-      },
-    );
+    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function (
+      this: HTMLInputElement,
+    ) {
+      input = this;
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Import Data" }));
 
@@ -594,11 +594,11 @@ describe("DataSettings", { timeout: 60_000 }, () => {
         language: "en",
       });
     });
-    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(
-      function (this: HTMLInputElement) {
-        input = this;
-      },
-    );
+    vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function (
+      this: HTMLInputElement,
+    ) {
+      input = this;
+    });
     fireEvent.click(screen.getByRole("button", { name: "Import Data" }));
     const file = new File(
       ["sqlite"],
@@ -708,7 +708,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       });
     });
     expect(showToast).toHaveBeenCalledWith(
-      "Backup endpoint ready. Desktop and Web are both version 0.5.9; up to 10 snapshots are retained.",
+      "Backup endpoint ready. Server version 0.5.9; up to 10 snapshots are retained.",
       "success",
     );
   });

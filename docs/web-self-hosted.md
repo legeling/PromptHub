@@ -57,43 +57,45 @@ Then the current desktop can:
 - create an upload-only snapshot once on startup
 - periodically create upload-only snapshots in the background
 
-Desktop and Web versions must match exactly, and both sides must support the
-same backup protocol. A mismatch skips automatic backup and blocks manual
-backup/restore before local export or remote write. Automatic tasks never pull,
-merge, or replace local data.
+Current Desktop backups negotiate the server's workspace snapshot protocol before
+capture. Compatible application versions may differ; the importer validates the
+archive, database and layout versions and migrates older data before replacement.
+Automatic tasks upload only and never pull, merge, or replace local data.
 
 ## Backup And Legacy Sync Contract
 
 Live automatic sync selects one of `webdav` or `s3`. Self-hosted Web backup is
-independent from that selection, so it can create recovery snapshots while a
-single live-sync provider remains active. The persisted provider type still
-accepts `self-hosted` for old settings, but the current desktop normalizes that
-legacy value to `manual`.
+independent from that selection. The persisted provider type accepts
+`self-hosted` for historical settings; current Desktop normalizes it to `manual`.
 
-Authenticated backup routes live under `/api/backups/desktop`. The server keeps
-up to ten checksummed snapshots per user under
-`DATA_ROOT/backups/desktop/<hashed-user>/`. Snapshot files are immutable,
-symbolic-link paths are rejected, and the live Web database/workspace is not
-imported or changed. The request limit is 50 MiB.
+Authenticated full-backup transport uses `/api/backups/desktop/workspace/:name`.
+The server stores opaque chunks and a checksummed manifest under
+`DATA_ROOT/backups/workspace/<hashed-user>/`, retaining up to ten published
+snapshots. It validates every referenced chunk before publishing the manifest.
+Publication uses an ETag precondition; failed uploads cannot replace the previous
+backup. Symlink paths are rejected. The live Web database/workspace is unchanged.
+The 50 MiB request limit applies per request; Desktop sends 1 MiB chunks, so it
+is not a limit on total backup size.
 
-The snapshot contains prompt graph data, Rules, full Skill files and versions,
-MCP/Plugin libraries and packages, store sources, Agent assets, inline media,
-and non-secret settings. Passwords, tokens, API keys, access keys, and proxy
-credentials are excluded because this channel is not encrypted as a secret
-vault.
+Local full exports and remote backups contain the same consistent SQLite image
+and managed data tree, including all business tables, columns, histories and
+complete resource packages. New managed data does not require provider-specific
+field lists. Cache, logs, recovery copies and device credentials are excluded.
+Restore preserves destination credentials and bindings, verifies all bytes,
+migrates in a detached candidate, and publishes through a rollback journal.
+Empty built-in Rule placeholders do not inflate the displayed saved-Rule count;
+they are still preserved in the database image.
 
-Legacy web sync operations (`PUT /sync/data`, `POST /sync/push`, and
-`POST /sync/pull`) remain available for older clients and return a unified
-`summary` block (`prompts`, `folders`, `rules`, `skills`). The current desktop
-UI and scheduler do not call these routes for self-hosted backup.
+Historical desktop envelopes remain readable through the existing routes under
+`/api/backups/desktop`; those old clients retain their exact-version checks.
+The list includes old and current formats, and explicit restore selects the
+latest backup. Older Desktop versions cannot read the new full-snapshot format;
+keep an upgrade safety backup before downgrading the application.
 
-Complete snapshots also preserve prompt relations and output-format items. When
-an import skips a dangling dependency, the response includes imported/skipped
-counts so a desktop client can report a partial graph restore.
-
-Incremental WebDAV/S3 downloads verify the manifest data hash and media
-hash/size before restoring local records. A mismatch or missing media file is a
-failed sync, not a partial successful restore.
+Legacy live-sync routes (`PUT /sync/data`, `POST /sync/push`,
+`POST /sync/pull`) remain available for older clients. Current self-hosted backup
+UI and scheduler do not call them. Their per-domain JSON conversion and partial
+import counts do not define the full-snapshot format.
 
 ## First-Run Bootstrap
 
@@ -147,6 +149,13 @@ AUTH_CAPTCHA_ENABLED=false
 When disabled, `/api/auth/bootstrap` reports `captchaEnabled: false`, the setup/login pages hide the captcha field, and the server accepts register/login requests without `captchaId` or `captchaAnswer`. This switch does not change passwords, JWT cookies, registration policy, or auth rate limits.
 
 ## Local Development
+
+When testing Desktop against this server with a live Vite renderer, set
+`DESKTOP_DEV_ORIGIN` on the Web server to the exact renderer origin, for example
+`http://127.0.0.1:5173`, and restart the server. Only that loopback origin and
+port can read API and health/version responses; bearer authentication remains required, and cookie
+credentials are not enabled. Leave the variable empty to disable this development
+access. Packaged Desktop does not need this setting.
 
 ```bash
 pnpm dev:web

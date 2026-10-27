@@ -1,3 +1,12 @@
+import {
+  isWorkspaceSnapshot,
+  validateWorkspaceSnapshot,
+  restoreWorkspaceSnapshot,
+} from "@prompthub/core/workspace-snapshot";
+import { migrateWorkspaceData } from "@prompthub/core/workspace-data-migrations";
+import { initializeMcpStorage } from "@prompthub/core/mcp-storage-migration";
+import { resolveRuntimeStorageContext } from "@prompthub/core/runtime-storage-context";
+import { workspaceSnapshotPreview } from "./workspace-snapshot-preview";
 import { skillVersionPayloadEntry } from "@prompthub/core/skill-version-files";
 import { SkillMetadataDB } from "@prompthub/db";
 import { importAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
@@ -159,6 +168,14 @@ export function previewPortableSnapshotArchive(options: {
       sourcePath: options.archivePath,
       destinationPath: extractionPath,
     });
+    if (isWorkspaceSnapshot(snapshot)) {
+      validateWorkspaceSnapshot(snapshot);
+      return {
+        text: JSON.stringify(workspaceSnapshotPreview(snapshot)),
+        consistencyId: snapshot.manifest.consistencyId,
+        scopes: snapshot.manifest.scopes,
+      };
+    }
     const canonicalPath = verifyEmbeddedCanonicalCheckpoint(snapshot);
     const text = readLogicalText(snapshot);
     parsePortableLogicalEnvelope(text);
@@ -972,6 +989,23 @@ export async function restorePortableSnapshotArchive(
       sourcePath: options.archivePath,
       destinationPath: extractionPath,
     });
+    if (isWorkspaceSnapshot(snapshot)) {
+      const restored = await restoreWorkspaceSnapshot({
+        snapshotPath: snapshot.path,
+        activeRoot,
+        migrateCandidate(root, database) {
+          const storageContext = resolveRuntimeStorageContext(root);
+          migrateWorkspaceData(database, root, storageContext.skillsPath);
+          initializeMcpStorage({ database, storageContext });
+        },
+      });
+      return {
+        success: true,
+        needsRestart: true,
+        consistencyId: snapshot.manifest.consistencyId,
+        recoveryArtifactPath: restored.recoveryArtifactPath,
+      };
+    }
     const canonicalPath = verifyEmbeddedCanonicalCheckpoint(snapshot);
     const logicalText = readLogicalText(snapshot);
     const envelope = parsePortableLogicalEnvelope(logicalText);

@@ -98,6 +98,7 @@ describe("desktop remote backup routes", () => {
             serverVersion: rootPackage.version,
             protocolVersion: 1,
             retentionLimit: 10,
+            workspaceSnapshotVersion: 1,
           },
         });
 

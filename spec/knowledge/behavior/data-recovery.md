@@ -8,6 +8,235 @@
 
 ### 1. Recovery Safety
 
+#### Unified full snapshot
+
+2026-10-26 确认：全量备份、全量导出和全量导入以同一份完整数据快照为单位。
+新增功能、业务表、字段或托管文件后，不得要求逐个修改本地、远程和恢复端的字段清单
+才能保全数据。结构化数据的所有权沿用
+[FR-FOUNDATION-003](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants)。
+
+- 快照包含一致 SQLite 镜像及实际托管文件，保全业务表、字段、稳定 ID、关系、
+  当前内容、全部历史和迁移记录。文件由统一持久目录清单收集；完整 Skill/Plugin 包
+  及历史文件不能退化为入口文件或当前版本。数据库和文件必须来自同一个维护窗口。
+- 全量导出不经 Renderer 逐领域查询、JSON 字段投影或 canonical 目录重建；
+  新业务结构通过存储层的正常迁移加入后，应自然进入快照。新增持久目录须归入统一
+  托管布局，不能在导出器或各传输端另增功能分支。
+- 本地和远程使用同一个快照生产者及恢复入口；压缩、加密、上传和增量对象去重只
+  改变传输方式，不解释或重组业务记录。持续多端同步的合并协议不属于全量替换操作。
+- 全量恢复先校验包清单、路径、文件散列及数据库完整性，在隔离候选目录执行与正常
+  启动相同的版本化迁移，再验证并通过既有恢复 journal 整体发布。失败保持原工作区
+  可恢复，不能部分清空后逐功能写回，也不能在发布后补写媒体或设置。
+- 新应用导入受支持的旧备份时统一迁移到当前结构；不认识的较新格式、数据库或布局
+  版本必须在替换前提示升级，不得按旧字段清单截断。应用版本、数据库迁移版本和
+  归档格式版本独立，不能仅因增加业务字段就修改归档格式。
+- 全量指用户业务数据，不改变既有秘密保护规则。凭据、登录令牌、设备绑定与缓存、
+  日志、锁、恢复副本不得作为普通业务文件盲目打包。设备秘密保留在目标设备；
+  实际需要移植的业务配置由同一个存储边界处理，不能由各传输端各自脱敏。
+- 托管资源引用须在目标根正确解析；外部设备路径不能在恢复时触发文件写入或部署。
+  已存绝对路径通过明确的数据迁移转换，禁止全库文本替换。不能靠同机同路径往返
+  证明跨设备恢复可用。
+- 既有选择性分享和历史 ZIP/JSON/`.phub.gz` 输入保留各自已确认的语义。历史输入
+  只在一个转换边界进入当前结构；正常全量备份不得再依赖历史逻辑 envelope。
+
+**实现：** Core 的 `workspace-snapshot.ts` 统一捕获一致 SQLite 镜像和整个托管
+`data/` 树；只由 `workspace-snapshot-policy.ts` 排除设备凭据、绑定、恢复与临时数据。
+外部 Skill 包按既有包忽略规则收拢到托管目录，已知资源绝对路径转换为根相对引用；其他业务表、列和
+文件不做字段投影。目录排除在递归前处理，整个恢复副本子树不进入快照，不因路径前缀相近误删业务目录。Desktop 全量导出、WebDAV/S3 和 self-hosted 备份都使用这个入口，
+Renderer 只传递有界分片。预览计数不是数据序列化合同。选择性分享及旧格式转换保留
+原有领域入口，不用于新全量备份。
+
+恢复在 journal 候选目录校验并调用与 Desktop/Core 启动相同的迁移集合，随后整体替换
+`data/`。旧 schema 迁移在候选根生成的安全副本只属于本次临时操作；候选验证后清理，
+原始导入包与恢复 journal 继续保留原数据，不能把候选安全副本当业务目录发布。目的设备 config、vault、连接设置及仍适用的 MCP 绑定保持本地值。Rule 的外部项目路径不随快照移植；恢复仅保留目的设备同 ID/owner 的部署绑定，其余项目保持 detached，避免保存规则时写回源设备。导出只在
+同步捕获时关闭连接，压缩独立副本前重新打开；失败导入也重新打开原数据库，不安排
+成功重启。分片会话随操作完成或所属窗口销毁清理。Core 捕获/恢复拒绝仍打开的全局数据库连接，避免候选迁移误用活动连接。规则预览排除未保存内容的内置占位行，数据库镜像仍保全全部记录。
+
+远程格式 `prompthub-workspace-backup` v1 以不可变分片和最后发布的 manifest 工作；
+旧 remote payload 仅从既有旧格式导入边界读取。自托管服务校验完整分片后发布，沿用
+现有备份数量保留策略；API 列表同时呈现历史格式和完整快照，最新时间决定恢复来源。
+WebDAV/S3 不删除已成功发布的旧分片，避免破坏并发读者；manifest 发布前失败只清理本次拥有的未发布对象。manifest 请求失败后先回读确认；回读无法确认时保留分片并报告失败，避免成功响应丢失后误删已提交备份。远程全量备份始终包含托管媒体，设置页移除仅备份图片的选择开关。
+
+版本迁移和回退：应用 schema、布局与归档格式独立；旧 ZIP/JSON/phub.gz 仍支持。
+较新 schema 拒绝替换。旧应用不支持这个新完整快照格式，回退应用前须使用原始升级
+安全副本；不得让旧应用按历史 JSON 字段猜测新快照。无业务表迁移、依赖或用户数据
+删除。快照和迁移编排函数允许超过 50 行以保留同一事务/维护窗口的清晰生命周期，
+故障注入覆盖候选迁移及整体发布回滚。
+
+2026-10-26 本地验收：
+
+- 最终 Desktop portable 与磁盘恢复集成 29/29 通过（完整 portable 25 个，真实失败恢复 4 个）。覆盖旧 ZIP/JSON/phub.gz、schema 8 升级、不同数据根、全部业务历史、未知表/列/文件、加密多分片、损坏/错误密码、候选失败回滚、导出失败重试、发布冲突、响应丢失及两次重开。
+- 最终 Core 快照、目录清单、portable 和 journal 恢复 75/75 通过，其中完整快照 9 个案例包含 Rule 部署绑定隔离、恢复副本子树排除及外部 Skill 忽略规则。32 MiB 文件与 10,000 行扩展数据捕获 299 ms、恢复 527 ms，进程最大 RSS 184,480 KiB。该测量是隔离存储操作，不含网络与压缩耗时。
+- CLI 全套通过标准 `pnpm --filter @prompthub/cli run test` 入口、默认 worker 配置单独执行，39 文件 / 185 案例通过，59.22 秒，满足既有 75 秒预算。诊断轮错误使用 exec 入口并降低并发且与 Core 同跑，暴露入口环境、单例超时和整套耗时失败；修正运行方式后未更改或放宽产品/测试策略。
+- 自托管连接/历史服务 13 个 Desktop 案例、Web 路由与持久备份 17 个案例通过。HTTP 传输、SQLite、磁盘和业务处理器为真实实现；集成层替换 OS 对话框、IPC 派发和重启。
+- 最新生产构建的 macOS 隔离 Electron 验收 6/6：本地备份后取消/确认导入、WebDAV/S3/self-hosted 全量备份恢复并重启、自托管启动备份与历史格式恢复。实际点击 Settings 控件并检查重启后的内容与文件；远端为任务自有 HTTP 服务及 S3 协议夹具。
+- Desktop 测试类型检查、Core/Web 类型检查、受影响 ESLint、文件长度及 spec 治理门禁、生产构建通过。大测试文件的非空业务夹具提取到同目录 helpers，未放宽文件长度门禁。
+- Core 全套初跑 161 个文件、1,283 个案例：1,274 通过、6 个既有跳过，3 个 Plugin 案例被 macOS `/var` 临时路径符号链接拦截。在真实临时目录（`TMPDIR=realpath(os.tmpdir())`）复验对应 3 个文件和扩展快照测试，24/24 通过；未放宽安全校验。
+- 已修复验收暴露的旧 schema 候选安全副本误判和空白内置 Rule 计数；故障测试证明 manifest 响应丢失或回读断线不再删除已发布分片。
+- 原始日志和窗口截图位于任务证据目录；未修改用户正在使用的数据，未提交、推送、打包发布或更新已安装的 0.6.1。Windows、签名安装包和真实云厂商服务尚未验收。
+
+可重复命令（仓库根执行）：
+
+`pnpm --filter @prompthub/core run test tests/workspace-snapshot.test.ts --minWorkers=1 --maxWorkers=1`
+
+`pnpm --filter @prompthub/desktop exec vitest run tests/integration/release-acceptance-data-recovery-portable.test.ts tests/unit/services/self-hosted-sync.test.ts --minWorkers=1 --maxWorkers=1`
+
+`pnpm --filter @prompthub/web exec vitest run src/routes/workspace-backups.test.ts src/routes/desktop-backups.test.ts src/services/desktop-backup-store.test.ts --minWorkers=1 --maxWorkers=1`
+
+`PROMPTHUB_E2E_HEADED=1 pnpm --filter @prompthub/desktop exec playwright test tests/e2e/backup-settings-flow.spec.ts tests/e2e/workspace-backup-remote.spec.ts tests/e2e/self-hosted-sync.spec.ts --workers=1`
+
+任务证据：`/tmp/prompthub-unified-snapshot-xxjipr/`；原生截图：`apps/desktop/test-results/workspace-backup-remote-*/`。
+
+**验收：** 在真实 SQLite 中加入导出器未枚举的业务表和字段，在托管根加入未枚举的
+资源目录；经真实本地及远程全量入口往返后，对比字段值、ID、关系、全部历史和文件
+散列，并完成读取、编辑及两次重开。覆盖不同目标根、旧结构迁移、重复导入、较新
+版本拒绝、秘密排除、缺失/损坏文件、发布中断及回滚。既有 portable/WebDAV/restore
+集成测试负责入口与失败恢复；新增结构自动保全须增加专门回归，现有固定领域 fixture
+不能替代该项。原生操作验收与自动化存储测试分别记录。
+
+快照收集和校验为 O(数据库字节数 + 托管文件字节数)，按文件流式复制和散列；不额外
+生成全量业务 JSON、逐条重建数据库或在内存持有第二份完整资源包。实现进度归入
+[既有 Foundation 计划](../../changes/active/foundation-integrity-redesign/tasks.md#unified-full-snapshot)。
+
+#### Settings selective export coverage (2026-10-26)
+
+- Released 0.6.1 had a native full-backup UI test with one Prompt and Folder, but
+  the release smoke script did not select it. The reported screenshot instead
+  uses selective export with every category selected except Prompt version history.
+- `tests/e2e/backup-selective-flow.spec.ts` exercises both history selections
+  through Settings buttons, real preload/IPC, archive I/O and import into a fresh
+  profile. Fixtures populate Prompt revisions, Folder, image/video, Skill and
+  Plugin packages/history, Rule history, MCP, Agent provider, generation and
+  AI/application settings. Only the native save picker is substituted.
+- The tests require an error toast and intact source after an invalid-directory
+  write, then a successful retry without restart. They check post-export editing
+  across restart, restored consumer records, history selection and nested package
+  bytes after importing into an empty destination and restarting. Consumer
+  assertions also compare Skill/Plugin historical payloads, MCP history digests,
+  provider model mappings, generation manifests and generated image bytes.
+  The long E2E
+  orchestration stays in one test to keep source/archive/destination ownership and
+  cleanup explicit; fixture setup and consumer assertions are separate helpers.
+- Both local backup UI files and remote backup UI tests are selected by
+  `test:e2e:smoke:built`, reached by the release harness. This closes a gate
+  selection gap; it does not identify the original user's generic export error.
+- The new suite explicitly passes `headed: false` on every launch and restart,
+  and asserts that no BrowserWindow is visible. It must not open visible windows
+  even when the invoking environment requests headed tests.
+- Validation: both new scenarios passed in hidden Electron windows (2/2, 38.8 s),
+  including real write failure, retry, empty-destination import and restart.
+  Test-inclusive TypeScript, focused ESLint, production build and diff checks
+  passed. The actual release smoke `--list` selected both added cases and the
+  existing full-backup UI case (23 cases in 11 files overall; listing is not a
+  full smoke execution). No released 0.6.1 installation was changed.
+- Re-run from repository root:
+  `PROMPTHUB_E2E_HEADED=0 pnpm --filter @prompthub/desktop exec playwright test tests/e2e/backup-selective-flow.spec.ts --workers=1`.
+  Evidence logs and captures are retained under
+  `/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-export-coverage-4hbKnv/`.
+- Final strengthened suite: 7/7 passed in hidden Electron windows (1.4 minutes):
+  both selective-history choices, local full backup/cancel/restore, self-hosted
+  legacy workflow, and WebDAV/S3/self-hosted full restore. The separately tagged
+  native startup-window test is excluded by the existing headless configuration;
+  it was not rerun with visible windows. Focused lint and test-inclusive types pass.
+- Failure-detection proof: an isolated copy of the built main bundle omitted
+  the `generations` archive scope while retaining actual export/import and the
+  success toast. The same history-disabled E2E exited 1 at the post-restart
+  consumer equality assertion: expected one populated generation with image bytes,
+  received `generations: []`. Source fixtures and repository product code were
+  unchanged. This is a simulated omission, not reproduction of the user's unknown
+  0.6.1 export error. The first isolated launch stopped at package-manager setup;
+  only the subsequent run through the repository pnpm entrypoint supplies the
+  business-failure evidence.
+- Final command (repository root):
+  `PROMPTHUB_E2E_HEADED=0 pnpm --filter @prompthub/desktop exec playwright test tests/e2e/backup-selective-flow.spec.ts tests/e2e/backup-settings-flow.spec.ts tests/e2e/workspace-backup-remote.spec.ts tests/e2e/self-hosted-sync.spec.ts --workers=1`.
+  Logs, mutation details and screenshots:
+  `/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-backup-acceptance-NAMbc7/`.
+
+#### Live development renderer acceptance (2026-10-26)
+
+- The Electron E2E helper accepts explicit `PROMPTHUB_E2E_DEV_SERVER_URL`.
+  Every launched/reopened profile navigates to that URL and asserts both the
+  origin and the Vite client script before exercising the normal UI. Ordinary
+  `VITE_DEV_SERVER_URL` remains excluded from child environment inheritance.
+- Vite uses the desktop configuration with only its automatic Electron startup
+  plugin removed for this test run. The current main/preload code is rebuilt;
+  Playwright owns isolated hidden Electron lifetimes. This tests the live React
+  development renderer with real desktop IPC/storage, without showing windows.
+- Initial development acceptance exposed an initial-document navigation race;
+  the helper now waits for main-process loading before navigating to Vite.
+  Five backup cases then passed, but both self-hosted cases failed because the
+  Web API omitted CORS headers for the Vite origin. Captcha fetch failed before
+  login or backup. This does not reproduce the unknown 0.6.1 local export error.
+- Web owns the explicit `DESKTOP_DEV_ORIGIN` setting. It accepts one exact
+  loopback HTTP(S) origin, defaults to disabled, and enables API/health preflight plus
+  ETag access without cookie credentials or bypassing bearer authentication.
+  The isolated Web fixture derives this setting from the explicit test Vite URL.
+  No database/layout migration is involved; removing the setting disables access.
+- Preflight must include the shared Skill snapshot capability header; legacy
+  restore also reads `/health` to verify the server version. Both omissions were
+  reproduced as browser CORS errors and covered by the Web regression tests.
+- Development acceptance: all seven scenarios passed across focused runs:
+  five local/WebDAV/S3 cases in `dev-e2e-retry.log`, self-hosted full snapshot
+  in `dev-self-hosted-verified.log`, and legacy self-hosted restore in
+  `dev-legacy-final.log`. Each uses the live Vite renderer, real main/preload,
+  isolated SQLite/files and controlled local remote services. No hosted account
+  or signed installed release was exercised.
+- Eight development-origin regressions, three security-header tests and the
+  environment-example test passed. Desktop test-inclusive and Web TypeScript,
+  touched-file ESLint, documentation traceability and file-size checks passed.
+- Evidence directory:
+  `/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-dev-backup-0B7Rxf/`.
+  The task-owned Vite server and isolated test processes are stopped after use.
+
+#### Backup operation regression review (2026-10-26)
+
+- Reported release: 0.6.1. Full backup, selective export and remote restore
+  must be tested through renderer services, preload and registered main handlers;
+  creating an archive alone does not prove the operation completed. Full backup
+  must persist its success status and leave subsequent reads/writes usable without
+  restarting. Both default export (without Prompt history) and full export need
+  nonempty Prompt, Skill, Rule, MCP, Plugin, Provider and Generation data.
+- Confirmed regression: Desktop Plugin file export read the derived package
+  directory after Plugin history moved to SQLite. WebDAV upload and restore could
+  both succeed while dropping Plugin versions. Desktop IPC now uses the existing
+  Core Plugin storage snapshot export/restore boundary, also used by CLI, so the
+  authoritative metadata, histories and package bytes travel together. No schema,
+  format, dependency or migration changes are required. Already-created archives
+  cannot regain omitted history; create a fresh backup from the intact source.
+- A temporary checkout of tag `v0.6.1`, using the same operation tests and existing
+  dependencies, reproduced both WebDAV restore failures with
+  `content-addressed object source is not readable` (exit 1, two failing restore
+  assertions). That release handed metadata to atomic restore before media bytes.
+  The existing `afd3a323` change supplies media and settings in the same handoff;
+  this review retains it and tests the complete safety-snapshot path. Full local
+  backup and both populated export selections passed on the same tag; the
+  reported local export failure is not yet reproduced without platform/error details.
+- Snapshot work remains linear in package bytes and metadata/history size, using
+  the existing temporary materialization with cleanup in `finally`. Restore keeps
+  the existing staged publication and safety snapshot. No native Agent target is
+  written. Reverting the IPC wiring reintroduces history loss, without requiring
+  data migration.
+- Regression entry: `apps/desktop/tests/integration/release-acceptance-data-recovery-portable.test.ts`.
+  It compares consumer data and bytes after two startups, exercises real HTTP
+  WebDAV full/incremental backup and restore, checks the prior local data inside
+  the safety snapshot, and rejects corrupt remote input before changing local data.
+  OS IPC delivery, save dialog and relaunch are substituted; SQLite, archive,
+  HTTP, file operations and business handlers are real. Native GUI and the
+  reporter's platform/error message remain unverified. Final results: portable
+  operations 19/19; HTTP WebDAV transport 7/7; journaled disk restore 4/4; Core
+  Plugin storage snapshots 4/4. Desktop test-inclusive typecheck, focused ESLint,
+  file-size gate and diff whitespace check passed. No release or installed-app
+  update was performed. These results do not establish native UI or Windows
+  acceptance, nor resolve the unreproduced local export report.
+- Reproduction/check commands (from repository root):
+  `pnpm --filter @prompthub/desktop exec vitest run tests/integration/release-acceptance-data-recovery-portable.test.ts tests/integration/release-acceptance-data-recovery-webdav.test.ts --minWorkers=1 --maxWorkers=1`;
+  `pnpm --filter @prompthub/desktop exec vitest run tests/integration/release-acceptance-data-recovery-restore.test.ts --minWorkers=1 --maxWorkers=1`;
+  `pnpm --filter @prompthub/core exec vitest run tests/plugin-storage-file-snapshot.test.ts --minWorkers=1 --maxWorkers=1`.
+  On the temporary tag checkout, filter the portable test with `-t 'real WebDAV'`
+  to reproduce the released failure. Before the Plugin IPC fix, both remote
+  roundtrips failed on the missing `pluginVersions` equality assertion even though
+  restore returned success. The destination-write failure case additionally checks
+  unchanged success metadata, preserved prior files/data and successful retry.
+
 #### Startup failure diagnostics (2026-10-19)
 
 The renderer startup-failure page exposes Copy error log, selectable error
@@ -190,10 +419,10 @@ was changed. This UI check does not replace disk migration/reopen coverage.
   再通过 durable journal 发布。任一 DB、文件、配置或领域步骤失败时必须回滚；
   崩溃后的下一次启动必须在打开业务服务前完成或回滚 journal，不能报告 partial
   success。
-- 全量 portable snapshot 只能在一个 storage maintenance intent 内生成：先阻止新
-  client，关闭 writer，创建一致 SQLite image，投影 canonical tree，核对 logical
-  envelope 与 canonical inventory，再流式写 ZIP。选择性导出不得附带未选择领域的
-  完整 canonical checkpoint。
+- 全量 portable snapshot 遵循上文 [Unified full snapshot](#unified-full-snapshot)：
+  在一个 storage maintenance intent 内固定一致 SQLite image 与托管文件，校验后
+  流式写归档。当前 canonical projector 仅属待替换实现及历史输入转换，不得作为新
+  全量快照的必经阶段。选择性导出不得附带未选择领域的完整数据库或文件快照。
 - 恢复候选、安全点、被覆盖根和 pre-restore 状态统一进入有界 recovery registry，
   按数量、年龄和总字节限制清理。正在使用的 operation ID 必须受保护；损坏、未完成
   或越界 artifact 不得被当作可恢复快照，并应在确认其为 registry 直接管理的普通

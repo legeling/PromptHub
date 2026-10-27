@@ -153,6 +153,7 @@ export interface RestorePromptGraphResult {
 export const SELF_HOSTED_BACKUP_PROTOCOL_VERSION = 1;
 
 export interface SelfHostedBackupCapabilities {
+  workspaceSnapshotVersion?: 1;
   serverVersion: string;
   protocolVersion: typeof SELF_HOSTED_BACKUP_PROTOCOL_VERSION;
   retentionLimit: number;

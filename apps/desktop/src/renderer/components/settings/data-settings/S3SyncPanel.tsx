@@ -317,23 +317,6 @@ export function S3SyncPanel() {
                 <div className="flex items-center justify-between gap-3 pt-3 border-t border-border">
                   <div className="flex-1 mr-4">
                     <p className="text-sm font-medium">
-                      {t("settings.webdavIncludeImages", "Include Images")}
-                    </p>
-                  </div>
-                  <ToggleSwitch
-                    ariaLabel={t(
-                      "settings.webdavIncludeImages",
-                      "Include Images",
-                    )}
-                    checked={settings.s3IncludeImages}
-                    onChange={settings.setS3IncludeImages}
-                    disabled={!settings.s3StorageEnabled}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3 pt-3 border-t border-border">
-                  <div className="flex-1 mr-4">
-                    <p className="text-sm font-medium">
                       {t("settings.webdavIncrementalSync", "Incremental Sync")}
                     </p>
                   </div>

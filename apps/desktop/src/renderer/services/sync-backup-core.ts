@@ -1,3 +1,4 @@
+import { uploadWorkspaceBackup, downloadWorkspaceBackup } from "./workspace-snapshot-remote";
 import {
   encryptData,
   decryptData,
@@ -51,6 +52,7 @@ export type {
 } from "./sync-backup-publication";
 
 export interface SyncResult {
+  snapshotCounts?: Record<string, number>;
   success: boolean;
   message: string;
   timestamp?: string;
@@ -465,7 +467,7 @@ function getTimestampCandidates(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
 ): string[] {
-  return isIncrementalSyncEnabled(options)
+  return window.electron?.workspaceSnapshot || isIncrementalSyncEnabled(options)
     ? [adapter.paths.manifest, adapter.paths.legacy]
     : [adapter.paths.legacy];
 }
@@ -536,6 +538,7 @@ export async function uploadSyncBackup(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
 ): Promise<SyncResult> {
+  if (window.electron?.workspaceSnapshot) return uploadWorkspaceBackup(adapter, options);
   if (isIncrementalSyncEnabled(options)) {
     return incrementalUploadSyncBackup(adapter, options);
   }
@@ -782,6 +785,7 @@ export async function incrementalUploadSyncBackup(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
 ): Promise<SyncResult> {
+  if (window.electron?.workspaceSnapshot) return uploadWorkspaceBackup(adapter, options);
   try {
     const includeMedia = options?.includeImages !== false;
     await adapter.prepareIncrementalUpload?.(includeMedia);
@@ -1132,6 +1136,10 @@ export async function downloadSyncBackup(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
 ): Promise<SyncResult> {
+  if (window.electron?.workspaceSnapshot) {
+    const result = await downloadWorkspaceBackup(adapter, options);
+    if (result) return result;
+  }
   if (isIncrementalSyncEnabled(options)) {
     const manifestResult = await adapter.downloadText(adapter.paths.manifest);
     if (manifestResult.success && manifestResult.data !== undefined) {

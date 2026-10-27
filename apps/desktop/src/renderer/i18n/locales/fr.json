@@ -3846,7 +3846,7 @@
   "toast": {
     "movedPromptToFolder": "Déplacé vers \"{{folder}}\"",
     "movedPromptsToFolder": "{{count}} prompts déplacés vers \"{{folder}}\"",
-    "selfHostedSyncConnectionSuccess": "Le point de sauvegarde est prêt. Desktop et Web utilisent la version {{version}} ; jusqu’à {{retention}} instantanés sont conservés.",
+    "selfHostedSyncConnectionSuccess": "Le point de sauvegarde est prêt. Version du serveur {{version}} ; jusqu’à {{retention}} instantanés sont conservés.",
     "selfHostedSyncPushSuccess": "Sauvegarde distante créée avec {{prompts}} prompts, {{folders}} dossiers, {{rules}} règles et {{skills}} Skills.",
     "selfHostedSyncPullSuccess": "{{prompts}} prompts, {{folders}} dossiers, {{rules}} règles et {{skills}} Skills restaurés depuis la dernière sauvegarde vérifiée."
   },

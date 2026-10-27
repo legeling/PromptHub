@@ -24,6 +24,7 @@ import {
   pullFromSelfHostedWeb,
   pushToSelfHostedWeb,
   testSelfHostedConnection,
+  testSelfHostedBackupConnection,
 } from "../../../src/renderer/services/self-hosted-sync";
 
 function jsonResponse(payload: unknown, init?: ResponseInit): Response {
@@ -62,6 +63,47 @@ describe("self-hosted-sync", () => {
       settingsUpdatedAt: "2026-04-16T00:00:00.000Z",
     });
   });
+
+  it.each([1, undefined])(
+    "checks full snapshot protocol independently of app versions (%s)",
+    async (workspaceSnapshotVersion) => {
+      window.electron!.workspaceSnapshot = vi.fn();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) => {
+          const url = String(input);
+          if (url.endsWith("/api/auth/captcha")) return captchaResponse();
+          if (url.endsWith("/api/auth/login"))
+            return jsonResponse({ data: { accessToken: "fixture-token" } });
+          if (url.endsWith("/api/devices/heartbeat"))
+            return jsonResponse({ data: { ok: true } });
+          if (url.endsWith("/api/backups/desktop/capabilities"))
+            return jsonResponse({
+              data: {
+                serverVersion: "0.6.2",
+                workspaceSnapshotVersion,
+                retentionLimit: 10,
+              },
+            });
+          throw new Error("Unexpected snapshot connection request: " + url);
+        }),
+      );
+      const connection = testSelfHostedBackupConnection({
+        url: "https://backup.example.com",
+        username: "fixture",
+        password: "fixture",
+      });
+      if (workspaceSnapshotVersion === 1)
+        await expect(connection).resolves.toMatchObject({
+          serverVersion: "0.6.2",
+        });
+      else
+        await expect(connection).rejects.toThrow(
+          /Update the self-hosted server/,
+        );
+      expect(exportDatabaseMock).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([undefined, "2"])(
     "negotiates server support before pushing binary Skill snapshots (%s)",

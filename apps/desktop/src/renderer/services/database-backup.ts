@@ -449,6 +449,24 @@ export async function previewImportFile(
   file: File,
 ): Promise<{ backup: DatabaseBackup; summary: ImportPreviewSummary }> {
   const text = await readBackupFileText(file);
+  const fullPreview = JSON.parse(text);
+  if (fullPreview.kind === "prompthub-workspace-snapshot-preview") {
+    return {
+      backup: {
+        version: DB_VERSION,
+        exportedAt: fullPreview.exportedAt,
+        prompts: [],
+        folders: [],
+        versions: [],
+      },
+      summary: {
+        kind: "prompthub-backup",
+        exportedAt: fullPreview.exportedAt,
+        counts: fullPreview.counts,
+        skipped: createEmptySkippedStats(),
+      },
+    };
+  }
   const kind = parsePromptHubFileKind(text);
   const parsed: ParsedBackup = parsePromptHubBackupFile(text);
   const { backup, skipped } = parsed;
@@ -922,6 +940,28 @@ export async function downloadCompressedBackup(): Promise<void> {
 export async function downloadSelectiveExport(
   scope: ExportScope,
 ): Promise<void> {
+  const full =
+    scope.prompts &&
+    scope.folders &&
+    scope.versions &&
+    scope.images &&
+    scope.videos &&
+    scope.aiConfig &&
+    scope.settings &&
+    scope.rules &&
+    scope.skills &&
+    scope.mcp &&
+    scope.plugins &&
+    scope.agents;
+  if (full && window.electron?.workspaceSnapshot) {
+    const result = await window.electron.workspaceSnapshot({
+      action: "export",
+    });
+    if (!result.success)
+      throw new Error(result.error || "Full snapshot export failed");
+    if (result.canceled) throw new Error("Export canceled");
+    return;
+  }
   const normalized: Required<ExportScope> = {
     prompts: !!scope.prompts,
     folders: !!scope.folders,

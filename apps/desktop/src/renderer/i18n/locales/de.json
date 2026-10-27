@@ -3845,7 +3845,7 @@
   "toast": {
     "movedPromptToFolder": "Nach \"{{folder}}\" verschoben",
     "movedPromptsToFolder": "{{count}} Prompts nach \"{{folder}}\" verschoben",
-    "selfHostedSyncConnectionSuccess": "Backup-Endpunkt bereit. Desktop und Web verwenden beide Version {{version}}; bis zu {{retention}} Snapshots werden aufbewahrt.",
+    "selfHostedSyncConnectionSuccess": "Backup-Endpunkt bereit. Serverversion {{version}}; bis zu {{retention}} Snapshots werden aufbewahrt.",
     "selfHostedSyncPushSuccess": "Remote-Sicherung mit {{prompts}} Prompts, {{folders}} Ordnern, {{rules}} Regeln und {{skills}} Skills erstellt.",
     "selfHostedSyncPullSuccess": "{{prompts}} Prompts, {{folders}} Ordner, {{rules}} Regeln und {{skills}} Skills aus der neuesten geprüften Sicherung wiederhergestellt."
   },

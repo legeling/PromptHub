@@ -132,7 +132,7 @@ function streamFileToZip(
   }
 }
 
-async function writeSnapshotZip(
+export async function writeSnapshotZip(
   snapshotPath: string,
   destinationPath: string,
 ): Promise<void> {
@@ -182,7 +182,6 @@ async function writeSnapshotZip(
   }
   fs.closeSync(descriptor);
   try {
-    fs.rmSync(destinationPath, { force: true });
     fs.renameSync(temporaryPath, destinationPath);
   } catch (error) {
     fs.rmSync(temporaryPath, { force: true });

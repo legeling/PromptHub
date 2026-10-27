@@ -22,6 +22,18 @@ the affected batch for review rather than being delegated implicitly.
 
 The integrity, cache and backup publication batch is implemented and focused tests pass. See implementation.md and verification-summary.json for exact scopes and limits. The eight main tasks above remain unchecked because none of their complete redesign/release acceptance sets is finished; user authorization to continue implementation is already recorded and does not need to be requested again.
 
+## Unified full snapshot
+
+This implements T-FOUNDATION-003/005 under the
+[full snapshot contract](../../../knowledge/behavior/data-recovery.md#unified-full-snapshot).
+The existing domain roundtrips and 0.6.1 regression repairs do not complete it.
+
+- [x] Locate the per-domain renderer payloads, canonical checkpoint and restore reconstruction; replace the conflicting target design with the confirmed full-snapshot requirement (2026-10-26).
+- [x] Complete the full-snapshot classification and staged migration of portable business data versus device bindings/secrets. Preserve destination credentials and retain historical source/recovery material; unknown managed business tables, fields and files roundtrip without a domain field list.
+- [x] Add extension fixtures and real-entrypoint regression tests before changing the snapshot producer/importer.
+- [x] Connect one Core snapshot producer and staged importer to local full backup/export and remote full/incremental transport; remove the superseded full-path field mapping and canonical reconstruction.
+- [x] Verify preservation, historical migration, different-root restore, failure recovery and reopen through real SQLite/files/IPC/HTTP. Six isolated macOS Electron cases pass, including all three remote transports and local confirm/cancel. Production build and focused gates pass; Windows, signed-package and deployed-provider acceptance remain separate. Evidence is maintained in the owning data-recovery topic.
+
 ## Catalog startup integration batch
 
 - [x] Write Core startup/reconciliation regression tests before implementation.

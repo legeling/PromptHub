@@ -3845,7 +3845,7 @@
   "toast": {
     "movedPromptToFolder": "「{{folder}}」に移動しました",
     "movedPromptsToFolder": "{{count}} 件の Prompt を「{{folder}}」に移動しました",
-    "selfHostedSyncConnectionSuccess": "バックアップエンドポイントを利用できます。Desktop と Web はどちらも {{version}} で、最大 {{retention}} 件のスナップショットを保持します。",
+    "selfHostedSyncConnectionSuccess": "バックアップエンドポイントを利用できます。サーバーバージョン {{version}}、最大 {{retention}} 件のスナップショットを保持します。",
     "selfHostedSyncPushSuccess": "{{prompts}} 件の Prompt、{{folders}} 件のフォルダー、{{rules}} 件のルール、{{skills}} 件の Skill を含むリモートバックアップを作成しました。",
     "selfHostedSyncPullSuccess": "最新の検証済みバックアップから {{prompts}} 件の Prompt、{{folders}} 件のフォルダー、{{rules}} 件のルール、{{skills}} 件の Skill を復元しました。"
   },

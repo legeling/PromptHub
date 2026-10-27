@@ -27,8 +27,8 @@
   - `skills`
 - 为保持兼容，可同时返回历史字段（例如 `promptsImported` / `promptsExported`），但 `summary` 作为统一消费入口。
 - Web push/pull 失败路径必须走统一错误映射（当前为 `VALIDATION_ERROR`），并保留可诊断消息（例如连接失败 HTTP 状态、payload 非法原因）。
-- WebDAV 结构化备份必须保持可恢复：`data.json`、`manifest.json`、以及被 Prompt 引用的媒体文件必须一起参与 push/pull；仅 `404` 可视为远端备份缺失并触发 legacy fallback，其他 HTTP 失败必须原样暴露为诊断错误。
-- WebDAV structured push must upload referenced media before publishing `data.json` and `manifest.json`; pull must verify `data.json` and media bytes against the manifest hash/size before import can continue.
+- 历史 WebDAV 结构化备份必须保持可恢复：`data.json`、`manifest.json`、以及被 Prompt 引用的媒体文件必须一起参与 push/pull；仅 `404` 可视为远端备份缺失并触发 legacy fallback，其他 HTTP 失败必须原样暴露为诊断错误。
+- Historical WebDAV structured push must upload referenced media before publishing `data.json` and `manifest.json`; pull must verify `data.json` and media bytes against the manifest hash/size before import can continue.
 - Desktop WebDAV responses must decode UTF-8 across HTTP chunks; a chunk boundary inside a multibyte character must not change backup text or its content hash.
 
 ### 1.2 Complete prompt snapshot
@@ -54,10 +54,17 @@
   tokens, proxy credentials, and provider/model secrets even when transport
   encryption is enabled. Restore merges portable settings while retaining the
   destination device's local credentials.
-- Desktop ZIP/logical restore first merges the selected scopes into a detached
-  candidate. The existing canonical projector rebuilds its file graph and
-  catalog; the same restore journal verifies both before publication and after
-  publication. Successful restore must survive normal initialization and reopen.
+- Full local/remote backup and restore follow the
+  [unified full snapshot contract](data-recovery.md#unified-full-snapshot).
+  Current full backups use the shared SQLite/tree snapshot and staged importer.
+  Per-domain payload builders remain only for selected scopes and historical
+  conversion. Transport adapters do not enumerate business fields. Live multi-device merge semantics
+  remain separate from full snapshot replacement.
+- Selected-scope and historical ZIP/logical imports merge into a detached
+  candidate through the existing historical conversion boundary. Its canonical
+  projector handles selected-scope merging only; current full snapshots bypass
+  that projection. The restore journal verifies the candidate
+  before and after publication. Successful restore must survive initialization and reopen.
   Candidate projection reads only candidate files, never native Agent targets.
   Its catalog paths refer to the final destination root. Unselected domains,
   operation/migration records, conversations, attachments and unreferenced media
@@ -136,13 +143,13 @@ preflight`. Legacy `static` values normalize to `preflight`; an unknown
 ### 2. Desktop And Web Relationship
 
 - 桌面端只把自部署 Web 作为独立备份与恢复目标；当前 UI、启动任务和定时任务不得调用 live workspace 的 `/api/sync/data` 或媒体写入接口。
-- 自动备份与手动创建备份前，桌面端必须读取本机安装版本和 Web `/health`、受保护 capabilities 返回的服务版本。三者必须完全一致，备份协议也必须匹配；否则在导出本地数据前停止。Web 创建路由必须再次校验客户端版本，且不得回退到旧同步接口。
+- 当前完整快照在连接检查和捕获前校验受保护 capabilities 的 `workspaceSnapshotVersion`，应用版本不必完全相同；恢复入口独立检查归档、数据库与布局版本并迁移旧结构。仅历史 envelope 客户端保留原来的应用版本一致性校验，不得回退到 live-sync 接口。
 - Web 通过 `/api/backups/desktop` 为每个认证用户保存不可变、带 SHA-256 校验的快照，默认保留最近 10 份。快照写入成功且目录元数据持久化后才可清理旧快照；备份目录、用户目录或快照文件不得接受符号链接。
-- 自部署快照包含 Prompt、版本、文件夹、关系、输出格式、Rule、Skill 完整文件和版本、MCP/Plugin 库及包、商店源、Agent 资产文件、内联媒体和非秘密设置。未加密通道必须递归排除密码、token、API key、access key、代理凭据等已知凭据字段。
+- 自部署完整快照与本地归档共用 SQLite 镜像和托管文件树；业务表、字段、历史和完整资源包自然保全。统一存储策略排除设备凭据、绑定、缓存及恢复副本；导入保留目的设备设置与可用绑定。历史 envelope 的字段映射仅用于旧数据转换。
 - 恢复只能由用户显式触发。桌面端先读取并校验服务端最新快照，紧接在本地写入前
   创建安全快照；安全快照失败时不得开始本地恢复，恢复失败时必须回滚。自动任务
   永远不得调用恢复。
-- 单次备份请求当前上限为 50 MiB；超过上限必须在解析和写盘前拒绝，避免无界 JSON/base64 内存占用。网络读取使用 15 秒超时和一次有限重试；创建快照等写操作不得自动重试，避免产生重复快照。
+- 单次 HTTP 请求当前上限为 50 MiB（完整备份按 1 MiB 分片，不限制归档总大小）；超过上限必须在解析和写盘前拒绝，避免无界 JSON/base64 内存占用。历史 JSON 路由保留既有网络读取超时和一次有限重试；完整分片适配器不额外叠加重试。创建快照和发布 manifest 不自动重试；响应丢失后回读确认，无法确认时保留分片。
 - 旧 `/api/sync/data` 路由在兼容窗口内继续存在，但只服务旧客户端；当前桌面 UI 与调度器不再调用它。
 - 面向用户的自部署说明在 `docs/web-self-hosted.md`，内部同步与布局事实在 `spec/`。
 - 自部署 Web 备份 payload 必须保留 MCP/Plugin 库、包、商店源与 agent asset 文件，即使浏览器不提供这些 Desktop-owned 资源的管理界面。
@@ -203,9 +210,8 @@ When a user asks how desktop and self-hosted web interact:
 - the public operational guide remains in `docs/web-self-hosted.md`
 - deeper contracts and change history remain in `spec/`
 
-## Current Verification Gaps (2026-10-12)
+## Verification Status (2026-10-26)
 
-- Portable restore still fails the selected Agent settings equality check: normal startup adds Gemini to the imported disabled-platform list. The imported explicit setting remains the required result; the failing assertion is retained.
-- The combined nonempty Provider/Generation ZIP cases still fail stable mapping identity and generation artifact equality after reopen. Successful candidate publication does not establish complete restore fidelity.
+- The historical Agent-settings/Provider/Generation roundtrip gaps are covered by the current portable regression suite: nonempty exports, stable identity, files, explicit settings and two reopens pass. The current full snapshot bypasses per-domain reconstruction; selected-scope legacy conversion retains its regression cases.
 - Private-folder integration tests still demonstrate a usable encryption key in the persisted verifier and plaintext content in durable storage. Password rotation/reopen passing does not establish encrypted-at-rest protection.
-- Evidence: Desktop integration suites `release-acceptance-data-recovery-portable.test.ts` and `release-acceptance-data-recovery-privacy.test.ts`; isolated SQLite/filesystem and registered IPC, without GUI or release-package acceptance.
+- Full-snapshot verification includes real SQLite/filesystem/IPC integration and six isolated macOS Electron cases covering local import/export and controlled WebDAV/S3/self-hosted transport. The separate privacy finding comes from `release-acceptance-data-recovery-privacy.test.ts`; this backup change does not implement encryption at rest. Signed packages, Windows and deployed-provider acceptance are not established by these tests.

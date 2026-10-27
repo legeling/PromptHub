@@ -1,3 +1,4 @@
+import type { WorkspaceSnapshotRequest, WorkspaceSnapshotResponse } from "@prompthub/shared/types/workspace-snapshot";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
@@ -275,6 +276,7 @@ contextBridge.exposeInMainWorld("electron", {
   performRecovery: (sourcePath: string) =>
     ipcRenderer.invoke("data:performRecovery", sourcePath),
   dismissRecovery: () => ipcRenderer.invoke("data:dismissRecovery"),
+  workspaceSnapshot: (request: WorkspaceSnapshotRequest): Promise<WorkspaceSnapshotResponse> => ipcRenderer.invoke(IPC_CHANNELS.DATA_WORKSPACE_SNAPSHOT, request),
   exportZip: (params: {
     scope: {
       prompts: boolean;
@@ -623,6 +625,7 @@ declare global {
         error?: string;
       }>;
       dismissRecovery?: () => Promise<{ success: boolean }>;
+      workspaceSnapshot?: (request: WorkspaceSnapshotRequest) => Promise<WorkspaceSnapshotResponse>;
       exportZip?: (params: {
         scope: {
           prompts: boolean;

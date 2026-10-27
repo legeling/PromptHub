@@ -1,13 +1,4 @@
-import { migrateGenerationSqliteV1 } from "@prompthub/core/migrations/generation-sqlite-v1";
-import { migrateSkillSqliteV1 } from "@prompthub/core/migrations/skill-sqlite-v1";
-import { migrateSkillPayloadFiles } from "@prompthub/core/migrations/skill-payload-upgrade";
-import { migrateRuleMetadataV1 } from "@prompthub/core/migrations/rule-metadata-v1";
-import { migratePromptWorkspaceV2 } from "@prompthub/core/migrations/prompt-workspace-v2";
-import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
-import { migratePluginSqliteV1 } from "@prompthub/core/migrations/plugin-sqlite-v1";
-import { migrateAgentProviderSqliteV1 } from "@prompthub/core/migrations/agent-provider-sqlite-v1";
-import { migratePromptSqliteV1 } from "@prompthub/core/migrations/prompt-sqlite-v1";
-import { migrateGeminiDefaultDisabled } from "@prompthub/core/migrations/gemini-default-disabled-v1";
+import { migrateWorkspaceData } from "@prompthub/core/workspace-data-migrations";
 import { initializeDesktopMcpStorage } from "../services/desktop-mcp-library";
 /**
  * Desktop-specific database initialization and recovery.
@@ -200,42 +191,8 @@ export function initDatabase(): DatabaseAdapter.Database {
         resolveSkillRepoPath,
       );
     }
-    migrateSkillSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migrateSkillPayloadFiles(database, {
-      rootPath: getUserDataPath(),
-      databasePath: dbPath,
-      skillsRoot: getSkillsDir(),
-    });
-    migrateAgentProviderSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: dbPath,
-    });
-    migratePromptSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: dbPath,
-    });
-    migratePromptWorkspaceV2(database, {
-      rootPath: getUserDataPath(),
-      databasePath: dbPath,
-    });
-    migrateGenerationSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: dbPath,
-    });
-    migrateRuleMetadataV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migratePluginSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: dbPath,
-    });
-    migrateAgentSettingsV1(database, getUserDataPath());
+    migrateWorkspaceData(database, getUserDataPath(), getSkillsDir());
     initializeDesktopMcpStorage(database);
-    migrateGeminiDefaultDisabled(database);
     return database;
   } catch (error) {
     closeDatabase();

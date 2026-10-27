@@ -42,6 +42,7 @@ export interface StorageInventoryOptions extends StorageInventoryLimits {
   includeSecrets?: boolean;
   /** Used only for a manifest-validated detached snapshot, never root discovery. */
   detachedLayoutEpoch?: RuntimeLayoutEpoch;
+  /** Exact entries; an excluded directory excludes its complete subtree. */
   excludeRelativePaths?: readonly string[];
 }
 
@@ -262,6 +263,8 @@ export function createStorageInventory(
   let visitedEntries = 0;
 
   const visit = (targetPath: string, depth: number): void => {
+    const relativePath = normalizeRelativePath(root, targetPath);
+    if (excludedPaths.has(relativePath)) return;
     if (depth > maxDepth)
       throw new Error(`Storage inventory exceeds maxDepth at ${targetPath}`);
     visitedEntries += 1;
@@ -285,12 +288,7 @@ export function createStorageInventory(
         `Refusing special file in storage inventory: ${targetPath}`,
       );
     }
-    const relativePath = normalizeRelativePath(root, targetPath);
-    if (
-      isExcludedCanonicalPath(relativePath) ||
-      excludedPaths.has(relativePath)
-    )
-      return;
+    if (isExcludedCanonicalPath(relativePath)) return;
     if (stats.size > maxFileBytes) {
       throw new Error(
         `Storage inventory file exceeds maxFileBytes: ${targetPath}`,

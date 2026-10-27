@@ -29,7 +29,9 @@ define:
 3. domain schema version and user-visible revision behavior;
 4. referenced media/object behavior and deletion semantics;
 5. local catalog/search projection and rebuild behavior;
-6. portable backup/export/sync inclusion and secret policy;
+6. inclusion through the [unified full snapshot](../knowledge/behavior/data-recovery.md#unified-full-snapshot)
+   storage boundary and secret policy, without new per-transport business-field
+   mappings; live synchronization retains its own declared record contract;
 7. retention, cleanup, import, restore, and downgrade behavior;
 8. old/current/newer fixtures, failure injection, restart, security, and
    performance verification.

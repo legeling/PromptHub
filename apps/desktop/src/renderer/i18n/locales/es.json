@@ -3845,7 +3845,7 @@
   "toast": {
     "movedPromptToFolder": "Movido a \"{{folder}}\"",
     "movedPromptsToFolder": "{{count}} prompts movidos a \"{{folder}}\"",
-    "selfHostedSyncConnectionSuccess": "El endpoint de copias está listo. Desktop y Web usan la versión {{version}}; se conservan hasta {{retention}} instantáneas.",
+    "selfHostedSyncConnectionSuccess": "El endpoint de copias está listo. Versión del servidor {{version}}; se conservan hasta {{retention}} instantáneas.",
     "selfHostedSyncPushSuccess": "Se creó una copia remota con {{prompts}} prompts, {{folders}} carpetas, {{rules}} reglas y {{skills}} Skills.",
     "selfHostedSyncPullSuccess": "Se restauraron {{prompts}} prompts, {{folders}} carpetas, {{rules}} reglas y {{skills}} Skills desde la última copia verificada."
   },

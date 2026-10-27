@@ -1,13 +1,4 @@
-import { migrateSkillPayloadFiles } from "./migrations/skill-payload-upgrade";
-import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
-import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
-import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
-import { migratePromptWorkspaceV2 } from "./migrations/prompt-workspace-v2";
-import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
-import { migrateAgentProviderSqliteV1 } from "./migrations/agent-provider-sqlite-v1";
-import { migratePromptSqliteV1 } from "./migrations/prompt-sqlite-v1";
-import { migrateAgentSettingsV1 } from "./migrations/agent-settings-v1";
-import { migrateGeminiDefaultDisabled } from "./migrations/gemini-default-disabled-v1";
+import { migrateWorkspaceData } from "./workspace-data-migrations";
 import {
   DatabaseAdapter,
   db as activeDatabase,
@@ -64,32 +55,8 @@ export function initDatabase(
   }
   const database = dbInit(getDatabasePath(), hooks);
   try {
-    migrateSkillSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migrateSkillPayloadFiles(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath(), skillsRoot: getSkillsDir() });
-    migrateAgentProviderSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migratePromptSqliteV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migratePromptWorkspaceV2(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migrateGenerationSqliteV1(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath() });
-    migrateRuleMetadataV1(database, {
-      rootPath: getUserDataPath(),
-      databasePath: getDatabasePath(),
-    });
-    migratePluginSqliteV1(database, { rootPath: getUserDataPath(), databasePath: getDatabasePath() });
+    migrateWorkspaceData(database, getUserDataPath(), getSkillsDir());
     initializeMcpStorage({ ...mcpOptions, database });
-    migrateAgentSettingsV1(database, getUserDataPath());
-    migrateGeminiDefaultDisabled(database);
   } catch (error) {
     closeDatabase();
     throw error;
