@@ -95,8 +95,11 @@ function verifyUpgradeData(userDataPath: string): void {
     const rows = database.all(
       "SELECT value FROM settings WHERE key = 'startup-smoke-preserved'",
     );
-    if (rows.length !== 1 || rows[0].value !== "0.5.9") {
-      throw new Error("Upgrade did not preserve the original database row");
+    // Settings migration converts legacy raw strings to the canonical JSON encoding.
+    if (rows.length !== 1 || rows[0].value !== JSON.stringify("0.5.9")) {
+      throw new Error(
+        `Upgrade did not preserve the fixture setting: ${JSON.stringify(rows)}`,
+      );
     }
   } finally {
     database.close();

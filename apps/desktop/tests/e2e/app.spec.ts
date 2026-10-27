@@ -1,5 +1,7 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
+import sqlite3Wasm from "node-sqlite3-wasm";
 import {
   test,
   expect,
@@ -21,6 +23,59 @@ import {
   showAppWindow,
   type LaunchedElectronApp,
 } from "./helpers/electron";
+
+test("preserves legacy raw settings through migration and two complete launches", async () => {
+  test.setTimeout(120_000);
+  const profile = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-upgrade-e2e-")),
+  );
+  const legacyPath = path.join(profile, "prompthub.db");
+  const seed = new sqlite3Wasm.Database(legacyPath);
+  try {
+    seed.exec(
+      "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+    );
+    seed.exec(
+      "INSERT INTO settings (key, value) VALUES ('startup-smoke-preserved', '0.5.9')",
+    );
+  } finally {
+    seed.close();
+  }
+  try {
+    for (let launch = 0; launch < 2; launch += 1) {
+      const { app, page } = await launchPromptHub(null, {
+        userDataDir: profile,
+      });
+      try {
+        await expect
+          .poll(async () => {
+            const state = await page.evaluate(() =>
+              window.api.settings.rendererPersistence.get(),
+            );
+            return state?.settings["startup-smoke-preserved"];
+          })
+          .toBe("0.5.9");
+      } finally {
+        await closePromptHub(app, profile, { preserveUserDataDir: true });
+      }
+      expect(fs.existsSync(legacyPath)).toBe(false);
+      const database = new sqlite3Wasm.Database(
+        path.join(profile, "data", "prompthub.db"),
+      );
+      try {
+        expect(
+          database.all(
+            "SELECT value FROM settings WHERE key = 'startup-smoke-preserved'",
+          ),
+        ).toEqual([{ value: JSON.stringify("0.5.9") }]);
+      } finally {
+        database.close();
+      }
+    }
+  } finally {
+    fs.rmSync(profile, { recursive: true, force: true });
+  }
+});
 
 async function createPromptThroughEditor(
   page: Page,

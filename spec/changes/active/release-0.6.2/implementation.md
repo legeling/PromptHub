@@ -58,3 +58,19 @@ quick run overlapped these edits and was stopped; its results cannot certify the
 final tree. Three macOS Plugin fixtures now resolve the OS temporary directory
 alias before exercising publication; explicit symlink rejection assertions remain.
 The corrected tree passed the shared suite, 21 Core Git/Plugin cases and 156 Desktop source routing/installation cases, including real HTTP and redirected SSH integration. The final full gate must run against this tree.
+
+## Corrected platform verification — 2026-10-27
+
+Run 40466438204 passed every full verification group, Linux/Windows ARM64 packaging
+and Intel macOS signing/notarization. Apple Silicon validation stopped on an Apple
+CloudKit network disconnect after signing and ticket stapling; the gate remains
+required. Windows now starts successfully, but its added preservation assertion
+compared canonical JSON settings against the old raw string encoding. The assertion
+now requires the canonical encoding and the identical original value. A hidden
+Electron regression verifies that legacy setting through real renderer startup,
+SQLite inspection and two complete launches, including absence of a stale root
+database (1 passed). Test typecheck and focused lint passed. Shared namespace test
+imports now use the package export; both affected application typechecks and all
+101 shared cases passed. The failed run is retained; publication awaits the corrected
+platform checks. Updating the unpublished tag is explicitly authorized, preserving
+the original candidate in an archive reference.
