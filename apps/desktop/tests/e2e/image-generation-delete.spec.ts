@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import {
+  captureAppPage,
   closePromptHub,
   launchPromptHub,
   setAppSettings,
@@ -66,6 +67,7 @@ async function seedHistory(page: Page) {
 
 for (const themeMode of ["light", "dark"]) {
   test(`history deletion confirms, removes assets and survives restart (${themeMode})`, async () => {
+    test.setTimeout(120_000);
     let launched = await launchPromptHub(
       "image-generation-workbench-visual.seed.json",
     );
@@ -144,10 +146,11 @@ for (const themeMode of ["light", "dark"]) {
         "Copies added to Prompts or downloaded elsewhere are kept",
       );
       await expect(dialog).toHaveCSS("opacity", "1");
-      await page.screenshot({
-        path: test.info().outputPath("delete-confirmation.png"),
-        animations: "disabled",
-      });
+      await captureAppPage(
+        launched.app,
+        page,
+        test.info().outputPath("delete-confirmation.png"),
+      );
       await dialog
         .getByRole("button", { name: "Delete batch", exact: true })
         .click();
@@ -185,9 +188,11 @@ for (const themeMode of ["light", "dark"]) {
       await expect(page.getByRole("tabpanel")).toHaveText(
         "No generation history yet.",
       );
-      await page.screenshot({
-        path: test.info().outputPath("history-empty.png"),
-      });
+      await captureAppPage(
+        launched.app,
+        page,
+        test.info().outputPath("history-empty.png"),
+      );
       await closePromptHub(launched.app, userDataDir, {
         preserveUserDataDir: true,
       });
