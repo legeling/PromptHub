@@ -19,6 +19,8 @@ The current development version is `0.6.2`, which is unreleased. The latest stab
 
 ### 改进 / Improvements
 
+- **GitLab Skill 导入**：支持多级分组仓库及内网 HTTP、HTTPS、SSH 来源，扫描并导入完整 Skill 目录。
+  - **GitLab Skill imports**: Scan and import complete Skill directories from nested-group repositories over private-network HTTP, HTTPS and SSH.
 - **完整工作区备份**：本地全量备份、WebDAV、S3 和自部署 Web 备份使用同一套工作区快照，保留数据库、版本历史及完整资源文件。恢复时迁移旧数据，失败时保留原工作区；设备凭据和部署路径继续由当前设备管理。自部署服务器需同步升级至 0.6.2。
   - **Complete workspace backups**: Local full backups, WebDAV, S3 and self-hosted Web use the same workspace snapshot to preserve the database, version history and complete resource files. Restore migrates older data and preserves the original workspace on failure. Credentials and deployment paths remain device-managed. Update the self-hosted server to 0.6.2 as well.
 - **Antigravity 平台识别**：区分桌面应用与 Antigravity CLI 的配置、会话和安装状态，迁移已有 CLI 记录，避免将 CLI 设置写入桌面应用。
@@ -26,6 +28,8 @@ The current development version is `0.6.2`, which is unreleased. The latest stab
 
 ### 问题修复 / Fixes
 
+- **旧版升级启动**：修复数据目录迁移后仍使用旧数据库路径、导致升级后无法启动的问题。
+  - **Upgrade startup**: Fix startup failures caused by reusing an old database path after migrating the data directory.
 - **CLI 安装检测**：修复从系统桌面启动时找不到已安装的 npm、pnpm 或 CLI、导致安装按钮不可用的问题。
   - **CLI installation detection**: Fix detection of installed npm, pnpm and CLI commands when launching from the desktop, which could leave installation buttons unavailable.
 - **备份与恢复**：修复远程恢复的数据交接及完整 Skill 包处理，选择性导出后可重新导入并保留所选内容。

@@ -3,15 +3,15 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-23`
+- Snapshot date: `2026-10-27`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt` after the authorized push to main.
-- Open issues captured: `26`
+- Open issues captured: `25`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery is recorded in `local-github-status.md`.
-- The shared capture contains 220 issues (26 open / 194 closed), below the requested limit; pull requests are excluded.
-- #245/#185/#145/#141 automatic closures were confirmed on 2026-10-23 after the push through `e144e34d`. #198 and #246 remain open. Closure does not establish publication.
+- The shared capture contains 220 issues (25 open / 195 closed), below the requested limit; pull requests are excluded.
+- #198 automatic closure was confirmed on 2026-10-27 after pushing `ebb7d66c`. #246 remains open. Closure does not establish publication.
 
 ## Open Issues
 
@@ -23,7 +23,6 @@
 | #205 | Would you take a pull-request security scan workflow? | question | 2026-08-14 | 2026-08-20 | [#205](https://github.com/legeling/PromptHub/issues/205) |
 | #204 | [Feature]: 支持从 npx skills 导入 skills 配置 | enhancement | 2026-08-11 | 2026-08-20 | [#204](https://github.com/legeling/PromptHub/issues/204) |
 | #203 | [Feature]: 集中管理 PromptHub 生成的 Agent 配置备份和适配文件 | enhancement | 2026-08-08 | 2026-08-08 | [#203](https://github.com/legeling/PromptHub/issues/203) |
-| #198 | [Feature]: 增加手动刷新工作区数据功能 | enhancement | 2026-08-04 | 2026-08-04 | [#198](https://github.com/legeling/PromptHub/issues/198) |
 | #197 | [Feature]: 评估并纳入各 AI Agent 的 Rules / rule 目录扫描与管理 | enhancement | 2026-08-04 | 2026-08-04 | [#197](https://github.com/legeling/PromptHub/issues/197) |
 | #195 | [Feature]: 生图提示词里面，上传的每个图片，是否可以再下载/导出？ | enhancement, version: 0.5.9 | 2026-08-01 | 2026-08-01 | [#195](https://github.com/legeling/PromptHub/issues/195) |
 | #194 | [Feature]: 增加通用 ~/.agents/skills 全局安装目录（需兼容性验证） | enhancement | 2026-07-29 | 2026-07-29 | [#194](https://github.com/legeling/PromptHub/issues/194) |

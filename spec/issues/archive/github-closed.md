@@ -3,15 +3,15 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-23`
+- Snapshot date: `2026-10-27`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt` after the authorized push to main.
-- Closed issues captured: `194`
+- Closed issues captured: `195`
 
 ## Notes
 
 - This file mirrors remote GitHub state only; local delivery is recorded in `../active/local-github-status.md`.
-- The shared capture contains 220 issues (26 open / 194 closed), below the requested limit; pull requests are excluded.
-- #245/#185/#145/#141 automatic closures were confirmed on 2026-10-23 after the push through `e144e34d`. #198 and #246 remain open. Closure does not establish publication.
+- The shared capture contains 220 issues (25 open / 195 closed), below the requested limit; pull requests are excluded.
+- #198 automatic closure was confirmed on 2026-10-27 after pushing `ebb7d66c`. #246 remains open. Closure does not establish publication.
 
 ## Closed Issues Archive
 
@@ -53,6 +53,7 @@
 | #201 | [Question]: Pi MCP 适配是否基于 pi-mcp-adapter，是否支持项目级配置？ | question | 2026-08-06 | 2026-08-20 | [#201](https://github.com/legeling/PromptHub/issues/201) |
 | #200 | [Feature]: 参考项目Skill，希望项目MCP也支持从【我的MCP】中导入或同步，目前只能全局同步 | enhancement, version: 0.5.9 | 2026-08-04 | 2026-08-20 | [#200](https://github.com/legeling/PromptHub/issues/200) |
 | #199 | [Feature]: 希望可以加一个手动刷新的按钮 | duplicate, enhancement, version: 0.5.8 | 2026-08-04 | 2026-08-20 | [#199](https://github.com/legeling/PromptHub/issues/199) |
+| #198 | [Feature]: 增加手动刷新工作区数据功能 | enhancement | 2026-08-04 | 2026-10-27 | [#198](https://github.com/legeling/PromptHub/issues/198) |
 | #196 | [Bug]: 无法识别 ~/.claude/rules 目录中的 Rules | bug, version: 0.5.10 | 2026-08-03 | 2026-10-19 | [#196](https://github.com/legeling/PromptHub/issues/196) |
 | #193 | [Bug]: 规则文件删除后重新扫描仍保留失效记录 | bug | 2026-07-29 | 2026-10-14 | [#193](https://github.com/legeling/PromptHub/issues/193) |
 | #192 | [Bug]: 自定义输出启用后两个“复制 Prompt”入口结果不一致 | bug, version: 未知（截图中未显示） | 2026-07-29 | 2026-10-14 | [#192](https://github.com/legeling/PromptHub/issues/192) |

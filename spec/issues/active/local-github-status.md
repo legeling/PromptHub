@@ -36,8 +36,9 @@ refresh scenarios, including independent CLI writes, Prompt and Skill draft
 cancel/discard, deleted selection and Rules conflict preservation. Earlier real
 storage integration covers filters/counts, slow reads and failure recovery.
 See [Desktop acceptance](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198).
-GitHub readback on 2026-10-27 still reports #198 open. Closure and publication
-will be recorded after the corresponding remote actions.
+GitHub confirmed #198 closed at 2026-10-27 06:27:36 UTC after pushing
+`ebb7d66c`. The 0.6.2 candidate tag points to `0fbac670`; publication is pending
+CI signing, packaged startup and artifact verification.
 
 ### Claude gateway import follow-up — 2026-10-26 (#246)
 

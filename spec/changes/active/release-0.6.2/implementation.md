@@ -20,7 +20,7 @@ Publish the implemented 0.6.2 Desktop, CLI, self-hosted Web and Worker source ch
 
 ## Evidence
 
-Local release gate passed: 40/40 checks, exit 0, 1,741.7 seconds, concurrency two. Command: `pnpm verify:release --concurrency 2`. Task logs: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-release-062-dfDjRw. No release/tag/image has been published by this attempt.
+Local release gate passed: 40/40 checks, exit 0, 1,741.7 seconds, concurrency two. Command: `pnpm verify:release --concurrency 2`. Task logs: /private/var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-release-062-dfDjRw. Candidate tag v0.6.2 points to 0fbac670; CI run 40461243995 failed. No release or image has been published.
 
 ## Resource and data boundary
 
@@ -42,3 +42,19 @@ Reuse installed pnpm dependencies. Root harness concurrency is two with its exis
 ## Local release gate — 2026-10-27
 
 All eight Desktop unit shards, native storage integration, built-artifact smoke, shared/Core/CLI/Web/Worker/Mobile checks, performance budgets, typechecks, lint and builds passed in one complete final run. Separate CLI package verification, website metadata tests/build and the extended hidden E2E affected rechecks passed. Specification governance passed after the native refresh evidence update. Remote platform packaging and publication are the next required gates.
+
+## Remote candidate failure — 2026-10-27
+
+CI run 40461243995 blocked publication. Windows x64 upgrade moved the legacy database but retained its cached runtime path; startup opened the stale path and failed the storage publication connection check. Layout marker publication now invalidates runtime storage paths before startup or recovery reopens storage. A real SQLite regression primes the legacy cache, migrates populated storage and reads the original row across two opens. Packaged Windows smoke now checks that row and the absence of a recreated root database after each launch.
+
+Linux Electron smoke exposed two auto-dismiss toast click races and a Rules refresh race with initial loading. Tests wait for the failure toast to disappear and original rule to render before the next action. Export failure/retry, archive contents, restart and conflict byte assertions remain intact. Corrected local checks passed: 47 migration/path/canonical startup cases, all five affected hidden Electron flows, test typecheck, focused lint and Desktop build. Cross-package quick checks and corrected platform gates are pending; failed candidate artifacts must not be promoted.
+
+## Additional Skill changes — 2026-10-27
+
+The release also includes nested GitLab namespace parsing, clone-based discovery,
+complete-package materialization and localized import guidance. Existing Gitea
+page/raw URLs must continue resolving to the repository root. The earlier local
+quick run overlapped these edits and was stopped; its results cannot certify the
+final tree. Three macOS Plugin fixtures now resolve the OS temporary directory
+alias before exercising publication; explicit symlink rejection assertions remain.
+The corrected tree passed the shared suite, 21 Core Git/Plugin cases and 156 Desktop source routing/installation cases, including real HTTP and redirected SSH integration. The final full gate must run against this tree.
