@@ -92,3 +92,30 @@ Silicon failed while stapling on a CloudKit network disconnect (Error 68).
 The new commits require another complete gate and platform candidate; this run
 cannot certify them. Local full-run failures were the already-corrected shared
 test import and the temporary-directory fixture; retained reports are unchanged.
+
+## Final source verification — 2026-10-27
+
+The updated local full gate completed 39 of 40 checks successfully in 1,799.6
+seconds. All 185 CLI assertions passed, but the suite's 76.8-second duration
+exceeded its unchanged 75-second budget while other verification was running.
+An isolated rerun of the complete CLI suite passed in 60.46 seconds without
+changing the budget or assertions. The original failed report remains intact.
+Other results include 6,625 Desktop unit cases, 421 integration cases with 22
+native opt-in exclusions, 31 hidden built-artifact smoke cases, 1,310 Core cases
+with six exclusions, 511 Web cases, 48 Worker cases and 38 Mobile cases.
+
+Run 40480111814 identified a dialog-policy naming assertion and two packaged
+Windows screenshot timeouts. The local confirmation callback now has an
+unambiguous name. History deletion screenshots use the existing native Electron
+capture helper, and Windows failures retain Playwright traces and context.
+Both hidden deletion flows, test typecheck, scoped lint and 11 CI configuration
+tests passed. Run 40482814938 has passed the Windows x64 two-launch upgrade
+and all five packaged recovery/deletion flows, Apple Silicon signing and
+notarization, Linux and Windows ARM64 packaging. The aggregate report for commit `7d05a739` passed all 40 release checks,
+including native Linux runtime acceptance. All five platform builds passed,
+including Intel Mac signing, notarization and validation. The complete run is
+successful; tagged draft construction and distribution acceptance are next.
+
+The original candidate tag object is preserved at
+`failed-release/0.6.2-0fbac670`. The unpublished `v0.6.2` tag still points to that
+candidate before the authorized correction following successful platform acceptance.
