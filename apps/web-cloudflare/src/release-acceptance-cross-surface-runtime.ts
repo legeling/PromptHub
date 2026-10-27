@@ -114,6 +114,9 @@ async function dispose(): Promise<void> {
     worker = undefined;
     vi.unstubAllEnvs();
   }
+  // Exercise Wrangler itself: no queued disk logger may outlive disposal and
+  // race the owned fixture cleanup when the test worker exits.
+  expect(fs.existsSync(path.join(root, 'wrangler.log'))).toBe(false);
 }
 
 export function useRuntime(): void {

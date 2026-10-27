@@ -119,3 +119,16 @@ successful; tagged draft construction and distribution acceptance are next.
 The original candidate tag object is preserved at
 `failed-release/0.6.2-0fbac670`. The unpublished `v0.6.2` tag still points to that
 candidate before the authorized correction following successful platform acceptance.
+
+## Tagged test cleanup correction — 2026-10-27
+
+Run 40484744418 passed all 48 Worker functional assertions but failed at process
+exit: Wrangler's queued file logger raced fixture deletion with `ENOTEMPTY`.
+The test configuration disables Wrangler disk logs through its supported
+`WRANGLER_WRITE_LOGS` option; console errors remain enabled. Real runtime teardown
+asserts that no Wrangler log file was created. Product logging and storage are
+unchanged. All 48 Worker tests, lint, typecheck and spec governance passed.
+A temporary external Vitest configuration re-enabled disk logging; the real
+three-case runtime suite then failed the new no-log assertion with exit 1. This
+confirms the regression detects the cause rather than masking cleanup errors.
+The corrected tagged gate remains pending.
