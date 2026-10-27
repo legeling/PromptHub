@@ -4828,6 +4828,14 @@
     "nativeVerificationFailed": "Codex did not confirm the requested state. Refresh and inspect the plugin before retrying."
   },
   "generation": {
+    "deleteBatch": "Delete batch",
+    "deleteBatchLabel": "Delete batch: {{title}}",
+    "cancelBeforeDelete": "Cancel remaining generation before deleting this batch.",
+    "deleteBatchConfirm": "Delete “{{title}}” from history? This cannot be undone.",
+    "deleteBatchWithFiles": "Delete “{{title}}” and its {{count}} generated image(s)? This cannot be undone. Copies added to Prompts or downloaded elsewhere are kept.",
+    "deleteBatchFailed": "Could not delete this batch. Please try again.",
+    "batchDeleted": "Batch deleted.",
+    "deleteCleanupPending": "Batch deleted. Some local files could not be cleaned up; cleanup will resume on restart.",
     "workbench": "Image Workbench",
     "settings": "Generation settings",
     "inspector": "Generation inspector",

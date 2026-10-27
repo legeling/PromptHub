@@ -70,6 +70,18 @@ hash，冲突保留源并报错；完整源备份、安全点、图片归位、�
 新增图片同样与 SQL 用一次 receipt publication 提交，失败撤销新图片。
 回滚同时恢复迁移安全点与 recovery 中的历史目录，不能仅降级二进制。
 
+历史批次删除（#248）由 `GenerationStorage.delete` 统一负责，通过同一
+`generation-storage` receipt publication 原子移除批次图片目录和 SQL 批次，
+槽位由现有外键级联删除，无 schema 变更或额外迁移。未提交失败恢复原目录和记录；
+已提交但清理失败返回 `cleanupPending`，界面明确提示，现有启动恢复继续清理，
+不把已删除批次重新显示。不存在的批次重复删除为空操作；只接收批次 ID，校验
+受管路径及软链接，不删除 Prompt 媒体副本、下载副本或其他批次。
+pending/running 槽位必须先经现有取消流程停止，再允许删除；后续输出提交因批次
+不存在而拒绝，不重新 upsert。读取和级联操作仅涉及当前批次，文件删除成本与该
+批次文件数量/字节数相关；不扫描或加载整个图片库。UI 历史卡片及批次菜单提供
+入口，确认展示批次标题和图片数量，失败保留条目并可重试。当前实现/验收见
+[workbench record](../desktop-image-generation-workbench/implementation.md#history-batch-deletion-248).
+
 现有备份实现按历史公开格式从 SQL 和实际图片生成临时资源包，导入在候选目录按包
 重建 SQL；这是统一快照接入前的实现差距，目标遵循
 [完整快照合同](../../../knowledge/behavior/data-recovery.md#unified-full-snapshot)。

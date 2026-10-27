@@ -1,4 +1,5 @@
 import { ImageGenerationActionBar } from "./ImageGenerationActionBar";
+import { GenerationBatchDeleteDialog } from "./GenerationBatchDeleteDialog";
 import { copyGenerationImage } from "../../services/generation-image-clipboard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -213,6 +214,8 @@ export function ImageGenerationWorkbench() {
     (state) => state.setWorkbenchSidebarExpanded,
   );
   const [batches, setBatches] = useState<GenerationBatchManifest[]>([]);
+  const [deleteTarget, setDeleteTarget] =
+    useState<GenerationBatchManifest | null>(null);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [draftMode, setDraftMode] = useState(false);
   const [selectedPromptId, setSelectedPromptId] = useState("");
@@ -774,6 +777,9 @@ export function ImageGenerationWorkbench() {
               selectedBatch && void cancelGenerationBatch(selectedBatch.id)
             }
             onRetryFailed={() => void retryFailed()}
+            onDeleteBatch={() =>
+              selectedBatch && setDeleteTarget(selectedBatch)
+            }
           />
           <button
             type="button"
@@ -950,6 +956,7 @@ export function ImageGenerationWorkbench() {
               selectedBatchId={selectedBatch?.id}
               onSelectBatch={selectBatch}
               composerProps={composerProps}
+              onDeleteBatch={setDeleteTarget}
               onClose={() => {
                 inspectorRequestedRef.current = false;
                 setInspectorOpen(false);
@@ -959,6 +966,33 @@ export function ImageGenerationWorkbench() {
         )}
       </div>
 
+      {deleteTarget && (
+        <GenerationBatchDeleteDialog
+          batch={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={(batchId) => {
+            setSelectedBatchId((current) =>
+              current === batchId ? null : current,
+            );
+            setSelectedOutputKeys(
+              (current) =>
+                new Set(
+                  [...current].filter((key) => !key.startsWith(`${batchId}:`)),
+                ),
+            );
+            setLightboxKey((current) =>
+              current?.startsWith(`${batchId}:`) ? null : current,
+            );
+            setReferences((current) =>
+              current.filter(
+                (reference) =>
+                  reference.source !== "generation" ||
+                  reference.batchId !== batchId,
+              ),
+            );
+          }}
+        />
+      )}
       {lightboxEntry && (
         <ImageGenerationLightbox
           batch={lightboxEntry.batch}

@@ -4,6 +4,7 @@ import type {
   CommitGenerationOutputInput,
   CommitGenerationRemoteOutputInput,
   CreateGenerationBatchInput,
+  DeleteGenerationBatchResult,
   FailGenerationSlotInput,
   GenerationBatchManifest,
   GenerationOutputTargetInput,
@@ -12,6 +13,8 @@ import type {
 } from "@prompthub/shared/types";
 
 export const generationApi = {
+  delete: (batchId: string): Promise<DeleteGenerationBatchResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GENERATION_DELETE, batchId),
   list: () =>
     ipcRenderer.invoke(IPC_CHANNELS.GENERATION_LIST) as Promise<
       GenerationBatchManifest[]

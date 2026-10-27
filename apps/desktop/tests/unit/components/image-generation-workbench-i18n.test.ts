@@ -9,6 +9,14 @@ import zh from "../../../src/renderer/i18n/locales/zh.json";
 
 const locales = { de, en, es, fr, ja, "zh-TW": zhTW, zh };
 const workbenchKeys = [
+  "deleteBatch",
+  "deleteBatchLabel",
+  "cancelBeforeDelete",
+  "deleteBatchConfirm",
+  "deleteBatchWithFiles",
+  "deleteBatchFailed",
+  "batchDeleted",
+  "deleteCleanupPending",
   "galleryOptions",
   "workbenchActions",
   "moreActions",

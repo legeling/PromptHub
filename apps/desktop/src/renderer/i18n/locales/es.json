@@ -4788,6 +4788,14 @@
     "nativeVerificationFailed": "Codex no confirmó el estado solicitado. Actualiza y revisa el plugin antes de volver a intentarlo."
   },
   "generation": {
+    "deleteBatch": "Eliminar lote",
+    "deleteBatchLabel": "Eliminar lote: {{title}}",
+    "cancelBeforeDelete": "Cancela la generación pendiente antes de eliminar este lote.",
+    "deleteBatchConfirm": "¿Eliminar «{{title}}» del historial? Esta acción no se puede deshacer.",
+    "deleteBatchWithFiles": "¿Eliminar «{{title}}» y sus {{count}} imágenes generadas? Esta acción no se puede deshacer. Se conservan las copias añadidas a Prompts o descargadas en otro lugar.",
+    "deleteBatchFailed": "No se pudo eliminar el lote. Inténtalo de nuevo.",
+    "batchDeleted": "Lote eliminado.",
+    "deleteCleanupPending": "Lote eliminado. Algunos archivos locales no se pudieron eliminar; la limpieza continuará al reiniciar.",
     "workbench": "Taller de imágenes",
     "settings": "Ajustes de generación",
     "inspector": "Inspector de generación",

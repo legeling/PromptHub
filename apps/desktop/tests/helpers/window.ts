@@ -45,6 +45,7 @@ function createWindowApiDefaults() {
       quit: vi.fn(),
     },
     generation: {
+      delete: vi.fn(),
       list: vi.fn(),
       get: vi.fn(),
       create: vi.fn(),

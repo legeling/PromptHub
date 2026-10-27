@@ -2,6 +2,14 @@
 
 ## Status
 
+This planning draft is superseded for persistence by
+[Generation SQLite ownership](../foundation-integrity-redesign/design.md#generation-sqlite-ownership).
+Current batches and slots are authoritative SQLite records; actual images remain
+under `data/generations/assets/`. The historical manifest/index, tombstone and
+rebuild descriptions below are not current runtime instructions. Batch deletion
+(#248) uses the existing SQLite-receipt publication transaction, not a new tombstone
+schema. Current shared types are in `packages/shared/types/image-generation.ts`.
+
 - Phase: plan
 - Source of truth: filesystem under `data/`
 - SQLite role: rebuildable query and recovery index

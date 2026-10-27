@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { GenerationDB, type DatabaseAdapter } from "@prompthub/db";
-import type { GenerationBatchManifest } from "@prompthub/shared/types";
+import type {
+  DeleteGenerationBatchResult,
+  GenerationBatchManifest,
+} from "@prompthub/shared/types";
 import { validateGenerationManifest } from "@prompthub/shared/utils/generation-manifest";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
 import { assertStoragePathComponentsSafe } from "./runtime-storage-context";
@@ -31,6 +34,18 @@ export function collectGenerationResources(
   }));
 }
 
+function generationBatchPath(root: string, batchId: string): string {
+  const target = path.join(
+    root,
+    "data",
+    "generations",
+    "assets",
+    encodeCanonicalResourceDirectory(batchId),
+  );
+  assertStoragePathComponentsSafe(root, target);
+  return target;
+}
+
 export function generationOutputPath(
   root: string,
   batchId: string,
@@ -43,14 +58,7 @@ export function generationOutputPath(
     /[\u0000-\u001f\u007f/\\]/u.test(fileName)
   )
     throw new Error("Invalid generation output fileName");
-  const target = path.join(
-    root,
-    "data",
-    "generations",
-    "assets",
-    encodeCanonicalResourceDirectory(batchId),
-    fileName,
-  );
+  const target = path.join(generationBatchPath(root, batchId), fileName);
   assertStoragePathComponentsSafe(root, target);
   return target;
 }
@@ -63,6 +71,28 @@ export class GenerationStorage {
     private readonly root: string,
   ) {
     this.repository = new GenerationDB(database);
+  }
+
+  delete(batchId: string): DeleteGenerationBatchResult {
+    assertStorageMaintenanceAvailable(this.root);
+    if (typeof batchId !== "string" || !/^[0-9a-f-]{36}$/u.test(batchId))
+      throw new Error("Invalid batch id");
+    const manifest = this.repository.get(batchId);
+    if (!manifest) return { cleanupPending: false };
+    if (
+      manifest.slots.some(
+        (slot) => slot.status === "pending" || slot.status === "running",
+      )
+    )
+      throw new Error("Cancel generation before deleting its batch");
+    const targetPath = generationBatchPath(this.root, batchId);
+    const result = publishSqliteEntries(this.database, {
+      rootPath: this.root,
+      operationKey: "generation-storage",
+      entries: [{ targetPath, delete: true }],
+      commit: () => this.repository.delete(batchId),
+    });
+    return { cleanupPending: result.cleanupPending };
   }
 
   save(

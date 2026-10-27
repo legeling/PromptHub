@@ -33,6 +33,46 @@ function batch(statuses: GenerationBatchManifest["slots"][number]["status"][]) {
 
 const publishNotificationMock = vi.fn().mockResolvedValue({ success: true });
 describe("generation workbench runner", () => {
+  it("removes deleted history for subscribers and ignores a stale list response", async () => {
+    const runner =
+      await import("../../../src/renderer/services/generation-workbench-runner");
+    const failed = batch(["failed"]);
+    vi.mocked(window.api.generation.list).mockResolvedValueOnce([failed]);
+    await runner.loadGenerationBatches();
+    const listener = vi.fn();
+    const unsubscribe = runner.subscribeGenerationBatches(listener);
+    let resolveList!: (value: GenerationBatchManifest[]) => void;
+    vi.mocked(window.api.generation.list).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      }),
+    );
+    const loading = runner.loadGenerationBatches();
+    await runner.deleteGenerationBatch(failed.id);
+    expect(listener).toHaveBeenLastCalledWith([]);
+    resolveList([failed]);
+    expect(await loading).toEqual([]);
+    expect(listener).toHaveBeenLastCalledWith([]);
+    unsubscribe();
+  });
+
+  it("keeps visible history when deletion fails", async () => {
+    const runner =
+      await import("../../../src/renderer/services/generation-workbench-runner");
+    const failed = batch(["failed"]);
+    vi.mocked(window.api.generation.list).mockResolvedValueOnce([failed]);
+    await runner.loadGenerationBatches();
+    const listener = vi.fn();
+    const unsubscribe = runner.subscribeGenerationBatches(listener);
+    vi.mocked(window.api.generation.delete).mockRejectedValueOnce(
+      new Error("Disk unavailable"),
+    );
+    await expect(runner.deleteGenerationBatch(failed.id)).rejects.toThrow(
+      "Disk unavailable",
+    );
+    expect(listener).toHaveBeenLastCalledWith([failed]);
+    unsubscribe();
+  });
   it("reports one partial-failure summary for an entire batch", async () => {
     vi.mocked(window.api.generation.create).mockResolvedValue(
       batch(["pending", "pending"]),
@@ -86,7 +126,12 @@ describe("generation workbench runner", () => {
     vi.mocked(window.api.generation.cancel).mockResolvedValue(
       batch(["cancelled"]),
     );
-    const { startGenerationBatch, cancelGenerationBatch } =
+    const {
+      startGenerationBatch,
+      cancelGenerationBatch,
+      deleteGenerationBatch,
+      subscribeGenerationBatches,
+    } =
       await import("../../../src/renderer/services/generation-workbench-runner");
     const started = await startGenerationBatch(
       {
@@ -106,11 +151,16 @@ describe("generation workbench runner", () => {
     );
     await vi.waitFor(() => expect(generateImage).toHaveBeenCalled());
     await cancelGenerationBatch(started.id);
+    const listener = vi.fn();
+    const unsubscribe = subscribeGenerationBatches(listener);
+    await deleteGenerationBatch(started.id);
     finish({ data: [{ b64_json: "aW1hZ2U=" }] });
     await Promise.resolve();
     await Promise.resolve();
     expect(window.api.generation.commitOutput).not.toHaveBeenCalled();
     expect(publishNotificationMock).not.toHaveBeenCalled();
+    expect(listener).toHaveBeenLastCalledWith([]);
+    unsubscribe();
   });
   it("starts four requests together and saves out-of-order results before slower images", async () => {
     let current = batch([
@@ -229,6 +279,8 @@ describe("generation workbench runner", () => {
     Object.assign(window, {
       api: {
         generation: {
+          delete: vi.fn().mockResolvedValue({ cleanupPending: false }),
+          list: vi.fn().mockResolvedValue([]),
           create: vi.fn().mockResolvedValue(initial),
           markSlotRunning: vi.fn().mockResolvedValue({
             ...initial,

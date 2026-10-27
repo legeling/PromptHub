@@ -154,6 +154,7 @@ export const IPC_CHANNELS = {
   GENERATION_COMMIT_REMOTE_OUTPUT: "generation:commitRemoteOutput",
   GENERATION_FAIL_SLOT: "generation:failSlot",
   GENERATION_CANCEL: "generation:cancel",
+  GENERATION_DELETE: "generation:delete",
   GENERATION_SET_FAVORITE: "generation:setFavorite",
   GENERATION_RETRY_FAILED: "generation:retryFailed",
   GENERATION_COPY_TO_PROMPT_MEDIA: "generation:copyToPromptMedia",

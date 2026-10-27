@@ -16,6 +16,7 @@ import type {
   CommitGenerationOutputInput,
   CommitGenerationRemoteOutputInput,
   CreateGenerationBatchInput,
+  DeleteGenerationBatchResult,
   FailGenerationSlotInput,
   GenerationBatchManifest,
   GenerationOutputTargetInput,
@@ -63,7 +64,8 @@ function detectImageMimeType(bytes: Buffer): string | null {
 }
 
 function assertBatchId(batchId: string): void {
-  if (!BATCH_ID_PATTERN.test(batchId)) throw new Error("Invalid batch id");
+  if (typeof batchId !== "string" || !BATCH_ID_PATTERN.test(batchId))
+    throw new Error("Invalid batch id");
 }
 
 function assertSlotIndex(
@@ -226,6 +228,13 @@ export class GenerationLibrary {
   async listBatches(): Promise<GenerationBatchManifest[]> {
     this.assertStorageAvailable();
     return new GenerationDB(this.db).list();
+  }
+
+  async deleteBatch(batchId: string): Promise<DeleteGenerationBatchResult> {
+    assertBatchId(batchId);
+    return this.enqueueMutation(batchId, async () =>
+      new GenerationStorage(this.db, getUserDataPath()).delete(batchId),
+    );
   }
 
   recoverInterrupted(): void {

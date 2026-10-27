@@ -6,6 +6,10 @@ export type GenerationSlotStatus =
   | "cancelled"
   | "interrupted";
 
+export interface DeleteGenerationBatchResult {
+  cleanupPending: boolean;
+}
+
 export type GenerationBatchStatus =
   | "queued"
   | "running"

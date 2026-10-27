@@ -3,6 +3,7 @@ import { classifyGenerationError } from "@prompthub/core/image-generation-workbe
 import { notifyTaskResult } from "./application-notifications";
 import type {
   CreateGenerationBatchInput,
+  DeleteGenerationBatchResult,
   GenerationBatchManifest,
   GenerationReferenceImage,
 } from "@prompthub/shared/types";
@@ -16,8 +17,10 @@ const scheduler = new GenerationScheduler();
 const activeRuns = new Map<string, { cancelled: boolean }>();
 const executions = new Map<string, Promise<void>>();
 let batches: GenerationBatchManifest[] = [];
+let batchRevision = 0;
 
 function publish(batch?: GenerationBatchManifest): void {
+  batchRevision += 1;
   if (batch) {
     batches = [batch, ...batches.filter((item) => item.id !== batch.id)].sort(
       (left, right) => right.createdAt.localeCompare(left.createdAt),
@@ -259,9 +262,22 @@ function launchBatch(
 export async function loadGenerationBatches(): Promise<
   GenerationBatchManifest[]
 > {
-  batches = await window.api.generation.list();
-  publish();
+  const revision = batchRevision;
+  const loaded = await window.api.generation.list();
+  if (revision === batchRevision) {
+    batches = loaded;
+    publish();
+  }
   return batches;
+}
+
+export async function deleteGenerationBatch(
+  batchId: string,
+): Promise<DeleteGenerationBatchResult> {
+  const result = await window.api.generation.delete(batchId);
+  batches = batches.filter((batch) => batch.id !== batchId);
+  publish();
+  return result;
 }
 
 export function subscribeGenerationBatches(listener: Listener): () => void {

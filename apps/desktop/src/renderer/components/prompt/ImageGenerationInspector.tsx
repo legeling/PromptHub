@@ -1,5 +1,5 @@
 import type { GenerationBatchManifest } from "@prompthub/shared/types";
-import { XIcon } from "lucide-react";
+import { Trash2Icon, XIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   ImageGenerationComposer,
@@ -14,6 +14,7 @@ interface ImageGenerationInspectorProps {
   batches: GenerationBatchManifest[];
   selectedBatchId?: string;
   onSelectBatch: (id: string) => void;
+  onDeleteBatch: (batch: GenerationBatchManifest) => void;
   composerProps: ImageGenerationComposerProps;
   onClose: () => void;
 }
@@ -82,9 +83,10 @@ function BatchHistory({
   batches,
   selectedBatchId,
   onSelectBatch,
+  onDeleteBatch,
 }: Pick<
   ImageGenerationInspectorProps,
-  "batches" | "selectedBatchId" | "onSelectBatch"
+  "batches" | "selectedBatchId" | "onSelectBatch" | "onDeleteBatch"
 >) {
   const { t } = useTranslation();
   const visibleBatches = batches.slice(0, MAX_VISIBLE_HISTORY_BATCHES);
@@ -104,36 +106,56 @@ function BatchHistory({
       className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
     >
       {visibleBatches.map((batch) => (
-        <button
+        <div
           key={batch.id}
-          type="button"
-          onClick={() => onSelectBatch(batch.id)}
-          aria-label={t("generation.historyBatchLabel", {
-            title: batch.title,
-            done: batch.counts.succeeded,
-            total: batch.targetCount,
-          })}
-          className={`flex w-full items-start gap-3 rounded-md border px-3 py-3 text-left transition-colors ${batch.id === selectedBatchId ? "border-primary/50 bg-primary/[0.06]" : "border-border bg-card hover:bg-muted/45"}`}
+          className={`flex w-full items-center gap-1 rounded-md border pr-2 ${batch.id === selectedBatchId ? "border-primary/50 bg-primary/[0.06]" : "border-border bg-card"}`}
         >
-          <span
-            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusDotClass(batch.status)}`}
-            aria-hidden="true"
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium">
-              {batch.title}
+          <button
+            type="button"
+            onClick={() => onSelectBatch(batch.id)}
+            aria-label={t("generation.historyBatchLabel", {
+              title: batch.title,
+              done: batch.counts.succeeded,
+              total: batch.targetCount,
+            })}
+            className="flex min-w-0 flex-1 items-start gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted/45"
+          >
+            <span
+              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusDotClass(batch.status)}`}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">
+                {batch.title}
+              </span>
+              <span className="mt-1 block truncate text-xs text-muted-foreground">
+                {batch.model.name || batch.model.model}
+              </span>
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                {new Date(batch.createdAt).toLocaleString()}
+              </span>
             </span>
-            <span className="mt-1 block truncate text-xs text-muted-foreground">
-              {batch.model.name || batch.model.model}
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+              {batch.counts.succeeded}/{batch.targetCount}
             </span>
-            <span className="mt-1 block text-[11px] text-muted-foreground">
-              {new Date(batch.createdAt).toLocaleString()}
-            </span>
-          </span>
-          <span className="shrink-0 text-xs font-medium text-muted-foreground">
-            {batch.counts.succeeded}/{batch.targetCount}
-          </span>
-        </button>
+          </button>
+          <button
+            type="button"
+            disabled={batch.counts.pending + batch.counts.running > 0}
+            onClick={() => onDeleteBatch(batch)}
+            aria-label={t("generation.deleteBatchLabel", {
+              title: batch.title,
+            })}
+            title={t(
+              batch.counts.pending + batch.counts.running > 0
+                ? "generation.cancelBeforeDelete"
+                : "generation.deleteBatch",
+            )}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2Icon className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       ))}
       {batches.length > MAX_VISIBLE_HISTORY_BATCHES && (
         <p className="px-2 py-1 text-center text-xs text-muted-foreground">

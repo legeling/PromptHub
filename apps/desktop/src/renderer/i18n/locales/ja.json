@@ -4788,6 +4788,14 @@
     "nativeVerificationFailed": "Codex で目的の状態を確認できませんでした。再読み込みしてプラグインを確認してから再試行してください。"
   },
   "generation": {
+    "deleteBatch": "バッチを削除",
+    "deleteBatchLabel": "バッチを削除：{{title}}",
+    "cancelBeforeDelete": "このバッチを削除する前に、残りの生成をキャンセルしてください。",
+    "deleteBatchConfirm": "履歴から「{{title}}」を削除しますか？この操作は取り消せません。",
+    "deleteBatchWithFiles": "「{{title}}」と生成画像 {{count}} 枚を削除しますか？この操作は取り消せません。Prompt に追加したコピーや別の場所にダウンロードした画像は保持されます。",
+    "deleteBatchFailed": "バッチを削除できませんでした。もう一度お試しください。",
+    "batchDeleted": "バッチを削除しました。",
+    "deleteCleanupPending": "バッチを削除しました。一部のローカルファイルは削除できなかったため、再起動時に処理を再開します。",
     "workbench": "画像生成ワークベンチ",
     "settings": "生成設定",
     "inspector": "画像生成インスペクター",

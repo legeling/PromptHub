@@ -13,6 +13,81 @@ in progress. The first Desktop slice exists; broader performance, recovery and r
 
 ## Current-State Findings
 
+### History batch deletion (#248)
+
+Locally complete (2026-10-27), not pushed or released. The reported missing history-card delete control was
+reproduced with `image-generation-workbench.test.tsx -t 'offers deletion'` (1 failed,
+exit 1: accessible delete button absent). Existing library tests verified output
+creation but did not cover deletion; the new regression covers the original entry.
+
+Current persistence authority and delete/recovery design:
+[Generation SQLite ownership](../foundation-integrity-redesign/design.md#generation-sqlite-ownership).
+Historical filesystem-authority findings below describe the initial slice only.
+No migration, dependency, provider request or live-user data change is required.
+Deletion is a single batch action, not individual-output or bulk-library deletion.
+The confirmation and history row reuse existing dialog/tokens. Dialog and history
+render functions keep their cohesive JSX beyond 50 lines; component and Electron
+tests cover confirmation, state transitions and persisted results.
+
+Acceptance passed:
+
+- `tests/unit/main/generation-delete.test.ts`: 16 cases using real preload API,
+  registered main handlers, product DB initialization and disk SQLite/assets. Only
+  Electron message transport is replaced. Covers failed/successful batch removal,
+  slot cascade, reopen/repeated delete, Prompt copy and other-batch preservation,
+  SQL/filesystem rollback, deferred cleanup recovery, active-work cancellation and
+  late result rejection, malformed IDs, symlinks and maintenance exclusion.
+- `tests/unit/components/generation-history-delete.test.tsx`: 4 component cases
+  extracted from the original red-test file to respect its size budget. Covers
+  history and toolbar entrypoints, cancel/confirm, output-count warning, failed
+  delete/retry, pending-task exclusion and cleanup warning. Runner is replaced;
+  this layer does not claim persistence. Existing workbench selectors now distinguish
+  row selection from the new delete button (37 existing cases pass).
+- `tests/unit/services/generation-workbench-runner.test.ts`: 23 cases, including
+  subscriber removal, failed-delete preservation, stale-list rejection and cancelled
+  provider results after delete. Provider and IPC are replaced at this layer.
+- Existing library (21) and locale (7) tests pass. Total desktop focused cases: 108.
+- Core `generation-sqlite-ownership`, `generation-sqlite-migration` and
+  `sqlite-entry-publication`: 19 cases pass, including actual process exit and
+  receipt recovery before/after commit. Existing 5,000-batch / 10,000-slot list
+  measurement: 68.75 ms, approximately 31.5 MB RSS delta on this machine.
+- `tests/e2e/image-generation-delete.spec.ts`: 2 built Electron flows pass on macOS
+  arm64 (light/dark). Each uses a fresh isolated profile and real UI/preload/IPC,
+  confirms/cancels history deletion, verifies file removal and surviving Prompt copy,
+  cancels pending work before deletion, fully exits/restarts and verifies empty
+  persisted history. Synthetic image bytes replace a provider call, not deletion.
+  Earlier harness errors assumed a `light` CSS class and a visible navigation button
+  after reopening the persisted workbench view; these assumptions were corrected
+  against actual theme/navigation behavior, without changing product expectations.
+- `pnpm typecheck:tests`, scoped ESLint, `pnpm lint:file-size`, `git diff --check`
+  and production `pnpm build` pass. The build retains existing chunk-size warnings.
+  Full release harness and Windows/Linux packaged acceptance were not run.
+- All owned Electron/test processes and synthetic profiles are closed/removed.
+  Build log and inspected screenshots: `/tmp/prompthub-248-validation-KCl28M/`.
+- Pre-submission reacceptance repeated all 127 relevant regression cases and both
+  Electron themes successfully. Restart checks now explicitly assert the selected
+  history tab and its empty-state text, not just the absence of delete buttons.
+  The strengthened Electron checks pass in both themes. Restart evidence uses
+  DOM and persisted-state assertions; native capture of the hidden restarted
+  window returned stale frames, so that screenshot is not retained by the test.
+  Confirmation and pre-restart empty-state screenshots remain. Latest evidence:
+  `/tmp/prompthub-247-248-reaccept-vUBYgG/`.
+
+Reproduction commands (from repository root):
+
+```sh
+pnpm --dir apps/desktop exec vitest run tests/unit/main/generation-delete.test.ts tests/unit/main/generation-library.test.ts tests/unit/components/generation-history-delete.test.tsx tests/unit/components/image-generation-workbench.test.tsx tests/unit/components/image-generation-workbench-i18n.test.ts tests/unit/services/generation-workbench-runner.test.ts --maxWorkers=1 --minWorkers=1 --silent
+pnpm --dir packages/core exec vitest run tests/generation-sqlite-ownership.test.ts tests/sqlite-entry-publication.test.ts tests/generation-sqlite-migration.test.ts --maxWorkers=1 --minWorkers=1
+pnpm build
+pnpm --dir apps/desktop exec playwright test tests/e2e/image-generation-delete.spec.ts --workers=1 --reporter=list
+```
+
+The initial desktop grouped run exposed two stale selector assertions; the affected
+component suite passed after correction, then passed again after extracting the new
+cases (37 + 4). Other successful suites were not needlessly repeated. These files are
+selected by normal Desktop unit/E2E and Core test discovery. Broader workbench tasks
+remain active independently of the completed #248 fix.
+
 - Navigation clarification: the workbench belongs to Prompts secondary navigation,
   peer to relationship graph, rather than the global left rail.
 - Product defaults recorded: generated assets outlive their source Prompt, a batch is

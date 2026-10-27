@@ -4826,6 +4826,14 @@
     "nativeVerificationFailed": "Codex 未确认目标状态。请刷新并检查插件后再重试。"
   },
   "generation": {
+    "deleteBatch": "删除批次",
+    "deleteBatchLabel": "删除批次：{{title}}",
+    "cancelBeforeDelete": "请先取消剩余生成任务，再删除此批次。",
+    "deleteBatchConfirm": "确定从历史记录中删除“{{title}}”吗？此操作无法撤销。",
+    "deleteBatchWithFiles": "确定删除“{{title}}”及其 {{count}} 张生成图片吗？此操作无法撤销。已添加到 Prompt 或下载到其他位置的副本会保留。",
+    "deleteBatchFailed": "删除批次失败，请重试。",
+    "batchDeleted": "批次已删除。",
+    "deleteCleanupPending": "批次已删除，部分本地文件尚未清理，将在重启后继续清理。",
     "workbench": "生图工作台",
     "settings": "生成设置",
     "inspector": "生图检查器",

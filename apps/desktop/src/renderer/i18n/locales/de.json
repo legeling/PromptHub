@@ -4788,6 +4788,14 @@
     "nativeVerificationFailed": "Codex hat den gewünschten Status nicht bestätigt. Prüfen Sie nach dem Aktualisieren das Plugin, bevor Sie es erneut versuchen."
   },
   "generation": {
+    "deleteBatch": "Stapel löschen",
+    "deleteBatchLabel": "Stapel löschen: {{title}}",
+    "cancelBeforeDelete": "Brechen Sie die verbleibende Generierung vor dem Löschen ab.",
+    "deleteBatchConfirm": "„{{title}}“ aus dem Verlauf löschen? Dies kann nicht rückgängig gemacht werden.",
+    "deleteBatchWithFiles": "„{{title}}“ und {{count}} generierte Bilder löschen? Dies kann nicht rückgängig gemacht werden. Zu Prompts hinzugefügte oder andernorts heruntergeladene Kopien bleiben erhalten.",
+    "deleteBatchFailed": "Der Stapel konnte nicht gelöscht werden. Bitte erneut versuchen.",
+    "batchDeleted": "Stapel gelöscht.",
+    "deleteCleanupPending": "Stapel gelöscht. Einige lokale Dateien konnten nicht entfernt werden; die Bereinigung wird beim Neustart fortgesetzt.",
     "workbench": "Bild-Workbench",
     "settings": "Generierungseinstellungen",
     "inspector": "Generierungsinspektor",

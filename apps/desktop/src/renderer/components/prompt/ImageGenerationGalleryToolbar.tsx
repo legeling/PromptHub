@@ -7,6 +7,7 @@ import {
   MoreHorizontalIcon,
   RefreshCwIcon,
   SquareIcon,
+  Trash2Icon,
 } from "lucide-react";
 import type { GenerationBatchManifest } from "@prompthub/shared/types";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ interface ImageGenerationGalleryToolbarProps {
   onDensityChange: (density: GenerationGalleryDensity) => void;
   onCancelBatch: () => void;
   onRetryFailed: () => void;
+  onDeleteBatch: () => void;
 }
 
 function useDismissibleMenu(
@@ -186,6 +188,31 @@ export function ImageGenerationGalleryToolbar(
             >
               <RefreshCwIcon className="h-3.5 w-3.5" aria-hidden="true" />
               {t("generation.retryFailed")}
+            </button>
+          )}
+          {props.selectedBatch && (
+            <button
+              type="button"
+              disabled={
+                props.selectedBatch.counts.pending +
+                  props.selectedBatch.counts.running >
+                0
+              }
+              title={t(
+                props.selectedBatch.counts.pending +
+                  props.selectedBatch.counts.running >
+                  0
+                  ? "generation.cancelBeforeDelete"
+                  : "generation.deleteBatch",
+              )}
+              onClick={() => {
+                props.onDeleteBatch();
+                close();
+              }}
+              className="flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("generation.deleteBatch")}
             </button>
           )}
         </div>

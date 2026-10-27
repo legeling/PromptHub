@@ -867,12 +867,12 @@ describe("ImageGenerationWorkbench", () => {
       "true",
     );
     expect(
-      screen.getByRole("button", { name: /Architecture poster/ }),
+      screen.getByRole("button", { name: /^Architecture poster,/ }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: /Neon city/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Neon city,/ })).toBeVisible();
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Neon city/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Neon city,/ }));
     expect(
       screen.getByRole("button", { name: "Switch batch" }),
     ).toHaveTextContent("Neon city");
@@ -917,7 +917,12 @@ describe("ImageGenerationWorkbench", () => {
     );
 
     const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getAllByRole("button")).toHaveLength(100);
+    expect(
+      within(panel).getAllByRole("button", { name: /, \d+ of \d+ images$/ }),
+    ).toHaveLength(100);
+    expect(
+      within(panel).getAllByRole("button", { name: /^Delete batch:/ }),
+    ).toHaveLength(100);
     expect(
       within(panel).getByText(/Showing the latest 100 batches/),
     ).toBeVisible();

@@ -29,6 +29,20 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Generation history batch deletion — 2026-10-27 (#248)
+
+`local_done`: history cards and the batch action menu now expose confirmed deletion,
+including failed batches. SQLite records and originals are deleted through the
+existing recoverable publication path; Prompt media copies remain. Cancel/retry,
+failure rollback, pending cleanup, late results and reopen are covered. 108 desktop
+and 19 Core focused cases pass, plus two real isolated macOS Electron flows in
+light/dark themes, repeated successfully before submission with explicit history
+tab/empty-state assertions after restart. Typecheck, scoped lint and production
+build pass. Local submission uses `Closes #248`; no push or release. GitHub readback
+at intake was OPEN. Packaged cross-platform/release
+gates are not implied by this local fix. See
+[acceptance and commands](../../changes/active/desktop-image-generation-workbench/implementation.md#history-batch-deletion-248).
+
 ### IndexedDB startup recovery — 2026-10-27 (#247)
 
 `in_progress`: the startup defect is locally repaired and macOS acceptance is

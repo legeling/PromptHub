@@ -4788,6 +4788,14 @@
     "nativeVerificationFailed": "Codex 未確認目標狀態。請重新整理並檢查外掛後再重試。"
   },
   "generation": {
+    "deleteBatch": "刪除批次",
+    "deleteBatchLabel": "刪除批次：{{title}}",
+    "cancelBeforeDelete": "請先取消剩餘生成任務，再刪除此批次。",
+    "deleteBatchConfirm": "確定從歷史記錄刪除「{{title}}」嗎？此操作無法復原。",
+    "deleteBatchWithFiles": "確定刪除「{{title}}」及其 {{count}} 張生成圖片嗎？此操作無法復原。已加入 Prompt 或下載至其他位置的副本會保留。",
+    "deleteBatchFailed": "刪除批次失敗，請重試。",
+    "batchDeleted": "批次已刪除。",
+    "deleteCleanupPending": "批次已刪除，部分本機檔案尚未清理，將於重新啟動後繼續清理。",
     "workbench": "生圖工作台",
     "settings": "生成設定",
     "inspector": "生圖檢查器",
