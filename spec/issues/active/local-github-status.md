@@ -31,25 +31,19 @@ remote closure and publication are recorded separately.
 
 ### Generation history batch deletion — 2026-10-27 (#248)
 
-`local_done`: history cards and the batch action menu now expose confirmed deletion,
+`released` in 0.6.2: history cards and the batch action menu now expose confirmed deletion,
 including failed batches. SQLite records and originals are deleted through the
 existing recoverable publication path; Prompt media copies remain. Cancel/retry,
 failure rollback, pending cleanup, late results and reopen are covered. 108 desktop
 and 19 Core focused cases pass, plus two real isolated macOS Electron flows in
 light/dark themes, repeated successfully before submission with explicit history
 tab/empty-state assertions after restart. Typecheck, scoped lint and production
-build pass. Local submission uses `Closes #248`; no push or release. GitHub readback
-at intake was OPEN. Packaged cross-platform/release
-gates are not implied by this local fix. See
+build pass. GitHub confirmed #248 closed on 2026-10-27. Tagged run 40486270039 also passed both Windows packaged deletion flows. See
 [acceptance and commands](../../changes/active/desktop-image-generation-workbench/implementation.md#history-batch-deletion-248).
 
 ### IndexedDB startup recovery — 2026-10-27 (#247)
 
-`in_progress`: the startup defect is locally repaired and macOS acceptance is
-complete; Windows x64 packaged install/reinstall acceptance remains. GitHub
-readback at intake confirmed #247 OPEN. Local submission with `Refs #247` is
-authorized while Windows acceptance remains pending; no push, release or remote
-issue mutation.
+`released` in 0.6.2: the startup repair passed macOS acceptance and all three Windows x64 actual NSIS install/uninstall/reinstall recovery workflows in run 40488658011. Verification submission closes #247; remote closure is checked separately.
 
 The same startup error was reproduced before the fix. Normalized merge now
 accepts unrelated SQLite records and equivalent timestamps; true conflicts have
@@ -62,14 +56,13 @@ submission. Exact commands and remaining boundaries:
 
 ### Workspace refresh acceptance — 2026-10-27 (#198)
 
-`release_pending`: the built Electron app passed all three isolated hidden-window
+`released` in 0.6.2: the built Electron app passed all three isolated hidden-window
 refresh scenarios, including independent CLI writes, Prompt and Skill draft
 cancel/discard, deleted selection and Rules conflict preservation. Earlier real
 storage integration covers filters/counts, slow reads and failure recovery.
 See [Desktop acceptance](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198).
 GitHub confirmed #198 closed at 2026-10-27 06:27:36 UTC after pushing
-`ebb7d66c`. The 0.6.2 candidate tag points to `0fbac670`; publication is pending
-CI signing, packaged startup and artifact verification.
+`ebb7d66c`. Published 0.6.2 points to `6e43b17a`; tagged CI, signing, packaged startup and artifact verification passed.
 
 ### Claude gateway import follow-up — 2026-10-26 (#246)
 
@@ -85,7 +78,7 @@ activation, native request and full restart also passed. 58 distinct scoped test
 passed across focused runs, with old-default failure sensitivity demonstrated.
 See [acceptance record](../../changes/active/agent-management-workbench/tasks.md#claude-gateway-default-and-interactive-acceptance--2026-10-26-246).
 
-The default-auth repair is `release_pending`, committed in `3291609c` and unpublished. #246 remains
+The default-auth repair is included in published 0.6.2, committed in `3291609c`. #246 remains
 remotely open; the reporter's gateway and Windows interactive/API-key approval
 have not been tested. These are not implied by local synthetic-gateway success.
 The broader extension/managed-scope gaps remain separate workbench tasks.
@@ -360,7 +353,7 @@ does not establish remote closure, publication or additional platform acceptance
 | #201  | closed       | released     | 0.6.0-beta.1   | `mcp-issues-200-202-implementation`, `pi-agent-separation`                     | Pi shared, `.agents`, native, and project MCP targets shipped in the published prerelease. PromptHub writes compatible `mcpServers` JSON but does not execute the adapter or claim runtime precedence.                                                                                                                               |
 | #200  | closed       | released     | 0.6.0-beta.1   | `mcp-issues-200-202-implementation`, `agent-management-workbench`              | My MCP merged global/project target counts, details, quick deployment, batch deployment, and selection dialogs shipped in the published prerelease.                                                                                                                                                                                  |
 | #199  | closed       | duplicate    |                | `desktop-workspace-live-refresh`                                               | Closed publicly as a duplicate of #198, which retains the broader refresh, draft-protection, statistics, filtering, and cross-workspace acceptance boundary.                                                                                                                                                                         |
-| #198 | open | in_progress | | [Desktop refresh](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198) | 2026-10-22：实现和自动化验证完成，9 项真实存储集成、132 项桌面单元/组件、52 项 CLI、34 项 Core 回归通过；设计状态 review-pending，待明确 GUI 授权后完成原生 Electron 界面验收。未提交、发布或修改远端状态。 |
+| #198 | closed | released | 0.6.2 | [Desktop refresh](../../knowledge/behavior/desktop.md#workspace-manual-refresh-198) | Three hidden native refresh/draft workflows passed; published tag passed all 40 checks and five platform builds. |
 | #197 | open | in_progress | 0.6.0 (partial) | `spec/knowledge/behavior/rules-workspace.md` | 部分完成：跨 Agent 规则目录矩阵。证据与未验收范围见上方链接的 2026-10-19 逐项审查；本轮未更改远端状态。 |
 | #196 | closed | local_done | Next patch | `spec/knowledge/behavior/rules-workspace.md` | `f1faa73f` 修复同平台文件被侧栏去重；35 项定向测试、3 项旧实现红测、类型/构建和隔离 Electron 选择/搜索/重扫/重开通过。提交推送后自动关闭并核实；尚未发布，不属于 0.6.0 二进制修复。 |
 | #195 | open | accepted |  | `prompt-workspace-completion` | 未解决：导出每张 Prompt 参考图片。证据与未验收范围见上方链接的 2026-10-19 逐项审查；本轮未更改远端状态。 |

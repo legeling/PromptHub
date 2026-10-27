@@ -34,7 +34,7 @@
 
 ## 当前目录地图
 
-0.6.1 的 Desktop、独立 CLI、自托管 Web 和 Cloudflare 能力边界见各语言 README；
+0.6.2 的 Desktop、独立 CLI、自托管 Web 和 Cloudflare 能力边界见各语言 README；
 Web 的资源保存、完整包管理及不提供 Agent 分发的范围见
 [自托管部署说明](web-self-hosted.md)和 [Cloudflare 说明](cloudflare-workers.md)。
 
@@ -59,15 +59,13 @@ docs/
 
 ## 版本与更新说明
 
-当前开发版本为 `0.6.2`（尚未发布），范围与验证见 [0.6.2 开发记录](../spec/releases/0.6.2.md)。已发布稳定版的范围与验证结果见 [0.6.1 发布记录](../spec/releases/0.6.1.md)。
+当前稳定版为 [v0.6.2](https://github.com/legeling/PromptHub/releases/tag/v0.6.2)，发布于 2026-10-27。范围与验证见 [0.6.2 发布记录](../spec/releases/0.6.2.md)。
 
-截至 2026-10-21，GitHub 当前可下载的稳定版为 [v0.6.1](https://github.com/legeling/PromptHub/releases/tag/v0.6.1)，同版本修复包已公开。
-
-本次替换包含旧设置凭据迁移和启动错误日志复制等修复。已安装先前 0.6.1 的用户需手动下载并覆盖安装，保留应用数据目录；相同版本号不会触发自动更新。
+升级前可创建全量备份；使用自部署 Web 备份的用户请同步升级服务器至 0.6.2。
 
 - [主 README](../README.md) 区分最新稳定下载、已发布预览版和当前开发版本。
 - [CHANGELOG.md 的 Unreleased](../CHANGELOG.md#unreleased) 记录尚未随新发行包发布的主线改动；合并贡献分支不等于发布其版本号。
-- [0.6.1 发布记录](../spec/releases/0.6.1.md) 维护版本线与发布验证结果，历史预览说明不被后续主线改动覆盖。
+- [0.6.2 发布记录](../spec/releases/0.6.2.md) 维护版本线与发布验证结果，历史预览说明不被后续主线改动覆盖。
 
 ## 内部文档入口
 

@@ -1,12 +1,10 @@
 ## [Unreleased]
 
-### 开发中 / In development
+最新稳定版为 `0.6.2`；后续尚未发布的改动记录于此。
 
-当前开发版本为 `0.6.2`，尚未发布；最新稳定版为 `0.6.1`。
+The latest stable release is `0.6.2`. Subsequent unreleased changes will be recorded here.
 
-The current development version is `0.6.2`, which is unreleased. The latest stable release is `0.6.1`.
-
-## [0.6.2]
+## [0.6.2] - 2026-10-27
 
 ### 新功能 / Features
 

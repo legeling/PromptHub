@@ -76,11 +76,7 @@
 - Pre-submission reacceptance repeated all 115 relevant regression cases and
   all 3 isolated Electron restart workflows successfully against a fresh build.
   The same 500-Prompt / 1,500-version import measured 464 ms during this run.
-- Remaining: Windows x64 packaged install/reinstall verification; the reporter's
-  original data was not supplied. Local submission is authorized with `Refs #247`;
-  keep the issue in progress until Windows acceptance. No push, remote issue change
-  or user-data mutation. Test processes and synthetic profiles are closed/removed; retained
-  screenshots/coverage are test reports, not user-data backups.
+- Windows x64 installed acceptance passed in run [40488658011](https://github.com/legeling/PromptHub/actions/runs/40488658011): all three recovery workflows use the exact 0.6.2 NSIS installer, uninstall and reinstall while retaining isolated SQLite/IndexedDB, then verify recovery and repeated restarts without resurrection. The release includes the fix. The reporter's original database was not supplied; representative fixtures reproduce the exact original failure. Test processes and synthetic profiles are removed; retained reports contain test data only.
 
 Reproduce from the repository root:
 

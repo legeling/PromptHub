@@ -9,11 +9,11 @@ A local-first workspace for prompts, skills, and AI coding assets.
 
 [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
-[![Version](https://img.shields.io/badge/release-v0.6.1_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
+[![Version](https://img.shields.io/badge/release-v0.6.2_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 [![Development](https://img.shields.io/badge/development-main-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
-The current development version is `0.6.2` (unreleased). The latest stable release is `0.6.1`.
+The latest stable release is `0.6.2`, published on 2026-10-27.
 
   <br/>
 
@@ -104,18 +104,18 @@ Pay-as-you-go with no monthly fee — [sign up here](https://go.apimart.ai/gh-pr
 
 ## 📥 Download
 
-Latest stable: **v0.6.1**. Direct links point to the GitHub Latest stable assets; they will switch back to fixed-filename CDN links after the mirror is populated:
+Latest stable: **v0.6.2**. Direct links point to the GitHub Latest stable assets; they will switch back to fixed-filename CDN links after the mirror is populated:
 
-The `0.6.1` replacement is available. If you installed the earlier `0.6.1`, download and install it manually, keeping the application data directory; the unchanged version does not trigger automatic updates.
+Create a full backup before upgrading; update self-hosted Web servers to `0.6.2` as well.
 
 - **Direct download** — points to the GitHub latest stable assets so users do not hit an empty CDN mirror; it will switch back to fixed-filename CDN links after the mirror is populated.
 - **GitHub Releases** — official release page with version archives, signatures, and full release notes.
 
 | Platform | Direct download                                                                                                                                                                                                                                                                                                                                                                                                                         | GitHub Releases                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.1-arm64.exe) |
-| macOS    | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.dmg)     |
-| Linux    | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.1-amd64.deb)              |
+| Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.2-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.2-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.2-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.6.2-arm64.exe) |
+| macOS    | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-x64.dmg)     |
+| Linux    | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.6.2-amd64.deb)              |
 
 > **Apple Silicon vs Intel?** M1/M2/M3/M4 → `arm64`. Older Intel Macs → `x64`.
 > **Windows arch?** Most boxes → `x64`. Only Surface Pro X-class ARM hardware → `arm64`.
@@ -290,7 +290,7 @@ To connect the desktop: _Settings → Data → Self-Hosted PromptHub_. Verify ve
 
 Detailed deploy / upgrade / backup / GHCR image / dev notes live in [`web-self-hosted.md`](./web-self-hosted.md).
 
-In 0.6.1: Desktop and CLI share Core workflows for Skills, MCP and Plugins. Self-hosted Web and Cloudflare support resource storage, editing, versions, complete package import/export and sync. They do not distribute to Agents, scan server directories or install over SSH. The CLI is packaged and installed separately.
+In 0.6.2: Desktop and CLI share Core workflows for Skills, MCP and Plugins. Self-hosted Web and Cloudflare support resource storage, editing, versions, complete package import/export and sync. They do not distribute to Agents, scan server directories or install over SSH. The CLI is packaged and installed separately.
 
 <div id="cli"></div>
 
@@ -383,6 +383,10 @@ Common global flags:
 ## Changelog
 
 Full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.2 (2026-10-27, stable)
+
+Adds workspace refresh with draft protection and tag ordering; unifies full backups and remote restore, fixes CLI detection and Agent provider configuration, and separates Antigravity desktop and CLI.
 
 ### v0.6.1 (2026-10-21, stable)
 
@@ -516,7 +520,11 @@ Adds Plugin marketplace sources, native Codex plugin management and cross-platfo
 
 ## Roadmap
 
-### v0.6.1 ← stable
+### v0.6.2 ← stable
+
+Adds workspace refresh with draft protection and tag ordering; unifies full backups and remote restore, fixes CLI detection and Agent provider configuration, and separates Antigravity desktop and CLI.
+
+### v0.6.1
 
 Adds Plugin marketplace sources, native Codex plugin management and cross-platform resource management. Improves installation feedback, the update dialog and Skill file refresh; fixes startup migration of older credentials and adds copyable startup error logs.
 
