@@ -86,6 +86,12 @@
   packaging-only evidence and must not be described as startup validation.
 - A startup failure blocks release publication even when all installers and
   update manifests were generated successfully.
+- Before promoting a draft, run `windows-installer-acceptance.yml` on `main`
+  with its `tag` input set to the candidate. It must verify all three historical
+  IndexedDB recovery flows after actual NSIS installation, uninstall and
+  reinstall, using the downloaded candidate and retained isolated profiles.
+  The acceptance checkout must have the same application sources as the tag;
+  unpacked executable tests alone do not establish installer lifecycle coverage.
 
 ### 11. Draft Distribution Boundary
 

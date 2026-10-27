@@ -15,12 +15,17 @@ jobs:
   installed-recovery:
     runs-on: windows-latest
     timeout-minutes: 20
+    permissions:
+      # Draft releases are hidden from read-only repository tokens. This job
+      # only downloads them; the token is exposed only to the download step.
+      contents: write
     env:
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Require the same application source as the candidate
         shell: pwsh
         run: |
