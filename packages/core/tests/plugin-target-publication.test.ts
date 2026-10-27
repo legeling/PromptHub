@@ -9,8 +9,8 @@ import {
 } from "../src/plugin-target-publication";
 
 it("publishes complete copies, detects source updates and rejects externally modified targets", () => {
-  const root = fs.mkdtempSync(
-    path.join(os.tmpdir(), "prompthub-plugin-publish-"),
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-plugin-publish-")),
   );
   const source = path.join(root, "source"),
     target = path.join(root, "target");

@@ -105,13 +105,6 @@ async function importFromSettings(page: Page, archive: string): Promise<void> {
   await expect(summary).toBeHidden();
 }
 
-async function dismissToasts(page: Page): Promise<void> {
-  for (const close of await page
-    .getByRole("button", { name: "Close", exact: true })
-    .all())
-    await close.click();
-}
-
 for (const history of [false, true]) {
   test(`Settings selective export preserves populated domains with version history=${history}, including failure and retry`, async ({}, testInfo) => {
     test.setTimeout(150_000);
@@ -170,7 +163,10 @@ for (const history of [false, true]) {
       expect(fs.readFileSync(blockedParent, "utf8")).toBe("Keep this file");
       expect(await readBackupDomains(launched.page)).toEqual(before);
       await expectBackupFiles(launched.page, profile);
-      await dismissToasts(launched.page);
+      // Toasts dismiss themselves; clicking an exiting toast races its removal.
+      await expect(
+        launched.page.getByText("Export failed", { exact: true }),
+      ).toBeHidden();
 
       await chooseDestination(app, archive);
       await launched.page

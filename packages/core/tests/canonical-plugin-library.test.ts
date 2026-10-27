@@ -73,8 +73,8 @@ describe("canonical Plugin library", () => {
   let packagePath: string;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(
-      path.join(os.tmpdir(), "prompthub-canonical-plugin-"),
+    root = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-canonical-plugin-")),
     );
     configureRuntimePaths({ userDataPath: root });
     initDatabase(path.join(root, "data", "prompthub.db"));

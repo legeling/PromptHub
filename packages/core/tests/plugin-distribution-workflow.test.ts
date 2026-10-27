@@ -11,8 +11,8 @@ import {
 } from "../src/plugin-distribution-workflow";
 
 it("keeps successful targets and reports failed registration, then retries and preserves conflicting copies", async () => {
-  const root = fs.mkdtempSync(
-    path.join(os.tmpdir(), "prompthub-plugin-workflow-"),
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-plugin-workflow-")),
   );
   configureRuntimePaths({ userDataPath: root });
   initDatabase(path.join(root, "data", "prompthub.db"));

@@ -202,6 +202,10 @@ test("refreshes external Rules conflicts without overwriting target bytes (#198)
       });
     }, project);
     await page.getByRole("button", { name: "Rules", exact: true }).click();
+    // Wait for initial loading to consume the original file before editing it.
+    await expect(page.locator(".cm-content")).toContainText(
+      "Managed rule version",
+    );
     const refresh = page
       .getByRole("banner")
       .getByRole("button", { name: "Refresh", exact: true });
