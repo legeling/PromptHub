@@ -1,0 +1,81 @@
+name: Skill Upgrade Windows Acceptance
+
+on:
+  push:
+    branches: [codex/skill-startup-recovery]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installed-skill-recovery:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+      - name: Locate dependency cache
+        id: cache
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v5
+        with:
+          path: ${{ steps.cache.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Verify real Windows migration and failure recovery
+        run: pnpm --dir packages/core exec vitest run tests/skill-directory-recovery.test.ts tests/skill-sqlite-migration.test.ts tests/skill-payload-upgrade.test.ts --maxWorkers=1 --minWorkers=1
+      - name: Verify Windows startup and archived data
+        run: pnpm --dir apps/desktop exec vitest run tests/integration/skill-directory-startup-recovery.test.ts tests/unit/scripts/packaged-skill-recovery-fixture.test.ts --maxWorkers=1 --minWorkers=1
+      - name: Build candidate installer without publishing
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          pnpm build
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate build failed' }
+          pnpm exec electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate packaging failed' }
+      - name: Download released 0.6.2 for defect reproduction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.6.2 --repo $env:GITHUB_REPOSITORY --pattern 'PromptHub-Setup-0.6.2-x64.exe' --dir "$env:RUNNER_TEMP/baseline-download"
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline download failed' }
+      - name: Verify installed repair of the failed profile and subsequent startup
+        working-directory: apps/desktop
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installRoot = Join-Path $env:RUNNER_TEMP '软件安装地址 提示词软件'
+          $savedBaseline = Join-Path $env:RUNNER_TEMP 'prompthub-249-baseline'
+          $baselineInstaller = Join-Path $env:RUNNER_TEMP 'baseline-download/PromptHub-Setup-0.6.2-x64.exe'
+          $baseline = Start-Process -FilePath $baselineInstaller -ArgumentList @('/S', "/D=$installRoot") -Wait -PassThru
+          if ($baseline.ExitCode -ne 0) { throw 'Baseline installation failed' }
+          Copy-Item -LiteralPath $installRoot -Destination $savedBaseline -Recurse
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $candidateInstaller = Join-Path (Get-Location) "dist/PromptHub-Setup-$version-x64.exe"
+          $candidate = Start-Process -FilePath $candidateInstaller -ArgumentList @('/S', "/D=$installRoot") -Wait -PassThru
+          if ($candidate.ExitCode -ne 0) { throw 'Candidate installation failed' }
+          pnpm exec node --experimental-strip-types scripts/smoke-windows-packaged-startup.mts "$installRoot/PromptHub.exe" --baseline-executable "$savedBaseline/PromptHub.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed recovery acceptance failed' }
+      - name: Remove task-owned installations
+        if: always()
+        run: |
+          $installRoot = Join-Path $env:RUNNER_TEMP '软件安装地址 提示词软件'
+          $uninstaller = Join-Path $installRoot 'Uninstall PromptHub.exe'
+          if (Test-Path -LiteralPath $uninstaller) {
+            $process = Start-Process -FilePath $uninstaller -ArgumentList @('/S', "_?=$installRoot") -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw 'Candidate uninstall failed' }
+          }
+          foreach ($directory in @($installRoot, (Join-Path $env:RUNNER_TEMP 'prompthub-249-baseline'))) {
+            if (Test-Path -LiteralPath $directory) { Remove-Item -LiteralPath $directory -Recurse -Force }
+          }

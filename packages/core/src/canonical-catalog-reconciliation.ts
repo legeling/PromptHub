@@ -1,7 +1,7 @@
 import { migrateSkillPayloadFiles } from "./migrations/skill-payload-upgrade";
 import { migrateGenerationSqliteV1 } from "./migrations/generation-sqlite-v1";
 import { migratePluginSqliteV1 } from "./migrations/plugin-sqlite-v1";
-import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
+import { migrateSkillSqlite } from "./migrations/skill-sqlite-upgrade";
 import { migrateRuleMetadataV1 } from "./migrations/rule-metadata-v1";
 import { migratePromptWorkspaceV2 } from "./migrations/prompt-workspace-v2";
 import crypto from "node:crypto";
@@ -196,7 +196,7 @@ function reconcileWithMaintenance(
       rootPath: options.activeRoot,
       databasePath: sourcePath,
     });
-    migrateSkillSqliteV1(source, {
+    migrateSkillSqlite(source, {
       rootPath: options.activeRoot,
       databasePath: sourcePath,
     });

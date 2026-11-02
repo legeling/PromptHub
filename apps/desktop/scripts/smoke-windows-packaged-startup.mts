@@ -7,6 +7,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import sqlite3Wasm from "node-sqlite3-wasm";
+import {
+  seedPackagedSkillRecovery,
+  verifyBlockedSkillRecovery,
+  verifyPackagedSkillRecovery,
+} from "./packaged-skill-recovery-fixture.mts";
 
 import {
   removePackagedStartupRoot,
@@ -68,6 +73,7 @@ function seedUpgradeProfile(appDataPath: string): string {
     `${JSON.stringify({ version: "0.5.9", updatedAt: new Date().toISOString() }, null, 2)}\n`,
     "utf8",
   );
+  seedPackagedSkillRecovery(userDataPath);
   return userDataPath;
 }
 
@@ -85,6 +91,7 @@ function readStartupEvents(logPath: string): StartupEvent[] {
 }
 
 function verifyUpgradeData(userDataPath: string): void {
+  verifyPackagedSkillRecovery(userDataPath);
   const file = path.join(userDataPath, "data", "prompthub.db");
   if (!fs.existsSync(file)) throw new Error("Migrated database is missing");
   if (fs.existsSync(path.join(userDataPath, "prompthub.db"))) {
@@ -191,6 +198,7 @@ interface LaunchOptions {
   eventOffset: number;
   expectedCanonicalStatus: ExpectedCanonicalStatus;
   expectedMigrationStatus: ExpectedMigrationStatus;
+  expectedUpgradeStatus?: "snapshot-created" | "not-an-upgrade";
 }
 
 function readLaunchEvents(
@@ -213,6 +221,7 @@ function launchIsReady(
   events: StartupEvent[],
   expectedCanonicalStatus: ExpectedCanonicalStatus,
   expectedMigrationStatus: ExpectedMigrationStatus,
+  expectedUpgradeStatus: "snapshot-created" | "not-an-upgrade",
 ): boolean {
   const windowReady = events.some(
     (entry) => entry.event === "startup:window_ready",
@@ -233,7 +242,7 @@ function launchIsReady(
   const upgradeCreated = events.some(
     (entry) =>
       entry.event === "startup:upgrade_backup" &&
-      entry.status === "snapshot-created",
+      entry.status === expectedUpgradeStatus,
   );
   return upgradeCreated && canonicalReady && migrationReady && windowReady;
 }
@@ -244,6 +253,7 @@ async function waitForPackagedLaunch(
   eventOffset: number,
   expectedCanonicalStatus: ExpectedCanonicalStatus,
   expectedMigrationStatus: ExpectedMigrationStatus,
+  expectedUpgradeStatus: "snapshot-created" | "not-an-upgrade",
   getOutput: () => string,
 ): Promise<StartupEvent[]> {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
@@ -256,7 +266,12 @@ async function waitForPackagedLaunch(
       );
     }
     if (
-      launchIsReady(events, expectedCanonicalStatus, expectedMigrationStatus)
+      launchIsReady(
+        events,
+        expectedCanonicalStatus,
+        expectedMigrationStatus,
+        expectedUpgradeStatus,
+      )
     ) {
       return events;
     }
@@ -299,6 +314,7 @@ async function launchPackagedApp({
   eventOffset,
   expectedCanonicalStatus,
   expectedMigrationStatus,
+  expectedUpgradeStatus = "snapshot-created",
 }: LaunchOptions): Promise<LaunchResult> {
   let output = "";
   const child = spawnPackagedApp(executablePath, environment);
@@ -316,6 +332,7 @@ async function launchPackagedApp({
       eventOffset,
       expectedCanonicalStatus,
       expectedMigrationStatus,
+      expectedUpgradeStatus,
       () => output,
     );
     await waitForPackagedProcessExit(child, PROCESS_EXIT_GRACE_MS);
@@ -335,6 +352,29 @@ async function launchPackagedApp({
     stopProcessTree(child);
     await waitForPackagedProcessExit(child, PROCESS_EXIT_GRACE_MS);
   }
+}
+
+async function reproduceReleasedSkillFailure(
+  options: LaunchOptions,
+  userDataPath: string,
+): Promise<void> {
+  try {
+    await launchPackagedApp(options);
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !error.message.includes("Unrecognized Skill directory requires recovery")
+    )
+      throw error;
+    verifyBlockedSkillRecovery(userDataPath);
+    console.log(
+      "Confirmed released 0.6.2 reproduces #249; repairing the same profile without resetting its version marker.",
+    );
+    return;
+  }
+  throw new Error(
+    "Released installer did not reproduce the expected #249 startup failure",
+  );
 }
 
 async function main(): Promise<void> {
@@ -373,7 +413,42 @@ async function main(): Promise<void> {
       [PACKAGED_STARTUP_SMOKE_AUTO_EXIT_ENV]: "true",
       ELECTRON_ENABLE_LOGGING: "1",
     };
-    const initialEventCount = readStartupEvents(logPath).length;
+    let initialEventCount = readStartupEvents(logPath).length;
+    const baselineArgument = process.argv.indexOf("--baseline-executable");
+    const baseline =
+      baselineArgument < 0 ? undefined : process.argv[baselineArgument + 1];
+    if (baselineArgument >= 0 && (!baseline || !fs.existsSync(baseline)))
+      throw new Error("Baseline executable is missing");
+    if (baseline) {
+      await reproduceReleasedSkillFailure(
+        {
+          executablePath: path.resolve(baseline),
+          environment,
+          logPath,
+          rootPath: root,
+          eventOffset: initialEventCount,
+          expectedCanonicalStatus: "waiting-renderer-migration",
+          expectedMigrationStatus: "migrated",
+        },
+        userDataPath,
+      );
+      initialEventCount = readStartupEvents(logPath).length;
+    }
+    const candidateVersion = JSON.parse(
+      fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ).version;
+    const previousVersion = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          userDataPath,
+          "backups",
+          "safety-points",
+          "upgrades",
+          ".last-run-version.json",
+        ),
+        "utf8",
+      ),
+    ).version;
     const firstLaunch = await launchPackagedApp({
       executablePath,
       environment,
@@ -382,6 +457,10 @@ async function main(): Promise<void> {
       eventOffset: initialEventCount,
       expectedCanonicalStatus: "waiting-renderer-migration",
       expectedMigrationStatus: "migrated",
+      expectedUpgradeStatus:
+        candidateVersion === previousVersion
+          ? "not-an-upgrade"
+          : "snapshot-created",
     });
     verifyUpgradeData(userDataPath);
     const secondLaunch = await launchPackagedApp({

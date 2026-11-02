@@ -251,6 +251,17 @@ export async function restoreWorkspaceSnapshot(options: {
         ),
         { recursive: true, force: true },
       );
+      // Migration-preserved source files must travel with the data swap. The
+      // active root's existing recovery directory stays outside this restore.
+      const migrationRecovery = path.join(stage, "recovery");
+      if (fs.existsSync(migrationRecovery)) {
+        const recoveryRoot = path.join(stage, "data", "recovery");
+        fs.mkdirSync(recoveryRoot, { recursive: true });
+        fs.renameSync(
+          migrationRecovery,
+          path.join(recoveryRoot, "workspace-restore"),
+        );
+      }
       candidateInventory = createStorageInventory(stage, {
         detachedLayoutEpoch: 1,
         excludeRelativePaths: ["config", "secrets"],

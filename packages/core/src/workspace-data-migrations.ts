@@ -1,6 +1,6 @@
 import { resolveRuntimeStorageContext } from "./runtime-storage-context";
 import type { DatabaseAdapter } from "@prompthub/db";
-import { migrateSkillSqliteV1 } from "./migrations/skill-sqlite-v1";
+import { migrateSkillSqlite } from "./migrations/skill-sqlite-upgrade";
 import { migrateSkillPayloadFiles } from "./migrations/skill-payload-upgrade";
 import { migrateAgentProviderSqliteV1 } from "./migrations/agent-provider-sqlite-v1";
 import { migratePromptSqliteV1 } from "./migrations/prompt-sqlite-v1";
@@ -21,7 +21,7 @@ export function migrateWorkspaceData(
     rootPath,
     databasePath: resolveRuntimeStorageContext(rootPath).databasePath,
   };
-  migrateSkillSqliteV1(database, options);
+  migrateSkillSqlite(database, options);
   migrateSkillPayloadFiles(database, { ...options, skillsRoot });
   migrateAgentProviderSqliteV1(database, options);
   migratePromptSqliteV1(database, options);

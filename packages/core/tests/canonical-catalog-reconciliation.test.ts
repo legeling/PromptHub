@@ -458,9 +458,40 @@ it.each(["database", "data-directory"])(
 it("rejects malformed non-Prompt bundles before publication", () => {
   dirtyResourceCatalog();
   fs.mkdirSync(path.join(dataPath, "skills", "invalid"), { recursive: true });
+  fs.writeFileSync(
+    path.join(dataPath, "skills", "invalid", "manifest.json"),
+    "invalid manifest",
+  );
   const before = fs.readFileSync(databasePath);
   expect(() => reconcile()).toThrow();
   expect(fs.readFileSync(databasePath)).toEqual(before);
+  expectNoMaintenanceArtifacts();
+});
+
+it("preserves an unregistered empty Skill directory while rebuilding the catalog", () => {
+  dirtyResourceCatalog();
+  fs.mkdirSync(path.join(dataPath, "skills", "unfinished"), {
+    recursive: true,
+  });
+  const original = withDatabase((db) => new PromptDB(db).getById(firstId));
+  expect(() => reconcile()).not.toThrow();
+  expect(withDatabase((db) => new PromptDB(db).getById(firstId))).toEqual(
+    original,
+  );
+  const archiveRoot = path.join(
+    root,
+    "recovery",
+    "skill-directory-recovery-v1",
+  );
+  const archives = fs.readdirSync(archiveRoot);
+  expect(archives).toHaveLength(1);
+  expect(
+    fs.readdirSync(
+      path.join(archiveRoot, archives[0], "directories", "unfinished"),
+    ),
+  ).toEqual([]);
+  expect(() => reconcile()).not.toThrow();
+  expect(fs.readdirSync(archiveRoot)).toEqual(archives);
   expectNoMaintenanceArtifacts();
 });
 

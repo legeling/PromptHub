@@ -29,6 +29,24 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Skill directory startup recovery — 2026-11-02 (#249)
+
+`local_done`, uncommitted and unreleased. An ordered Core correction preserves
+unregistered, unrecognized Skill directories through the existing SQL/file
+publication journal before the immutable Skill converter. Normal startup,
+catalog reconciliation and restore share the corrected boundary. Known packages
+and history remain intact; failure rolls back and retry/reopen are verified.
+The last-run downgrade guard remains enabled because other migrations may have
+already changed data. The 120-case baseline, added failure/restore regressions
+and full 40-check release harness pass. Reporter-data acceptance was not performed.
+The Windows screenshot has the same error; Chinese paths/spaces and historical
+Windows snapshot separators pass local startup/reopen regression. The confirmed
+2026-11-02 acceptance uses white-box review and reproducible local regression;
+Windows packaging is supplemental release evidence, not a local-delivery blocker.
+Submission and push are subsequently authorized for 0.6.3-beta.1 publication.
+GitHub still reports #249 open; no remote comment, closure or publication was made.
+See [recovery design and acceptance](../../knowledge/behavior/data-recovery.md#unrecognized-skill-directory-upgrade-recovery-249).
+
 ### Generation history batch deletion — 2026-10-27 (#248)
 
 `released` in 0.6.2: history cards and the batch action menu now expose confirmed deletion,

@@ -9,6 +9,7 @@ import {
   CURRENT_DATABASE_SCHEMA_VERSION,
 } from "@prompthub/db";
 import { writeRuntimeLayoutState } from "../src/runtime-storage-context";
+import { migrateWorkspaceData } from "../src/workspace-data-migrations";
 import {
   createWorkspaceSnapshot,
   restoreWorkspaceSnapshot,
@@ -56,6 +57,84 @@ afterEach(() => {
   for (const root of roots.splice(0))
     fs.rmSync(root, { recursive: true, force: true });
 });
+
+it.each([false, true])(
+  "preserves migration recovery files through workspace restore, interrupted=%s",
+  async (interrupted) => {
+    const source = fixture(),
+      target = fixture();
+    const directory = path.join(source, "data", "skills", "unfinished");
+    fs.mkdirSync(directory, { recursive: true });
+    const binary = Buffer.from([0, 128, 255]);
+    fs.writeFileSync(path.join(directory, "asset.bin"), binary);
+    fs.writeFileSync(path.join(directory, ".notes"), "original notes");
+    const existingRecovery = path.join(target, "recovery", "existing.txt");
+    fs.mkdirSync(path.dirname(existingRecovery));
+    fs.writeFileSync(existingRecovery, "existing recovery");
+    const activeFile = path.join(target, "data/future-feature/nested/file.bin");
+    fs.writeFileSync(activeFile, "target original");
+    const snapshot = createWorkspaceSnapshot({
+      activeRoot: source,
+      destinationPath: path.join(source, "snapshot"),
+    });
+    const restore = (fail: boolean) =>
+      restoreWorkspaceSnapshot({
+        snapshotPath: snapshot.path,
+        activeRoot: target,
+        migrateCandidate(root, database) {
+          migrateWorkspaceData(
+            database,
+            root,
+            path.join(root, "data", "skills"),
+          );
+        },
+        injectFailure(stage) {
+          if (fail && stage === "entry-swapped:data")
+            throw new Error("restore interrupted");
+        },
+      });
+    const archiveRoot = path.join(
+      target,
+      "data",
+      "recovery",
+      "workspace-restore",
+      "skill-directory-recovery-v1",
+    );
+    if (interrupted) {
+      await expect(restore(true)).rejects.toThrow("restore interrupted");
+      expect(fs.readFileSync(activeFile, "utf8")).toBe("target original");
+      expect(fs.existsSync(archiveRoot)).toBe(false);
+      expect(fs.readFileSync(existingRecovery, "utf8")).toBe(
+        "existing recovery",
+      );
+    }
+    await restore(false);
+    expect(fs.readdirSync(archiveRoot)).toHaveLength(1);
+    const preserved = path.join(
+      archiveRoot,
+      fs.readdirSync(archiveRoot)[0],
+      "directories",
+      "unfinished",
+    );
+    expect(fs.readFileSync(path.join(preserved, "asset.bin"))).toEqual(binary);
+    expect(fs.readFileSync(path.join(preserved, ".notes"), "utf8")).toBe(
+      "original notes",
+    );
+    expect(fs.readdirSync(preserved).sort()).toEqual([".notes", "asset.bin"]);
+    expect(fs.readFileSync(existingRecovery, "utf8")).toBe("existing recovery");
+    expect(fs.readFileSync(path.join(directory, "asset.bin"))).toEqual(binary);
+    const reopened = initDatabase(path.join(target, "data", "prompthub.db"));
+    migrateWorkspaceData(reopened, target, path.join(target, "data", "skills"));
+    expect(reopened.pragma("quick_check")).toEqual([{ quick_check: "ok" }]);
+    closeDatabase();
+    expect(fs.readdirSync(archiveRoot)).toHaveLength(1);
+    expect(
+      fs
+        .readdirSync(target)
+        .some((name) => name.startsWith(".prompthub-restore-")),
+    ).toBe(false);
+  },
+);
 
 it("preserves unknown tables, columns, settings and files across roots and repeated restores", async () => {
   const source = fixture(),

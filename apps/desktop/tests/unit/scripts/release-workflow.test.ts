@@ -87,7 +87,7 @@ describe("release workflow secret guards", () => {
     );
     expect(
       packagedStartupSmokeSource.match(/await launchPackagedApp\(/g) ?? [],
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 
   it("loads the packaged startup smoke with Node strip-types", () => {
