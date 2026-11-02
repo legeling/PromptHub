@@ -6,7 +6,7 @@ Delivery
 
 ## Status
 
-in progress
+completed
 
 ## Changes
 
@@ -36,4 +36,12 @@ Full release verification passed all 40 checks on 2026-11-02 (1807.2 seconds,
 concurrency 2), including actual desktop smoke, integration, unit shards and all
 product build/type/test gates. Command: pnpm verify:release --concurrency 2.
 Website release metadata tests and production build passed. Platform packaging
-and installed Windows acceptance remain pending.
+and installed Windows acceptance passed. Release run 41384990876 passed all
+40 CI checks and five platform builds; macOS signatures/notarization and update
+manifest hashes passed. Windows packaged smoke and five E2E cases passed;
+installed acceptance 41385913357 passed Skill recovery and three uninstall/reinstall
+cases. Published 2026-11-02 with 20 assets; stable latest remains v0.6.2.
+Self-hosted run 41386335486 passed verification, versioned GHCR publication and
+image archive export. Public Windows x64 installer returns HTTP 200. No local
+task processes remain; isolated test profiles were removed and existing user
+application/data were untouched.

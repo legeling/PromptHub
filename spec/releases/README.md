@@ -10,14 +10,14 @@
 - `docs/README.*`
 - `website/src/content/docs/changelog.md`
 
-2026-10-27 发布核对：GitHub latest 为 [v0.6.2](https://github.com/legeling/PromptHub/releases/tag/v0.6.2)。
+2026-11-02 发布核对：GitHub latest 为 [v0.6.2](https://github.com/legeling/PromptHub/releases/tag/v0.6.2)。
 版本范围及分发验收见 [0.6.2 发布记录](0.6.2.md)。
 
 ## Release Index
 
 | Version        | Status                                            | Path                            | Updated    |
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
-| `0.6.3-beta.1` | prerelease preparation | `spec/releases/0.6.3-beta.1.md` | 2026-11-02 |
+| `0.6.3-beta.1` | published prerelease | `spec/releases/0.6.3-beta.1.md` | 2026-11-02 |
 | `0.6.2` | stable record | `spec/releases/0.6.2.md` | 2026-10-27 |
 | `0.6.1` | stable record | `spec/releases/0.6.1.md` | 2026-10-21 |
 | `0.6.0-beta.2` | published prerelease                              | `spec/releases/0.6.0-beta.2.md` | 2026-09-03 |

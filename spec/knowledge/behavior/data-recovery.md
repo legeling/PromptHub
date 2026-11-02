@@ -78,6 +78,10 @@
   `pnpm verify:release --concurrency 2`, including desktop integration and built
   startup smoke. Recovery fault regressions pass 15 cases and workspace snapshot
   regressions pass 11 cases.
+- Published as 0.6.3-beta.1 on 2026-11-02. Release run 41384990876 passed
+  Windows x64 packaged upgrade/reopen and five E2E cases; installed acceptance
+  41385913357 downloaded the candidate, passed Skill recovery and all three
+  uninstall/reinstall recovery cases. See [release evidence](../../releases/0.6.3-beta.1.md).
 - The Windows screenshot follow-up reports the same converter error. The startup
   regression additionally uses a Chinese/space-containing profile and directory
   name plus Windows backslash paths in historical binary snapshots. Both cases

@@ -3,15 +3,15 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-10-27`
+- Snapshot date: `2026-11-02`
 - Capture method: `gh issue list --repo legeling/PromptHub --state all --limit 1000 --json number,title,state,url,labels,createdAt,updatedAt,closedAt` after the authorized push to main.
-- Open issues captured: `25`
+- Open issues captured: 25
 
 ## Notes
 
-- This file mirrors remote GitHub state only; local delivery is recorded in `local-github-status.md`.
-- The shared capture contains 222 issues (25 open / 197 closed), below the requested limit; pull requests are excluded.
-- #198, #248 and #247 are confirmed closed after their verified fixes entered main; all three fixes are included in published 0.6.2. #246 remains open for its recorded remaining acceptance.
+- This file mirrors remote GitHub state only; local delivery is recorded in local-github-status.md.
+- The shared capture contains 223 issues (25 open / 198 closed), below the requested limit; pull requests are excluded.
+- #249 is confirmed closed after fix commit 7fbc2d09 entered main. Its 0.6.3-beta.1 prerelease is published after platform and installed Windows verification.
 
 ## Open Issues
 

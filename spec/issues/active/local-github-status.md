@@ -31,7 +31,8 @@ remote closure and publication are recorded separately.
 
 ### Skill directory startup recovery — 2026-11-02 (#249)
 
-`local_done`, uncommitted and unreleased. An ordered Core correction preserves
+`released` in 0.6.3-beta.1 (prerelease); fix commit 7fbc2d09 is pushed.
+An ordered Core correction preserves
 unregistered, unrecognized Skill directories through the existing SQL/file
 publication journal before the immutable Skill converter. Normal startup,
 catalog reconciliation and restore share the corrected boundary. Known packages
@@ -44,7 +45,10 @@ Windows snapshot separators pass local startup/reopen regression. The confirmed
 2026-11-02 acceptance uses white-box review and reproducible local regression;
 Windows packaging is supplemental release evidence, not a local-delivery blocker.
 Submission and push are subsequently authorized for 0.6.3-beta.1 publication.
-GitHub still reports #249 open; no remote comment, closure or publication was made.
+GitHub confirms #249 closed on 2026-11-02 after the authorized push.
+The published beta passed all 40 release checks, Windows packaged upgrade/reopen
+and installed Skill recovery; all three uninstall/reinstall recovery cases passed.
+See [release evidence](../../releases/0.6.3-beta.1.md).
 See [recovery design and acceptance](../../knowledge/behavior/data-recovery.md#unrecognized-skill-directory-upgrade-recovery-249).
 
 ### Generation history batch deletion — 2026-10-27 (#248)

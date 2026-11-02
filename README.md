@@ -17,7 +17,7 @@
 
 最新稳定版为 `0.6.2`，已于 2026-10-27 发布。
 
-预览候选：[`0.6.3-beta.1`](https://github.com/legeling/PromptHub/releases/tag/v0.6.3-beta.1)
+预览版：[`0.6.3-beta.1`](https://github.com/legeling/PromptHub/releases/tag/v0.6.3-beta.1)
 
   <br/>
 

@@ -6,7 +6,7 @@ Delivery
 
 ## Status
 
-in progress
+completed
 
 ## Scope and acceptance
 
@@ -16,9 +16,9 @@ local diagnostic files or unsent correspondence enter the release.
 
 - [x] Verify Skill startup/restoration fixes and current Cloud login changes.
 - [x] Align versions, curated bilingual notes, seven READMEs and website history.
-- [ ] Pass local quick/full release gates; submit logical commits and push.
-- [ ] Build the tagged draft, verify signing/manifests and installed Windows flows.
-- [ ] Publish prerelease, verify assets and stable-channel isolation, update records.
+- [x] Pass the full release gate; submit logical commits and push.
+- [x] Build the tagged draft, verify signing/manifests and installed Windows flows.
+- [x] Publish prerelease, verify assets and stable-channel isolation, update records.
 
 Reuse installed pnpm dependencies and the harness's bounded checks at concurrency
 two. Data recovery uses the existing journals and streamed file hashes; the

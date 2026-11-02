@@ -6,11 +6,11 @@ The latest stable release is `0.6.2`. Subsequent unreleased changes will be reco
 
 ### 预览版 / Preview
 
-预览候选为 `0.6.3-beta.1`，稳定版下载仍指向 `0.6.2`。
+已发布预览版 `0.6.3-beta.1`，稳定版下载仍指向 `0.6.2`。
 
-The preview candidate is `0.6.3-beta.1`; stable downloads remain on `0.6.2`.
+The published preview is `0.6.3-beta.1`; stable downloads remain on `0.6.2`.
 
-## [0.6.3-beta.1]
+## [0.6.3-beta.1] - 2026-11-02
 
 ### 问题修复 / Fixes
 

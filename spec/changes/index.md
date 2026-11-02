@@ -7,8 +7,8 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 38 |
-| Completed | 13 |
+| Active | 37 |
+| Completed | 14 |
 | Archived | 235 |
 | Legacy | 1 |
 
@@ -82,7 +82,6 @@ No independent active change. Cross-product work is listed under Shared.
 | `infistar-sponsor-promotion` | release-pending | [spec/changes/active/infistar-sponsor-promotion/](active/infistar-sponsor-promotion/) |
 | `r2-direct-downloads` | blocked | [spec/changes/active/r2-direct-downloads/](active/r2-direct-downloads/) |
 | `release-0-6-1-preparation` | blocked | [spec/changes/active/release-0-6-1-preparation/](active/release-0-6-1-preparation/) |
-| `release-0.6.3-beta.1` | in progress | [spec/changes/active/release-0.6.3-beta.1/](active/release-0.6.3-beta.1/) |
 | `risk-aware-verification-harness` | review-pending | [spec/changes/active/risk-aware-verification-harness/](active/risk-aware-verification-harness/) |
 
 ## Completed
@@ -105,6 +104,7 @@ Completion is scoped; it does not itself establish publication.
 | `desktop-tag-manager-usability` | completed | [spec/changes/completed/desktop-tag-manager-usability/](completed/desktop-tag-manager-usability/) |
 | `release-0-6-0-version-alignment` | completed | [spec/changes/completed/release-0-6-0-version-alignment/](completed/release-0-6-0-version-alignment/) |
 | `release-0.6.2` | completed | [spec/changes/completed/release-0.6.2/](completed/release-0.6.2/) |
+| `release-0.6.3-beta.1` | completed | [spec/changes/completed/release-0.6.3-beta.1/](completed/release-0.6.3-beta.1/) |
 | `rules-issue-193-missing-project-reconciliation` | completed | [spec/changes/completed/rules-issue-193-missing-project-reconciliation/](completed/rules-issue-193-missing-project-reconciliation/) |
 
 ## Archived
