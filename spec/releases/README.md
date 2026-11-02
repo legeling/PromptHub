@@ -17,6 +17,7 @@
 
 | Version        | Status                                            | Path                            | Updated    |
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
+| `0.6.3-beta.1` | prerelease preparation | `spec/releases/0.6.3-beta.1.md` | 2026-11-02 |
 | `0.6.2` | stable record | `spec/releases/0.6.2.md` | 2026-10-27 |
 | `0.6.1` | stable record | `spec/releases/0.6.1.md` | 2026-10-21 |
 | `0.6.0-beta.2` | published prerelease                              | `spec/releases/0.6.0-beta.2.md` | 2026-09-03 |

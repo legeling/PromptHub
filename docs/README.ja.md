@@ -15,6 +15,8 @@
 
 最新安定版は `0.6.2` です（2026-10-27 公開）。
 
+プレビュー候補：[`0.6.3-beta.1`](https://github.com/legeling/PromptHub/releases/tag/v0.6.3-beta.1)
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

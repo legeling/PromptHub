@@ -15,6 +15,8 @@ A local-first workspace for prompts, skills, and AI coding assets.
 
 The latest stable release is `0.6.2`, published on 2026-10-27.
 
+Preview candidate：[`0.6.3-beta.1`](https://github.com/legeling/PromptHub/releases/tag/v0.6.3-beta.1)
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

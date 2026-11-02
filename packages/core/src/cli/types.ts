@@ -21,7 +21,7 @@ export const EXIT_CODES = {
   INTERNAL: 10,
 } as const;
 
-export const CLI_VERSION = "0.6.2";
+export const CLI_VERSION = "0.6.3-beta.1";
 
 export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
 

@@ -15,6 +15,8 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 
 La última versión estable es `0.6.2`, publicada el 2026-10-27.
 
+Versión preliminar：[`0.6.3-beta.1`](https://github.com/legeling/PromptHub/releases/tag/v0.6.3-beta.1)
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

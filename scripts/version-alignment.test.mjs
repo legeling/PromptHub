@@ -31,8 +31,8 @@ function readText(relativePath) {
   return fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 }
 
-test("gives the stable candidate a semver identity and an exact changelog section", () => {
-  assert.match(expectedVersion, /^\d+\.\d+\.\d+$/);
+test("gives the release candidate a semver identity and an exact changelog section", () => {
+  assert.match(expectedVersion, /^\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?$/);
   assert.ok(readText("CHANGELOG.md").includes(`## [${expectedVersion}]`));
   assert.ok(
     fs.existsSync(
@@ -97,7 +97,11 @@ test("separates development identity from published downloads in every README", 
     }
     assert.ok(source.includes(`### v${stableRelease.version}`), relativePath);
     assert.doesNotMatch(source, /Preview-v0\.6\.0--beta/, relativePath);
-    assert.doesNotMatch(source, /releases\/tag\/v0\.6\.[1-9]/, relativePath);
+    if (expectedVersion.includes("-"))
+      assert.ok(
+        source.includes(`releases/tag/v${expectedVersion}`),
+        relativePath,
+      );
     assert.doesNotMatch(source, /^(?:<{7}|={7}|>{7})/m, relativePath);
   }
 });
@@ -110,7 +114,8 @@ test("publishes main-only changes as unreleased and synchronizes website history
   assert.ok(unreleased, "The changelog must separate unreleased main changes");
   assert.ok(
     unreleased[1].includes(
-      findLatestStableRelease(changelog, readText("spec/releases/README.md")).version,
+      findLatestStableRelease(changelog, readText("spec/releases/README.md"))
+        .version,
     ),
   );
   assert.ok(unreleased[1].includes("###"));

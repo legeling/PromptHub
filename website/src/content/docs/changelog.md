@@ -4,6 +4,21 @@
 
 The latest stable release is `0.6.2`. Subsequent unreleased changes will be recorded here.
 
+### 预览版 / Preview
+
+预览候选为 `0.6.3-beta.1`，稳定版下载仍指向 `0.6.2`。
+
+The preview candidate is `0.6.3-beta.1`; stable downloads remain on `0.6.2`.
+
+## [0.6.3-beta.1]
+
+### 问题修复 / Fixes
+
+- **Skill 升级启动**：修复无法识别的 Skill 目录导致应用无法启动的问题，完整保留原文件，并保留已有 Skill 内容、收藏和版本历史。
+  - **Skill upgrade startup**: Fix startup blocked by unrecognized Skill directories while preserving their original files and existing Skill content, favorites, and version history.
+- **备份恢复**：保留旧数据迁移中产生的 Skill 恢复文件，避免恢复过程被额外目录阻断；恢复失败时保持原工作区完整。
+  - **Backup restore**: Preserve Skill recovery files created during migration, prevent these directories from blocking restore, and retain the original workspace if restoration fails.
+
 ## [0.6.2] - 2026-10-27
 
 ### 新功能 / Features

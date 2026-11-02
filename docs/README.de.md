@@ -15,6 +15,8 @@ Ein Local-First-Arbeitsbereich für Prompts, Skills und KI-Coding-Assets.
 
 Die aktuelle stabile Version ist `0.6.2`, veröffentlicht am 2026-10-27.
 
+Vorschauversion：[`0.6.3-beta.1`](https://github.com/legeling/PromptHub/releases/tag/v0.6.3-beta.1)
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
