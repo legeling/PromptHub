@@ -64,3 +64,11 @@ Desktop 与 Web 两个 Vite 应用分别声明共享 renderer build flag 的环�
 | FR-CLOUD-STORE-005 | DES-STORE-005 | TEST-STORE-016 | T-STORE-010e |
 | FR-CLOUD-STORE-006 | DES-STORE-006 | TEST-STORE-017..019 | T-STORE-010g |
 | FR-CLOUD-STORE-007 | DES-STORE-007 | TEST-STORE-020..023 | T-STORE-010h |
+
+## 2026-10-29 第三方浏览器登录
+
+FR-ACC-007 / DES-ACC-014：桌面设置仅展示浏览器登录，main 生成 state/verifier 与 127.0.0.1 临时端口，通过当前 Cloud API 的 `/api/v1/auth/desktop/start` 进入官网授权页。用户确认后，票据与 state 返回本机，main 以 S256 verifier 调用 `/api/v1/auth/desktop/exchange`，只在 safeStorage 保存新独立会话。renderer 不获取 verifier、票据或令牌。错误/取消/10 分钟到期/退出关闭本轮监听器；不启用常驻 HTTP 服务。
+
+官网和 API 共同规范 `callbackUrl/state/codeChallenge`、`ticket/codeVerifier`；票据在 Cloud 端 60 秒有效并一次性消费，校验父会话和账号状态。官方 API 真源更新为 `packages/shared/constants/cloud.ts` 中的 api.prompthub.click；保留显式自定义 endpoint。既有密码接口保留供既有调用方使用，第三方账号不展示改密码/验证邮件入口。继续遵守 Cloud 现有发布门禁；此源码不是已发布 0.6.2 安装包的能力。
+
+TEST-ACC-014：main HTTP loopback 真连接与清理、API 凭据保存与返回裁剪、IPC、组件入口，另由 Cloud 仓库验证真实 Web BFF 与后端服务协议（第三方身份交换使用 fixture）。无数据库迁移；撤回新桌面构建即可回滚。

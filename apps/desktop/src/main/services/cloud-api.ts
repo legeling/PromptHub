@@ -1,3 +1,5 @@
+import type { BrowserExchangeInput } from "./cloud-browser-login";
+import { PROMPTHUB_CLOUD_API_URL } from "@prompthub/shared/constants/cloud";
 import type { CloudCredential, CloudCredentialStore } from "./cloud-auth-storage";
 import type {
   CloudAuthState,
@@ -70,6 +72,23 @@ export class CloudApiClient {
         body: JSON.stringify({ email: input.email.trim(), password: input.password }),
       },
     );
+    const user = parseCloudUser(payload.user);
+    if (typeof payload.accessToken !== "string" || !payload.accessToken.trim()) {
+      throw new CloudApiError("Cloud login did not return a session", "cloud_auth_contract_invalid", 502);
+    }
+    await this.store.write({ baseUrl, token: payload.accessToken });
+    return { user, baseUrl };
+  }
+
+  async completeBrowserLogin(input: BrowserExchangeInput): Promise<{ user: CloudUser; baseUrl: string }> {
+    const baseUrl = normalizeCloudBaseUrl(input.baseUrl);
+    const payload = await this.requestJson<{ user: unknown; accessToken: unknown }>(baseUrl, "/api/v1/auth/desktop/exchange", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-prompthub-client-version": this.clientVersion },
+      body: JSON.stringify({ ticket: input.ticket, codeVerifier: input.codeVerifier }),
+      signal: input.signal,
+    });
+    input.signal.throwIfAborted();
     const user = parseCloudUser(payload.user);
     if (typeof payload.accessToken !== "string" || !payload.accessToken.trim()) {
       throw new CloudApiError("Cloud login did not return a session", "cloud_auth_contract_invalid", 502);
@@ -201,7 +220,7 @@ export class CloudApiClient {
 
   async listStoreFeed(query: { q?: string; limit?: number } = {}) {
     const credential = await this.store.read();
-    const baseUrl = credential?.baseUrl ?? "https://api.prompthub.cloud";
+    const baseUrl = credential?.baseUrl ?? PROMPTHUB_CLOUD_API_URL;
     const params = new URLSearchParams({ sourceType: "skill" });
     if (query.q?.trim()) params.set("q", query.q.trim());
     if (query.limit) params.set("limit", String(query.limit));
@@ -218,7 +237,7 @@ export class CloudApiClient {
 
   async getStoreListing(slug: string): Promise<CloudStoreListingDetails> {
     const credential = await this.store.read();
-    const baseUrl = credential?.baseUrl ?? "https://api.prompthub.cloud";
+    const baseUrl = credential?.baseUrl ?? PROMPTHUB_CLOUD_API_URL;
     const payload = await this.requestJson<{ listing: unknown; metrics: unknown; viewerState: unknown }>(
       baseUrl,
       `/api/v1/store/listings/${encodeURIComponent(slug)}`,
@@ -277,7 +296,7 @@ export class CloudApiClient {
 
   async getStorePackage(listingId: string, currentFingerprint?: string) {
     const credential = await this.store.read();
-    const baseUrl = credential?.baseUrl ?? "https://api.prompthub.cloud";
+    const baseUrl = credential?.baseUrl ?? PROMPTHUB_CLOUD_API_URL;
     const query = currentFingerprint
       ? `?currentFingerprint=${encodeURIComponent(currentFingerprint)}`
       : "";

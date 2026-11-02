@@ -1,3 +1,4 @@
+import { CloudBrowserLogin } from "../services/cloud-browser-login";
 import { app, ipcMain, safeStorage, shell } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
@@ -11,6 +12,7 @@ import { createCloudCredentialStore } from "../services/cloud-auth-storage";
 export interface CloudDesktopApi {
   getState: CloudApiClient["getState"];
   login: CloudApiClient["login"];
+  completeBrowserLogin: CloudApiClient["completeBrowserLogin"];
   logout: CloudApiClient["logout"];
   getAccountOverview: CloudApiClient["getAccountOverview"];
   updateProfile: CloudApiClient["updateProfile"];
@@ -48,11 +50,15 @@ function createDefaultCloudApi(): CloudDesktopApi {
 }
 
 export function registerCloudIPC(client: CloudDesktopApi = createDefaultCloudApi()): void {
+  const browserLogin = new CloudBrowserLogin({ openExternal: url => shell.openExternal(url), exchange: input => client.completeBrowserLogin(input) });
+  app.once("before-quit", () => browserLogin.cancel());
+  ipcMain.handle(IPC_CHANNELS.CLOUD_AUTH_BROWSER_LOGIN, (_event, value: unknown) => browserLogin.start(parseRequiredString(value, "Cloud API URL is required")));
+  ipcMain.handle(IPC_CHANNELS.CLOUD_AUTH_BROWSER_CANCEL, () => browserLogin.cancel());
   ipcMain.handle(IPC_CHANNELS.CLOUD_AUTH_GET_STATE, () => client.getState());
   ipcMain.handle(IPC_CHANNELS.CLOUD_AUTH_LOGIN, (_event, input: unknown) =>
     client.login(parseLoginInput(input)),
   );
-  ipcMain.handle(IPC_CHANNELS.CLOUD_AUTH_LOGOUT, () => client.logout());
+  ipcMain.handle(IPC_CHANNELS.CLOUD_AUTH_LOGOUT, () => { browserLogin.cancel(); return client.logout(); });
   registerCloudAccountHandlers(client);
   registerCloudStoreHandlers(client);
 }

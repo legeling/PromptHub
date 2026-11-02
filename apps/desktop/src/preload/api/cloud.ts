@@ -7,6 +7,7 @@ import type {
   CloudExportJob,
   CloudSession,
   CloudAuthState,
+  CloudUser,
   CloudStoreInstallIntentInput,
   CloudStoreInstallStatusInput,
   CloudStoreReportReason,
@@ -18,6 +19,8 @@ export const cloudApi = {
       ipcRenderer.invoke(IPC_CHANNELS.CLOUD_AUTH_GET_STATE),
     login: (input: { baseUrl: string; email: string; password: string }) =>
       ipcRenderer.invoke(IPC_CHANNELS.CLOUD_AUTH_LOGIN, input),
+    loginWithBrowser: (baseUrl: string): Promise<{ user: CloudUser; baseUrl: string }> => ipcRenderer.invoke(IPC_CHANNELS.CLOUD_AUTH_BROWSER_LOGIN, baseUrl),
+    cancelBrowserLogin: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.CLOUD_AUTH_BROWSER_CANCEL),
     logout: () => ipcRenderer.invoke(IPC_CHANNELS.CLOUD_AUTH_LOGOUT),
   },
   account: {

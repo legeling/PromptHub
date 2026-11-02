@@ -4,7 +4,7 @@ import type { CloudDesktopApi } from "../../../src/main/ipc/cloud.ipc";
 const handleMock = vi.fn();
 
 vi.mock("electron", () => ({
-  app: { getPath: () => "/tmp/prompthub-test", getVersion: () => "0.5.9" },
+  app: { once: vi.fn(), getPath: () => "/tmp/prompthub-test", getVersion: () => "0.5.9" },
   ipcMain: { handle: handleMock },
   safeStorage: {
     isEncryptionAvailable: () => true,
@@ -37,6 +37,7 @@ describe("Cloud IPC", () => {
         user: { id: "user-1", email: "user@example.com", name: null },
         baseUrl: "https://api.prompthub.cloud",
       })),
+      completeBrowserLogin: vi.fn(),
       logout: vi.fn(async () => undefined),
       listStoreFeed: vi.fn(async () => ({ listings: [] })),
       getStoreListing: vi.fn(async () => ({

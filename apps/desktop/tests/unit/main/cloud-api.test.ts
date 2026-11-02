@@ -69,6 +69,32 @@ describe("CloudApiClient", () => {
     });
   });
 
+  it("stores browser sessions without returning credentials to the renderer", async () => {
+    const { store, getValue } = createStore();
+    const signal = new AbortController().signal;
+    const client = new CloudApiClient({ store, clientVersion: "0.6.2", fetchImpl: async (url, init) => {
+      expect(String(url)).toBe("https://api.example.test/api/v1/auth/desktop/exchange");
+      expect(JSON.parse(String(init?.body))).toEqual({ ticket: "ticket", codeVerifier: "verifier" });
+      expect(init?.signal).toBe(signal);
+      return jsonResponse({ user: { id: "user-1", email: "user@example.test" }, accessToken: "desktop-secret" });
+    } });
+    const result = await client.completeBrowserLogin({ baseUrl: "https://api.example.test", ticket: "ticket", codeVerifier: "verifier", signal });
+    expect(result).not.toHaveProperty("accessToken");
+    expect(JSON.stringify(result)).not.toContain("desktop-secret");
+    expect(getValue()?.token).toBe("desktop-secret");
+  });
+
+  it("does not store a session after browser login is cancelled", async () => {
+    const { store, getValue } = createStore();
+    const controller = new AbortController();
+    const client = new CloudApiClient({ store, clientVersion: "0.6.2", fetchImpl: async () => {
+      controller.abort();
+      return jsonResponse({ user: { id: "user-1", email: "user@example.test" }, accessToken: "cancelled-secret" });
+    } });
+    await expect(client.completeBrowserLogin({ baseUrl: "https://api.example.test", ticket: "ticket", codeVerifier: "verifier", signal: controller.signal })).rejects.toThrow();
+    expect(getValue()).toBeNull();
+  });
+
   it("uses bearer auth for private requests and keeps public store reads unauthenticated", async () => {
     const { store } = createStore({
       baseUrl: "https://api.prompthub.cloud",

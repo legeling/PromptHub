@@ -66,6 +66,8 @@ function createWindowApiDefaults() {
     cloud: {
       auth: {
         getState: vi.fn(),
+        loginWithBrowser: vi.fn(),
+        cancelBrowserLogin: vi.fn(),
         login: vi.fn(),
         logout: vi.fn(),
       },

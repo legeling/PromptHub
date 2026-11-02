@@ -1,3 +1,4 @@
+import { PROMPTHUB_CLOUD_API_URL } from "@prompthub/shared/constants/cloud";
 import type {
   CloudStoreListing,
   CloudStorePackageResponse,
@@ -6,7 +7,7 @@ import type {
 import { isPromptHubCloudEnabled } from "../runtime";
 
 export const PROMPTHUB_CLOUD_STORE_ID = "prompthub-cloud";
-export const PROMPTHUB_CLOUD_STORE_URL = "https://api.prompthub.cloud";
+export const PROMPTHUB_CLOUD_STORE_URL = PROMPTHUB_CLOUD_API_URL;
 
 export function normalizeSkillStoreSourceIdForRuntime(
   sourceId: string,

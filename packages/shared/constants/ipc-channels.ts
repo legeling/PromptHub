@@ -89,6 +89,8 @@ export const IPC_CHANNELS = {
   // PromptHub Cloud account and Store
   CLOUD_AUTH_GET_STATE: "cloud:auth:getState",
   CLOUD_AUTH_LOGIN: "cloud:auth:login",
+  CLOUD_AUTH_BROWSER_LOGIN: "cloud:auth:browserLogin",
+  CLOUD_AUTH_BROWSER_CANCEL: "cloud:auth:browserCancel",
   CLOUD_AUTH_LOGOUT: "cloud:auth:logout",
   CLOUD_ACCOUNT_OVERVIEW: "cloud:account:overview",
   CLOUD_ACCOUNT_PROFILE: "cloud:account:profile",

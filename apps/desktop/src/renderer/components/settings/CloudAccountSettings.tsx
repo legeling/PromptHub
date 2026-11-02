@@ -1,3 +1,4 @@
+import { PROMPTHUB_CLOUD_API_URL } from "@prompthub/shared/constants/cloud";
 import { requestConfirmation } from "../ui/confirmation";
 import { useEffect, useState } from "react";
 import {
@@ -5,7 +6,6 @@ import {
   CheckCircle2Icon,
   DownloadIcon,
   KeyRoundIcon,
-  LogInIcon,
   LogOutIcon,
   Loader2Icon,
   MailCheckIcon,
@@ -26,21 +26,19 @@ import type {
 import { useToast } from "../ui/Toast";
 import { SettingSection } from "./shared";
 
-const DEFAULT_CLOUD_URL = "https://api.prompthub.cloud";
-
 export function CloudAccountSettings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [state, setState] = useState<CloudAuthState>({
     authenticated: false,
     user: null,
-    baseUrl: DEFAULT_CLOUD_URL,
+    baseUrl: PROMPTHUB_CLOUD_API_URL,
   });
-  const [baseUrl, setBaseUrl] = useState(DEFAULT_CLOUD_URL);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [baseUrl, setBaseUrl] = useState(PROMPTHUB_CLOUD_API_URL);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [browserPending, setBrowserPending] = useState(false);
+  useEffect(() => () => { void window.api.cloud.auth.cancelBrowserLogin(); }, []);
   const [installations, setInstallations] = useState<CloudInstallRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [overview, setOverview] = useState<CloudAccountOverview | null>(null);
@@ -108,7 +106,7 @@ export function CloudAccountSettings() {
           setState({
             authenticated: false,
             user: null,
-            baseUrl: DEFAULT_CLOUD_URL,
+            baseUrl: PROMPTHUB_CLOUD_API_URL,
             unavailable: true,
           });
         }
@@ -257,29 +255,17 @@ export function CloudAccountSettings() {
   };
 
   const handleLogin = async () => {
-    if (!email.trim() || password.length < 8 || !baseUrl.trim()) {
-      showToast(t("settings.cloudAccountInvalid", "Enter a valid Cloud URL, email, and password."), "error");
-      return;
-    }
     setSubmitting(true);
+    setBrowserPending(true);
     try {
-      const next = await window.api.cloud.auth.login({
-        baseUrl,
-        email,
-        password,
-      });
+      const next = await window.api.cloud.auth.loginWithBrowser(baseUrl);
       setState({ authenticated: true, user: next.user, baseUrl: next.baseUrl });
-      setPassword("");
       showToast(t("settings.cloudAccountLoginSuccess", "Signed in to PromptHub Cloud."), "success");
-    } catch (error) {
-      showToast(
-        error instanceof Error
-          ? error.message
-          : t("settings.cloudAccountLoginFailed", "Cloud sign-in failed."),
-        "error",
-      );
+    } catch {
+      showToast(t("settings.cloudAccountBrowserFailed", "Browser sign-in did not complete. Try again from PromptHub."), "error");
     } finally {
       setSubmitting(false);
+      setBrowserPending(false);
     }
   };
 
@@ -373,7 +359,7 @@ export function CloudAccountSettings() {
                     {t("settings.cloudAccountSaveProfile", "Save profile")}
                   </button>
                 </div>
-                <div className="rounded-xl border border-border bg-muted/20 p-4">
+                {overview?.account.identities.some(identity => identity.type === "password") && <div className="rounded-xl border border-border bg-muted/20 p-4">
                   <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <MailCheckIcon className="h-4 w-4 text-primary" aria-hidden="true" />
                     {t("settings.cloudAccountEmailStatus", "Email and password")}
@@ -394,7 +380,7 @@ export function CloudAccountSettings() {
                     <KeyRoundIcon className="h-3.5 w-3.5" aria-hidden="true" />
                     {t("settings.cloudAccountChangePassword", "Change password")}
                   </button>
-                </div>
+                </div>}
               </div>
             </div>
             {entitlements && (
@@ -510,48 +496,15 @@ export function CloudAccountSettings() {
           </div>
         ) : (
           <div className="space-y-4 p-4">
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">{t("settings.cloudAccountUrl", "Cloud API URL")}</span>
-                <input
-                  value={baseUrl}
-                  onChange={(event) => setBaseUrl(event.target.value)}
-                  className="h-10 w-full rounded-lg app-settings-input px-3"
-                  type="url"
-                  autoComplete="url"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">{t("settings.cloudAccountEmail", "Email")}</span>
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="h-10 w-full rounded-lg app-settings-input px-3"
-                  type="email"
-                  autoComplete="username"
-                />
-              </label>
-            </div>
             <label className="block space-y-1 text-sm">
-              <span className="text-muted-foreground">{t("settings.cloudAccountPassword", "Password")}</span>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="h-10 w-full rounded-lg app-settings-input px-3"
-                type="password"
-                autoComplete="current-password"
-              />
+              <span className="text-muted-foreground">{t("settings.cloudAccountUrl", "Cloud API URL")}</span>
+              <input value={baseUrl} disabled={submitting} onChange={event => setBaseUrl(event.target.value)} className="h-10 w-full rounded-lg app-settings-input px-3" type="url" autoComplete="url" />
             </label>
-            <button
-              type="button"
-              onClick={() => void handleLogin()}
-              disabled={submitting}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {submitting ? <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden="true" /> : <LogInIcon className="h-4 w-4" aria-hidden="true" />}
-              {t("settings.cloudAccountLogin", "Sign in")}
+            <button type="button" disabled={submitting} onClick={() => void handleLogin()} className="w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground disabled:opacity-50">
+              {browserPending ? t("settings.cloudAccountBrowserWaiting", "Complete sign-in in your browser…") : t("settings.cloudAccountBrowserLogin", "Sign in with your browser")}
             </button>
+            {browserPending && <button type="button" onClick={() => void window.api.cloud.auth.cancelBrowserLogin()} className="text-sm text-muted-foreground underline">{t("common.cancel", "Cancel")}</button>}
+            <p className="text-xs text-muted-foreground">{t("settings.cloudAccountBrowserHint", "Continue with an available third-party account in your browser.")}</p>
           </div>
         )}
       </SettingSection>
