@@ -86,6 +86,15 @@ function ModelFormModalHarness({
 }
 
 describe("AI workbench ModelFormModal", () => {
+  it("lets a video-only model select its native protocol without chat or image controls", async () => {
+    await renderWithI18n(<ModelFormModalHarness onClose={vi.fn()} onTestDraft={vi.fn()} onSave={vi.fn()} />, { language: "en" });
+    fireEvent.click(screen.getByRole("radio", { name: "Video" }));
+    const protocol = screen.getByRole("combobox", { name: "Video API protocol" });
+    expect(protocol).toHaveValue("");
+    fireEvent.change(protocol, { target: { value: "dashscope" } });
+    expect(protocol).toHaveValue("dashscope");
+    expect(screen.queryByRole("switch", { name: /Image Model/i })).toBeNull();
+  });
   it("keeps modal actions non-submit with disclosure and draft icons hidden", async () => {
     const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();

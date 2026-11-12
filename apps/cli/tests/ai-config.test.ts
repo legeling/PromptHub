@@ -128,6 +128,21 @@ describe("ai config cli", () => {
     expect(imageModelRes.exitCode).toBe(0);
     expect(imageModelRes.json.capabilities.imageGeneration).toBe(true);
 
+    const video = await execCli([...baseArgs, "ai", "model-add", "--provider", providerId,
+      "--model", "wan2.7-r2v", "--type", "video", "--video-protocol", "dashscope"]);
+    expect(video.exitCode).toBe(0);
+    expect(video.json).toMatchObject({ type: "video", videoProtocol: "dashscope", capabilities: { chat: false, imageGeneration: false } });
+    closeDatabase();
+    const custom = await execCli([...baseArgs, "ai", "model-add", "--provider", providerId,
+      "--model", "custom-endpoint", "--type", "video"]);
+    expect(custom.exitCode).toBe(0);
+    closeDatabase();
+    const reloaded = await execCli([...baseArgs, "ai", "models"]);
+    const reloadedCustom = reloaded.json.find((item: { id: string }) => item.id === custom.json.id);
+    expect(reloadedCustom).toMatchObject({ model: "custom-endpoint", type: "video" });
+    expect(reloadedCustom).not.toHaveProperty("videoProtocol");
+    expect(reloaded.json).toEqual(expect.arrayContaining([expect.objectContaining({ id: video.json.id, type: "video", videoProtocol: "dashscope" })]));
+
     const visionRouteRes = await execCli([
       ...baseArgs,
       "ai",

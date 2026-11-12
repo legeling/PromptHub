@@ -23,6 +23,24 @@ describe("settings ai model actions", () => {
     Reflect.deleteProperty(window, "api");
   });
 
+  it("keeps video models out of chat defaults on add, reclassification and deletion", async () => {
+    const { useSettingsStore: store } = await import("../../../src/renderer/stores/settings.store");
+    store.setState({ aiModels: [], aiModel: "", aiApiKey: "", aiApiUrl: "" });
+    const endpoint = { provider: "custom", apiProtocol: "openai", apiKey: "fixture", apiUrl: "https://example.invalid/v1" } as const;
+    store.getState().addAiModel({ ...endpoint, model: "clip", type: "video" });
+    expect(store.getState().aiModel).toBe("");
+    store.getState().addAiModel({ ...endpoint, model: "alias", type: "chat" });
+    expect(store.getState().aiModel).toBe("alias");
+    const alias = store.getState().aiModels.find(m => m.model === "alias")!;
+    store.getState().updateAiModel(alias.id, { type: "video" });
+    expect(store.getState().aiModel).toBe("");
+    expect(store.getState().aiModels.filter(m => m.isDefault).map(m => m.model)).toEqual(["clip"]);
+    store.getState().updateAiModel(alias.id, { type: "chat" });
+    await store.getState().deleteAiModel(alias.id);
+    expect(store.getState().aiModel).toBe("");
+    expect(store.getState().aiModels[0].type).toBe("video");
+  });
+
   it("syncs AI model changes to the main process JSON settings payload", async () => {
     const setSettings = vi.fn().mockResolvedValue(undefined);
     window.api = {

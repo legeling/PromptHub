@@ -527,6 +527,24 @@ describe("AISettingsPrototype", () => {
     );
   });
 
+  it("suggests a category for a typed model and preserves an explicit override without assigning a protocol", async () => {
+    const state = createSettingsState();
+    useSettingsStoreMock.mockReturnValue(state);
+    await renderWithI18n(<AISettingsPrototype />, { language: "en" });
+    fireEvent.click(screen.getByRole("button", { name: "Model Routing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Model" }));
+    const name = screen.getByLabelText("Model Name");
+    fireEvent.change(name, { target: { value: "gpt-image-2" } });
+    fireEvent.blur(name);
+    expect(screen.getByRole("radio", { name: "Image" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Video" }));
+    fireEvent.change(name, { target: { value: "my-custom-endpoint" } });
+    fireEvent.blur(name);
+    fireEvent.click(screen.getAllByRole("button", { name: "Add Model" }).at(-1)!);
+    expect(state.addAiModel).toHaveBeenCalledWith(expect.objectContaining({
+      model: "my-custom-endpoint", type: "video", videoProtocol: undefined,
+    }));
+  });
   it("persists image generation as a model capability from the capability section", async () => {
     const settingsState = createSettingsState();
     useSettingsStoreMock.mockReturnValue(settingsState);
@@ -547,7 +565,7 @@ describe("AISettingsPrototype", () => {
     expect(settingsState.addAiModel).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "gpt-image-2",
-        type: "image",
+        type: "chat",
         capabilities: expect.objectContaining({
           chat: true,
           vision: false,
@@ -578,7 +596,7 @@ describe("AISettingsPrototype", () => {
     expect(settingsState.addAiModel).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "gpt-4o-image",
-        type: "image",
+        type: "chat",
         capabilities: expect.objectContaining({
           chat: true,
           imageGeneration: true,
@@ -634,7 +652,7 @@ describe("AISettingsPrototype", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Model Routing" }));
     fireEvent.click(screen.getByRole("button", { name: "Add Model" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Image generation" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Image" }));
     fireEvent.change(screen.getByLabelText("Model Name"), {
       target: { value: "gpt-image-1" },
     });

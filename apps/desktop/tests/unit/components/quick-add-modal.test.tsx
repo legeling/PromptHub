@@ -89,8 +89,37 @@ describe("QuickAddModal", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it("saves a collected video prompt with its selected category", async () => {
+    const original = window.electron;
+    vi.stubGlobal("electron", { ...original, selectImage: async () => ["/tmp/ref.png"], saveImage: async () => ["ref.png"],
+      selectVideo: async () => ["/tmp/clip.mp4"], saveVideo: async () => ["clip.mp4"] });
+    const onCreate = vi.fn().mockResolvedValue({ id: "tracking-shot" });
+    const updateMetadata = vi.spyOn(usePromptStore.getState(), "updatePrompt").mockResolvedValue();
+    chatCompletionMock.mockResolvedValue({ content: '{"title":"Tracking shot"}' });
+    await renderWithI18n(
+      <ToastProvider>
+        <QuickAddModal isOpen onClose={vi.fn()} onCreate={onCreate} />
+      </ToastProvider>,
+      { language: "zh" },
+    );
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "A slow tracking shot." } });
+    fireEvent.click(screen.getByRole("button", { name: "视频" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加参考图" }));
+    await screen.findByAltText("preview-0");
+    fireEvent.click(screen.getByRole("button", { name: "上传视频" }));
+    await screen.findByText(/clip.mp4/);
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      userPrompt: "A slow tracking shot.", promptType: "video", images: ["ref.png"], videos: ["clip.mp4"],
+    })));
+    await waitFor(() => expect(updateMetadata).toHaveBeenCalledWith("tracking-shot",
+      expect.objectContaining({ title: "Tracking shot" })));
+    expect(updateMetadata.mock.calls[0][1]).not.toHaveProperty("promptType");
   });
 
   it("keeps the pointer backdrop presentational while preserving click close", async () => {

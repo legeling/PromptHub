@@ -54,6 +54,15 @@ const folders: Folder[] = [
 const prompts = Array.from({ length: 1000 }, (_, index) => createPrompt(index));
 
 describe("prompt-filter large dataset", () => {
+  it("separates video prompts from drawing prompts in counts and filters", () => {
+    const video = createPrompt(1, { promptType: "video" });
+    const image = createPrompt(2, { promptType: "image" });
+    const options = { prompts: [video, image], selectedFolderId: null, folders: [], unlockedFolderIds: new Set<string>() };
+    expect(buildPromptStats(options.prompts)).toMatchObject({ textCount: 0, imageCount: 1, videoCount: 1 });
+    expect(filterVisiblePrompts({ ...options, promptTypeFilter: "video" })).toEqual([video]);
+    expect(filterVisiblePrompts({ ...options, promptTypeFilter: "image" })).toEqual([image]);
+  });
+
   it("hides private descendants in All, search and Favorites, and reveals them only in an unlocked folder", () => {
     const privateFolders = [
       { ...folders[0], isPrivate: true },

@@ -212,6 +212,14 @@ describe("EditPromptModal", () => {
     expect(updatePromptMock).toHaveBeenCalledWith(basePrompt.id, expect.objectContaining({ images: ["first.png", "second.png"] }));
   });
 
+  it("shows the same media pickers beneath the video type when switching from image", async () => {
+    await renderEditPromptModal();
+    fireEvent.click(screen.getByRole("button", { name: "Video" }));
+    const basic = screen.getByText("Basic Info").parentElement?.parentElement;
+    expect(basic).toContainElement(screen.getByText("Reference Media"));
+    expect(basic).toContainElement(screen.getByRole("button", { name: /Upload Video/i }));
+  });
+
   it("renders reference media in the main flow with the real size hint (v0.6.3 #64)", async () => {
     await renderEditPromptModal();
 

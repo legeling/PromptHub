@@ -1,4 +1,6 @@
+import { createVideoTask, getVideoTask } from "../../src/renderer/services/video-generation";
 import fs from "node:fs";
+import { arrayBuffer } from "node:stream/consumers";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -114,6 +116,13 @@ async function respond(
   request: http.IncomingMessage,
   response: http.ServerResponse,
 ): Promise<void> {
+  if (request.url === "/upload-video") {
+    const form = await new Response(await arrayBuffer(request), { headers: { "content-type": String(request.headers["content-type"]) } }).formData();
+    const file = form.get("file");
+    if (!file || typeof file === "string") throw new Error("No uploaded file");
+    response.end(JSON.stringify({ mime: file.type, bytes: Buffer.from(await file.arrayBuffer()).toString("hex") }));
+    return;
+  }
   let text = "";
   for await (const chunk of request) text += String(chunk);
   const body: unknown = JSON.parse(text || "{}");
@@ -125,6 +134,10 @@ async function respond(
     response.end(
       JSON.stringify({ error: { message: "fixture unauthorized" } }),
     );
+  } else if (request.url === "/v1/contents/generations/tasks") {
+    response.end(JSON.stringify({ id: "video-fixture" }));
+  } else if (request.url === "/v1/contents/generations/tasks/video-fixture") {
+    response.end(JSON.stringify({ status: "succeeded", content: { video_url: "https://fixture.example/movie.mp4" } }));
   } else if (request.url === "/v1/images/generations") {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(
@@ -206,6 +219,24 @@ function config(model = "fixture"): AIConfig {
 }
 
 describe("Prompt AI renderer/preload/IPC with a controlled HTTP server", () => {
+  it("sends references over the desktop AI bridge and resolves the video task", async () => {
+    const model = { apiUrl, model: "seedance", apiKey: "fixture", videoProtocol: "ark" } as const;
+    const id = await createVideoTask(model, "Camera pan", { images: ["data:image/png;base64," + imageBase64], videos: ["asset://clip"] });
+    expect(requests.at(-1)?.body).toMatchObject({ content: [
+      { text: "Camera pan" }, { image_url: { url: "data:image/png;base64," + imageBase64 } },
+      { role: "reference_video", video_url: { url: "asset://clip" } },
+    ] });
+    expect(await getVideoTask(model, id)).toEqual({ state: "succeeded", url: "https://fixture.example/movie.mp4" });
+  });
+
+  it("sends a reference video as a multipart file without changing its bytes", async () => {
+    const bytes = Buffer.from("000000186674797069736f6d", "hex");
+    const reply = await aiApi.request({ method: "POST", url: new URL("/upload-video", apiUrl).href,
+      multipart: { fields: { key: "clip.mp4" }, files: [{ fieldName: "file", fileName: "clip.mp4", mimeType: "video/mp4", base64: bytes.toString("base64") }] } });
+    expect(reply.ok).toBe(true);
+    expect(JSON.parse(reply.body)).toEqual({ mime: "video/mp4", bytes: bytes.toString("hex") });
+  });
+
   it("round-trips video bytes and clears only video files in the isolated profile", async () => {
     const videoBytes = Buffer.from(
       "000000186674797069736f6d0000020069736f6d69736f32",

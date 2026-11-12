@@ -228,6 +228,12 @@ describe("quick-add-utils", () => {
     });
   });
 
+  it("recognizes a generated video draft independently of the initial preference", () => {
+    expect(parseQuickAddGeneratedDraft(
+      '{"userPrompt":"A slow pan through the forest.","promptType":"video"}', "text", "New Prompt",
+    )?.promptType).toBe("video");
+  });
+
   it("returns null when generated draft is missing userPrompt", () => {
     expect(
       parseQuickAddGeneratedDraft(

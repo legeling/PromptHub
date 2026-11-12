@@ -62,6 +62,13 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("CreatePromptModal", () => {
+  it("shows reference images and videos when creating a video without expanding more settings", async () => {
+    await renderCreatePromptModal();
+    fireEvent.click(screen.getByRole("button", { name: "Video" }));
+    expect(screen.getByRole("button", { name: "Upload Video" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Upload/Paste/URL" })).toBeVisible();
+  });
+
   it("previews a selected reference image and includes it when creating in StrictMode", async () => {
     resetStores();
     window.electron.selectImage = vi.fn().mockResolvedValue(["/tmp/reference.png"]);
