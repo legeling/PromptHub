@@ -42,3 +42,5 @@
 ## Shared module boundaries
 
 资源来源、版本、完整包和分发语义引用 [公共资源架构](../structure/resource-library-architecture.md)；Skill、MCP、Plugin、Rules 的持久化和恢复由各共享领域负责。CLI 不另建存储或能力判定规则。活动工作从 [CLI](../../changes/index.md#cli) 或 [Shared](../../changes/index.md#shared) 分类进入；没有独立 CLI 计划不代表跨端工作已完成。
+
+AI 模型配置：`ai model-add --type video [--video-protocol ark|dashscope]` 保存视频模型；聊天和生图路由不选用它。

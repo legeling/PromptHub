@@ -257,9 +257,9 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 - 桌面端新建 Prompt 弹窗必须优先展示标题、Prompt 类型与用户提示词，让用户先进入写作流。
 - 新建 Prompt 首屏不应再额外显示“Basic Info”分组标题，也不应展示仅用于解释类型的冗余说明文案；变量使用说明应作为用户提示词附近的轻量提示存在。
-- 新建 Prompt 的描述、system prompt、参考媒体，以及文件夹、标签、来源、备注等扩展信息必须默认收纳在 `More Settings` 折叠区内，避免干扰主要创作流程。
-- 桌面端编辑 Prompt 弹窗必须保留更强的已有内容上下文：`Basic Info` 中继续展示描述、Prompt 类型，以及 image Prompt 的参考媒体。
-- 编辑文本 Prompt 时，参考媒体位于主编辑流程内，不依赖展开 `More Settings`；新建场景沿用上文默认收纳的层级。
+- 新建视频 Prompt 的参考媒体紧随类型选择器；其余类型的参考媒体及所有类型的描述、system prompt、文件夹、标签、来源、备注等扩展信息必须默认收纳在 `More Settings` 折叠区内，避免干扰主要创作流程。
+- 桌面端编辑 Prompt 弹窗必须保留更强的已有内容上下文：`Basic Info` 中继续展示描述、Prompt 类型，以及绘图和视频 Prompt 的参考媒体。
+- 编辑文本 Prompt 时，参考媒体位于主编辑流程内，不依赖展开 `More Settings`；新建场景沿用上文的层级。
 - Prompt 参考媒体的原始字节必须由 runtime path helper 管理在 `userData/data/assets/images/` 与 `userData/data/assets/videos/`；SQLite `prompts.images` / `prompts.videos` 只保存托管文件名数组，renderer 通过本地媒体协议读取，不能把任意来源绝对路径持久化到 Prompt。
 - 新建、编辑和独立 Prompt 编辑器的参考图片缩略图均可通过鼠标或键盘打开共享大图预览，保留当前图片顺序和独立移除动作。预览提供放大、缩小、滚轮缩放与重置；缩放范围为适应视口尺寸的 25%–400%，缩放保持当前视野中心，放大后可拖动或使用滚动条查看细节。换图或重新打开后恢复 100%。Escape 只关闭最上层图片预览，关闭后焦点回到触发缩略图，不能关闭或提交下层表单。缩放与当前预览仅由 renderer 临时状态持有，不改写原图、Prompt 记录、IPC 或存储布局，无迁移。
 - Prompt 异步界面的 mounted 标记必须在 effect setup 中恢复，兼容 StrictMode 清理后重放；导入、快速创建、图片反推、快速改写、编辑弹窗和独立编辑器在正常打开期间接受异步结果，实际关闭/卸载及已有 session 失效后继续丢弃迟到结果。AI 服务和持久化所有权不变。
@@ -268,6 +268,12 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 - 来源与备注等次要字段使用可键盘操作的折叠容器，暴露 `aria-expanded` / `aria-controls`。折叠仅隐藏内容，不卸载表单，字段值与保存结果保持一致；关闭后不持久化该折叠状态。
 
 ### 8. Quick Add Prompt Creation
+
+- 快速添加、新建、编辑和侧栏筛选均区分文本、绘图、视频。视频提示词沿用已有的 `promptType: video`，不要求附带视频文件；分类不启动视频生成。视频 Prompt 的「AI 测试」使用独立的视频模型，不依赖聊天模型。设置 → AI → 添加模型，填写供应商 Base URL、API Key 和模型 ID，可手动选择「文本 / 绘图 / 视频」。新增时按已知模型名建议类型；不确定时默认文本。手动选择及已保存的分类优先于名称推断；分类与附加能力独立。视频协议可以留空，只分类和保存时无需适配；测试或生成前必须显式选择与服务商兼容的视频协议，不按名称或供应商默认调用方舟。方舟 Seedance 使用 `/api/v3`；百炼 Wan 2.7 R2V 使用对应地域的 `/api/v1`。连接测试不提交计费生成任务。
+- 保存 Prompt 不向供应商发送媒体。用户点击「生成视频」才发送所选参考：方舟支持本地图及公网视频链接 / `asset://`，本地视频需提供对应来源；万相支持本地图和 MP4/MOV，本地视频使用供应商临时 OSS 凭据上传。参考生视频的输入要求由具体模型决定，收藏不强制附图。
+- 视频任务提交一次，返回任务 ID；刷新只查询该任务，完成可播放并打开原视频。同一窗口会话重新打开测试可继续查询；供应商结果链接有时效。任务查询不写 Prompt 或备份，托管附件沿用现有文件名数组，无数据库迁移。
+- 协议依据：[火山方舟创建任务](https://docs.volcengine.com/docs/ark/create-video-generation-task-api?lang=zh)、[万相参考生视频](https://help.aliyun.com/en/model-studio/wan-video-to-video-api-reference)、[百炼临时素材上传](https://help.aliyun.com/en/model-studio/get-temporary-file-url)。
+- 快速添加可随提示词保存本地参考图和参考视频；保存素材不向模型发送附件。
 
 - 桌面端 `Quick Add` 必须同时支持“分析已有内容”和“AI 生成 Prompt”两种快速创建路径。
 - “分析已有内容”路径应允许用户粘贴一段已有 Prompt，系统先创建占位 Prompt，再由 AI 在后台补齐标题、描述、system prompt、标签和建议文件夹。
