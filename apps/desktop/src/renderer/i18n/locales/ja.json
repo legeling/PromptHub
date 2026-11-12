@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "動画 API プロトコル",
+    "noProtocol": "未設定",
+    "chooseProtocol": "モデル設定で対応する動画 API プロトコルを選ぶと、テストや動画生成ができます。",
+    "title": "動画を生成",
+    "configure": "設定 → AI で動画モデルを追加してください。",
+    "references": "生成時に、選択した参考画像と動画を動画サービスに送信します。",
+    "arkSource": "動画の公開 URL または asset:// ID（1 行に 1 件）",
+    "open": "元の動画を開く",
+    "pending": "送信しました。更新して結果を確認してください。",
+    "new": "別のタスクを作成",
+    "probe": "動画サービスに接続しました。動画は生成していません。",
+    "description": "設定した動画モデルで参考画像や動画を使ってテストできます。",
+    "addImages": "参考画像を追加"
+  },
   "startupRecovery": {
     "indexedDbDescription": "以前のブラウザーデータと現在のデータベースに競合があります。各レコードを確認し、保持する内容を選択してください。適用前に両方の復元用コピーを保存します。ブラウザーデータは削除しません。",
     "indexedDbSummary": "{{conflicts}} 件のレコードで選択が必要です。",
@@ -84,6 +99,7 @@
     "allPrompts": "すべての Prompts",
     "textPrompts": "テキストプロンプト",
     "imagePrompts": "画像プロンプト",
+    "videoPrompts": "動画プロンプト",
     "favorites": "お気に入り",
     "relationshipGraph": "関係グラフ",
     "folders": "フォルダ",
@@ -1661,6 +1677,7 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "videoModel": "動画モデル",
     "appearanceDesign": {
       "description": "PromptHub の外観を自分の使い方に合わせて調整します。",
       "lightDescription": "日中に見やすい明るい表示",

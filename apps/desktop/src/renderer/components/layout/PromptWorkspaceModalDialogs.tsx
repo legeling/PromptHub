@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { usePromptStore } from "../../stores/prompt.store";
 import type { PromptWorkspaceDialogsProps } from "./prompt-workspace-dialog-types";
 
+const VideoPromptTestModal = lazy(() => import("../prompt/VideoPromptTestModal").then(m => ({ default: m.VideoPromptTestModal })));
 const AiTestModal = lazy(() =>
   import("../prompt/AiTestModal").then((module) => ({
     default: module.AiTestModal,
@@ -38,6 +39,10 @@ function PromptAiTestDialog({
 >) {
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   if (!isAiTestModalOpen) return null;
+  if (aiTestPrompt?.promptType === "video") {
+    return <Suspense fallback={null}><VideoPromptTestModal key={aiTestPrompt.id} prompt={aiTestPrompt}
+      onClose={() => { setIsAiTestModalOpen(false); setAiTestPrompt(null); }} /></Suspense>;
+  }
   return (
     <Suspense fallback={null}>
       <AiTestModal

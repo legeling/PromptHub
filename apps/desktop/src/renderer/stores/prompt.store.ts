@@ -1,3 +1,4 @@
+import type { PromptTypeFilter } from "../services/prompt-filter";
 import type { PreparedWorkspaceRefresh } from "../services/local-data-refresh";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -211,7 +212,7 @@ interface PromptState {
   isLoading: boolean;
   searchQuery: string;
   filterTags: string[];
-  promptTypeFilter: "all" | "text" | "image";
+  promptTypeFilter: PromptTypeFilter;
   // Sort and order
   // 排序和顺序
   sortBy: SortBy;
@@ -262,7 +263,7 @@ interface PromptState {
   toggleFilterTag: (tag: string) => void;
   setFilterTags: (tags: string[]) => void;
   clearFilterTags: () => void;
-  setPromptTypeFilter: (filter: "all" | "text" | "image") => void;
+  setPromptTypeFilter: (filter: PromptTypeFilter) => void;
   toggleFavorite: (id: string) => Promise<void>;
   togglePinned: (id: string) => Promise<void>;
   // Sort and view

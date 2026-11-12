@@ -1,10 +1,11 @@
+import { isVideoModelProtocol } from "@prompthub/shared/types";
 import crypto from "crypto";
 import { getDatabase } from "@prompthub/db";
 import { getUserDataPath } from "./runtime-paths";
 import { CoreSettingsStore } from "./settings-store";
 import type { AIProtocol } from "@prompthub/shared/types";
 
-export type CoreAIModelType = "chat" | "image";
+export type CoreAIModelType = import("@prompthub/shared/types").AIModelType;
 export type CoreAIModelRoute =
   | "mainText"
   | "fastText"
@@ -33,6 +34,7 @@ export interface CoreAIProviderConfig {
 }
 
 export interface CoreAIModelConfig {
+  videoProtocol?: import("@prompthub/shared/types").VideoModelProtocol;
   id: string;
   type: CoreAIModelType;
   name?: string;
@@ -65,6 +67,7 @@ export interface AddAIProviderInput {
 }
 
 export interface AddAIModelInput {
+  videoProtocol?: import("@prompthub/shared/types").VideoModelProtocol;
   provider: string;
   providerId?: string;
   type?: CoreAIModelType;
@@ -137,10 +140,11 @@ function normalizeCapabilities(
   capabilities: CoreAIModelCapabilities | undefined,
   type: CoreAIModelType,
 ): CoreAIModelCapabilities {
+  if (type === "video") return { chat: false, imageGeneration: false };
   if (type === "image") {
     return {
       ...capabilities,
-      chat: false,
+      chat: capabilities?.chat === true,
       imageGeneration: true,
     };
   }
@@ -172,10 +176,11 @@ function normalizeModelConfig(model: CoreAIModelConfig): CoreAIModelConfig {
   const modelName = assertNonEmpty(model.model, "model");
   const provider = assertNonEmpty(model.provider, "model provider");
   const apiUrl = assertNonEmpty(model.apiUrl, "model apiUrl");
-  const type = model.type === "image" ? "image" : "chat";
+  const type = model.type === "image" || model.type === "video" ? model.type : "chat";
 
   return {
     id: assertNonEmpty(model.id, "model id"),
+    ...(type === "video" && isVideoModelProtocol(model.videoProtocol) ? { videoProtocol: model.videoProtocol } : {}),
     type,
     name: model.name?.trim() || undefined,
     providerId: model.providerId?.trim() || undefined,
@@ -354,6 +359,7 @@ export class CoreAIConfigService {
     );
     const nextModel: CoreAIModelConfig = {
       id: createId("model"),
+    ...(type === "video" && isVideoModelProtocol(input.videoProtocol) ? { videoProtocol: input.videoProtocol } : {}),
       type,
       name: input.name?.trim() || undefined,
       providerId: providerConfig?.id ?? (input.providerId?.trim() || undefined),

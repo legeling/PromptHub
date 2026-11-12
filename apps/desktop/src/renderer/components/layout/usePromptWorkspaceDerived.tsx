@@ -1,3 +1,4 @@
+import type { PromptTypeFilter } from "../../services/prompt-filter";
 import { useEffect, useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
@@ -45,7 +46,7 @@ interface PromptVisibilityParams {
   filterTags: string[];
   folders: Folder[];
   lastSelectedId: string | null;
-  promptTypeFilter: "all" | "text" | "image";
+  promptTypeFilter: PromptTypeFilter;
   prompts: PromptSummary[];
   searchQuery: string;
   selectedFolderId: string | null;

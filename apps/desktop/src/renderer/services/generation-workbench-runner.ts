@@ -1,5 +1,6 @@
 import { GenerationScheduler } from "@prompthub/core/generation-scheduler";
 import { classifyGenerationError } from "@prompthub/core/image-generation-workbench";
+import { toAIConfig } from "./ai-defaults";
 import { notifyTaskResult } from "./application-notifications";
 import type {
   CreateGenerationBatchInput,
@@ -166,7 +167,7 @@ async function executeSlot(
     if (!isActive()) return;
     publish(updated);
     const response = await generateImage(
-      config,
+      toAIConfig(config, "image"),
       initial.resolvedPrompt,
       buildProviderOptions(initial, config, references),
     );

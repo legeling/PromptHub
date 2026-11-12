@@ -5,6 +5,7 @@ import {
   GitBranchIcon,
   HashIcon,
   ImageIcon,
+  VideoIcon,
   MessageSquareTextIcon,
 } from "lucide-react";
 import type { useTranslation } from "react-i18next";
@@ -133,6 +134,8 @@ export function PromptDetailMetadata({
         >
           {promptType === "image" ? (
             <ImageIcon className="h-3 w-3" />
+          ) : promptType === "video" ? (
+            <VideoIcon className="h-3 w-3" />
           ) : (
             <MessageSquareTextIcon className="h-3 w-3" />
           )}

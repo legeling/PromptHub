@@ -106,6 +106,7 @@ export function usePromptMediaManager({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
+  const [pendingPastes, setPendingPastes] = useState(0);
   const [isDraggingMedia, setIsDraggingMedia] = useState(false);
   const isMountedRef = useRef(true);
   const isOpenRef = useRef(isOpen);
@@ -235,12 +236,15 @@ export function usePromptMediaManager({
 
   const handleSelectVideo = useCallback(async () => {
     try {
-      const filePaths = await window.electron?.selectVideo?.();
+      const bridge = window.electron;
+      if (!bridge?.selectVideo || !bridge.saveVideo) throw new Error("Video picker unavailable");
+      const filePaths = await bridge.selectVideo();
       if (!canApplyAsyncResult()) {
         return;
       }
       if (filePaths && filePaths.length > 0) {
-        const savedVideos = await window.electron?.saveVideo?.(filePaths);
+        const savedVideos = await bridge.saveVideo(filePaths);
+        if (!savedVideos?.length) throw new Error("Video copy failed");
         if (savedVideos && canApplyAsyncResult()) {
           setVideos((prev) => [...prev, ...savedVideos]);
         }
@@ -250,8 +254,9 @@ export function usePromptMediaManager({
         return;
       }
       console.error("Failed to select videos:", error);
+      showMediaUploadError();
     }
-  }, [canApplyAsyncResult]);
+  }, [canApplyAsyncResult, showMediaUploadError]);
 
   const handleRemoveVideo = useCallback((index: number) => {
     setVideos((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
@@ -462,13 +467,15 @@ export function usePromptMediaManager({
         if (item.type.indexOf("image") !== -1) {
           const blob = item.getAsFile();
           if (blob) {
+            setPendingPastes(n => n + 1);
             try {
               const buffer = await blob.arrayBuffer();
               if (!canApplyAsyncResult()) {
                 return;
               }
               const fileName = await window.electron?.saveImageBuffer?.(buffer);
-              if (fileName && canApplyAsyncResult()) {
+              if (!fileName) throw new Error("Clipboard image was not saved");
+              if (canApplyAsyncResult()) {
                 setImages((prev) => [...prev, fileName]);
               }
             } catch (error) {
@@ -476,6 +483,9 @@ export function usePromptMediaManager({
                 return;
               }
               console.error("Failed to save pasted image:", error);
+              showMediaUploadError();
+            } finally {
+              if (isMountedRef.current) setPendingPastes(n => n - 1);
             }
           }
         }
@@ -486,9 +496,10 @@ export function usePromptMediaManager({
     return () => {
       window.removeEventListener("paste", handlePaste);
     };
-  }, [canApplyAsyncResult, isOpen]);
+  }, [canApplyAsyncResult, isOpen, showMediaUploadError]);
 
   return {
+    isPasting: pendingPastes > 0,
     imageUrl,
     images,
     isDownloadingImage,

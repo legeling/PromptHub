@@ -1,3 +1,5 @@
+import { isVideoModelProtocol } from "@prompthub/shared/types";
+import { testVideoEndpoint } from "../../services/video-generation";
 import { requestConfirmation } from "../ui/confirmation";
 import { useMemo, useState } from "react";
 
@@ -547,6 +549,15 @@ export function AISettingsPrototype() {
     setTestingModelId(editingModelId || "__draft__");
     const modelName = modelForm.name.trim() || modelForm.model.trim() || "AI";
     try {
+      if (modelForm.type === "video") {
+        if (!isVideoModelProtocol(modelForm.videoProtocol)) {
+          showToast(t("videoTest.chooseProtocol"), "info");
+          return;
+        }
+        await testVideoEndpoint(modelForm);
+        showToast(t("videoTest.probe"), "success");
+        return;
+      }
       if (modelForm.type === "image") {
         const result = await testImageGeneration(
           {
@@ -628,6 +639,7 @@ export function AISettingsPrototype() {
       apiUrl: normalizeApiUrlInput(modelForm.apiUrl),
       model: modelForm.model.trim(),
       type: modelForm.type,
+      videoProtocol: modelForm.type === "video" ? modelForm.videoProtocol : undefined,
       capabilities: {
         ...cloneDefaultCapabilities(),
         ...modelForm.capabilities,
@@ -764,6 +776,15 @@ export function AISettingsPrototype() {
     setTestingModelId(model.id);
     const modelName = getModelDisplayName(model, "AI");
     try {
+      if (model.type === "video") {
+        if (!isVideoModelProtocol(model.videoProtocol)) {
+          showToast(t("videoTest.chooseProtocol"), "info");
+          return;
+        }
+        await testVideoEndpoint(model);
+        showToast(t("videoTest.probe"), "success");
+        return;
+      }
       if ((model.type ?? "chat") === "image") {
         const result = await testImageGeneration(
           {
@@ -819,6 +840,16 @@ export function AISettingsPrototype() {
     setTestingEndpointKey(group.key);
     const verifiedAt = new Date().toISOString();
     try {
+      if (targetModel.type === "video") {
+        if (!isVideoModelProtocol(targetModel.videoProtocol)) {
+          showToast(t("videoTest.chooseProtocol"), "info");
+          return;
+        }
+        await testVideoEndpoint(targetModel);
+        setEndpointStatuses(prev => ({ ...prev, [group.key]: { tone: "ready", label: t("settings.aiWorkbenchConnected"), detail: t("videoTest.probe") } }));
+        showToast(t("videoTest.probe"), "success");
+        return;
+      }
       if ((targetModel.type ?? "chat") === "image") {
         const result = await testImageGeneration(
           {
@@ -1084,7 +1115,6 @@ export function AISettingsPrototype() {
                 apiProtocol: group.apiProtocol,
                 apiKey: group.apiKey,
                 apiUrl: group.apiUrl,
-                type: group.models[0]?.type ?? "chat",
               },
               { lockEndpoint: true },
             );

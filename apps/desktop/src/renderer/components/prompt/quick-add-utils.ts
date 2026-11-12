@@ -1,3 +1,4 @@
+import type { PromptType } from "@prompthub/shared/types";
 import type { AIConfig } from "../../services/ai";
 import {
   resolveScenarioAIConfig,
@@ -68,7 +69,7 @@ export interface QuickAddAnalysisResult {
 
 export interface QuickAddGeneratedDraft {
   title: string;
-  promptType: "text" | "image";
+  promptType: PromptType;
   systemPrompt?: string;
   userPrompt: string;
   description?: string;
@@ -132,8 +133,8 @@ function asStringArray(value: unknown): string[] {
     .slice(0, 8);
 }
 
-function asPromptType(value: unknown): "text" | "image" | undefined {
-  if (value !== "text" && value !== "image") {
+function asPromptType(value: unknown): PromptType | undefined {
+  if (value !== "text" && value !== "image" && value !== "video") {
     return undefined;
   }
 
@@ -176,10 +177,10 @@ ${context.tagsString}
 export function buildQuickAddGeneratePrompt(
   userRequest: string,
   context: QuickAddPromptContext,
-  preferredPromptType: "text" | "image",
+  preferredPromptType: PromptType,
 ): string {
   const preferredTypeLabel =
-    preferredPromptType === "image" ? "image（绘图）" : "text（文本）";
+    { text: "text（文本）", image: "image（绘图）", video: "video（视频）" }[preferredPromptType];
 
   return `你是一名资深 Prompt 设计师。请根据用户需求，生成一份可以直接保存、测试和复用的 PromptHub 草稿，并只返回 JSON。
 
@@ -200,7 +201,7 @@ ${context.tagsString}
 请只返回以下 JSON 结构，不要输出 Markdown、解释或代码块：
 {
   "title": "具体、可识别的标题，不超过20字，不要使用“通用助手”等泛名",
-  "promptType": "text 或 image",
+  "promptType": "text、image 或 video",
   "systemPrompt": "系统提示词；仅写角色、边界、质量标准和长期行为约束；如果不需要，返回空字符串",
   "userPrompt": "最终给模型使用的 Prompt 正文，必须完整、结构化、可直接执行",
   "description": "一句话描述用途，不超过50字",
@@ -210,7 +211,7 @@ ${context.tagsString}
 
 生成要求：
 - 必须输出可以直接保存和测试的 Prompt，不要只输出大纲。
-- 如果用户需求更像绘图 / 生图任务，返回 promptType=image；否则返回 text。
+- 如果用户需求更像绘图 / 生图任务，返回 promptType=image；视频生成任务返回 video 并描述动作和镜头变化；文本任务返回 text。
 - text Prompt 应包含清晰的角色/任务/输入/步骤/输出格式/质量标准。
 - image Prompt 的 userPrompt 应覆盖主体、场景、构图、镜头/视角、光线、色彩、材质、风格、质量词和必要的 avoid/negative 约束。
 - 保留用户要求的变量占位符，例如 {{topic}}、{{audience}}。
@@ -238,7 +239,7 @@ export function parseQuickAddAnalysisResult(
 
 export function parseQuickAddGeneratedDraft(
   responseContent: string,
-  fallbackPromptType: "text" | "image",
+  fallbackPromptType: PromptType,
   emptyTitleFallback: string,
 ): QuickAddGeneratedDraft | null {
   const parsed = extractJsonObject(responseContent);

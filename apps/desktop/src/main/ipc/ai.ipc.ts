@@ -12,11 +12,13 @@ const MAX_MULTIPART_FILES = 4;
 const MAX_MULTIPART_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_MULTIPART_BASE64_LENGTH = Math.ceil(MAX_MULTIPART_FILE_BYTES / 3) * 4;
 const BASE64_PATTERN =
-  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
-const ALLOWED_MULTIPART_IMAGE_TYPES = new Set([
+  /^[A-Za-z0-9+/]+={0,2}$/u;
+const ALLOWED_MULTIPART_MEDIA_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "video/mp4",
+  "video/quicktime",
 ]);
 
 function normalizeHeaders(
@@ -39,6 +41,7 @@ function decodeMultipartFile(base64: string): Buffer {
   if (
     !base64 ||
     base64.length > MAX_MULTIPART_BASE64_LENGTH ||
+    base64.length % 4 !== 0 ||
     !BASE64_PATTERN.test(base64)
   ) {
     throw new Error("Invalid multipart image payload");
@@ -80,7 +83,7 @@ function buildMultipartBody(request: AITransportRequest): FormData | undefined {
       !file.fileName ||
       file.fileName.length > 255 ||
       file.fileName !== file.fileName.split(/[\\/]/u).pop() ||
-      !ALLOWED_MULTIPART_IMAGE_TYPES.has(file.mimeType)
+      !ALLOWED_MULTIPART_MEDIA_TYPES.has(file.mimeType)
     ) {
       throw new Error("Invalid multipart image metadata");
     }

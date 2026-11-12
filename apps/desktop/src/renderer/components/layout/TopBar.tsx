@@ -1110,7 +1110,7 @@ export function TopBar({
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={handleCreatePrompt}
           defaultFolderId={defaultCreateFolderId}
-          defaultPromptType={promptTypeFilter === "image" ? "image" : "text"}
+          defaultPromptType={promptTypeFilter === "all" ? "text" : promptTypeFilter}
         />
 
         {/* 快速添加弹窗 */}
@@ -1118,7 +1118,7 @@ export function TopBar({
           isOpen={isQuickAddModalOpen}
           onClose={() => setIsQuickAddModalOpen(false)}
           onCreate={handleCreatePrompt}
-          defaultPromptType={promptTypeFilter === "image" ? "image" : "text"}
+          defaultPromptType={promptTypeFilter === "all" ? "text" : promptTypeFilter}
           initialMode={quickAddInitialMode}
         />
 

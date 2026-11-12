@@ -1,3 +1,4 @@
+import { PromptTypePicker } from "./PromptTypePicker";
 import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import {
   useState,
@@ -20,7 +21,6 @@ import {
   PlayIcon,
   VideoIcon,
   SaveIcon,
-  MessageSquareTextIcon,
   XIcon,
 } from "lucide-react";
 
@@ -37,6 +37,7 @@ import { chatCompletion, rewritePromptDraft } from "../../services/ai";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../ui/Toast";
 import type {
+  PromptType,
   CreatePromptDTO,
   Prompt,
   UpdatePromptDTO,
@@ -92,7 +93,7 @@ export function EditPromptModal({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [promptType, setPromptType] = useState<"text" | "image" | "video">(
+  const [promptType, setPromptType] = useState<PromptType>(
     "text",
   );
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -1094,34 +1095,9 @@ export function EditPromptModal({
             <label className="block text-sm font-medium text-foreground">
               {t("prompt.type", "Prompt Type")}
             </label>
-            <div className="flex gap-2">
-              {(["text", "image"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  aria-pressed={promptType === type}
-                  onClick={() => setPromptType(type)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    promptType === type
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {type === "text" && (
-                    <MessageSquareTextIcon
-                      className="w-4 h-4"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {type === "image" && (
-                    <ImageIcon className="w-4 h-4" aria-hidden="true" />
-                  )}
-                  {type === "text" && t("prompt.typeText", "Text")}
-                  {type === "image" && t("prompt.typeImage", "Image")}
-                </button>
-              ))}
-            </div>
+            <PromptTypePicker value={promptType} onChange={setPromptType} />
             <p className="text-xs text-muted-foreground">
+              {promptType === "video" && t("videoTest.description")}
               {promptType === "text" &&
                 t("prompt.typeTextDesc", "Test with chat models (e.g. GPT-4)")}
               {promptType === "image" &&
@@ -1132,7 +1108,7 @@ export function EditPromptModal({
             </p>
           </div>
 
-          {promptType === "image" && renderReferenceMediaSection()}
+          {promptType !== "text" && renderReferenceMediaSection()}
         </div>
 
         <div className="space-y-3 border border-border/50 rounded-xl bg-muted/20 p-4">
@@ -1395,7 +1371,7 @@ export function EditPromptModal({
           t={t}
           value={userPrompt}
         />
-        {promptType !== "image" && renderReferenceMediaSection()}
+        {promptType === "text" && renderReferenceMediaSection()}
       </div>
 
       {/* 未保存更改提示弹窗 */}

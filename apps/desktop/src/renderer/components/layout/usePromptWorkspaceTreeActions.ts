@@ -1,3 +1,4 @@
+import type { PromptTypeFilter } from "../../services/prompt-filter";
 import { requestConfirmation } from "../ui/confirmation";
 import { useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -13,7 +14,7 @@ interface RelationshipNavigationParams extends PromptRelationshipScope {
   selectPrompt: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   clearFilterTags: () => void;
-  setPromptTypeFilter: (filter: "all" | "text" | "image") => void;
+  setPromptTypeFilter: (filter: PromptTypeFilter) => void;
   setCollapsedPromptIds: Dispatch<SetStateAction<Set<string>>>;
   movePrompt: (id: string, parentId: string | null, order: number) => Promise<void>;
   showToast: ShowToast;

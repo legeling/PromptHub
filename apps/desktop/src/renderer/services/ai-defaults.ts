@@ -130,7 +130,7 @@ export function resolveRouteModel(
 
 export function toAIConfig(
   model: AIModelConfig,
-  requestType: "chat" | "image" = model.type ?? "chat",
+  requestType: "chat" | "image",
 ): AIConfig {
   return {
     id: model.id,

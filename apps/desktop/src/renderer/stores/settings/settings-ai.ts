@@ -48,14 +48,14 @@ export function normalizeAIProtocol(
 }
 
 function normalizeAIModelType(value: unknown): AIModelType {
-  return value === "image" ? "image" : "chat";
+  return value === "image" || value === "video" ? value : "chat";
 }
 
 export function normalizeAIModelCapabilities(
   value: unknown,
   type: AIModelType,
 ): AIModelCapabilities {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (type === "video" || !value || typeof value !== "object" || Array.isArray(value)) {
     return {
       chat: type === "chat",
       vision: false,

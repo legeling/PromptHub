@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "视频接口协议",
+    "noProtocol": "暂不配置",
+    "chooseProtocol": "在模型设置中选择与服务商兼容的视频接口协议后，即可测试和生成视频。",
+    "title": "生成视频",
+    "configure": "请先在「设置 → AI」中添加视频模型。",
+    "references": "点击生成时，所选参考图和参考视频将发送给视频服务。",
+    "arkSource": "参考视频公网链接或 asset:// 素材 ID（每行一个）",
+    "open": "打开原视频",
+    "pending": "任务已提交。点击刷新查看结果。",
+    "new": "新建任务",
+    "probe": "视频服务已连通，未提交生成任务。",
+    "description": "使用已配置的视频模型测试，可添加参考图和参考视频。",
+    "addImages": "添加参考图"
+  },
   "startupRecovery": {
     "indexedDbDescription": "历史浏览器数据与当前数据库存在内容冲突。请逐条查看并选择要保留的内容。应用前会保存两份数据的恢复副本，不会删除浏览器中的原数据。",
     "indexedDbSummary": "有 {{conflicts}} 条记录需要选择。",
@@ -84,6 +99,7 @@
     "allPrompts": "全部 Prompts",
     "textPrompts": "文本提示词",
     "imagePrompts": "绘图提示词",
+    "videoPrompts": "视频提示词",
     "favorites": "收藏",
     "relationshipGraph": "关系图谱",
     "folders": "文件夹",
@@ -1663,6 +1679,7 @@
     "iconOption": "{{name}} 图标"
   },
   "settings": {
+    "videoModel": "视频模型",
     "appearanceDesign": {
       "description": "自定义 PromptHub 的外观，让界面更符合你的使用习惯。",
       "lightDescription": "清晰明亮，适合日间使用",

@@ -49,12 +49,13 @@ export function ModelFormModal({
         <BaseFields
           modelForm={modelForm}
           setModelForm={setModelForm}
+          editingExisting={!!editingModelId}
           fetchingModels={false}
           lockEndpointFields={lockEndpointFields}
         />
 
         {/* Advanced params — moved after model list */}
-        <div className="rounded-xl border border-border/60 bg-muted/20">
+        {modelForm.type !== "video" && <div className="rounded-xl border border-border/60 bg-muted/20">
           <button
             type="button"
             onClick={() => setShowAdvancedParams((prev) => !prev)}
@@ -76,14 +77,14 @@ export function ModelFormModal({
 
           {showAdvancedParams ? (
             <div className="border-t border-border/60 p-4">
-              {modelForm.type === "chat" ? (
+              {modelForm.capabilities.chat ? (
                 <ChatParamsSection
                   modelForm={modelForm}
                   setModelForm={setModelForm}
                 />
               ) : null}
 
-              {modelForm.type === "image" ? (
+              {modelForm.capabilities.imageGeneration ? (
                 <ImageParamsSection
                   modelForm={modelForm}
                   setModelForm={setModelForm}
@@ -91,7 +92,7 @@ export function ModelFormModal({
               ) : null}
             </div>
           ) : null}
-        </div>
+        </div>}
 
         <div className="flex items-center justify-between border-t border-border pt-4">
           <button

@@ -50,7 +50,8 @@ export const AI_CONFIG_HELP = [
   "常用参数:",
   "  --name <text>",
   "  --protocol openai|gemini|anthropic",
-  "  --type chat|image",
+  "  --type chat|image|video",
+  "  --video-protocol ark|dashscope",
   "  --vision",
   "  --image-generation",
   "  --reasoning",
@@ -125,7 +126,7 @@ function parseModelType(
   if (!value) {
     return undefined;
   }
-  if (value === "chat" || value === "image") {
+  if (value === "chat" || value === "image" || value === "video") {
     return value;
   }
   throw new AIConfigError("USAGE_ERROR", `不支持的模型类型: ${value}`);
@@ -547,6 +548,8 @@ export async function handleAIConfigCommand(
       const apiProtocol = parseProtocol(takeOption(modelArgs, "--protocol"));
       const apiKey = takeOption(modelArgs, "--api-key");
       const apiUrl = takeOption(modelArgs, "--api-url");
+      const videoProtocol = takeOption(modelArgs, "--video-protocol");
+      if ((videoProtocol && type !== "video") || (videoProtocol !== undefined && videoProtocol !== "ark" && videoProtocol !== "dashscope")) throw new AIConfigError("USAGE_ERROR", "Expected --type video --video-protocol ark|dashscope");
       const capabilities = modelCapabilities(modelArgs, type);
       ensureNoUnknownOptions(modelArgs);
       emitSuccess(
@@ -557,6 +560,7 @@ export async function handleAIConfigCommand(
           model: model ?? "",
           name,
           type,
+          videoProtocol: videoProtocol === "dashscope" || videoProtocol === "ark" ? videoProtocol : undefined,
           capabilities,
           apiProtocol,
           apiKey,

@@ -1,9 +1,11 @@
+import type { PromptTypeFilter } from "../../services/prompt-filter";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   GitBranchIcon,
   HashIcon,
   ImageIcon,
+  VideoIcon,
   LayoutGridIcon,
   MessageSquareTextIcon,
   PlusIcon,
@@ -17,11 +19,9 @@ import { SortableTree } from "./tree/SortableTree";
 import { SidebarNavigationItem } from "./SidebarNavigationItem";
 import type { SidebarController } from "./sidebar-view-types";
 
-type PromptFilter = "all" | "text" | "image";
-
 function isPromptFilterActive(
   controller: SidebarController,
-  filter: PromptFilter,
+  filter: PromptTypeFilter,
 ) {
   return (
     controller.selectedFolderId === null &&
@@ -39,7 +39,7 @@ function PromptFilterButton({
   icon,
 }: {
   controller: SidebarController;
-  filter: PromptFilter;
+  filter: PromptTypeFilter;
   label: string;
   icon: ReactNode;
 }) {
@@ -59,7 +59,7 @@ function PromptFilterButton({
 }
 
 interface PromptFilterEntry {
-  filter: PromptFilter;
+  filter: PromptTypeFilter;
   label: string;
   icon: ReactNode;
   count: number;
@@ -86,6 +86,12 @@ function getPromptFilterEntries(
       label: controller.t("nav.imagePrompts", "绘图提示词"),
       icon: <ImageIcon className="w-5 h-5" />,
       count: controller.promptStats.imageCount,
+    },
+    {
+      filter: "video",
+      label: controller.t("nav.videoPrompts"),
+      icon: <VideoIcon className="w-5 h-5" />,
+      count: controller.promptStats.videoCount,
     },
   ];
   return entries;
@@ -117,20 +123,22 @@ function SidebarCollapsedPromptFilters({
 
 function getCompactPromptFilterLabel(
   controller: SidebarController,
-  filter: PromptFilter,
+  filter: PromptTypeFilter,
 ) {
   return filter === "all"
     ? controller.t("filter.all", "全部")
     : filter === "text"
       ? controller.t("filter.text", "文本")
-      : controller.t("filter.image", "绘图");
+      : filter === "video" ? controller.t("prompt.videoLabel") : controller.t("filter.image", "绘图");
 }
 
-function getCompactPromptFilterIcon(filter: PromptFilter) {
+function getCompactPromptFilterIcon(filter: PromptTypeFilter) {
   return filter === "all" ? (
     <LayoutGridIcon className="w-4 h-4 mb-1" aria-hidden="true" />
   ) : filter === "text" ? (
     <MessageSquareTextIcon className="w-4 h-4 mb-1" aria-hidden="true" />
+  ) : filter === "video" ? (
+    <VideoIcon className="w-4 h-4 mb-1" aria-hidden="true" />
   ) : (
     <ImageIcon className="w-4 h-4 mb-1" aria-hidden="true" />
   );
@@ -145,7 +153,7 @@ function SidebarExpandedPromptFilters({
 }) {
   return (
     <div className="mb-2">
-      <div className="grid grid-cols-3 gap-1 p-1 bg-sidebar-accent/40 rounded-lg">
+      <div className="grid grid-cols-4 gap-1 p-1 bg-sidebar-accent/40 rounded-lg">
         {entries.map((entry) => (
           <PromptFilterButton
             key={entry.filter}

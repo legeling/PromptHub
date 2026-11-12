@@ -5,6 +5,7 @@ import {
   StarIcon,
   PaletteIcon,
   FileTextIcon,
+  VideoIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePromptStore } from "../../stores/prompt.store";
@@ -43,6 +44,8 @@ function PromptDetailTitle() {
               aria-hidden="true"
               className="mt-0.5 h-6 w-6 shrink-0 text-primary"
             />
+          ) : prompt.promptType === "video" ? (
+            <VideoIcon aria-hidden="true" className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
           ) : (
             <FileTextIcon
               aria-hidden="true"

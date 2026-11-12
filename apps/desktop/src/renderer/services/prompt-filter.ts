@@ -1,5 +1,7 @@
-import type { Folder, Prompt, PromptSummary } from "@prompthub/shared/types";
+import type { PromptType, Folder, Prompt, PromptSummary } from "@prompthub/shared/types";
 import type { SortBy, SortOrder } from "../stores/prompt.store";
+
+export type PromptTypeFilter = "all" | PromptType;
 
 interface FilterVisiblePromptsOptions {
   prompts: PromptSummary[];
@@ -8,7 +10,7 @@ interface FilterVisiblePromptsOptions {
   unlockedFolderIds: Set<string>;
   searchQuery?: string;
   filterTags?: string[];
-  promptTypeFilter: "all" | "text" | "image";
+  promptTypeFilter: PromptTypeFilter;
 }
 
 export interface PromptStats {
@@ -16,6 +18,7 @@ export interface PromptStats {
   favoriteCount: number;
   textCount: number;
   imageCount: number;
+  videoCount: number;
   uniqueTags: string[];
 }
 
@@ -224,6 +227,7 @@ export function buildPromptStats(prompts: PromptSummary[]): PromptStats {
   let favoriteCount = 0;
   let textCount = 0;
   let imageCount = 0;
+  let videoCount = 0;
 
   for (const prompt of prompts) {
     if (prompt.isFavorite) favoriteCount++;
@@ -231,6 +235,8 @@ export function buildPromptStats(prompts: PromptSummary[]): PromptStats {
       textCount++;
     } else if (prompt.promptType === "image") {
       imageCount++;
+    } else if (prompt.promptType === "video") {
+      videoCount++;
     }
 
     for (const tag of prompt.tags) {
@@ -243,6 +249,7 @@ export function buildPromptStats(prompts: PromptSummary[]): PromptStats {
     favoriteCount,
     textCount,
     imageCount,
+    videoCount,
     uniqueTags: Array.from(tagSet).sort((a, b) => a.localeCompare(b)),
   };
 }

@@ -352,6 +352,11 @@ export function inferModelAttributes(
   modelId: string,
 ): Pick<ModelFormState, "type" | "capabilities"> {
   const normalized = modelId.toLowerCase();
+  const id = normalized.split("/").at(-1) ?? normalized;
+  if (/^(?:(?:(?:dreamina|doubao)-)?seedance|sora|veo|kling)(?:[-._]|$)/.test(id) ||
+      /^wan[\d.]*-(?:r2v|t2v|i2v|ti2v|vace)(?:-|$)/.test(id)) {
+    return { type: "video", capabilities: { ...cloneDefaultCapabilities(), chat: false } };
+  }
   const isImageModel = [
     "gpt-image",
     "dall-e",
@@ -473,6 +478,7 @@ export function applyModelIdToForm(
     ...form,
     model: modelId,
     type: inferred.type,
+    videoProtocol: undefined,
     capabilities: inferred.capabilities,
   };
 }
@@ -483,6 +489,7 @@ export function createFormFromModel(model: AIModelConfig): ModelFormState {
 
   return {
     type: model.type ?? "chat",
+    videoProtocol: model.videoProtocol,
     name: model.name || "",
     providerId: model.providerId,
     provider: model.provider,

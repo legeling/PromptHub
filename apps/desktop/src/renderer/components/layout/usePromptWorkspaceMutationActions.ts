@@ -126,7 +126,7 @@ export function useAiTestModalAction(params: AiTestParams) {
       prompt: PromptSummary,
       initialMode: "single" | "compare" | "image" = "single",
     ) => {
-      if (!params.canRunSingleAiTest)
+      if (prompt.promptType !== "video" && !params.canRunSingleAiTest)
         return params.showToast(params.t("toast.configAI"), "error");
       // The AI test dialog renders the full prompt content; hydrate from the
       // list projection before opening.

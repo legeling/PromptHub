@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "Protocole API vidéo",
+    "noProtocol": "Non configuré",
+    "chooseProtocol": "Choisissez un protocole vidéo compatible dans les paramètres du modèle pour tester ou générer une vidéo.",
+    "title": "Générer une vidéo",
+    "configure": "Ajoutez un modèle vidéo dans Paramètres → IA.",
+    "references": "Les références sélectionnées seront envoyées au service vidéo lors de la génération.",
+    "arkSource": "URL publique de vidéo ou identifiant asset:// (un par ligne)",
+    "open": "Ouvrir la vidéo originale",
+    "pending": "Tâche envoyée. Actualisez pour consulter le résultat.",
+    "new": "Nouvelle tâche",
+    "probe": "Service vidéo connecté. Aucune vidéo générée.",
+    "description": "Testez un modèle vidéo avec des images ou vidéos de référence facultatives.",
+    "addImages": "Ajouter des images"
+  },
   "startupRecovery": {
     "indexedDbDescription": "Les anciennes données du navigateur sont en conflit avec la base actuelle. Vérifiez chaque entrée et choisissez le contenu à conserver. Les deux sources sont sauvegardées avant application ; les données du navigateur ne sont pas supprimées.",
     "indexedDbSummary": "{{conflicts}} entrées nécessitent votre choix.",
@@ -84,6 +99,7 @@
     "allPrompts": "Tous les Prompts",
     "textPrompts": "Prompts texte",
     "imagePrompts": "Prompts image",
+    "videoPrompts": "Prompts vidéo",
     "favorites": "Favoris",
     "relationshipGraph": "Graphe de relations",
     "folders": "Dossiers",
@@ -1662,6 +1678,7 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "videoModel": "Modèle vidéo",
     "appearanceDesign": {
       "description": "Personnalisez PromptHub selon vos habitudes de travail.",
       "lightDescription": "Un affichage clair pour la journée",

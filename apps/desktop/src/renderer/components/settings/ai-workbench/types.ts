@@ -16,9 +16,10 @@ export type ProviderOption = {
   iconCategory: string;
 };
 
-export type ModelType = "chat" | "image";
+export type ModelType = import("@prompthub/shared/types").AIModelType;
 
 export type ModelFormState = {
+  videoProtocol?: import("@prompthub/shared/types").VideoModelProtocol;
   type: ModelType;
   name: string;
   providerId?: string;

@@ -1,3 +1,4 @@
+import type { PromptTypeFilter } from "../../services/prompt-filter";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 import type { Folder } from "@prompthub/shared/types";
@@ -158,7 +159,7 @@ function useSidebarPromptNavigation(
   folders: ReturnType<typeof useSidebarFolderBindings>,
 ) {
   const openPromptTypeFilter = useCallback(
-    (filter: "all" | "text" | "image") => {
+    (filter: PromptTypeFilter) => {
       prompt.returnToPromptList();
       prompt.setPromptTypeFilter(filter);
       folders.selectFolder(null);

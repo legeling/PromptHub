@@ -1,3 +1,7 @@
+import { usePromptMediaManager } from "./usePromptMediaManager";
+import { PromptReferenceImages } from "./PromptReferenceImages";
+import { PromptTypePicker } from "./PromptTypePicker";
+import type { PromptType } from "@prompthub/shared/types";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -33,14 +37,20 @@ interface QuickAddModalProps {
     systemPrompt?: string;
     description?: string;
     folderId?: string;
-    promptType?: "text" | "image";
+    promptType?: PromptType;
     tags?: string[];
+    images?: string[];
+    videos?: string[];
   }) => Promise<any>;
-  defaultPromptType?: "text" | "image";
+  defaultPromptType?: PromptType;
   initialMode?: QuickAddMode;
 }
 
-export function QuickAddModal({
+export function QuickAddModal(props: QuickAddModalProps): JSX.Element | null {
+  return props.isOpen ? <QuickAddDialog {...props} /> : null;
+}
+
+function QuickAddDialog({
   isOpen,
   onClose,
   onCreate,
@@ -49,6 +59,12 @@ export function QuickAddModal({
 }: QuickAddModalProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const media = usePromptMediaManager({ isOpen, translate: (key, fallback) => t(key, fallback), showToast });
+  const [picking, setPicking] = useState(false);
+  const pickMedia = async (pick: () => Promise<void>) => {
+    setPicking(true);
+    try { await pick(); } finally { setPicking(false); }
+  };
   const folders = useFolderStore((state) => state.folders);
   const aiModels = useSettingsStore((state) => state.aiModels);
   const scenarioModelDefaults = useSettingsStore(
@@ -64,7 +80,7 @@ export function QuickAddModal({
 
   const [promptText, setPromptText] = useState("");
   const [mode, setMode] = useState<QuickAddMode>("analyze");
-  const [selectedPromptType, setSelectedPromptType] = useState<"text" | "image">(
+  const [selectedPromptType, setSelectedPromptType] = useState<PromptType>(
     defaultPromptType || "text",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,8 +121,8 @@ export function QuickAddModal({
 
   // Check unsaved changes
   const hasUnsavedChanges = useCallback(() => {
-    return promptText.trim() !== "";
-  }, [promptText]);
+    return Boolean(promptText.trim() || media.images.length || media.videos.length);
+  }, [promptText, media.images.length, media.videos.length]);
 
   // Handle close request with guard
   const handleCloseRequest = useCallback(() => {
@@ -249,6 +265,8 @@ export function QuickAddModal({
           description: generatedDraft.description,
           folderId: resolveMatchedFolderId(generatedDraft.suggestedFolder),
           promptType: generatedDraft.promptType,
+          ...(media.images.length ? { images: media.images } : {}),
+          ...(media.videos.length ? { videos: media.videos } : {}),
           tags: generatedDraft.tags,
         });
 
@@ -281,6 +299,8 @@ export function QuickAddModal({
       userPrompt: promptText,
       folderId: selectedFolderId,
       promptType: selectedPromptType,
+      ...(media.images.length ? { images: media.images } : {}),
+      ...(media.videos.length ? { videos: media.videos } : {}),
     });
 
     if (!createdPrompt) {
@@ -429,44 +449,7 @@ export function QuickAddModal({
               <label className="text-sm font-medium text-muted-foreground">
                 {t("prompt.type", "Prompt Type")}
               </label>
-              <div className="flex gap-2">
-                {(["text", "image"] as const).map((type) => {
-                  const isActive = selectedPromptType === type;
-
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPromptType(type);
-                      }}
-                      aria-pressed={isActive}
-                      className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                        isActive
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40"
-                      } disabled:cursor-not-allowed disabled:opacity-50`}
-                    >
-                      {type === "text" ? (
-                        <SparklesIcon
-                          className="w-4 h-4 shrink-0"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <Wand2Icon
-                          className="w-4 h-4 shrink-0"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <span>
-                        {type === "text"
-                          ? t("prompt.typeText", "Text")
-                          : t("prompt.typeImage", "Image")}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <PromptTypePicker value={selectedPromptType} onChange={setSelectedPromptType} />
             </div>
 
             <div className="space-y-2">
@@ -510,6 +493,13 @@ export function QuickAddModal({
               />
             </div>
           </div>
+          <fieldset disabled={isSubmitting || picking} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <legend className="mb-1 text-muted-foreground">{t("prompt.referenceMedia")}</legend>
+            <button className="rounded-lg border px-3 py-1" type="button" onClick={() => void pickMedia(media.handleSelectImage)}>{t("videoTest.addImages")}</button>
+            <button className="rounded-lg border px-3 py-1" type="button" onClick={() => void pickMedia(media.handleSelectVideo)}>{t("prompt.uploadVideo")}</button>
+            <PromptReferenceImages images={media.images} onRemove={media.handleRemoveImage} />
+            {media.videos.map((name, index) => <button key={name + index} type="button" title={t("common.remove")} onClick={() => media.handleRemoveVideo(index)}>{name} ×</button>)}
+          </fieldset>
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20">
@@ -523,7 +513,7 @@ export function QuickAddModal({
           <button
             type="button"
             onClick={handleCreate}
-            disabled={isSubmitting || !promptText.trim()}
+            disabled={isSubmitting || picking || media.isPasting || !promptText.trim()}
             className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-press-in shadow-lg shadow-primary/20"
           >
             {isSubmitting && (

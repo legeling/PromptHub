@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "Video API protocol",
+    "noProtocol": "Not configured",
+    "chooseProtocol": "Select a compatible video API protocol in the model settings to test or generate video.",
+    "title": "Generate video",
+    "configure": "Add a video model in Settings → AI.",
+    "references": "Selected references are sent to the video service when you generate.",
+    "arkSource": "Reference video URL or asset:// ID (one per line)",
+    "open": "Open original video",
+    "pending": "Task submitted. Refresh to check the result.",
+    "new": "Start another task",
+    "probe": "Video service connected. No video was generated.",
+    "description": "Generate a video with a configured video model and optional references.",
+    "addImages": "Add images"
+  },
   "startupRecovery": {
     "indexedDbDescription": "Historical browser data conflicts with the current database. Review each record and choose which content to keep. Both sources are saved before applying your choices; browser data is not deleted.",
     "indexedDbSummary": "{{conflicts}} records need your choice.",
@@ -84,6 +99,7 @@
     "allPrompts": "All Prompts",
     "textPrompts": "Text Prompts",
     "imagePrompts": "Image Prompts",
+    "videoPrompts": "Video Prompts",
     "favorites": "Favorites",
     "relationshipGraph": "Relationship Graph",
     "folders": "Folders",
@@ -1663,6 +1679,7 @@
     "iconOption": "{{name}} icon"
   },
   "settings": {
+    "videoModel": "Video model",
     "appearanceDesign": {
       "description": "Customize PromptHub to suit the way you work.",
       "lightDescription": "Clear and bright for daytime use",

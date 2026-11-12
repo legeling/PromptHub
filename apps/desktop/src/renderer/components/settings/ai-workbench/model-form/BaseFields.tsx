@@ -1,5 +1,7 @@
 import {
   useMemo,
+  useRef,
+  useId,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -20,11 +22,17 @@ import {
   getImageApiEndpointPreview,
   normalizeApiUrlInput,
 } from "../../../../services/ai";
+import { isVideoModelProtocol } from "@prompthub/shared/types";
+import { videoCreateUrl } from "../../../../services/video-generation";
 import { Select } from "../../../ui/Select";
 import { getCategoryIcon } from "../../../ui/ModelIcons";
 import { PasswordInput, ToggleSwitch } from "../../shared";
 import { PROVIDER_OPTIONS } from "../constants";
-import { getProviderInfo } from "../helpers";
+import {
+  applyModelIdToForm,
+  cloneDefaultCapabilities,
+  getProviderInfo,
+} from "../helpers";
 import type { ModelFormState } from "../types";
 
 function CapabilityCard({
@@ -59,14 +67,18 @@ export function BaseFields({
   fetchingModels,
   onFetchModels,
   lockEndpointFields = false,
+  editingExisting = false,
 }: {
   modelForm: ModelFormState;
   setModelForm: Dispatch<SetStateAction<ModelFormState>>;
   fetchingModels: boolean;
   onFetchModels?: () => void;
   lockEndpointFields?: boolean;
+  editingExisting?: boolean;
 }) {
   const { t } = useTranslation();
+  const categoryGroup = useId();
+  const manualType = useRef(editingExisting);
   const capabilities = modelForm.capabilities ?? {
     chat: modelForm.type === "chat",
     vision: false,
@@ -88,10 +100,19 @@ export function BaseFields({
   );
   const requestPreview = useMemo(
     () =>
-      modelForm.type === "image"
-        ? getImageApiEndpointPreview(modelForm.apiUrl)
-        : getApiEndpointPreview(modelForm.apiUrl, modelForm.apiProtocol),
-    [modelForm.apiProtocol, modelForm.apiUrl, modelForm.type],
+      modelForm.type === "video"
+        ? isVideoModelProtocol(modelForm.videoProtocol)
+          ? videoCreateUrl(modelForm)
+          : ""
+        : modelForm.type === "image"
+          ? getImageApiEndpointPreview(modelForm.apiUrl)
+          : getApiEndpointPreview(modelForm.apiUrl, modelForm.apiProtocol),
+    [
+      modelForm.apiProtocol,
+      modelForm.apiUrl,
+      modelForm.type,
+      modelForm.videoProtocol,
+    ],
   );
   const fullEndpointDetected = Boolean(
     trimmedApiUrl &&
@@ -326,75 +347,159 @@ export function BaseFields({
           onChange={(event) =>
             setModelForm((prev) => ({ ...prev, model: event.target.value }))
           }
+          onBlur={() => {
+            if (!manualType.current && modelForm.model.trim()) {
+              setModelForm((prev) => {
+                const suggested = applyModelIdToForm(prev, prev.model);
+                return suggested.type === prev.type ? prev : suggested;
+              });
+            }
+          }}
           aria-label={t("settings.modelName")}
           placeholder={t("settings.modelNamePlaceholder")}
           className="h-10 w-full rounded-lg bg-muted px-3 text-sm"
         />
       </div>
 
-      <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-        <div className="mb-3 text-xs font-medium text-muted-foreground">
-          {t("settings.aiWorkbenchModelCapabilities")}
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-medium text-muted-foreground">
+          {t("settings.modelType")}
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {(
+            [
+              ["chat", "prompt.typeText"],
+              ["image", "prompt.typeImage"],
+              ["video", "prompt.videoLabel"],
+            ] as const
+          ).map(([type, key]) => (
+            <label
+              key={type}
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+            >
+              <input
+                type="radio"
+                name={categoryGroup}
+                checked={modelForm.type === type}
+                onClick={() => {
+                  manualType.current = true;
+                }}
+                onChange={() => {
+                  manualType.current = true;
+                  setModelForm((prev) => ({
+                    ...prev,
+                    type,
+                    videoProtocol: undefined,
+                    capabilities: {
+                      ...cloneDefaultCapabilities(),
+                      chat: type === "chat",
+                      imageGeneration: type === "image",
+                    },
+                  }));
+                }}
+              />
+              {t(key)}
+            </label>
+          ))}
         </div>
-        <div className="grid gap-2 lg:grid-cols-2">
-          <CapabilityCard
-            checked={capabilities.imageGeneration === true}
-            ariaLabel={t("settings.imageModel")}
-            icon={
-              <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            }
-            title={t("settings.imageModel")}
-            onChange={(checked) => {
+      </fieldset>
+      {modelForm.type === "video" ? (
+        <label className="block text-xs text-muted-foreground">
+          {t("videoTest.protocol")}
+          <select
+            className="mt-1 block w-full rounded-lg border border-border bg-background p-2 text-sm text-foreground"
+            value={modelForm.videoProtocol ?? ""}
+            onChange={(event) => {
+              manualType.current = true;
+              const value = event.currentTarget.value;
               setModelForm((prev) => ({
                 ...prev,
-                type: checked ? "image" : "chat",
-                capabilities: {
-                  ...prev.capabilities,
-                  imageGeneration: checked,
-                },
+                videoProtocol: isVideoModelProtocol(value) ? value : undefined,
               }));
             }}
-          />
+          >
+            <option value="">{t("videoTest.noProtocol")}</option>
+            <option value="ark">Seedance (Ark)</option>
+            <option value="dashscope">Wan 2.7 R2V (DashScope)</option>
+          </select>
+        </label>
+      ) : (
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+          <div className="mb-3 text-xs font-medium text-muted-foreground">
+            {t("settings.aiWorkbenchModelCapabilities")}
+          </div>
+          <div className="grid gap-2 lg:grid-cols-2">
+            <CapabilityCard
+              checked={
+                modelForm.type === "image"
+                  ? capabilities.chat === true
+                  : capabilities.imageGeneration === true
+              }
+              ariaLabel={t(
+                modelForm.type === "image"
+                  ? "settings.chatModel"
+                  : "settings.imageModel",
+              )}
+              icon={
+                <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              }
+              title={t(
+                modelForm.type === "image"
+                  ? "settings.chatModel"
+                  : "settings.imageModel",
+              )}
+              onChange={(checked) => {
+                setModelForm((prev) => ({
+                  ...prev,
+                  capabilities: {
+                    ...prev.capabilities,
+                    [prev.type === "image" ? "chat" : "imageGeneration"]:
+                      checked,
+                  },
+                }));
+              }}
+            />
 
-          <CapabilityCard
-            checked={capabilities.vision === true}
-            ariaLabel={t("settings.aiWorkbenchVisionCapability")}
-            icon={
-              <EyeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            }
-            title={t("settings.aiWorkbenchVisionCapability")}
-            onChange={(checked) => {
-              setModelForm((prev) => ({
-                ...prev,
-                capabilities: {
-                  ...prev.capabilities,
-                  chat: true,
-                  vision: checked,
-                },
-              }));
-            }}
-          />
+            <CapabilityCard
+              checked={capabilities.vision === true}
+              ariaLabel={t("settings.aiWorkbenchVisionCapability")}
+              icon={
+                <EyeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              }
+              title={t("settings.aiWorkbenchVisionCapability")}
+              onChange={(checked) => {
+                setModelForm((prev) => ({
+                  ...prev,
+                  capabilities: {
+                    ...prev.capabilities,
+                    chat: true,
+                    vision: checked,
+                  },
+                }));
+              }}
+            />
 
-          <CapabilityCard
-            checked={capabilities.reasoning === true}
-            ariaLabel={t("settings.aiWorkbenchReasoningCapability")}
-            icon={
-              <BrainIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            }
-            title={t("settings.aiWorkbenchReasoningCapability")}
-            onChange={(checked) => {
-              setModelForm((prev) => ({
-                ...prev,
-                capabilities: {
-                  ...prev.capabilities,
-                  chat: true,
-                  reasoning: checked,
-                },
-              }));
-            }}
-          />
+            <CapabilityCard
+              checked={capabilities.reasoning === true}
+              ariaLabel={t("settings.aiWorkbenchReasoningCapability")}
+              icon={
+                <BrainIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              }
+              title={t("settings.aiWorkbenchReasoningCapability")}
+              onChange={(checked) => {
+                setModelForm((prev) => ({
+                  ...prev,
+                  capabilities: {
+                    ...prev.capabilities,
+                    chat: true,
+                    reasoning: checked,
+                  },
+                }));
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

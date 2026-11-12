@@ -1,3 +1,5 @@
+import { PromptTypePicker } from "./PromptTypePicker";
+import type { PromptType } from "@prompthub/shared/types";
 import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
@@ -17,7 +19,6 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   SaveIcon,
-  MessageSquareTextIcon,
 } from "lucide-react";
 import { useFolderStore } from "../../stores/folder.store";
 import {
@@ -45,7 +46,7 @@ interface CreatePromptModalProps {
   onCreate: (data: {
     title: string;
     description?: string;
-    promptType?: "text" | "image";
+    promptType?: PromptType;
     systemPrompt?: string;
     systemPromptEn?: string;
     userPrompt: string;
@@ -58,7 +59,7 @@ interface CreatePromptModalProps {
     notes?: string;
   }) => void;
   defaultFolderId?: string;
-  defaultPromptType?: "text" | "image";
+  defaultPromptType?: PromptType;
 }
 
 export function CreatePromptModal({
@@ -77,7 +78,7 @@ export function CreatePromptModal({
   const userPromptEnInputId = useId();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [promptType, setPromptType] = useState<"text" | "image">(
+  const [promptType, setPromptType] = useState<PromptType>(
     defaultPromptType || "text",
   );
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -610,34 +611,10 @@ export function CreatePromptModal({
             <label className="block text-sm font-medium text-foreground">
               {t("prompt.type", "Prompt Type")}
             </label>
-            <div className="flex gap-2">
-              {(["text", "image"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  aria-pressed={promptType === type}
-                  onClick={() => setPromptType(type)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    promptType === type
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {type === "text" && (
-                    <MessageSquareTextIcon
-                      className="w-4 h-4"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {type === "image" && (
-                    <ImageIcon className="w-4 h-4" aria-hidden="true" />
-                  )}
-                  {type === "text" && t("prompt.typeText", "Text")}
-                  {type === "image" && t("prompt.typeImage", "Image")}
-                </button>
-              ))}
-            </div>
+            <PromptTypePicker value={promptType} onChange={setPromptType} />
           </div>
+
+          {promptType === "video" && renderReferenceMediaSection()}
 
           {/* 可折叠的更多设置面板 */}
           <div className="border border-border/50 rounded-xl bg-muted/20 overflow-hidden">
@@ -668,7 +645,7 @@ export function CreatePromptModal({
                     tags.length > 0
                       ? `${tags.length} ${t("prompt.tags", "tags")}`
                       : null,
-                    images.length + videos.length > 0
+                    promptType !== "video" && images.length + videos.length > 0
                       ? `${images.length + videos.length} ${t("prompt.media", "media")}`
                       : null,
                   ]
@@ -851,7 +828,7 @@ export function CreatePromptModal({
                   )}
                 </div>
 
-                {renderReferenceMediaSection()}
+                {promptType !== "video" && renderReferenceMediaSection()}
 
                 {/* 标签 */}
                 <div className="space-y-1.5">

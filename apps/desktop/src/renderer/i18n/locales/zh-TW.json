@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "影片介面協定",
+    "noProtocol": "暫不設定",
+    "chooseProtocol": "請在模型設定中選擇與服務商相容的影片協定，再測試或產生影片。",
+    "title": "產生影片",
+    "configure": "請先在「設定 → AI」新增影片模型。",
+    "references": "產生時會將選取的參考圖片和影片傳送至影片服務。",
+    "arkSource": "參考影片公開網址或 asset:// 素材 ID（每行一個）",
+    "open": "開啟原始影片",
+    "pending": "任務已提交，請重新整理以查看結果。",
+    "new": "新增任務",
+    "probe": "已連線至影片服務，未產生影片。",
+    "description": "使用已設定的影片模型測試，可加入參考圖片和影片。",
+    "addImages": "加入參考圖"
+  },
   "startupRecovery": {
     "indexedDbDescription": "歷史瀏覽器資料與目前資料庫存在內容衝突。請逐筆檢視並選擇要保留的內容。套用前會儲存兩份資料的復原副本，不會刪除瀏覽器中的原資料。",
     "indexedDbSummary": "有 {{conflicts}} 筆記錄需要選擇。",
@@ -84,6 +99,7 @@
     "allPrompts": "全部 Prompts",
     "textPrompts": "文本提示詞",
     "imagePrompts": "繪圖提示詞",
+    "videoPrompts": "影片提示詞",
     "favorites": "收藏",
     "relationshipGraph": "關係圖譜",
     "folders": "資料夾",
@@ -1661,6 +1677,7 @@
     "clawSection": "龍蝦 Claw"
   },
   "settings": {
+    "videoModel": "影片模型",
     "appearanceDesign": {
       "description": "自訂 PromptHub 的外觀，讓介面更符合你的使用習慣。",
       "lightDescription": "清晰明亮，適合日間使用",

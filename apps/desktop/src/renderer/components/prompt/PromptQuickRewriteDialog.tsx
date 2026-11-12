@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { Prompt, UpdatePromptDTO } from "@prompthub/shared/types";
 
 import { rewritePromptDraft } from "../../services/ai";
-import { resolveScenarioModel } from "../../services/ai-defaults";
+import { resolveScenarioModel, toAIConfig } from "../../services/ai-defaults";
 import * as promptDb from "../../services/database";
 import { useSettingsStore } from "../../stores/settings.store";
 import { usePromptStore } from "../../stores/prompt.store";
@@ -154,7 +154,7 @@ export function PromptQuickRewriteDialog({
     setIsRewritingPrompt(true);
 
     try {
-      const rewritten = await rewritePromptDraft(rewriteModel, {
+      const rewritten = await rewritePromptDraft(toAIConfig(rewriteModel, "chat"), {
         promptType: prompt.promptType ?? "text",
         title: prompt.title,
         description: prompt.description ?? undefined,

@@ -20,6 +20,7 @@ import {
   TestTubeIcon,
   Trash2Icon,
   TypeIcon,
+  VideoIcon,
   XIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -743,7 +744,6 @@ export function EndpointsSection({
                           apiKey:
                             selectedGroup.apiKey || firstModel?.apiKey || "",
                           apiUrl: selectedGroup.apiUrl,
-                          type: firstModel?.type ?? "chat",
                         })
                       }
                       aria-label={t("settings.fetchModels")}
@@ -763,8 +763,7 @@ export function EndpointsSection({
                             apiKey:
                               selectedGroup.apiKey || firstModel?.apiKey || "",
                             apiUrl: selectedGroup.apiUrl,
-                            type: firstModel?.type ?? "chat",
-                          },
+                            },
                           { lockEndpoint: true },
                         )
                       }
@@ -781,11 +780,11 @@ export function EndpointsSection({
                   {selectedGroup.models.map((model) => {
                     const capabilityBadges: ModelBadge[] = [
                       {
-                        label:
+                        label: model.type === "video" ? t("settings.videoModel") :
                           (model.type ?? "chat") === "image"
                             ? t("settings.imageModel")
                             : t("settings.chatModel"),
-                        icon:
+                        icon: model.type === "video" ? VideoIcon :
                           (model.type ?? "chat") === "image"
                             ? ImageIcon
                             : TypeIcon,

@@ -20,6 +20,12 @@ export interface AITransportRequest {
   timeoutMs?: number;
 }
 
+export type VideoModelProtocol = "ark" | "dashscope";
+export function isVideoModelProtocol(value: unknown): value is VideoModelProtocol {
+  return value === "ark" || value === "dashscope";
+}
+export type AIModelType = "chat" | "image" | "video";
+
 export type AIProtocol = "openai" | "gemini" | "anthropic";
 
 export interface AITransportResponse {

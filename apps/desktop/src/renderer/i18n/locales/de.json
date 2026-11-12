@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "Video-API-Protokoll",
+    "noProtocol": "Nicht konfiguriert",
+    "chooseProtocol": "Wählen Sie in den Modelleinstellungen ein kompatibles Videoprotokoll, um Videos zu testen oder zu generieren.",
+    "title": "Video generieren",
+    "configure": "Fügen Sie unter Einstellungen → KI ein Videomodell hinzu.",
+    "references": "Die gewählten Referenzen werden beim Generieren an den Videodienst gesendet.",
+    "arkSource": "Öffentliche Video-URL oder asset://-ID (eine pro Zeile)",
+    "open": "Originalvideo öffnen",
+    "pending": "Auftrag gesendet. Aktualisieren Sie den Status.",
+    "new": "Neuer Auftrag",
+    "probe": "Videodienst verbunden. Es wurde kein Video generiert.",
+    "description": "Testen Sie ein Videomodell mit optionalen Referenzbildern und -videos.",
+    "addImages": "Referenzbilder hinzufügen"
+  },
   "startupRecovery": {
     "indexedDbDescription": "Frühere Browserdaten stehen im Konflikt mit der aktuellen Datenbank. Prüfen Sie jeden Eintrag und wählen Sie den zu behaltenden Inhalt. Beide Quellen werden vor der Anwendung gesichert; die Browserdaten werden nicht gelöscht.",
     "indexedDbSummary": "Für {{conflicts}} Einträge ist eine Auswahl erforderlich.",
@@ -84,6 +99,7 @@
     "allPrompts": "Alle Prompts",
     "textPrompts": "Text-Prompts",
     "imagePrompts": "Bild-Prompts",
+    "videoPrompts": "Video-Prompts",
     "favorites": "Favoriten",
     "relationshipGraph": "Beziehungsgraph",
     "folders": "Ordner",
@@ -1662,6 +1678,7 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "videoModel": "Videomodell",
     "appearanceDesign": {
       "description": "Passen Sie PromptHub an Ihre Arbeitsweise an.",
       "lightDescription": "Klare, helle Ansicht für den Tag",

@@ -41,7 +41,7 @@ export const DESKTOP_HOME_MODULES = [
 
 export type DesktopHomeModule = (typeof DESKTOP_HOME_MODULES)[number];
 export type ThemeMode = "light" | "dark" | "system";
-export type AIModelType = "chat" | "image";
+export type AIModelType = import("@prompthub/shared/types").AIModelType;
 export type CreationMode = "manual" | "quick";
 
 /** v0.6.2 #74 startup-folder modes. */
@@ -95,6 +95,7 @@ export interface ImageModelParams {
 }
 
 export interface AIModelConfig {
+  videoProtocol?: import("@prompthub/shared/types").VideoModelProtocol;
   id: string;
   type: AIModelType;
   name?: string;

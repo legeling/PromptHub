@@ -74,7 +74,7 @@ export function ImportPromptModal({
       await createPrompt({
         title: title,
         description: data.description || "",
-        promptType: data.promptType === "image" ? "image" : "text",
+        promptType: data.promptType === "image" || data.promptType === "video" ? data.promptType : "text",
         userPrompt: data.userPrompt || "",
         systemPrompt: data.systemPrompt || "",
         userPromptEn: data.userPromptEn || "",

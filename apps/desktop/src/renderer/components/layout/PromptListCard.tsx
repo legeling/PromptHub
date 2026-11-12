@@ -7,6 +7,7 @@ import {
   GitBranchIcon,
   GripVerticalIcon,
   ImageIcon,
+  VideoIcon,
   PinIcon,
   StarIcon,
 } from "lucide-react";
@@ -118,6 +119,8 @@ function PromptCardIndicators({
           aria-hidden="true"
           className={`w-3.5 h-3.5 ${isSelected ? "text-white/70" : "text-blue-500"}`}
         />
+      ) : prompt.promptType === "video" ? (
+        <VideoIcon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
       ) : null}
       {prompt.isFavorite ? (
         <StarIcon

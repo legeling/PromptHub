@@ -1,4 +1,19 @@
 {
+  "videoTest": {
+    "protocol": "Protocolo de la API de vídeo",
+    "noProtocol": "Sin configurar",
+    "chooseProtocol": "Selecciona un protocolo de vídeo compatible en los ajustes del modelo para probarlo o generar vídeo.",
+    "title": "Generar vídeo",
+    "configure": "Añade un modelo de vídeo en Ajustes → IA.",
+    "references": "Las referencias seleccionadas se enviarán al servicio de vídeo al generar.",
+    "arkSource": "URL pública del vídeo o ID asset:// (uno por línea)",
+    "open": "Abrir vídeo original",
+    "pending": "Tarea enviada. Actualiza para ver el resultado.",
+    "new": "Nueva tarea",
+    "probe": "Servicio de vídeo conectado. No se ha generado ningún vídeo.",
+    "description": "Prueba un modelo de vídeo con imágenes y vídeos de referencia opcionales.",
+    "addImages": "Añadir imágenes"
+  },
   "startupRecovery": {
     "indexedDbDescription": "Los datos históricos del navegador entran en conflicto con la base de datos actual. Revise cada registro y elija qué contenido conservar. Se guardan ambas fuentes antes de aplicar los cambios; los datos del navegador no se eliminan.",
     "indexedDbSummary": "{{conflicts}} registros requieren su elección.",
@@ -84,6 +99,7 @@
     "allPrompts": "Todos los Prompts",
     "textPrompts": "Prompts de texto",
     "imagePrompts": "Prompts de imagen",
+    "videoPrompts": "Prompts de vídeo",
     "favorites": "Favoritos",
     "relationshipGraph": "Grafo de relaciones",
     "folders": "Carpetas",
@@ -1662,6 +1678,7 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "videoModel": "Modelo de vídeo",
     "appearanceDesign": {
       "description": "Personaliza PromptHub según tu forma de trabajar.",
       "lightDescription": "Una vista clara para el día",

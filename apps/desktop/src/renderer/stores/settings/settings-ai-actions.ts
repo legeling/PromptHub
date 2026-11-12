@@ -1,5 +1,6 @@
 import type {
   AIModelRoute,
+  AIModelType,
   AIProviderConfig,
   AIUsageScenario,
   SettingsState,
@@ -147,7 +148,7 @@ function createAiProviderUpdateAction(context: SettingsActionContext) {
         : get().aiModels;
       const partial: Partial<SettingsState> = { aiProviders, aiModels };
       const updatedDefault = aiModels.find(
-        (model) => model.providerId === id && model.isDefault,
+        (model) => model.providerId === id && model.isDefault && model.type === "chat",
       );
       if (updatedDefault)
         applyChatModelToLegacyDefaults(partial, updatedDefault);
@@ -215,12 +216,12 @@ function createAiModelAddAction(context: SettingsActionContext) {
         apiKey: provider?.apiKey ?? config.apiKey,
         apiUrl: provider?.apiUrl ?? config.apiUrl,
         capabilities: normalizeAIModelCapabilities(config.capabilities, type),
-        isDefault: currentModels.length === 0,
+        isDefault: !currentModels.some(item => item.type === type && item.isDefault),
       };
       const partial: Partial<SettingsState> = {
         aiModels: [...currentModels, model],
       };
-      if (model.isDefault) applyChatModelToLegacyDefaults(partial, model);
+      if (model.isDefault && type === "chat") applyChatModelToLegacyDefaults(partial, model);
       commitAISettings(partial);
     },
   } satisfies SettingsActionGroup<"addAiModel">;
@@ -237,6 +238,7 @@ function mergeAiModel(
   return {
     ...merged,
     type,
+    videoProtocol: type === "video" ? merged.videoProtocol : undefined,
     providerId: provider?.id ?? merged.providerId,
     provider: provider?.provider ?? merged.provider,
     apiProtocol: provider?.apiProtocol ?? merged.apiProtocol,
@@ -249,16 +251,36 @@ function mergeAiModel(
   };
 }
 
+// Removing or moving a type default promotes another model of that type only.
+function restoreTypeDefault(models: SettingsState["aiModels"], type: AIModelType): void {
+  if (models.some(model => model.type === type && model.isDefault)) return;
+  const index = models.findIndex(model => model.type === type);
+  if (index >= 0) models[index] = { ...models[index], isDefault: true };
+}
+
+function refreshChatDefaults(partial: Partial<SettingsState>, models: SettingsState["aiModels"]): void {
+  const chat = models.find(model => model.type === "chat" && model.isDefault);
+  if (chat) applyChatModelToLegacyDefaults(partial, chat);
+  else Object.assign(partial, { aiApiKey: "", aiApiUrl: "", aiModel: "" });
+}
+
 function createAiModelUpdateAction(context: SettingsActionContext) {
   const { get, commitAISettings } = context;
   return {
     updateAiModel: (id, config) => {
-      const aiModels = get().aiModels.map((model) =>
-        model.id === id ? mergeAiModel(context, model, config) : model,
-      );
-      const updated = aiModels.find((model) => model.id === id);
+      const state = get();
+      const current = state.aiModels.find(model => model.id === id);
+      if (!current) return;
+      const updated = mergeAiModel(context, current, config);
+      const changedType = updated.type !== current.type;
+      if (changedType) {
+        updated.isDefault = !state.aiModels.some(model => model.type === updated.type && model.isDefault);
+      }
+      const aiModels = state.aiModels.map(model => model.id === id ? updated : model);
       const partial: Partial<SettingsState> = { aiModels };
-      if (updated?.isDefault) applyChatModelToLegacyDefaults(partial, updated);
+      if (changedType && current.isDefault) restoreTypeDefault(aiModels, current.type);
+      if (updated.type === "chat" && updated.isDefault ||
+          changedType && current.type === "chat" && current.isDefault) refreshChatDefaults(partial, aiModels);
       commitAISettings(partial);
     },
   } satisfies SettingsActionGroup<"updateAiModel">;
@@ -284,20 +306,14 @@ function modelRemovalSettings(
   state: SettingsState,
   ids: ReadonlySet<string>,
 ): Partial<SettingsState> {
-  const removedDefault = state.aiModels.some(
-    (model) => ids.has(model.id) && model.isDefault,
-  );
+  const removedDefaults = state.aiModels.filter(model => ids.has(model.id) && model.isDefault);
   const aiModels = state.aiModels.filter((model) => !ids.has(model.id));
   const partial: Partial<SettingsState> = {
     aiModels,
     ...removeModelDefaults(state, ids),
   };
-  if (removedDefault && aiModels.length > 0) {
-    aiModels[0] = { ...aiModels[0], isDefault: true };
-    applyChatModelToLegacyDefaults(partial, aiModels[0]);
-  } else if (aiModels.length === 0) {
-    Object.assign(partial, { aiApiKey: "", aiApiUrl: "", aiModel: "" });
-  }
+  for (const model of removedDefaults) restoreTypeDefault(aiModels, model.type);
+  if (!aiModels.length || removedDefaults.some(model => model.type === "chat")) refreshChatDefaults(partial, aiModels);
   return partial;
 }
 
