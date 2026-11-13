@@ -29,8 +29,14 @@ review-pending. Real redesigned-dialog and packaged beta-to-stable upgrade accep
 - Homebrew remains excluded from the in-app download and install paths.
 - The downloaded-update dialog now presents direct macOS installation as a
   restart action, with no manual DMG guidance or redundant Downloads action.
+- The application lifecycle handles Electron's `before-quit-for-update` using
+  the existing `isQuitting` state. Window-close preferences no longer intercept
+  that exit; database cleanup remains in `before-quit`. No persistence changes.
 - Added regression coverage for direct macOS native download/install behavior
   and for the corresponding dialog action while preserving Homebrew coverage.
+- `tests/e2e/updater-window-close.spec.ts` exercises the real app window and
+  tray-close policy with an injected native update-quit event. It is included in
+  desktop E2E smoke. This does not exercise native payload verification or replacement.
 - `TEST-UPDATER-005`: main-process updater coverage verifies native macOS
   download/restart behavior and the Homebrew ownership boundary.
 - `TEST-UPDATER-006`: renderer coverage verifies the direct macOS install
@@ -123,6 +129,43 @@ review-pending. Real redesigned-dialog and packaged beta-to-stable upgrade accep
 - Intentionally still did not run `website/scripts/sync-release.mjs` for `0.5.5-beta.3`, because the website sync pipeline remains stable-oriented and would overwrite stable-facing metadata with the prerelease version.
 
 ## Follow-ups
+
+### 2026-11-13 install exit and failure visibility
+
+- The supplied 32-second recording reaches `downloaded` and shows install
+  attempts; it does not establish that backup is blocked or identify the native
+  installer's result. Those earlier hypotheses are not accepted root-cause evidence.
+- Fixed a reproducible window-lifecycle defect: the update-quit event must set
+  the application's existing exit intent before window close handlers run.
+  Registering this in application lifecycle avoids coupling it to update checks,
+  or creating a second exit flag. Ordinary minimize-to-tray behavior is preserved.
+- Installation IPC rejection now becomes an error in the existing dialog.
+  The returned-error baseline passed before the change; the rejected-error case
+  failed with missing error text and an unhandled rejection. Both pass after it.
+- Packaged Electron regression: `tests/e2e/updater-window-close.spec.ts` first
+  failed because the real window survived the injected update-quit event; after
+  the lifecycle fix it closes. A second test clicks Install Now through the real
+  renderer/preload after removing the install handler and verifies a visible IPC
+  error. Both pass on the local unsigned macOS arm64 package (2 tests, 7.7s).
+  Both are selected by `test:e2e:smoke:built` and the root desktop E2E smoke check.
+- Targeted Vitest: `tests/unit/main/updater.test.ts`,
+  `tests/unit/main/updater-install.test.ts`,
+  `tests/unit/components/update-dialog.test.tsx`,
+  `tests/unit/components/update-dialog-download.test.tsx`, and
+  `tests/unit/components/update-dialog-install.test.tsx`: 53/53 pass with one worker.
+  Application and test typechecking, affected-file ESLint, file-size gate and
+  `git diff --check` pass. `pnpm --filter @prompthub/desktop build` and
+  `pnpm --filter @prompthub/desktop exec electron-builder --config electron-builder.config.cjs --mac --arm64 --dir --publish never`
+  pass. Packaging explicitly disables signing; no publication was performed.
+- Reproduce packaged checks from the repository root by setting
+  `PROMPTHUB_E2E_EXECUTABLE_PATH` to the absolute path of
+  `apps/desktop/dist/mac-arm64/PromptHub.app/Contents/MacOS/PromptHub` and running
+  `pnpm --filter @prompthub/desktop exec playwright test tests/e2e/updater-window-close.spec.ts --timeout=45000`.
+- Limits: the native update event and downloaded metadata are injected;
+  Squirrel payload verification, signed replacement and restart into a newer
+  version are not exercised. No complete reproduction of the reporter's machine
+  or signed 0.6.1-to-0.6.2 upgrade is claimed. Full signed upgrade acceptance
+  remains open; unit doubles of the backup/installer do not close that gate.
 
 ### 2026-10-19 update dialog and channel verification
 

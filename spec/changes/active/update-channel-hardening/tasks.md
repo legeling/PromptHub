@@ -23,6 +23,9 @@
 - [x] Verify release-note language switching, all seven locales and preservation of unpaired/structured content (32 related component cases; scoped types, ESLint and production build passed).
 - [x] Show download feedback before the first byte and handle IPC rejection without losing superseding transfers (`FR-UPDATER-008`, `DES-UPDATER-008`).
 - [x] Verify immediate download feedback, returned failures, rejected IPC and source replacement (21 related cases; scoped types, ESLint and production build passed).
+- [x] Allow updater-triggered window closing to bypass the minimize-to-tray close policy on macOS and add regression coverage for `before-quit-for-update`.
+- [x] Verify the real packaged window-close policy and visible install IPC failures with isolated Electron E2E; include both in desktop smoke (2026-11-13, unsigned arm64 package).
+- [ ] Reproduce the reporter's full signed 0.6.1-to-0.6.2 install, including native payload verification, replacement and restart. Injected update events do not prove this boundary.
 - [x] Add localized category icons and entry typography; verify isolated Electron light/dark screenshots and one long-note scroll region (2026-10-19).
 - [ ] Accept the redesigned dialog in the real desktop GUI and verify a packaged beta-to-stable upgrade; local checks do not establish these results.
 

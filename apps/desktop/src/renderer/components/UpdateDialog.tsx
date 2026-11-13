@@ -305,6 +305,12 @@ export function UpdateDialog({
           error: result.error || t("settings.updateInstallFailed"),
         });
       }
+    } catch (error) {
+      setUpdateStatus({
+        status: "error",
+        error:
+          error instanceof Error ? error.message : t("settings.updateInstallFailed"),
+      });
     } finally {
       setIsInstalling(false);
     }

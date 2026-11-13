@@ -283,6 +283,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 ### 9. Update Flow Failure Visibility
 
 - 桌面端更新弹窗中的手动升级前备份动作必须在弹窗内处理失败路径；如果预升级快照或导出步骤失败，界面必须进入可见错误态，而不是把 Promise rejection 泄漏到事件处理器外。
+- 点击安装后的 IPC rejection 同样必须在弹窗内显示具体错误并解除按钮等待，不能仅恢复按钮而丢失失败原因。
 - 更新弹窗只允许渲染主进程更新服务通过 IPC 返回的真实状态；开发构建可以明确提示更新检查已禁用，但不得在运行时注入演示版本、下载进度或其他模拟状态。
 - 预览通道已精确匹配 GitHub Release tag 时，更新弹窗应优先展示该 Release 的发布说明，保留标题、Emoji、链接和经允许的 GitHub / Shields HTTPS 图片；未授权图片来源必须退化为 alt 文本。
 - 下载过程不得隐藏已获取的发布说明；进度条使用弹窗内容宽度，只展示一个权威百分比，并通过可访问的 `progressbar` 语义暴露进度。
@@ -292,6 +293,7 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 ### 9.1 Direct macOS In-App Updates
 
 - 从 PromptHub 官方 DMG 安装、且后续 release ZIP 已完成 Developer ID 签名与 Apple 公证的 macOS 用户，必须可以在应用内下载并重启完成升级；更新流程使用 `electron-updater` 的已验证 ZIP payload，不要求用户手动挂载 DMG 或复制应用。
+- 更新器触发退出时，窗口关闭策略必须识别 Electron 的 `before-quit-for-update` 事件并放行窗口关闭；不得把更新退出当成普通“关闭后最小化到托盘”。
 - Homebrew Cask 安装仍由 Homebrew 负责升级；应用内更新不得下载或替换 Caskroom 中的应用。
 
 ### 9.2 macOS Menu Bar Icon

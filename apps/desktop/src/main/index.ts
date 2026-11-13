@@ -1,5 +1,6 @@
 import {
   app,
+  autoUpdater as nativeAutoUpdater,
   BrowserWindow,
   ipcMain,
   dialog,
@@ -1465,6 +1466,12 @@ app.on("window-all-closed", () => {
 
 // Cleanup before quitting
 // 应用退出前清理
+// Native update quit closes windows before app's before-quit event. Release
+// the tray close guard now, but keep database cleanup in before-quit below.
+nativeAutoUpdater.on("before-quit-for-update", () => {
+  isQuitting = true;
+});
+
 app.on("before-quit", () => {
   isQuitting = true;
   disposeWindowState?.();
