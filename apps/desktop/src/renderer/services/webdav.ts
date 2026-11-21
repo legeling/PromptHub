@@ -1,3 +1,6 @@
+import { computeFullHash } from "./sync-backup-publication";
+import { downloadWorkspaceBackup } from "./workspace-snapshot-remote";
+import { parseHistoryListing, validVersionFile } from "./webdav-history";
 import { runDesktopCausalSync } from "./causal-sync";
 /**
  * WebDAV Sync Service - Support incremental backup, image sync, version history and bidirectional sync
@@ -38,7 +41,9 @@ export interface WebDAVConfig {
   password: string;
 }
 
-export interface WebDAVSyncOptions extends SyncBackupOptions {}
+export interface WebDAVSyncOptions extends SyncBackupOptions {
+  versionFile?: string;
+}
 
 function buildBaseUrl(config: WebDAVConfig): string {
   return config.url.replace(/\/$/, "");
@@ -221,6 +226,20 @@ function createWebDAVAdapter(config: WebDAVConfig): RemoteSyncAdapter {
       video: (fileName: string) =>
         `${videosDirUrl}/${encodeURIComponent(fileName)}.base64`,
     },
+    async archiveWorkspaceManifest(text, updatedAt) {
+      const folder = backupDirUrl + "/history";
+      await ensureDirectory(folder, config);
+      const digest = await computeFullHash(text);
+      const name = Date.parse(updatedAt) + "-" + digest + ".json";
+      const target = folder + "/" + name;
+      const result = await uploadFile(target, config, text, { ifNoneMatch: "*" });
+      if (!result.success) {
+        const stored = await downloadFile(target, config);
+        if (!stored.success || stored.data !== text)
+          throw new Error(result.error || "Could not archive WebDAV backup");
+      }
+      return digest.slice(0, 8);
+    },
     prepareLegacyUpload: async () => {
       await ensureDirectory(baseUrl, config);
     },
@@ -302,7 +321,27 @@ export async function downloadFromWebDAV(
   config: WebDAVConfig,
   options?: WebDAVSyncOptions,
 ): Promise<SyncResult> {
-  return downloadSyncBackup(createWebDAVAdapter(config), options);
+  const adapter = createWebDAVAdapter(config);
+  if (!options?.versionFile) return downloadSyncBackup(adapter, options);
+  const name = options.versionFile;
+  if (!validVersionFile(name)) throw new Error("Invalid WebDAV backup version");
+  const manifestUrl = buildBaseUrl(config) + "/" + BACKUP_DIR + "/history/" + name;
+  const stored = await adapter.downloadText(manifestUrl);
+  const digest = stored.success && stored.data ? await computeFullHash(stored.data) : undefined;
+  if (!digest || !name.endsWith("-" + digest + ".json"))
+    throw new Error("WebDAV backup version is missing or corrupt");
+  const result = await downloadWorkspaceBackup(adapter, options, stored);
+  if (!result) throw new Error("Invalid WebDAV workspace backup version");
+  return result;
+}
+
+export async function listWebDAVVersions(config: WebDAVConfig): Promise<string[]> {
+  const folder = buildBaseUrl(config) + "/" + BACKUP_DIR + "/history/";
+  if (!window.electron?.webdav?.listDirectory) throw new Error("WebDAV listing unavailable");
+  const result = await window.electron.webdav.listDirectory(folder, config);
+  if (result.status === 404) return [];
+  if (!result.success || !result.data) throw new Error(result.error || "WebDAV listing failed");
+  return parseHistoryListing(result.data, folder);
 }
 
 export async function incrementalDownload(

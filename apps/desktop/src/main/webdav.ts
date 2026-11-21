@@ -122,6 +122,12 @@ export function registerWebDAVIPC() {
   const useE2EWebDAVMock = isE2EEnabled() && getE2EWebDAVMode() !== "off";
   registerWebDAVDelete(useE2EWebDAVMock);
 
+  ipcMain.handle("webdav:listDirectory", (_event, url: string, config: WebDAVConfig) => {
+    const auth = "Basic " + Buffer.from(config.username + ":" + config.password).toString("base64");
+    return sendWebDAVRequest("PROPFIND", url, auth, { Depth: "1", "Content-Type": "application/xml" },
+      '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>');
+  });
+
   // Test connection
   // 测试连接
   ipcMain.handle(

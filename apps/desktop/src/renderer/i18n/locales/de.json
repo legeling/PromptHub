@@ -2044,6 +2044,9 @@
     "upload": "Hochladen",
     "download": "Herunterladen",
     "backupToRemote": "Remote-Sicherung erstellen",
+    "backupVersions": "Sicherungsversionen",
+    "noBackupVersions": "Keine archivierten Sicherungen",
+    "restoreBackupVersion": "Version wiederherstellen",
     "updateFromRemote": "Neueste Sicherung wiederherstellen",
     "dbInfo": "Lokale Datenpfade",
     "aiConfig": "KI-Modell-Konfiguration",
@@ -3867,6 +3870,7 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "backupConflict": "Sicherungskonflikt: Ein anderer Client hat die Remote-Sicherung aktualisiert.",
     "movedPromptToFolder": "Nach \"{{folder}}\" verschoben",
     "movedPromptsToFolder": "{{count}} Prompts nach \"{{folder}}\" verschoben",
     "selfHostedSyncConnectionSuccess": "Backup-Endpunkt bereit. Serverversion {{version}}; bis zu {{retention}} Snapshots werden aufbewahrt.",

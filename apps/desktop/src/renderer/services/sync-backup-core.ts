@@ -139,6 +139,7 @@ export interface RemoteSyncAdapter {
     image(fileName: string): string;
     video(fileName: string): string;
   };
+  archiveWorkspaceManifest?(text: string, updatedAt: string): Promise<string>;
   prepareLegacyUpload?(): Promise<void>;
   prepareIncrementalUpload?(includeMedia: boolean): Promise<void>;
   uploadText(

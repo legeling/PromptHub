@@ -2044,6 +2044,9 @@
     "upload": "上傳",
     "download": "下載",
     "backupToRemote": "建立遠端備份",
+    "backupVersions": "備份版本",
+    "noBackupVersions": "暫無封存備份",
+    "restoreBackupVersion": "還原此版本",
     "updateFromRemote": "還原最近備份",
     "dbInfo": "本機資料路徑",
     "aiConfig": "AI 模型設定",
@@ -3867,6 +3870,7 @@
     "sha512Desc": "SHA512 校验失败。\n这通常是由于 CDN 缓存不一致或网络劫持导致的。\n文件可能已下载完成，您可以尝试手动安装。"
   },
   "toast": {
+    "backupConflict": "備份衝突：其他用戶端已更新遠端備份。",
     "movedPromptToFolder": "已移動到「{{folder}}」",
     "movedPromptsToFolder": "已將 {{count}} 個 Prompt 移動到「{{folder}}」",
     "selfHostedSyncConnectionSuccess": "備份端點可用。伺服器版本 {{version}}，最多保留 {{retention}} 個快照。",

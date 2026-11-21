@@ -2044,6 +2044,9 @@
     "upload": "アップロード",
     "download": "ダウンロード",
     "backupToRemote": "リモートバックアップを作成",
+    "backupVersions": "バックアップ履歴",
+    "noBackupVersions": "保存済みのバックアップはありません",
+    "restoreBackupVersion": "このバージョンを復元",
     "updateFromRemote": "最新バックアップを復元",
     "dbInfo": "ローカルデータパス",
     "aiConfig": "AI モデル設定",
@@ -3867,6 +3870,7 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "backupConflict": "バックアップが競合しました。別のクライアントがリモートのバックアップを更新しました。",
     "movedPromptToFolder": "「{{folder}}」に移動しました",
     "movedPromptsToFolder": "{{count}} 件の Prompt を「{{folder}}」に移動しました",
     "selfHostedSyncConnectionSuccess": "バックアップエンドポイントを利用できます。サーバーバージョン {{version}}、最大 {{retention}} 件のスナップショットを保持します。",

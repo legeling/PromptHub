@@ -389,6 +389,8 @@ contextBridge.exposeInMainWorld("electron", {
   // WebDAV (bypass CORS via main process)
   // WebDAV（通过主进程绕过 CORS）
   webdav: {
+    listDirectory: (url: string, config: { url: string; username: string; password: string }) =>
+      ipcRenderer.invoke("webdav:listDirectory", url, config),
     delete: (
       fileUrl: string,
       config: { url: string; username: string; password: string },
@@ -723,6 +725,8 @@ declare global {
       // WebDAV (bypass CORS via main process)
       // WebDAV（通过主进程绕过 CORS）
       webdav?: {
+        listDirectory?: (url: string, config: { url: string; username: string; password: string }) =>
+          Promise<{success: boolean; status?: number; data?: string; error?: string}>;
         delete: (
           fileUrl: string,
           config: { url: string; username: string; password: string },

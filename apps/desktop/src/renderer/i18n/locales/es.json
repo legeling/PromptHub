@@ -2044,6 +2044,9 @@
     "upload": "Subir",
     "download": "Descargar",
     "backupToRemote": "Crear copia remota",
+    "backupVersions": "Versiones de copia de seguridad",
+    "noBackupVersions": "No hay copias archivadas",
+    "restoreBackupVersion": "Restaurar versión",
     "updateFromRemote": "Restaurar última copia",
     "dbInfo": "Rutas de datos locales",
     "aiConfig": "Configuración del modelo de IA",
@@ -3867,6 +3870,7 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "backupConflict": "Conflicto de copia: otro cliente ha actualizado la copia remota.",
     "movedPromptToFolder": "Movido a \"{{folder}}\"",
     "movedPromptsToFolder": "{{count}} prompts movidos a \"{{folder}}\"",
     "selfHostedSyncConnectionSuccess": "El endpoint de copias está listo. Versión del servidor {{version}}; se conservan hasta {{retention}} instantáneas.",

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDataSettingsControllerContext } from "./useDataSettingsController";
 import {
   DataSettingsSection,
@@ -14,6 +15,7 @@ import { ToggleSwitch, PasswordInput } from "../shared";
 import { SyncProviderSelector } from "./SyncProviderSelector";
 
 export function WebDAVSyncPanel() {
+  const [versions, setVersions] = useState<string[] | null>(null);
   const {
     activeSubsection,
     t,
@@ -28,6 +30,7 @@ export function WebDAVSyncPanel() {
     handleWebDAVConnectionCheck,
     handleWebDAVUpload,
     handleWebDAVDownload,
+    handleWebDAVVersions,
   } = useDataSettingsControllerContext();
 
   return (
@@ -127,6 +130,22 @@ export function WebDAVSyncPanel() {
                     {t("settings.updateFromRemote", "Update from remote")}
                   </button>
                 </div>
+
+                <button type="button"
+                  disabled={webdavDownloading || !webdavConfigComplete}
+                  onClick={async () => setVersions(await handleWebDAVVersions())}
+                  className="text-sm underline disabled:opacity-50"
+                >{t("settings.backupVersions")}</button>
+                {versions && <div className="space-y-1 max-h-48 overflow-auto">
+                  {!versions.length && <p>{t("settings.noBackupVersions")}</p>}
+                  {versions.map((name) => (
+                    <button type="button" key={name} disabled={webdavDownloading || !webdavConfigComplete}
+                      className="block text-sm underline disabled:opacity-50"
+                      onClick={() => void handleWebDAVDownload(name)}>
+                      {t("settings.restoreBackupVersion")} · {new Date(Number(name.split("-")[0])).toLocaleString()} · {name.split("-")[1].slice(0, 8)}
+                    </button>
+                  ))}
+                </div>}
 
                 {/* 自动运行（定时同步） */}
                 <div className="flex items-center justify-between pt-3 border-t border-border">

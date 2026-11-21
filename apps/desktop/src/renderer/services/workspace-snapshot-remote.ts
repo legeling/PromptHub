@@ -148,6 +148,8 @@ export async function uploadWorkspaceBackup(
       manifest.chunks.push({ objectId, hash, sizeBytes: chunk.sizeBytes });
     }
     const manifestText = JSON.stringify(manifest);
+    if (previous && head.data)
+      await adapter.archiveWorkspaceManifest?.(head.data, previous.updatedAt);
     publicationAttempted = true;
     const result = await adapter.uploadText(
       adapter.paths.manifest,
@@ -177,17 +179,24 @@ export async function uploadWorkspaceBackup(
           );
         }
       }
-      if (!confirmed.success || confirmed.data !== manifestText)
+      if (!confirmed.success || confirmed.data !== manifestText) {
+        if (adapter.archiveWorkspaceManifest && result.status === 412)
+          throw new Error(i18next.t("toast.backupConflict") + " (HTTP 412)");
         throw new Error(
           result.error || "Snapshot publication could not be confirmed",
         );
+      }
     }
+    // A server can reuse an ETag for two different manifests. Acknowledged
+    // WebDAV uploads must therefore be independently restorable.
+    const versionId = await adapter.archiveWorkspaceManifest?.(manifestText, manifest.updatedAt);
+    const message = i18next.t("toast.uploadSuccess");
     return {
       success: true,
       localChanged: false,
       snapshotCounts: manifest.counts,
       timestamp: manifest.updatedAt,
-      message: i18next.t("toast.uploadSuccess"),
+      message: versionId ? message + " · " + versionId : message,
       details: { skipped },
     };
   } catch (error) {
@@ -219,10 +228,11 @@ export async function uploadWorkspaceBackup(
 export async function downloadWorkspaceBackup(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
+  verifiedManifest?: RemoteDownloadResult,
 ): Promise<SyncResult | null> {
   let sessionId: string | undefined;
   try {
-    const head = await adapter.downloadText(adapter.paths.manifest);
+    const head = verifiedManifest ?? await adapter.downloadText(adapter.paths.manifest);
     if (head.notFound) return null;
     if (!head.success || head.data === undefined)
       throw new Error(head.error || "Unable to read remote backup");

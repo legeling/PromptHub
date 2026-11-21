@@ -804,3 +804,5 @@ When backup, restore, migration, or recovery behavior changes materially:
 When the app is about to perform risky data operations:
 
 - the system should prioritize recoverability and user awareness over silent convenience
+
+WebDAV 工作区上传在修改最新清单前归档上一个工作区清单，并在确认最新清单写入后、报告成功前归档本次清单。历史清单使用创建条件及内容摘要命名，复用原远端分片。设置页可按时间与摘要恢复，覆盖最新清单不会改变历史版本。

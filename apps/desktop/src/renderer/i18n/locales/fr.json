@@ -2045,6 +2045,9 @@
     "upload": "Télécharger",
     "download": "Télécharger",
     "backupToRemote": "Créer une sauvegarde distante",
+    "backupVersions": "Versions des sauvegardes",
+    "noBackupVersions": "Aucune sauvegarde archivée",
+    "restoreBackupVersion": "Restaurer la version",
     "updateFromRemote": "Restaurer la dernière sauvegarde",
     "dbInfo": "Chemins des données locales",
     "aiConfig": "Configuration du modèle IA",
@@ -3868,6 +3871,7 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "backupConflict": "Conflit de sauvegarde : un autre client a mis à jour la sauvegarde distante.",
     "movedPromptToFolder": "Déplacé vers \"{{folder}}\"",
     "movedPromptsToFolder": "{{count}} prompts déplacés vers \"{{folder}}\"",
     "selfHostedSyncConnectionSuccess": "Le point de sauvegarde est prêt. Version du serveur {{version}} ; jusqu’à {{retention}} instantanés sont conservés.",

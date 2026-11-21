@@ -1,3 +1,4 @@
+import { listWebDAVVersions } from "../../../services/webdav";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -296,13 +297,22 @@ function useWebDAVActions(
     }
   };
 
-  const handleWebDAVDownload = async () => {
+  const handleWebDAVVersions = async () => {
+    try {
+      return await operations.webdavDownloading.run(() => listWebDAVVersions(createWebDAVConfig(settings)));
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+      return null;
+    }
+  };
+
+  const handleWebDAVDownload = async (versionFile?: string) => {
     if (!configured()) return;
     try {
       const result = await operations.webdavDownloading.run(() =>
         runWebDAVDownload({
           config: createWebDAVConfig(settings),
-          options: createWebDAVDownloadOptions(settings),
+          options: { ...createWebDAVDownloadOptions(settings), versionFile },
         }),
       );
       showToast(result.message, result.success ? "success" : "error");
@@ -316,6 +326,7 @@ function useWebDAVActions(
     handleWebDAVConnectionCheck,
     handleWebDAVUpload,
     handleWebDAVDownload,
+    handleWebDAVVersions,
   };
 }
 
