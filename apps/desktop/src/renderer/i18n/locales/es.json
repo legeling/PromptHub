@@ -3882,6 +3882,9 @@
     "rememberFailed": "No se pudo guardar esta opción. Inténtalo de nuevo."
   },
   "quickAdd": {
+    "savedAnalysisFailed": "Se guardó «{{title}}», pero falló el análisis de IA. Puedes editar el título y las etiquetas.",
+    "analysisSaveFailed": "Se guardó «{{title}}», pero no se pudo guardar el resultado del análisis de IA.",
+    "createFailed": "No se pudo crear el Prompt. Se ha conservado el texto; inténtalo de nuevo.",
     "title": "Añadir rápido",
     "manualAdd": "Añadir manualmente",
     "manualAddDesc": "Completar manualmente los detalles del Prompt",

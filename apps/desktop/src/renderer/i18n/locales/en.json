@@ -3920,6 +3920,9 @@
     "rememberFailed": "Could not save this choice. Please try again."
   },
   "quickAdd": {
+    "savedAnalysisFailed": "\"{{title}}\" was saved, but AI analysis failed. You can edit its title and tags.",
+    "analysisSaveFailed": "\"{{title}}\" was saved, but its AI analysis could not be saved.",
+    "createFailed": "Prompt creation failed. Your input has been kept; please try again.",
     "title": "Quick Add",
     "manualAdd": "Manual Add",
     "manualAddDesc": "Manually fill in details",

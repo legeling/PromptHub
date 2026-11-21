@@ -3920,6 +3920,9 @@
     "rememberFailed": "无法保存此选择，请重试。"
   },
   "quickAdd": {
+    "savedAnalysisFailed": "“{{title}}”已保存，但 AI 分析失败。你可以手动编辑标题和标签。",
+    "analysisSaveFailed": "“{{title}}”已保存，但 AI 分析结果保存失败。",
+    "createFailed": "Prompt 创建失败，已保留输入，请重试。",
     "title": "快速添加",
     "manualAdd": "手动添加",
     "manualAddDesc": "手动填写 Prompt 详细信息",

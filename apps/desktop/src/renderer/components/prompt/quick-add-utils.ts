@@ -52,7 +52,7 @@ export function getQuickAddFallbackTitle(
     .trim()
     .split("\n")
     .map((line) => line.trim())
-    .find(Boolean);
+    .find((line) => line.length > 0 && !isTemplateMarker(line));
 
   return firstLine?.slice(0, 30) || emptyFallback;
 }
@@ -60,7 +60,7 @@ export function getQuickAddFallbackTitle(
 export type QuickAddMode = "analyze" | "generate";
 
 export interface QuickAddAnalysisResult {
-  title?: string;
+  title: string;
   systemPrompt?: string;
   description?: string;
   suggestedFolder?: string | null;
@@ -224,17 +224,22 @@ export function parseQuickAddAnalysisResult(
 ): QuickAddAnalysisResult | null {
   const parsed = extractJsonObject(responseContent);
 
-  if (!parsed) {
+  const title = parsed && asOptionalString(parsed.title);
+  if (!parsed || !title || isTemplateMarker(title)) {
     return null;
   }
 
   return {
-    title: asOptionalString(parsed.title),
+    title,
     systemPrompt: asOptionalString(parsed.systemPrompt),
     description: asOptionalString(parsed.description),
     suggestedFolder: asOptionalFolderName(parsed.suggestedFolder),
     tags: asStringArray(parsed.tags),
   };
+}
+
+function isTemplateMarker(value: string): boolean {
+  return /^\[[^\[\]\n]+\]$/.test(value);
 }
 
 export function parseQuickAddGeneratedDraft(

@@ -3882,6 +3882,9 @@
     "rememberFailed": "無法儲存此選擇，請重試。"
   },
   "quickAdd": {
+    "savedAnalysisFailed": "「{{title}}」已儲存，但 AI 分析失敗。你可以手動編輯標題和標籤。",
+    "analysisSaveFailed": "「{{title}}」已儲存，但 AI 分析結果儲存失敗。",
+    "createFailed": "Prompt 建立失敗，已保留輸入，請重試。",
     "title": "快速新增",
     "manualAdd": "手動新增",
     "manualAddDesc": "手動填寫 Prompt 詳細資訊",

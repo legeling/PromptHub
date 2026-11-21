@@ -9,6 +9,18 @@ import {
 } from "../../../src/renderer/components/prompt/quick-add-utils";
 
 describe("quick-add-utils", () => {
+  it.each(['{}', '{"title":" "}', '{"title":42}', '{"tags":["art"]}', '{"title":"[主题]"}'])(
+    "rejects incomplete analysis metadata: %s", (response) => {
+      expect(parseQuickAddAnalysisResult(response)).toBeNull();
+    },
+  );
+
+  it("uses content instead of a standalone template marker as the fallback title", () => {
+    expect(getQuickAddFallbackTitle("[主题]\nA misty lakeside pavilion")).toBe("A misty lakeside pavilion");
+    expect(getQuickAddFallbackTitle("[主题]\n[风格]", "New Prompt")).toBe("New Prompt");
+    expect(getQuickAddFallbackTitle("[Review] Summarize the code")).toBe("[Review] Summarize the code");
+  });
+
   it("prefers the default usable chat model for AI analysis", () => {
     const config = resolveQuickAddAnalysisConfig({
       aiModels: [

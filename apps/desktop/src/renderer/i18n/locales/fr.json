@@ -3883,6 +3883,9 @@
     "rememberFailed": "Impossible d’enregistrer ce choix. Veuillez réessayer."
   },
   "quickAdd": {
+    "savedAnalysisFailed": "« {{title}} » a été enregistré, mais l’analyse IA a échoué. Vous pouvez modifier le titre et les tags.",
+    "analysisSaveFailed": "« {{title}} » a été enregistré, mais le résultat de l’analyse IA n’a pas pu être enregistré.",
+    "createFailed": "La création du Prompt a échoué. Votre saisie a été conservée ; veuillez réessayer.",
     "title": "Ajout rapide",
     "manualAdd": "Ajout manuel",
     "manualAddDesc": "Remplir manuellement les détails du Prompt",

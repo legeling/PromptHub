@@ -3882,6 +3882,9 @@
     "rememberFailed": "Diese Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
   "quickAdd": {
+    "savedAnalysisFailed": "„{{title}}“ wurde gespeichert, aber die KI-Analyse ist fehlgeschlagen. Titel und Tags können manuell bearbeitet werden.",
+    "analysisSaveFailed": "„{{title}}“ wurde gespeichert, aber das Ergebnis der KI-Analyse konnte nicht gespeichert werden.",
+    "createFailed": "Der Prompt konnte nicht erstellt werden. Ihre Eingabe bleibt erhalten. Bitte versuchen Sie es erneut.",
     "title": "Schnelles Hinzufügen",
     "manualAdd": "Manuell hinzufügen",
     "manualAddDesc": "Prompt-Details manuell ausfüllen",

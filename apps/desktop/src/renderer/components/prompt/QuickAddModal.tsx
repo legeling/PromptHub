@@ -1,7 +1,7 @@
 import { usePromptMediaManager } from "./usePromptMediaManager";
 import { PromptReferenceImages } from "./PromptReferenceImages";
 import { PromptTypePicker } from "./PromptTypePicker";
-import type { PromptType } from "@prompthub/shared/types";
+import type { Prompt, PromptType } from "@prompthub/shared/types";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -41,7 +41,7 @@ interface QuickAddModalProps {
     tags?: string[];
     images?: string[];
     videos?: string[];
-  }) => Promise<any>;
+  }) => Promise<Pick<Prompt, "id"> | null | undefined>;
   defaultPromptType?: PromptType;
   initialMode?: QuickAddMode;
 }
@@ -94,6 +94,7 @@ function QuickAddDialog({
   const isMountedRef = useRef(true);
   const isOpenRef = useRef(isOpen);
   const modalSessionRef = useRef(0);
+  const submittingRef = useRef(false);
 
   const analysisConfig = useMemo(
     () =>
@@ -182,9 +183,22 @@ function QuickAddDialog({
     };
   }, [defaultPromptType, initialMode, isOpen]);
 
-  // Handle create
   const handleCreate = async () => {
-    if (isSubmitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    const session = modalSessionRef.current;
+    try {
+      await createPrompt();
+    } catch (error) {
+      console.error("Quick Add creation failed:", error);
+      showToast(t("quickAdd.createFailed"), "error");
+    } finally {
+      submittingRef.current = false;
+      if (canApplyAsyncResult(session)) setIsSubmitting(false);
+    }
+  };
+
+  const createPrompt = async () => {
 
     if (!analysisConfig) {
       showToast(t("quickAdd.noAiConfigDesc"), "error");
@@ -292,10 +306,12 @@ function QuickAddDialog({
       return;
     }
 
-    // Create prompt immediately. Only use the "analyzing" placeholder when
-    // we actually have a usable chat model for background analysis.
+    // Persist a usable title before starting AI. A closed renderer or a failed
+    // request must never leave a transient progress label in durable data.
+    const title = getQuickAddFallbackTitle(promptText, t("prompt.newPrompt"));
+    const session = modalSessionRef.current;
     const createdPrompt = await onCreate({
-      title: t("quickAdd.analyzing") || "正在分析...",
+      title,
       userPrompt: promptText,
       folderId: selectedFolderId,
       promptType: selectedPromptType,
@@ -304,53 +320,45 @@ function QuickAddDialog({
     });
 
     if (!createdPrompt) {
+      showToast(t("quickAdd.createFailed"), "error");
       setIsSubmitting(false);
       return;
     }
 
-    onClose();
+    if (canApplyAsyncResult(session)) onClose();
 
-    // Background AI analysis
+    // Each invocation keeps its own input and record ID across modal reopenings.
+    let parsedResult;
     try {
       const analysisPrompt = buildQuickAddAnalysisPrompt(promptText, {
         folderNames,
         tagsString,
       });
-      const fallbackTitle = getQuickAddFallbackTitle(
-        promptText,
-        t("prompt.newPrompt"),
-      );
-
       const aiResult = await chatCompletion(
         analysisConfig,
         [{ role: "user", content: analysisPrompt }],
         { temperature: 0.3 },
       );
 
-      const parsedResult = parseQuickAddAnalysisResult(aiResult.content);
-
-      if (parsedResult) {
-        const { usePromptStore } = await import("../../stores/prompt.store");
-        await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-          title: parsedResult.title || createdPrompt.title,
-          systemPrompt: parsedResult.systemPrompt,
-          description: parsedResult.description,
-          folderId: resolveMatchedFolderId(parsedResult.suggestedFolder),
-          tags: parsedResult.tags,
-        });
-      } else {
-        const { usePromptStore } = await import("../../stores/prompt.store");
-        await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-          title: fallbackTitle,
-        });
-      }
+      parsedResult = parseQuickAddAnalysisResult(aiResult.content);
+      if (!parsedResult) throw new Error("Quick Add analysis returned no usable title");
     } catch (err) {
       console.error("Background AI analysis failed:", err);
-      // Fallback title if analysis fails
-      const { usePromptStore } = await import("../../stores/prompt.store");
+      showToast(t("quickAdd.savedAnalysisFailed", { title }), "error");
+      return;
+    }
+
+    try {
       await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-        title: getQuickAddFallbackTitle(promptText, t("prompt.newPrompt")),
+        title: parsedResult.title,
+        systemPrompt: parsedResult.systemPrompt,
+        description: parsedResult.description,
+        folderId: resolveMatchedFolderId(parsedResult.suggestedFolder),
+        tags: parsedResult.tags,
       });
+    } catch (err) {
+      console.error("Failed to save Quick Add analysis:", err);
+      showToast(t("quickAdd.analysisSaveFailed", { title }), "error");
     }
   };
 
