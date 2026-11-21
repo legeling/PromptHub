@@ -116,10 +116,11 @@ describe("release acceptance: real CLI processes", () => {
       throw new Error(
         "Run this test through pnpm to exercise its dev entrypoint",
       );
+    const isScript = /\.[cm]?js$/i.test(packageManager);
     const result = spawnSync(
-      process.execPath,
+      isScript ? process.execPath : packageManager,
       [
-        packageManager,
+        ...(isScript ? [packageManager] : []),
         "--filter",
         "@prompthub/cli",
         "run",

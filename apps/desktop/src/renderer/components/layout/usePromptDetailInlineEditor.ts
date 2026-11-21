@@ -1,7 +1,11 @@
 import { useWorkspaceDraft } from "../../hooks/useWorkspaceDraft";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Prompt, UpdatePromptDTO } from "@prompthub/shared/types";
+import type {
+  Prompt,
+  PromptSummary,
+  UpdatePromptDTO,
+} from "@prompthub/shared/types";
 import { hasPromptContent } from "@prompthub/shared/utils/prompt-content";
 import { useTranslation } from "react-i18next";
 import { usePromptStore } from "../../stores/prompt.store";
@@ -66,8 +70,20 @@ export function usePromptDetailInlineEditor(
   const { t } = useTranslation();
   const { showToast } = useToast();
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
+  const getPromptDetail = usePromptStore((state) => state.getPromptDetail);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
-  const [isDetailInlineEditing, setIsDetailInlineEditing] = useState(false);
+  const selectedId = usePromptStore((state) => state.selectedId);
+  const [editTarget, setEditTarget] = useState<{
+    id: string;
+    english: boolean;
+  } | null>(null);
+  const isDetailInlineEditing =
+    !!editTarget &&
+    editTarget.id === selectedId &&
+    editTarget.id === selectedPrompt?.id;
+  const draftLanguage = isDetailInlineEditing
+    ? editTarget.english
+    : showEnglish;
   const [isDetailInlineSaving, setIsDetailInlineSaving] = useState(false);
   const [detailInlineActiveField, setDetailInlineActiveField] =
     useState<DetailInlineEditField>("title");
@@ -77,36 +93,27 @@ export function usePromptDetailInlineEditor(
   const detailDescriptionInputRef = useRef<HTMLInputElement>(null);
   const detailSystemPromptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const detailUserPromptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const promptCardEditRequestRef = useRef(0);
 
   const currentValues = useMemo(
     () =>
       selectedPrompt
-        ? createDetailInlineEditDraft(selectedPrompt, showEnglish)
+        ? createDetailInlineEditDraft(selectedPrompt, draftLanguage)
         : null,
-    [selectedPrompt, showEnglish],
+    [selectedPrompt, draftLanguage],
   );
   const userPromptField = selectedPrompt
-    ? getDetailInlineUserPromptField(selectedPrompt, showEnglish)
+    ? getDetailInlineUserPromptField(selectedPrompt, draftLanguage)
     : "userPrompt";
   const systemPromptField = selectedPrompt
-    ? getDetailInlineSystemPromptField(selectedPrompt, showEnglish)
+    ? getDetailInlineSystemPromptField(selectedPrompt, draftLanguage)
     : "systemPrompt";
 
   useEffect(() => {
-    setIsDetailInlineEditing(false);
+    setEditTarget((current) => (current?.id === selectedId ? current : null));
     setIsDetailInlineSaving(false);
     setDetailInlineActiveField("title");
-  }, [selectedPrompt?.id]);
-
-  useEffect(() => {
-    if (!selectedPrompt) {
-      setDetailInlineDraft(EMPTY_DRAFT);
-    } else if (!isDetailInlineEditing) {
-      setDetailInlineDraft(
-        createDetailInlineEditDraft(selectedPrompt, showEnglish),
-      );
-    }
-  }, [isDetailInlineEditing, selectedPrompt, showEnglish]);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!isDetailInlineEditing) return;
@@ -129,24 +136,46 @@ export function usePromptDetailInlineEditor(
 
   const openDetailInlineEdit = useCallback(
     (field: DetailInlineEditField = "title") => {
-      if (!selectedPrompt) return;
+      if (!selectedPrompt || selectedPrompt.id !== selectedId) return;
       setDetailInlineDraft(
         createDetailInlineEditDraft(selectedPrompt, showEnglish),
       );
       setDetailInlineActiveField(field);
-      setIsDetailInlineEditing(true);
+      setEditTarget({ id: selectedPrompt.id, english: showEnglish });
     },
-    [selectedPrompt, showEnglish],
+    [selectedPrompt, selectedId, showEnglish],
   );
 
   const openPromptCardInlineTitleEdit = useCallback(
-    (prompt: Prompt) => {
+    async (prompt: PromptSummary) => {
+      const requestId = ++promptCardEditRequestRef.current;
       selectPrompt(prompt.id);
-      setDetailInlineDraft(createDetailInlineEditDraft(prompt, showEnglish));
-      setDetailInlineActiveField("title");
-      setIsDetailInlineEditing(true);
+      try {
+        const detail = await getPromptDetail(prompt.id);
+        if (
+          requestId !== promptCardEditRequestRef.current ||
+          usePromptStore.getState().selectedId !== prompt.id
+        ) {
+          return;
+        }
+        if (!detail) {
+          showToast(t("prompt.detailLoadFailed"), "error");
+          return;
+        }
+        setDetailInlineDraft(createDetailInlineEditDraft(detail, showEnglish));
+        setDetailInlineActiveField("title");
+        setEditTarget({ id: detail.id, english: showEnglish });
+      } catch (error) {
+        console.error("Failed to load prompt before inline editing:", error);
+        if (
+          requestId === promptCardEditRequestRef.current &&
+          usePromptStore.getState().selectedId === prompt.id
+        ) {
+          showToast(t("prompt.detailLoadFailed"), "error");
+        }
+      }
     },
-    [selectPrompt, showEnglish],
+    [getPromptDetail, selectPrompt, showEnglish, showToast, t],
   );
 
   const cancelDetailInlineEdit = useCallback(() => {
@@ -156,7 +185,7 @@ export function usePromptDetailInlineEditor(
         : EMPTY_DRAFT,
     );
     setDetailInlineActiveField("title");
-    setIsDetailInlineEditing(false);
+    setEditTarget(null);
     setIsDetailInlineSaving(false);
   }, [selectedPrompt, showEnglish]);
 
@@ -190,6 +219,7 @@ export function usePromptDetailInlineEditor(
           : selectedPrompt.userPrompt,
     });
   const canSaveDetailInlineEdit =
+    isDetailInlineEditing &&
     !!selectedPrompt &&
     !isDetailInlineSaving &&
     detailInlineDraft.title.trim().length > 0 &&
@@ -216,9 +246,13 @@ export function usePromptDetailInlineEditor(
     setIsDetailInlineSaving(true);
     try {
       await updatePrompt(selectedPrompt.id, updateData);
-      showToast(t("toast.saved"), "success", useSettingsStore.getState().showSaveNotification);
+      showToast(
+        t("toast.saved"),
+        "success",
+        useSettingsStore.getState().showSaveNotification,
+      );
       setDetailInlineActiveField("title");
-      setIsDetailInlineEditing(false);
+      setEditTarget(null);
     } catch (error) {
       console.error("Failed to save inline prompt edits:", error);
       showToast(t("toast.updateFailed"), "error");

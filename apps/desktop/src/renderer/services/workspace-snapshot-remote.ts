@@ -4,12 +4,15 @@ import {
   type WorkspaceSnapshotRequest,
   type WorkspaceSnapshotResponse,
 } from "@prompthub/shared/types/workspace-snapshot";
+import type { RemoteWriteCondition } from "@prompthub/shared/types/remote-sync";
+import { parseRemoteWriteCondition } from "@prompthub/shared/utils/remote-write-condition";
 import {
   encryptData,
   decryptData,
 } from "@prompthub/shared/utils/sync-encryption";
 import { computeFullHash } from "./sync-backup-publication";
 import type {
+  RemoteDownloadResult,
   RemoteSyncAdapter,
   SyncBackupOptions,
   SyncResult,
@@ -46,6 +49,27 @@ function failure(error: unknown): SyncResult {
   };
 }
 
+export function workspaceManifestWriteCondition(
+  head: RemoteDownloadResult,
+): RemoteWriteCondition {
+  if (head.notFound) return { ifNoneMatch: "*" };
+  if (!head.success || head.data === undefined)
+    throw new Error(head.error || "Unable to read remote backup");
+
+  try {
+    const condition = parseRemoteWriteCondition({ ifMatch: head.etag });
+    if (condition) return condition;
+  } catch {
+    throw new Error(
+      "Remote backup cannot be updated safely: the remote server must return one strong ETag",
+    );
+  }
+
+  throw new Error(
+    "Remote backup cannot be updated safely: the remote server must return one strong ETag",
+  );
+}
+
 export async function uploadWorkspaceBackup(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
@@ -53,11 +77,13 @@ export async function uploadWorkspaceBackup(
   let sessionId: string | undefined;
   const owned: string[] = [];
   let publicationAttempted = false;
+  let cleanupTargets: string[] = [];
   try {
     await adapter.prepareIncrementalUpload?.(false);
     const head = await adapter.downloadText(adapter.paths.manifest);
     if (!head.success && !head.notFound)
       throw new Error(head.error || "Unable to read remote backup");
+    const manifestWriteCondition = workspaceManifestWriteCondition(head);
     const previous = head.data ? parseWorkspaceBackupManifest(head.data) : null;
     const capture = await invoke({ action: "capture" });
     sessionId = capture.sessionId;
@@ -111,12 +137,14 @@ export async function uploadWorkspaceBackup(
       }
       const objectId = `${operation}-${manifest.chunks.length}-${hash}`;
       const target = objectPath(adapter, objectId);
-      owned.push(target);
       const result = await adapter.uploadText(target, content, {
         ifNoneMatch: "*",
       });
       if (!result.success)
         throw new Error(result.error || "Snapshot chunk upload failed");
+      // Only record objects the create-only upload explicitly confirmed. An
+      // ambiguous or conflicting PUT may refer to someone else's object.
+      owned.push(objectId);
       manifest.chunks.push({ objectId, hash, sizeBytes: chunk.sizeBytes });
     }
     const manifestText = JSON.stringify(manifest);
@@ -124,15 +152,31 @@ export async function uploadWorkspaceBackup(
     const result = await adapter.uploadText(
       adapter.paths.manifest,
       manifestText,
-      head.etag
-        ? { ifMatch: head.etag }
-        : head.notFound
-          ? { ifNoneMatch: "*" }
-          : undefined,
+      manifestWriteCondition,
     );
     if (!result.success) {
       // A failed response may follow a committed HEAD. Confirm it without repeating the write.
       const confirmed = await adapter.downloadText(adapter.paths.manifest);
+      if (
+        result.status === 412 &&
+        confirmed.success &&
+        confirmed.data !== undefined
+      ) {
+        try {
+          const published = parseWorkspaceBackupManifest(confirmed.data);
+          if (published) {
+            const referenced = new Set(
+              published.chunks.map((chunk) => chunk.objectId),
+            );
+            cleanupTargets = owned.filter((id) => !referenced.has(id));
+          }
+        } catch (error) {
+          console.warn(
+            "Cannot verify the winning backup; retaining uploaded chunks",
+            error,
+          );
+        }
+      }
       if (!confirmed.success || confirmed.data !== manifestText)
         throw new Error(
           result.error || "Snapshot publication could not be confirmed",
@@ -151,10 +195,10 @@ export async function uploadWorkspaceBackup(
   } finally {
     // Once HEAD was attempted, another reader or later generation may reference these chunks.
     // An unavailable readback cannot prove that publication failed.
-    if (!publicationAttempted && adapter.deleteText)
-      for (const target of owned) {
+    if (adapter.deleteText)
+      for (const id of publicationAttempted ? cleanupTargets : owned) {
         try {
-          const result = await adapter.deleteText(target);
+          const result = await adapter.deleteText(objectPath(adapter, id));
           if (!result.success)
             console.warn("Snapshot upload cleanup failed", result.error);
         } catch (error) {

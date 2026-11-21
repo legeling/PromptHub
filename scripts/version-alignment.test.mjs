@@ -97,11 +97,16 @@ test("separates development identity from published downloads in every README", 
     }
     assert.ok(source.includes(`### v${stableRelease.version}`), relativePath);
     assert.doesNotMatch(source, /Preview-v0\.6\.0--beta/, relativePath);
-    if (expectedVersion.includes("-"))
-      assert.ok(
-        source.includes(`releases/tag/v${expectedVersion}`),
-        relativePath,
-      );
+    if (expectedVersion.includes("-")) {
+      const indexRow = readText("spec/releases/README.md")
+        .split("\n")
+        .find((line) => line.startsWith(`| \`${expectedVersion}\``));
+      assert.ok(indexRow, "Release index must classify the current candidate");
+      const link = indexRow.includes("unpublished")
+        ? `spec/releases/${expectedVersion}.md`
+        : `releases/tag/v${expectedVersion}`;
+      assert.ok(source.includes(link), relativePath);
+    }
     assert.doesNotMatch(source, /^(?:<{7}|={7}|>{7})/m, relativePath);
   }
 });

@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 const handleMock = vi.fn();
 const showOpenDialogMock = vi.fn();
@@ -75,6 +78,13 @@ describe("Agent appearance IPC", () => {
       .mockReset()
       .mockRejectedValueOnce(new Error("Network unavailable"));
     const { handlers, IPC_CHANNELS } = await setup(true);
+    const paths = await import("../../../src/main/runtime-paths");
+    const userDataPath = mkdtempSync(join(tmpdir(), "prompthub-pet-catalog-"));
+    onTestFinished(() => {
+      paths.resetRuntimePaths();
+      rmSync(userDataPath, { recursive: true, force: true });
+    });
+    paths.configureRuntimePaths({ userDataPath });
     const list = handlers[IPC_CHANNELS.AGENT_APPEARANCE_PET_STORE_LIST];
     await expect(list(null, { agentId: "codex" })).rejects.toThrow(
       "Network unavailable",

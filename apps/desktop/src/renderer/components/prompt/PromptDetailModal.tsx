@@ -18,6 +18,8 @@ import {
   StickyNoteIcon,
   Settings2Icon,
   MessageSquareIcon,
+  Loader2Icon,
+  RotateCwIcon,
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { ImagePreviewModal } from "../ui/ImagePreviewModal";
@@ -41,6 +43,17 @@ import { resolveLocalVideoSrc } from "../../utils/media-url";
 import { copyTextToClipboard } from "./prompt-copy-utils";
 import { parsePromptVariables } from "./prompt-modal-utils";
 import { resolvePromptMarkdownHref } from "./prompt-markdown-url";
+import { usePromptStore } from "../../stores/prompt.store";
+import { useFolderStore } from "../../stores/folder.store";
+import { useSettingsStore } from "../../stores/settings.store";
+import { chatCompletion } from "../../services/ai";
+import { useToast } from "../ui/Toast";
+import styles from "./PromptDetailModal.module.css";
+import {
+  buildQuickAddAnalysisPrompt,
+  parseQuickAddAnalysisResult,
+  resolveQuickAddAnalysisConfig,
+} from "./quick-add-utils";
 
 interface PromptDetailModalProps {
   isOpen: boolean;
@@ -72,6 +85,7 @@ export function PromptDetailModal({
   onSelectPrompt,
 }: PromptDetailModalProps) {
   const { t, i18n } = useTranslation();
+  const { showToast } = useToast();
   const [copiedSystem, setCopiedSystem] = useState(false);
   const [copiedUser, setCopiedUser] = useState(false);
   const [copiedAi, setCopiedAi] = useState(false);
@@ -81,6 +95,13 @@ export function PromptDetailModal({
   const [shared, setShared] = useState(false);
   const [isQuickRewriteOpen, setIsQuickRewriteOpen] = useState(false);
   const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [reanalyzedMetadata, setReanalyzedMetadata] = useState<{
+    id: string;
+    title: string;
+    tags: string[];
+  } | null>(null);
+  const reanalysisInFlightRef = useRef(false);
   const feedbackTimersRef = useRef<
     Record<string, ReturnType<typeof setTimeout> | null>
   >({});
@@ -142,6 +163,10 @@ export function PromptDetailModal({
   useEffect(() => {
     setIsRelationshipModalOpen(false);
   }, [isOpen, prompt?.id]);
+
+  useEffect(() => {
+    setReanalyzedMetadata(null);
+  }, [prompt?.id]);
 
   const sanitizeSchema: any = useMemo(() => {
     const schema = {
@@ -246,6 +271,78 @@ export function PromptDetailModal({
   };
 
   if (!prompt) return null;
+  const handleReanalyze = async () => {
+    if (reanalysisInFlightRef.current) return;
+    reanalysisInFlightRef.current = true;
+    setIsReanalyzing(true);
+    try {
+      const settings = useSettingsStore.getState();
+      const analysisConfig = resolveQuickAddAnalysisConfig({
+        aiModels: settings.aiModels,
+        scenarioModelDefaults: settings.scenarioModelDefaults,
+        modelRouteDefaults: settings.modelRouteDefaults,
+        aiProvider: settings.aiProvider,
+        aiApiProtocol: settings.aiApiProtocol,
+        aiApiKey: settings.aiApiKey,
+        aiApiUrl: settings.aiApiUrl,
+        aiModel: settings.aiModel,
+      });
+      if (!analysisConfig) {
+        showToast(t("quickAdd.noAiConfigDesc"), "error");
+        return;
+      }
+
+      const folders = useFolderStore.getState().folders;
+      const existingTags = [
+        ...new Set(
+          usePromptStore.getState().prompts.flatMap((item) => item.tags || []),
+        ),
+      ].sort();
+      const result = await chatCompletion(
+        analysisConfig,
+        [
+          {
+            role: "user",
+            content: buildQuickAddAnalysisPrompt(prompt.userPrompt, {
+              folderNames: folders.map((folder) => folder.name).join(", "),
+              tagsString: existingTags.length
+                ? existingTags.join(", ")
+                : t("quickAdd.noExistingTags", "无现有标签"),
+            }),
+          },
+        ],
+        { temperature: 0.3 },
+      );
+      const parsed = parseQuickAddAnalysisResult(result.content);
+      if (!parsed)
+        throw new Error("Quick Add analysis returned no usable title");
+
+      await usePromptStore.getState().updatePrompt(prompt.id, {
+        title: parsed.title,
+        tags: parsed.tags,
+      });
+      setReanalyzedMetadata({
+        id: prompt.id,
+        title: parsed.title,
+        tags: parsed.tags,
+      });
+      showToast(t("quickAdd.reanalysisSucceeded"), "success");
+    } catch (error) {
+      console.error("Failed to reanalyze saved Prompt:", error);
+      showToast(t("quickAdd.reanalysisFailed"), "error");
+    } finally {
+      reanalysisInFlightRef.current = false;
+      setIsReanalyzing(false);
+    }
+  };
+  const displayedTitle =
+    reanalyzedMetadata?.id === prompt.id
+      ? reanalyzedMetadata.title
+      : prompt.title;
+  const displayedTags =
+    reanalyzedMetadata?.id === prompt.id
+      ? reanalyzedMetadata.tags
+      : prompt.tags;
   const relationshipPrompt =
     prompts.find((candidate) => candidate.id === prompt.id) ?? prompt;
   const promptSourceHref = resolvePromptMarkdownHref(prompt.source);
@@ -311,13 +408,13 @@ export function PromptDetailModal({
     if (!prompt) return;
 
     const data = {
-      name: prompt.title,
+      name: displayedTitle,
       description: prompt.description,
       userPrompt: prompt.userPrompt,
       systemPrompt: prompt.systemPrompt,
       userPromptEn: prompt.userPromptEn,
       systemPromptEn: prompt.systemPromptEn,
-      tags: prompt.tags,
+      tags: displayedTags,
       variables: allVariables,
       source: "prompthub",
       version: "1.0",
@@ -336,6 +433,24 @@ export function PromptDetailModal({
 
   const headerActions = (
     <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => void handleReanalyze()}
+        disabled={isReanalyzing}
+        className={styles.reanalyzeButton}
+        aria-label={t("quickAdd.reanalyzeTitleAndTags")}
+        title={t("quickAdd.reanalyzeTitleAndTags")}
+      >
+        {isReanalyzing ? (
+          <Loader2Icon
+            aria-hidden="true"
+            className={`${styles.reanalyzeIcon} ${styles.reanalyzeIconLoading}`}
+          />
+        ) : (
+          <RotateCwIcon aria-hidden="true" className={styles.reanalyzeIcon} />
+        )}
+        <span>{t("quickAdd.reanalyzeTitleAndTags")}</span>
+      </button>
       {/* 语言切换按钮 - 英文界面时隐藏 */}
       {(prompt.systemPromptEn || prompt.userPromptEn) &&
         !i18n.language.startsWith("en") && (
@@ -441,7 +556,7 @@ export function PromptDetailModal({
         setIsFullscreen(false);
         onClose();
       }}
-      title={prompt.title}
+      title={displayedTitle}
       size={isFullscreen ? "fullscreen" : "xl"}
       headerActions={headerActions}
     >
@@ -576,13 +691,13 @@ export function PromptDetailModal({
         )}
 
         {/* 标签 */}
-        {prompt.tags && prompt.tags.length > 0 && (
+        {displayedTags && displayedTags.length > 0 && (
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2">
               {t("prompt.tags")}
             </h4>
             <div className="flex flex-wrap gap-2">
-              {prompt.tags.map((tag) => (
+              {displayedTags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs"

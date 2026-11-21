@@ -3882,7 +3882,11 @@
     "rememberFailed": "この選択を保存できませんでした。もう一度お試しください。"
   },
   "quickAdd": {
-    "savedAnalysisFailed": "「{{title}}」は保存されましたが、AI 分析に失敗しました。タイトルとタグは手動で編集できます。",
+    "savedAnalysisFailed": "「{{title}}」は保存されましたが、AI 分析に失敗しました。この Prompt を開いてタイトルとタグを再解析するか、手動で編集できます。",
+    "reanalyzeTitleAndTags": "タイトルとタグを再解析",
+    "reanalysisSucceeded": "タイトルとタグを更新しました",
+    "reanalysisFailed": "再解析に失敗しました。Prompt 本文は変更されていません。もう一度お試しください。",
+    "noExistingTags": "既存のタグはありません",
     "analysisSaveFailed": "「{{title}}」は保存されましたが、AI 分析結果を保存できませんでした。",
     "createFailed": "Prompt の作成に失敗しました。入力は保持されています。もう一度お試しください。",
     "title": "クイック追加",

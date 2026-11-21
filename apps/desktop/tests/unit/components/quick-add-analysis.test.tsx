@@ -151,7 +151,7 @@ describe("quick add background analysis", () => {
       });
       expect(
         await screen.findByText(
-          '"Original content" was saved, but AI analysis failed. You can edit its title and tags.',
+          '"Original content" was saved, but AI analysis failed. Open this Prompt to retry its title and tags, or edit them manually.',
         ),
       ).toBeInTheDocument();
       expect(screen.getByRole("textbox")).toHaveValue("Next unsaved prompt");
@@ -203,9 +203,7 @@ describe("quick add background analysis", () => {
       ).toBeInTheDocument();
       expect(screen.getByRole("textbox")).toHaveValue("Keep my input");
       expect(completion).not.toHaveBeenCalled();
-      fireEvent.click(
-        screen.getByRole("button", { name: "Create" }),
-      );
+      fireEvent.click(screen.getByRole("button", { name: "Create" }));
       await waitFor(() =>
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument(),
       );
@@ -222,9 +220,7 @@ describe("quick add background analysis", () => {
       .mockResolvedValue();
     await renderWithI18n(<Harness onCreate={create} />, { language: "en" });
     submit("First input");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(create).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByText("Close quick add"));
     fireEvent.click(screen.getByText("Open quick add"));
@@ -241,8 +237,6 @@ describe("quick add background analysis", () => {
       ),
     );
     expect(screen.getByRole("textbox")).toHaveValue("Second draft");
-    expect(
-      screen.getByRole("button", { name: "Create" }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
   });
 });

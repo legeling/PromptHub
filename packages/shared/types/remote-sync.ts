@@ -5,6 +5,7 @@ export interface RemoteUploadResult {
   success: boolean;
   etag?: string;
   conflict?: boolean;
+  status?: number;
   error?: string;
 }
 

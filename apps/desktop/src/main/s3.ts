@@ -38,13 +38,14 @@ interface S3StatResult {
   error?: string;
 }
 
-function createS3Client(config: S3Config): {
+function createS3Client(config: S3Config, maxAttempts?: number): {
   client: S3Client;
   ownsAgent: boolean;
 } {
   const endpoint = new URL(config.endpoint);
   const agent = getHttpRequestAgent(endpoint);
   const client = new S3Client({
+    maxAttempts,
     region: config.region,
     endpoint: config.endpoint,
     forcePathStyle: true,
@@ -68,8 +69,9 @@ function createS3Client(config: S3Config): {
 async function usingS3Client<T>(
   config: S3Config,
   operation: (client: S3Client) => Promise<T>,
+  maxAttempts?: number,
 ): Promise<T> {
-  const { client, ownsAgent } = createS3Client(config);
+  const { client, ownsAgent } = createS3Client(config, maxAttempts);
   try {
     return await operation(client);
   } finally {
@@ -218,6 +220,8 @@ export function createS3TextStorage(config: S3Config): RemoteTextStorage {
                 : {}),
             }),
           ),
+          // A retry after a lost success response can return 412 for our own write.
+          condition ? 1 : undefined,
         );
 
         return { success: true, etag: response.ETag };
@@ -227,7 +231,7 @@ export function createS3TextStorage(config: S3Config): RemoteTextStorage {
           ...(conditionInput !== undefined &&
           error instanceof S3ServiceException &&
           [404, 409, 412].includes(error.$metadata.httpStatusCode ?? 0)
-            ? { conflict: true }
+            ? { conflict: true, status: error.$metadata.httpStatusCode }
             : {}),
           error: getS3ErrorMessage(error, "Unknown S3 upload error"),
         };

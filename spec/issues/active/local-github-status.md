@@ -29,6 +29,28 @@ remote closure and publication are recorded separately.
 
 ## Current Local Overlay
 
+### Local 0.6.3 release candidate issue review — 2026-11-21
+
+The source baseline is `97e2b51d`; changes remain local and are not submitted or published.
+
+- #254: `release_pending` for the local 0.6.3 candidate. Card rows are `PromptSummary`
+  objects without body fields. The list double-click handler previously treated
+  that summary as a full Prompt, opening an editor with an empty user prompt.
+  The handler now reads the full record by ID before editing, fences stale
+  requests/selection changes, and leaves editing closed on read failure. Unit
+  and restore/edit/save/reopen regressions for WebDAV, S3 and self-hosted Web are included; candidate-level verification
+  remains in the release record.
+- #250: still reproducible in scope: the GitLab clone scan has no PromptHub
+  credential form; the existing GitHub token setting only serves HTTP API
+  requests, while Git scans rely on configured system Git authentication. A
+  GitLab credential UI and secure storage contract are deferred from this patch.
+- #246: the third-party Claude default-auth correction is already in 0.6.2;
+  reporter gateway and Windows interactive behavior remain unverified.
+- #244: the native installer currently prefixes Codex marketplace and plugin
+  operations with `plugin`; local installed CLI help and official command
+  reference use that namespace. Windows Store-only GUI distribution remains
+  unverified.
+
 ### Skill directory startup recovery — 2026-11-02 (#249)
 
 `released` in 0.6.3-beta.1 (prerelease); fix commit 7fbc2d09 is pushed.

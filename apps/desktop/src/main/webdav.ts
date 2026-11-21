@@ -76,7 +76,7 @@ async function sendWebDAVRequest(
         response.on("end", () => {
           const statusCode = response.statusCode || 0;
           resolve({
-            success: statusCode >= 200 && statusCode < 400,
+            success: statusCode >= 200 && statusCode < 300,
             status: statusCode,
             statusText: response.statusMessage || "",
             data: responseData,
@@ -326,18 +326,14 @@ export function createWebDAVTextStorage(config: WebDAVConfig): RemoteTextStorage
         data,
       );
 
-      if (
-        response.success ||
-        response.status === 201 ||
-        response.status === 204
-      ) {
+      if (response.success && [200, 201, 204].includes(response.status ?? 0)) {
         return { success: true, etag: response.etag };
       } else {
         return {
           success: false,
           ...(condition !== undefined &&
           [404, 409, 412].includes(response.status ?? 0)
-            ? { conflict: true }
+            ? { conflict: true, status: response.status }
             : {}),
           error: `${response.status} ${response.statusText || response.error}`,
         };

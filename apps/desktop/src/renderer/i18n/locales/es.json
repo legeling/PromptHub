@@ -3882,7 +3882,11 @@
     "rememberFailed": "No se pudo guardar esta opción. Inténtalo de nuevo."
   },
   "quickAdd": {
-    "savedAnalysisFailed": "Se guardó «{{title}}», pero falló el análisis de IA. Puedes editar el título y las etiquetas.",
+    "savedAnalysisFailed": "Se guardó «{{title}}», pero falló el análisis de IA. Abre este Prompt para volver a analizar el título y las etiquetas, o edítalos manualmente.",
+    "reanalyzeTitleAndTags": "Volver a analizar título y etiquetas",
+    "reanalysisSucceeded": "Título y etiquetas actualizados",
+    "reanalysisFailed": "No se pudo volver a analizar. El Prompt original no cambió; inténtalo de nuevo.",
+    "noExistingTags": "No hay etiquetas existentes",
     "analysisSaveFailed": "Se guardó «{{title}}», pero no se pudo guardar el resultado del análisis de IA.",
     "createFailed": "No se pudo crear el Prompt. Se ha conservado el texto; inténtalo de nuevo.",
     "title": "Añadir rápido",

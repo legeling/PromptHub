@@ -3920,7 +3920,11 @@
     "rememberFailed": "无法保存此选择，请重试。"
   },
   "quickAdd": {
-    "savedAnalysisFailed": "“{{title}}”已保存，但 AI 分析失败。你可以手动编辑标题和标签。",
+    "savedAnalysisFailed": "“{{title}}”已保存，但 AI 分析失败。可打开此 Prompt 重新解析标题和标签，或手动编辑。",
+    "reanalyzeTitleAndTags": "重新解析标题和标签",
+    "reanalysisSucceeded": "标题和标签已更新",
+    "reanalysisFailed": "重新解析失败，原 Prompt 内容未更改，请重试。",
+    "noExistingTags": "无现有标签",
     "analysisSaveFailed": "“{{title}}”已保存，但 AI 分析结果保存失败。",
     "createFailed": "Prompt 创建失败，已保留输入，请重试。",
     "title": "快速添加",

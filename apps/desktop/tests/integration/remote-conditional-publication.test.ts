@@ -203,7 +203,7 @@ describe.each(["WebDAV", "S3"] as const)(
       if (!base.etag) throw new Error("Missing ETag");
       expect(
         await remote.write("duplicate", { ifNoneMatch: "*" }),
-      ).toMatchObject({ success: false, conflict: true });
+      ).toMatchObject({ success: false, conflict: true, status: 412 });
       const outcomes = await Promise.all([
         remote.write("first candidate", { ifMatch: base.etag }),
         remote.write("second candidate", { ifMatch: base.etag }),
@@ -217,7 +217,7 @@ describe.each(["WebDAV", "S3"] as const)(
       expect(winner.etag).not.toBe(base.etag);
       expect(
         await remote.write("stale overwrite", { ifMatch: base.etag }),
-      ).toMatchObject({ success: false, conflict: true });
+      ).toMatchObject({ success: false, conflict: true, status: 412 });
       expect(await remote.read()).toEqual(winner);
       if (!winner.etag) throw new Error("Missing winner ETag");
       expect(
@@ -247,12 +247,30 @@ describe.each(["WebDAV", "S3"] as const)(
         ).toMatchObject({ success: false });
       }
       expect(requestCount).toBe(before);
-      const deleteHandler = transport.handlers.get(kind === "WebDAV" ? "webdav:delete" : "s3:delete");
+      const deleteHandler = transport.handlers.get(
+        kind === "WebDAV" ? "webdav:delete" : "s3:delete",
+      );
       if (!deleteHandler) throw new Error("Missing delete handler");
-      expect(await deleteHandler({}, undefined, undefined)).toMatchObject({ success: false });
+      expect(await deleteHandler({}, undefined, undefined)).toMatchObject({
+        success: false,
+      });
       expect(requestCount).toBe(before);
       expect((await remote.read()).data).toBe("preserved");
     });
+
+    it.skipIf(kind !== "WebDAV")(
+      "does not claim an accepted or redirected PUT as a stored object",
+      async () => {
+        const remote = client(kind);
+        for (const status of [202, 307]) {
+          nextWriteStatus = status;
+          expect(
+            await remote.write("unconfirmed", { ifNoneMatch: "*" }),
+          ).toMatchObject({ success: false });
+        }
+        expect(await remote.read()).toMatchObject({ notFound: true });
+      },
+    );
 
     it("reports a conditional race without retrying an unconditional overwrite", async () => {
       const remote = client(kind);
@@ -264,6 +282,7 @@ describe.each(["WebDAV", "S3"] as const)(
       expect(await remote.write("lost", { ifMatch: base.etag })).toMatchObject({
         success: false,
         conflict: true,
+        status: 409,
       });
       expect(requestCount - before).toBe(1);
       expect((await remote.read()).data).toBe("preserved");

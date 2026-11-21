@@ -96,6 +96,7 @@ for (const provider of ["webdav", "self-hosted", "s3"] as const) {
         prompt.id,
       );
       fs.writeFileSync(file, "changed");
+      const restoredPage = launched.page.waitForEvent("domcontentloaded");
       await launched.page
         .getByRole("button", { name: "Restore latest backup", exact: true })
         .click();
@@ -106,6 +107,51 @@ for (const provider of ["webdav", "self-hosted", "s3"] as const) {
             : /Restored 1 prompts/i,
         ),
       ).toBeVisible();
+      await restoredPage;
+      const restoredCardTitle = launched.page
+        .getByTestId("prompt-card-title")
+        .filter({ hasText: "Remote UI fixture" });
+      await expect(restoredCardTitle).toBeVisible();
+      await restoredCardTitle.dblclick();
+      const restoredUserPrompt = launched.page.getByRole("textbox", {
+        name: "User Prompt",
+        exact: true,
+      });
+      await expect(restoredUserPrompt).toHaveValue("Original full snapshot");
+      await expect(
+        launched.page.getByRole("button", { name: "Save", exact: true }),
+      ).toBeDisabled();
+      const editedBody = "Original full snapshot\nEdited after restore";
+      await restoredUserPrompt.fill(editedBody);
+      await launched.page
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+      await expect
+        .poll(() =>
+          launched.page.evaluate(
+            async (id) =>
+              (await window.api.prompt.getAll()).find((item) => item.id === id)
+                ?.userPrompt,
+            prompt.id,
+          ),
+        )
+        .toBe(editedBody);
+      const postRestoreAccess = await launched.page.evaluate(async () => {
+        const restored = await window.api.prompt.getAll();
+        const probe = await window.api.prompt.create({
+          title: "Post restore database probe",
+          promptType: "text",
+          userPrompt: "Verify reads and writes after remote restore",
+        });
+        const afterWrite = await window.api.prompt.getAll();
+        return {
+          restoredPromptCount: restored.length,
+          createdId: probe.id,
+          probeVisible: afterWrite.some((item) => item.id === probe.id),
+        };
+      });
+      expect(postRestoreAccess.restoredPromptCount).toBe(1);
+      expect(postRestoreAccess.probeVisible).toBe(true);
       await captureAppPage(
         app,
         launched.page,
@@ -122,7 +168,7 @@ for (const provider of ["webdav", "self-hosted", "s3"] as const) {
               ?.userPrompt,
           prompt.id,
         ),
-      ).toBe("Original full snapshot");
+      ).toBe(editedBody);
       expect(fs.readFileSync(file)).toEqual(Buffer.from([0, 255, 42]));
       await expect(
         launched.page.getByText("Remote UI fixture", { exact: true }).first(),

@@ -6,15 +6,21 @@ import type { Prompt } from "@prompthub/shared/types";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
-const usePromptStoreMock = vi.fn();
+const promptStoreMock = vi.fn();
 const useFolderStoreMock = vi.fn();
 const settingsStoreMock = vi.fn();
 const useUIStoreMock = vi.fn();
 const useToastMock = vi.fn();
 
 vi.mock("../../../src/renderer/stores/prompt.store", () => ({
-  usePromptStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    usePromptStoreMock(selector),
+  usePromptStore: Object.assign(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      promptStoreMock(selector),
+    {
+      getState: () =>
+        promptStoreMock((state: Record<string, unknown>) => state),
+    },
+  ),
 }));
 
 vi.mock("../../../src/renderer/stores/folder.store", async () => {
@@ -189,7 +195,7 @@ describe("MainContent inline edit component contract", () => {
     const promptState = createPromptState(createPrompt());
     const showToast = vi.fn();
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     useToastMock.mockReturnValue({ showToast });
 
     await act(async () => {
@@ -228,7 +234,7 @@ describe("MainContent inline edit component contract", () => {
 
   it("renames a system-only Prompt from inline editing (#225)", async () => {
     const promptState = createPromptState(createPrompt({ userPrompt: "" }));
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     await renderWithI18n(<MainContent />, { language: "en" });
     fireEvent.doubleClick(
       screen.getByRole("heading", { name: "Original Title", level: 2 }),
@@ -247,7 +253,7 @@ describe("MainContent inline edit component contract", () => {
 
   it("rejects clearing both Prompt fields in inline editing (#225)", async () => {
     const promptState = createPromptState(createPrompt());
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     await renderWithI18n(<MainContent />, { language: "en" });
     fireEvent.doubleClick(
       screen.getByRole("heading", { name: "Original Title", level: 2 }),
@@ -267,7 +273,7 @@ describe("MainContent inline edit component contract", () => {
   it("saves a changed title when Enter is pressed in the detail title field", async () => {
     const promptState = createPromptState(createPrompt());
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -293,7 +299,7 @@ describe("MainContent inline edit component contract", () => {
       createPrompt({ description: undefined }),
     );
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -321,7 +327,7 @@ describe("MainContent inline edit component contract", () => {
       createPrompt({ folderId: "folder-a" }),
     );
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     useFolderStoreMock.mockImplementation((selector) =>
       selector({
         selectedFolderId: null,
@@ -370,7 +376,7 @@ describe("MainContent inline edit component contract", () => {
       createPrompt({ folderId: "folder-a" }),
     );
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     useFolderStoreMock.mockImplementation((selector) =>
       selector({
         selectedFolderId: null,
@@ -424,7 +430,7 @@ describe("MainContent inline edit component contract", () => {
   it("discards inline draft changes on cancel", async () => {
     const promptState = createPromptState(createPrompt());
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -456,7 +462,7 @@ describe("MainContent inline edit component contract", () => {
   it("opens inline edit when the user prompt content is double-clicked", async () => {
     const promptState = createPromptState(createPrompt());
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -475,10 +481,19 @@ describe("MainContent inline edit component contract", () => {
     expect(screen.getByRole("textbox", { name: "User Prompt" })).toHaveFocus();
   });
 
-  it("opens title inline edit when a prompt card is double-clicked", async () => {
-    const promptState = createPromptState(createPrompt());
+  it("loads full prompt content before opening title edit from a summary card", async () => {
+    const fullPrompt = createPrompt();
+    const {
+      userPrompt: _userPrompt,
+      systemPrompt: _systemPrompt,
+      ...summary
+    } = fullPrompt;
+    const promptState = createPromptState(fullPrompt, {
+      prompts: [summary],
+      promptDetailCache: {},
+    });
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -496,13 +511,43 @@ describe("MainContent inline edit component contract", () => {
     fireEvent.doubleClick(card);
 
     expect(promptState.selectPrompt).toHaveBeenCalledWith("prompt-1");
-    expect(screen.getByRole("textbox", { name: "Title" })).toHaveFocus();
+    expect(promptState.getPromptDetail).toHaveBeenCalledWith("prompt-1");
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Title" })).toHaveFocus(),
+    );
+    expect(screen.getByRole("textbox", { name: "User Prompt" })).toHaveValue(
+      "Original user prompt",
+    );
   });
+
+  it.each(["missing", "selection changed"])(
+    "does not open or write a stale draft when %s",
+    async (scenario) => {
+      const full = createPrompt();
+      const state = createPromptState(full);
+      promptStoreMock.mockImplementation((selector) => selector(state));
+      await renderWithI18n(<MainContent />, { language: "en" });
+      const card = screen
+        .getByTestId("prompt-card-title")
+        .closest('[role="button"]');
+      if (!card) throw new Error("Missing prompt card");
+      state.getPromptDetail.mockImplementationOnce(async () => {
+        if (scenario === "missing") return null;
+        state.selectedId = "different-prompt";
+        return full;
+      });
+      await act(async () => {
+        fireEvent.doubleClick(card);
+      });
+      expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
+      expect(state.updatePrompt).not.toHaveBeenCalled();
+    },
+  );
 
   it("keeps inline editors visually unobtrusive", async () => {
     const promptState = createPromptState(createPrompt());
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     settingsStoreMock.mockImplementation((selector) =>
       selector(
         createSettingsState({
@@ -561,7 +606,7 @@ describe("MainContent inline edit component contract", () => {
     );
     const handleSubmit = vi.fn();
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     settingsStoreMock.mockImplementation((selector) =>
       selector(
         createSettingsState({
@@ -631,7 +676,7 @@ describe("MainContent inline edit component contract", () => {
       createPrompt({ tags: ["tag-a", "tag-b"] }),
     );
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -644,7 +689,7 @@ describe("MainContent inline edit component contract", () => {
   it("shows a real empty-state hint when the selected prompt has no tags", async () => {
     const promptState = createPromptState(createPrompt({ tags: [] }));
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -664,7 +709,7 @@ describe("MainContent inline edit component contract", () => {
     );
     const showToast = vi.fn();
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     useToastMock.mockReturnValue({ showToast });
 
     await act(async () => {
@@ -690,7 +735,7 @@ describe("MainContent inline edit component contract", () => {
     const promptState = createPromptState(createPrompt({ tags: ["tag-a"] }));
     const showToast = vi.fn();
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
     useToastMock.mockReturnValue({ showToast });
 
     await act(async () => {
@@ -728,7 +773,7 @@ describe("MainContent inline edit component contract", () => {
       createPrompt({ tags: ["tag-a", "tag-b"] }),
     );
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -761,7 +806,7 @@ describe("MainContent inline edit component contract", () => {
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const promptState = createPromptState(createPrompt());
 
-    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    promptStoreMock.mockImplementation((selector) => selector(promptState));
 
     const { unmount } = await renderWithI18n(<MainContent />, {
       language: "en",

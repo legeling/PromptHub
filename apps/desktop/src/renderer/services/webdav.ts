@@ -61,6 +61,7 @@ async function uploadFile(
 
     const response = await fetch(url, {
       method: "PUT",
+      redirect: "error",
       headers: {
         Authorization: buildAuthHeader(config),
         "Content-Type": "application/json",
@@ -70,13 +71,13 @@ async function uploadFile(
       body: content,
     });
 
-    if (response.ok || response.status === 201 || response.status === 204) {
+    if ([200, 201, 204].includes(response.status)) {
       return { success: true, etag: response.headers.get("etag") ?? undefined };
     }
 
     return {
       success: false,
-      ...(condition !== undefined && [404, 409, 412].includes(response.status) ? { conflict: true } : {}),
+      ...(condition !== undefined && [404, 409, 412].includes(response.status) ? { conflict: true, status: response.status } : {}),
       error: `${response.status} ${response.statusText}`,
     };
   } catch (error) {

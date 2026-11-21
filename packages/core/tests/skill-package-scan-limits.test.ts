@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
 import { afterEach, describe, expect, it } from "vitest";
 import { validateRepoPackageInventory } from "../src/cli/skill/paths";
 import {
@@ -13,6 +14,7 @@ describe("package capacity independent of content scanning", () => {
     const root = await fs.mkdtemp(
       path.join(os.tmpdir(), "prompthub-inventory-"),
     );
+    configureRuntimePaths({ userDataPath: path.join(root, "profile") });
     roots.push(root);
     return root;
   };
@@ -25,6 +27,7 @@ describe("package capacity independent of content scanning", () => {
     }
   };
   afterEach(async () => {
+    resetRuntimePaths();
     for (const root of roots.splice(0))
       await fs.rm(root, { recursive: true, force: true });
   });

@@ -1,14 +1,31 @@
 ## [Unreleased]
 
-最新稳定版为 `0.6.2`；后续尚未发布的改动记录于此。
+### 后续更新 / Upcoming changes
 
-The latest stable release is `0.6.2`. Subsequent unreleased changes will be recorded here.
+后续改动将记录于此。 / Changes after 0.6.3 will be recorded here.
 
-### 预览版 / Preview
+## [0.6.3] - 2026-11-21
 
-已发布预览版 `0.6.3-beta.1`，稳定版下载仍指向 `0.6.2`。
+### 新功能与改进 / Features and improvements
 
-The published preview is `0.6.3-beta.1`; stable downloads remain on `0.6.2`.
+- 桌面端可选择视频模型，添加参考素材并生成视频提示词。
+  - Select a video model, add reference media and generate video prompts on desktop.
+- 桌面端可在浏览器中完成 PromptHub Cloud 登录，再返回应用。
+  - Sign in to PromptHub Cloud in the browser and return to the desktop app.
+
+### 问题修复 / Fixes
+
+- 桌面端安装更新时可正常退出，安装失败时会显示错误。
+  - The desktop app can quit to install an update and shows errors if installation fails.
+
+- **Prompt 正文编辑**：恢复备份后从列表双击进入编辑时，先载入完整 Prompt 正文再打开编辑器；正文不可读取时不打开空白编辑器，避免误保存覆盖原文。
+  - **Prompt body editing**: Load the full Prompt body before opening the editor from the list after a restore. If the body cannot be read, keep the editor closed to prevent an accidental blank overwrite.
+- **快速添加解析**：快速添加的 AI 分析失败会保留已保存内容并显示可重试状态；详情页可单独重新解析标题和标签，不重复收藏或影响其他条目。
+  - **Quick Add analysis**: AI analysis failures keep the saved content and show a retry path. Reanalyze a single Prompt's title and tags from its details without duplicating or changing other entries.
+- **工作区备份恢复**：恢复后可在当前窗口继续操作；并发更新冲突时保护其他设备已保存的备份，仅清理能够确认属于失败上传且未被引用的数据。
+  - **Workspace backup restore**: Continue working in the current window after restoring a backup. On concurrent-update conflicts, protect backups saved by other devices and clean up only failed-upload data confirmed to be unreferenced.
+- **旧版迁移**：升级时保留无法识别的旧 Skill 目录及其内容，完成迁移后可继续启动。
+  - **Legacy migration**: Preserve unrecognized legacy Skill directories and their contents during upgrade so startup can continue.
 
 ## [0.6.3-beta.1] - 2026-11-02
 

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
 import { expect, it, vi } from "vitest";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 import { createSkillPlatformService } from "../src/skills/platform-service";
@@ -31,6 +32,7 @@ it("preserves changed legacy targets and restores both names if rename publicati
   });
   const oldSkill = { id: "writer", name: "old-name", local_repo_path: source };
   const newSkill = { ...oldSkill, name: "new-name" };
+  configureRuntimePaths({ userDataPath: path.join(root, "profile") });
   try {
     await fs.mkdir(source);
     await fs.writeFile(path.join(source, "SKILL.md"), "original instructions");
@@ -108,6 +110,7 @@ it("preserves changed legacy targets and restores both names if rename publicati
     ).toEqual([]);
     expect(await fs.readFile(path.join(source, "asset.bin"))).toEqual(binary);
   } finally {
+    resetRuntimePaths();
     vi.restoreAllMocks();
     await fs.rm(root, { recursive: true, force: true });
   }

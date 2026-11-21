@@ -3882,7 +3882,11 @@
     "rememberFailed": "Diese Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
   "quickAdd": {
-    "savedAnalysisFailed": "„{{title}}“ wurde gespeichert, aber die KI-Analyse ist fehlgeschlagen. Titel und Tags können manuell bearbeitet werden.",
+    "savedAnalysisFailed": "„{{title}}“ wurde gespeichert, aber die KI-Analyse ist fehlgeschlagen. Öffnen Sie diesen Prompt, um Titel und Tags erneut zu analysieren, oder bearbeiten Sie sie manuell.",
+    "reanalyzeTitleAndTags": "Titel und Tags erneut analysieren",
+    "reanalysisSucceeded": "Titel und Tags aktualisiert",
+    "reanalysisFailed": "Erneute Analyse fehlgeschlagen. Der Prompt-Inhalt ist unverändert; bitte erneut versuchen.",
+    "noExistingTags": "Keine vorhandenen Tags",
     "analysisSaveFailed": "„{{title}}“ wurde gespeichert, aber das Ergebnis der KI-Analyse konnte nicht gespeichert werden.",
     "createFailed": "Der Prompt konnte nicht erstellt werden. Ihre Eingabe bleibt erhalten. Bitte versuchen Sie es erneut.",
     "title": "Schnelles Hinzufügen",

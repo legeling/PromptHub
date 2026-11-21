@@ -108,6 +108,7 @@ CLI 分发、检测、安装及 Desktop 集成统一见 [独立 CLI](cli.md)。D
 ### 4. Card Detail Editing
 
 - 桌面端 card view 的右侧 Prompt 详情区应支持不离开当前上下文的轻量快速编辑，用于修改选中 Prompt 的标题和当前可见的用户提示词；标题展示态应支持双击直接进入该快速编辑。
+- 列表和卡片只持有不含长文本的 `PromptSummary`。从列表双击进入快速编辑前必须按 Prompt ID 读取完整详情；详情读取失败或条目已切换时不得以空正文打开或保存编辑器。
 - 完整字段编辑仍由专门的 Prompt 编辑弹窗承担；轻量快速编辑不应替代完整编辑流程。
 
 ### Model Services provider CRUD (#245)
@@ -277,13 +278,15 @@ pnpm --dir packages/shared exec node --experimental-strip-types --test tests/age
 
 - 桌面端 `Quick Add` 必须同时支持“分析已有内容”和“AI 生成 Prompt”两种快速创建路径。
 - “分析已有内容”路径先完整保存原文和附件，以原文首个非空、非独立方括号模板标记行的前 30 个字符作为初始标题（无可用行时使用本地化新 Prompt 名称），再由 AI 在后台补齐标题、描述、system prompt、标签和建议文件夹。不得将“正在分析…”等临时状态作为持久化标题；关闭应用中断分析时，已保存内容仍可用，不自动续跑请求。
-- 连续快速添加的后台任务按创建返回的 ID 独立回写，弹窗关闭重开不取消已保存条目的分析，也不能让旧创建结果关闭新弹窗。创建失败保留输入并允许重试；AI 返回缺失、空白、类型错误或独立模板标记标题时视为分析失败。分析失败或结果保存失败必须提示对应条目，保留已有内容，不再执行一次覆盖标题的补偿写入。已存在的历史异常标题不自动批量改写。
+- 连续快速添加的后台任务按创建返回的 ID 独立回写，弹窗关闭重开不取消已保存条目的分析，也不能让旧创建结果关闭新弹窗。创建失败保留输入并允许重试；AI 返回缺失、空白、类型错误或独立模板标记标题时视为分析失败。分析失败或结果保存失败必须提示对应条目，保留已有内容，不再执行一次覆盖标题的补偿写入；详情页始终提供针对当前单条 Prompt 的标题和标签重新解析入口，成功只更新标题和标签，失败保留原数据并提示重试，不能新建重复条目或影响其他 Prompt。已存在的历史异常标题不自动批量改写。
 - “AI 生成 Prompt”路径应允许用户只描述目标与约束，由 AI 先返回结构化 Prompt 草稿，再一次性创建完整 Prompt；不得把用户的需求描述直接保存为最终 `userPrompt`。
 - 两种路径都必须复用同一套 `quickAdd` 场景模型配置，不引入额外的 AI 场景设置负担。
 
 快速添加回归覆盖：`quick-add-analysis.test.tsx` 与 `quick-add-utils.test.ts` 验证解析、连续添加乱序返回、失败反馈及创建重试；`tests/integration/quick-add-analysis-persistence.test.tsx` 通过实际组件、store、preload、IPC handler 和临时 SQLite 验证保存、失败保全与数据库关闭重开，替换 AI 响应及 Electron 消息运输层。创建编排保留在既有组件闭包内以共享单次提交的输入、分类和弹窗会话快照；长编排函数由上述正常和异常路径覆盖，不另建持久化任务状态或模型路由。
 
 2026-11-13 验证：根目录执行 `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/quick-add-utils.test.ts tests/unit/components/quick-add-modal.test.tsx tests/unit/components/quick-add-analysis.test.tsx tests/integration/quick-add-analysis-persistence.test.tsx`，4 个文件、34 个用例通过；应用及测试类型检查、改动文件 ESLint、`pnpm --filter @prompthub/desktop build` 通过。旧实现运行新增回归时有 14 个失败断言及 2 个未处理拒绝；修复后消除。未运行原生 Electron GUI 自动化或真实供应商请求，此处不代表远端稳定性或完整发布验收。
+
+2026-11-21 验证：针对性集成用例通过，覆盖多条快速添加、分析失败后逐条重新解析、标题和标签持久化、原文与 ID 保留、无重复记录及关闭重开数据库后结果一致；另通过原有 #252 远端条件单测。未验证真实 AI 供应商返回或打包应用的人工界面操作。
 
 ### 9. Update Flow Failure Visibility
 

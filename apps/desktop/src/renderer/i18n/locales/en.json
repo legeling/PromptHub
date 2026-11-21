@@ -3920,7 +3920,11 @@
     "rememberFailed": "Could not save this choice. Please try again."
   },
   "quickAdd": {
-    "savedAnalysisFailed": "\"{{title}}\" was saved, but AI analysis failed. You can edit its title and tags.",
+    "savedAnalysisFailed": "\"{{title}}\" was saved, but AI analysis failed. Open this Prompt to retry its title and tags, or edit them manually.",
+    "reanalyzeTitleAndTags": "Reanalyze title and tags",
+    "reanalysisSucceeded": "Title and tags updated",
+    "reanalysisFailed": "Reanalysis failed. The original Prompt is unchanged; please try again.",
+    "noExistingTags": "No existing tags",
     "analysisSaveFailed": "\"{{title}}\" was saved, but its AI analysis could not be saved.",
     "createFailed": "Prompt creation failed. Your input has been kept; please try again.",
     "title": "Quick Add",

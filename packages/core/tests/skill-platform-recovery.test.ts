@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
 import { expect, it } from "vitest";
 import { withPlatformTargetRollback } from "../src/skills/platform-recovery";
 import {
@@ -19,6 +20,7 @@ it("preserves the original package when activation publication fails and recover
   const target = path.join(root, "target");
   const source = path.join(root, "source");
   const activation = path.join(root, "activation.json");
+  configureRuntimePaths({ userDataPath: path.join(root, "profile") });
   try {
     await fs.mkdir(target);
     await fs.mkdir(source);
@@ -66,6 +68,7 @@ it("preserves the original package when activation publication fails and recover
     await fs.writeFile(activation, "{broken");
     await expect(readActivationState(activation)).rejects.toThrow();
   } finally {
+    resetRuntimePaths();
     await fs.rm(root, { recursive: true, force: true });
   }
 });

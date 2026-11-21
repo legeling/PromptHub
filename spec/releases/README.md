@@ -17,6 +17,8 @@
 
 | Version        | Status                                            | Path                            | Updated    |
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
+| `0.6.3` | stable record | `spec/releases/0.6.3.md` | 2026-11-21 |
+| `0.6.3-rc.1` | local macOS candidate; unpublished | `spec/releases/0.6.3-rc.1.md` | 2026-11-21 |
 | `0.6.3-beta.1` | published prerelease | `spec/releases/0.6.3-beta.1.md` | 2026-11-02 |
 | `0.6.2` | stable record | `spec/releases/0.6.2.md` | 2026-10-27 |
 | `0.6.1` | stable record | `spec/releases/0.6.1.md` | 2026-10-21 |

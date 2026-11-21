@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useState } from "react";
+import type { Prompt } from "@prompthub/shared/types";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   createSkillTestRuntime,
@@ -16,6 +17,7 @@ import { FolderDB, getDatabase, PromptDB } from "../../src/main/database";
 import { registerPromptIPC } from "../../src/main/ipc/prompt.ipc";
 import { promptApi } from "../../src/preload/api/prompt";
 import { QuickAddModal } from "../../src/renderer/components/prompt/QuickAddModal";
+import { PromptDetailModal } from "../../src/renderer/components/prompt/PromptDetailModal";
 import { ToastProvider } from "../../src/renderer/components/ui/Toast";
 import { usePromptStore } from "../../src/renderer/stores/prompt.store";
 import { useSettingsStore } from "../../src/renderer/stores/settings.store";
@@ -43,13 +45,29 @@ function registerDomain() {
 }
 function Harness() {
   const [open, setOpen] = useState(true);
+  const [detailPrompt, setDetailPrompt] = useState<Prompt | null>(null);
+  const openFailedPrompt = async () => {
+    const saved = (await promptApi.getAll()).find(
+      (prompt) => prompt.userPrompt === "Failed analysis content",
+    );
+    if (!saved) return;
+    setDetailPrompt(await usePromptStore.getState().getPromptDetail(saved.id));
+  };
   return (
     <ToastProvider>
       <button onClick={() => setOpen(true)}>Open quick add</button>
+      <button onClick={() => void openFailedPrompt()}>
+        Open failed Prompt
+      </button>
       <QuickAddModal
         isOpen={open}
         onClose={() => setOpen(false)}
         onCreate={usePromptStore.getState().createPrompt}
+      />
+      <PromptDetailModal
+        isOpen={detailPrompt !== null}
+        onClose={() => setDetailPrompt(null)}
+        prompt={detailPrompt}
       />
     </ToastProvider>
   );
@@ -101,7 +119,11 @@ it("persists concurrent quick additions, isolates failure, and retains results a
     .mockResolvedValueOnce({
       content: '{"title":"Portrait result","tags":["portrait"]}',
     })
-    .mockResolvedValueOnce({ content: "{}" });
+    .mockResolvedValueOnce({ content: "{}" })
+    .mockResolvedValueOnce({ content: "{}" })
+    .mockResolvedValueOnce({
+      content: '{"title":"Recovered title","tags":["recovered"]}',
+    });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   await renderWithI18n(<Harness />, { language: "en", reactStrictMode: true });
   await submit("[主题]\nLandscape content");
@@ -122,8 +144,51 @@ it("persists concurrent quick additions, isolates failure, and retains results a
   fireEvent.click(screen.getByText("Open quick add"));
   await submit("Failed analysis content");
   await screen.findByText(
-    '"Failed analysis content" was saved, but AI analysis failed. You can edit its title and tags.',
+    '"Failed analysis content" was saved, but AI analysis failed. Open this Prompt to retry its title and tags, or edit them manually.',
   );
+  const failedPrompt = (await promptApi.getAll()).find(
+    (prompt) => prompt.userPrompt === "Failed analysis content",
+  );
+  expect(failedPrompt).toMatchObject({
+    title: "Failed analysis content",
+    tags: [],
+  });
+  if (!failedPrompt) throw new Error("Failed Prompt was not persisted");
+  await waitFor(async () =>
+    expect(
+      (await promptApi.getAll()).some(
+        (prompt) => prompt.userPrompt === "Failed analysis content",
+      ),
+    ).toBe(true),
+  );
+  fireEvent.click(screen.getByText("Open failed Prompt"));
+  expect(
+    await screen.findByRole("button", { name: "Reanalyze title and tags" }),
+  ).not.toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Reanalyze title and tags" }),
+  );
+  await screen.findByText(
+    "Reanalysis failed. The original Prompt is unchanged; please try again.",
+  );
+  expect(await promptApi.get(failedPrompt.id)).toMatchObject({
+    title: "Failed analysis content",
+    userPrompt: "Failed analysis content",
+    tags: [],
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Reanalyze title and tags" }),
+  );
+  await waitFor(async () =>
+    expect(await promptApi.get(failedPrompt.id)).toMatchObject({
+      id: failedPrompt.id,
+      title: "Recovered title",
+      userPrompt: "Failed analysis content",
+      tags: ["recovered"],
+    }),
+  );
+  await screen.findByText("Recovered title");
+  await screen.findByText("recovered");
   await act(async () => {
     finishFirst({
       content: '{"title":"Landscape result","tags":["landscape"]}',
@@ -139,7 +204,7 @@ it("persists concurrent quick additions, isolates failure, and retains results a
   expect(saved).toHaveLength(3);
   expect(
     saved.find((p) => p.userPrompt === "Failed analysis content"),
-  ).toMatchObject({ title: "Failed analysis content", tags: [] });
+  ).toMatchObject({ title: "Recovered title", tags: ["recovered"] });
   cleanup();
   await runtime.reopen();
   registerDomain();

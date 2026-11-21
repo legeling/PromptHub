@@ -31,6 +31,7 @@ export function createWorkspaceHttpAdapter(
       return {
         success: response.ok,
         etag: response.headers.get("etag") ?? undefined,
+        status: response.status,
         conflict: response.status === 412,
         error: response.ok ? undefined : await response.text(),
       };

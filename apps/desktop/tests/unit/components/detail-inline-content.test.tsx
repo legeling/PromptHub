@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { expect, it, vi } from "vitest";
+import { expect, it, onTestFinished, vi } from "vitest";
 import type { Prompt } from "@prompthub/shared/types";
 import { usePromptDetailInlineEditor } from "../../../src/renderer/components/layout/usePromptDetailInlineEditor";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
@@ -10,6 +10,10 @@ vi.mock("../../../src/renderer/components/ui/Toast", () => ({
 
 it("validates primary content rather than removed English translations during inline edits (#225)", async () => {
   const updatePrompt = vi.fn().mockResolvedValue(undefined);
+  const previousState = usePromptStore.getState();
+  onTestFinished(() => {
+    usePromptStore.setState(previousState, true);
+  });
   usePromptStore.setState({ updatePrompt });
   const prompt: Prompt = {
     id: "bilingual",
@@ -28,6 +32,7 @@ it("validates primary content rather than removed English translations during in
     createdAt: "2026-10-13T00:00:00.000Z",
     updatedAt: "2026-10-13T00:00:00.000Z",
   };
+  usePromptStore.getState().selectPrompt(prompt.id);
   const { result } = renderHook(() =>
     usePromptDetailInlineEditor(prompt, true),
   );

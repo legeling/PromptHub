@@ -155,12 +155,11 @@ export function registerWorkspaceSnapshotIPC(
         activeRoot: getUserDataPath(),
         cacheRoot: getCacheDir(),
         encryption: safeStorage,
-      });
-      if (result.success) scheduleRelaunch(500);
-      else {
+      }).finally(() => {
         initDatabase();
         onDatabaseReopened?.();
-      }
+      });
+      if (result.success) scheduleRelaunch(500);
       return result;
     }
     throw new Error("Unknown workspace snapshot action");
