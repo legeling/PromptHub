@@ -38,6 +38,14 @@ export function QuickTagModal({ isOpen, onClose, prompts }: QuickTagModalProps) 
   const [tagInput, setTagInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const [retry, setRetry] = useState<{
+    ids: Set<string>;
+    mode: "add" | "remove";
+    nextTagsFor: (tags: string[]) => string[];
+  } | null>(null);
+  const selectionKey = JSON.stringify(prompts.map(prompt => prompt.id));
+  useEffect(() => setRetry(null), [isOpen, selectionKey]);
+
   const currentTags = useMemo(
     () => intersectTags(workingPrompts),
     [workingPrompts],
@@ -74,38 +82,35 @@ export function QuickTagModal({ isOpen, onClose, prompts }: QuickTagModalProps) 
   const applyTagsToSelection = async (
     mode: "add" | "remove",
     nextTagsFor: (tags: string[]) => string[],
+    ids?: Set<string>,
   ) => {
     if (workingPrompts.length === 0 || isLoading) return;
 
     setIsLoading(true);
-    const targets = workingPrompts.map((prompt) => ({
+    const targets = workingPrompts.filter(prompt => !ids || ids.has(prompt.id)).map((prompt) => ({
       id: prompt.id,
       tags: nextTagsFor(prompt.tags),
     }));
 
-    const outcomes: boolean[] = [];
+    const written = new Map<string, string[]>();
+    const failedIds = new Set<string>();
     for (const target of targets) {
       try {
         await updatePrompt(target.id, { tags: target.tags });
-        outcomes.push(true);
-      } catch (error) {
-        console.error("Failed to update prompt tags", error);
-        outcomes.push(false);
+        written.set(target.id, target.tags);
+      } catch {
+        failedIds.add(target.id);
       }
     }
 
     // Merge per-prompt so a partial failure never rewinds the prompts that
     // were actually persisted.
     setWorkingPrompts((previous) =>
-      previous.map((prompt, index) =>
-        outcomes[index]
-          ? { ...prompt, tags: targets[index].tags }
-          : prompt,
-      ),
+      previous.map(prompt => ({ ...prompt, tags: written.get(prompt.id) ?? prompt.tags })),
     );
-
-    const failed = outcomes.filter((ok) => !ok).length;
-    const succeeded = outcomes.length - failed;
+    const failed = failedIds.size;
+    const succeeded = written.size;
+    setRetry(failed ? { ids: failedIds, mode, nextTagsFor } : null);
     const removed = mode === "remove";
 
     if (failed > 0) {
@@ -120,7 +125,7 @@ export function QuickTagModal({ isOpen, onClose, prompts }: QuickTagModalProps) 
         'error',
       );
     }
-    if (succeeded > 0) {
+    else if (succeeded > 0) {
       showToast(
         succeeded === 1
           ? removed
@@ -135,7 +140,7 @@ export function QuickTagModal({ isOpen, onClose, prompts }: QuickTagModalProps) 
                 count: succeeded,
                 defaultValue: 'Tag added to {{count}} prompts',
               }),
-        failed > 0 ? 'warning' : 'success',
+        'success',
       );
     }
     setIsLoading(false);
@@ -195,6 +200,12 @@ export function QuickTagModal({ isOpen, onClose, prompts }: QuickTagModalProps) 
             : prompts[0].title}
         </div>
 
+        {retry && <div>
+          <p>{workingPrompts.filter(prompt => retry.ids.has(prompt.id)).map(prompt => prompt.title).join(", ")}</p>
+          <Button disabled={isLoading} onClick={() => void applyTagsToSelection(retry.mode, retry.nextTagsFor, retry.ids)}>
+            {t("prompt.retryFailedTags", "Retry failed items")}
+          </Button>
+        </div>}
         {/* Current tags */}
         <div className="space-y-2">
           <label className="text-sm font-medium">{t('prompt.currentTags', 'Current Tags')}</label>

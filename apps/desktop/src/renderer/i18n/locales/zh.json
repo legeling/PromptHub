@@ -548,6 +548,7 @@
     "batchTagTitle": "为 {{count}} 个提示词打标签",
     "batchTagAdded": "标签已添加到 {{count}} 个提示词",
     "batchTagRemoved": "标签已从 {{count}} 个提示词移除",
+    "retryFailedTags": "仅重试失败项",
     "batchTagPartial": "{{failed}}/{{total}} 个提示词更新失败"
   },
   "agents": {

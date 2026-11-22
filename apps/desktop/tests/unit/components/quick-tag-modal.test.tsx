@@ -293,8 +293,11 @@ describe("QuickTagModal", () => {
           "error",
         );
       });
-      // The intersection view must drop the tag because one prompt failed.
       expect(screen.queryByText("beta")).toBeNull();
+      updatePrompt.mockResolvedValueOnce(undefined);
+      fireEvent.click(screen.getByRole("button", {name: "Retry failed items"}));
+      await waitFor(() => expect(screen.getByText("beta")).toBeInTheDocument());
+      expect(updatePrompt.mock.calls.map(([id]) => id)).toEqual([otherPrompt.id, thirdPrompt.id, thirdPrompt.id]);
     });
 
     it("removes the shared tag from every prompt with per-prompt lists", async () => {
