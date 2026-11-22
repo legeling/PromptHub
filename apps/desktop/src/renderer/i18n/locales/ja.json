@@ -547,6 +547,8 @@
     "batchTagTitle": "{{count}} 件のプロンプトにタグ付け",
     "batchTagAdded": "{{count}} 件のプロンプトにタグを追加しました",
     "batchTagRemoved": "{{count}} 件のプロンプトからタグを削除しました",
+    "tagWriteResult": "タグを {{succeeded}} 件保存しました。失敗は {{failed}} 件です。",
+    "retryFailedTags": "失敗した項目を再試行",
     "batchTagPartial": "{{total}} 件中 {{failed}} 件の更新に失敗しました"
   },
   "agents": {

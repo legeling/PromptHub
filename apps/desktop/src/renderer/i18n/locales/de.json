@@ -548,6 +548,8 @@
     "batchTagTitle": "{{count}} Prompts taggen",
     "batchTagAdded": "Tag zu {{count}} Prompts hinzugefügt",
     "batchTagRemoved": "Tag von {{count}} Prompts entfernt",
+    "tagWriteResult": "Tags für {{succeeded}} Einträge gespeichert. Fehlgeschlagen: {{failed}}.",
+    "retryFailedTags": "Fehlgeschlagene erneut versuchen",
     "batchTagPartial": "Aktualisierung bei {{failed}} von {{total}} Prompts fehlgeschlagen"
   },
   "agents": {

@@ -335,18 +335,19 @@ describe("Prompt batch action with real persistence", () => {
     });
     await waitFor(() =>
       expect(showToast).toHaveBeenCalledWith(
-        "1 of 3 prompts failed to update",
+        "Tags saved for 2 prompts; 1 failed.",
         "error",
       ),
     );
-    expect(showToast).toHaveBeenCalledWith("Tag added to 2 prompts", "warning");
+    expect(showToast).toHaveBeenCalledTimes(1);
+    showToast.mockClear();
     await act(async () => {
       fireEvent.click(screen.getByLabelText("base remove"));
     });
     await waitFor(() =>
       expect(showToast).toHaveBeenCalledWith(
-        "Tag removed from 2 prompts",
-        "warning",
+        "Tags saved for 2 prompts; 1 failed.",
+        "error",
       ),
     );
     await reopen();

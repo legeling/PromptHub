@@ -115,13 +115,10 @@ export function QuickTagModal({ isOpen, onClose, prompts }: QuickTagModalProps) 
 
     if (failed > 0) {
       showToast(
-        targets.length === 1
-          ? t('common.error')
-          : t('prompt.batchTagPartial', {
-              failed,
-              total: targets.length,
-              defaultValue: '{{failed}} of {{total}} prompts failed to update',
-            }),
+        t('prompt.tagWriteResult', {
+          succeeded, failed,
+          defaultValue: 'Tags saved for {{succeeded}} prompts; {{failed}} failed.',
+        }),
         'error',
       );
     }

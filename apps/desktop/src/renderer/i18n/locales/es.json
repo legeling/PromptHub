@@ -548,6 +548,8 @@
     "batchTagTitle": "Etiquetar {{count}} prompts",
     "batchTagAdded": "Etiqueta añadida a {{count}} prompts",
     "batchTagRemoved": "Etiqueta eliminada de {{count}} prompts",
+    "tagWriteResult": "Etiquetas guardadas en {{succeeded}} elementos. Fallos: {{failed}}.",
+    "retryFailedTags": "Reintentar los fallidos",
     "batchTagPartial": "Falló la actualización de {{failed}} de {{total}} prompts"
   },
   "agents": {

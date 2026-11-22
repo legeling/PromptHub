@@ -547,6 +547,8 @@
     "batchTagTitle": "為 {{count}} 個提示詞標籤",
     "batchTagAdded": "標籤已新增至 {{count}} 個提示詞",
     "batchTagRemoved": "標籤已從 {{count}} 個提示詞移除",
+    "tagWriteResult": "標籤已儲存 {{succeeded}} 項，{{failed}} 項失敗。",
+    "retryFailedTags": "只重試失敗項目",
     "batchTagPartial": "{{failed}}/{{total}} 個提示詞更新失敗"
   },
   "agents": {

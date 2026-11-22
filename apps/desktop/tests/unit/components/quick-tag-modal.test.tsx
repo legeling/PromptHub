@@ -112,7 +112,7 @@ describe("QuickTagModal", () => {
         expect(screen.queryByText("beta")).toBeNull();
       });
       expect(screen.getByText("demo")).toBeInTheDocument();
-      expect(showToastMock).toHaveBeenCalledWith("Error", "error");
+      expect(showToastMock).toHaveBeenCalledWith("Tags saved for 0 prompts; 1 failed.", "error");
       expect(showToastMock).not.toHaveBeenCalledWith("Tag added", "success");
     });
 
@@ -289,7 +289,7 @@ describe("QuickTagModal", () => {
 
       await waitFor(() => {
         expect(showToastMock).toHaveBeenCalledWith(
-          "1 of 2 prompts failed to update",
+          "Tags saved for 1 prompts; 1 failed.",
           "error",
         );
       });
