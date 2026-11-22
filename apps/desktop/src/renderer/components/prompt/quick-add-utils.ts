@@ -222,6 +222,32 @@ ${context.tagsString}
 export function parseQuickAddAnalysisResult(
   responseContent: string,
 ): QuickAddAnalysisResult | null {
+  let result: QuickAddAnalysisResult | null = null;
+  let depth = 0;
+  let start = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let index = 0; index < responseContent.length; index++) {
+    const char = responseContent[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') quoted = false;
+    } else if (char === "{") {
+      if (depth === 0) start = index;
+      depth++;
+    } else if (depth && char === '"') {
+      quoted = true;
+    } else if (depth && char === "}" && --depth === 0) {
+      const candidate = parseAnalysisObject(responseContent.slice(start, index + 1));
+      if (candidate && result) return null;
+      if (candidate) result = candidate;
+    }
+  }
+  return result;
+}
+
+function parseAnalysisObject(responseContent: string): QuickAddAnalysisResult | null {
   const parsed = extractJsonObject(responseContent);
 
   const title = parsed && asOptionalString(parsed.title);

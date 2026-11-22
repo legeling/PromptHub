@@ -9,6 +9,13 @@ import {
 } from "../../../src/renderer/components/prompt/quick-add-utils";
 
 describe("quick-add-utils", () => {
+  it("accepts one usable object after brace placeholders and rejects ambiguous results", () => {
+    const valid = JSON.stringify({ title: 'Photo of "{subject}"', tags: ["art"] });
+    expect(parseQuickAddAnalysisResult("Reference {CHARACTER} then " + valid)?.tags).toEqual(["art"]);
+    expect(parseQuickAddAnalysisResult(valid + valid)).toBeNull();
+    expect(parseQuickAddAnalysisResult(valid.slice(0, -1))).toBeNull();
+  });
+
   it.each(['{}', '{"title":" "}', '{"title":42}', '{"tags":["art"]}', '{"title":"[主题]"}'])(
     "rejects incomplete analysis metadata: %s", (response) => {
       expect(parseQuickAddAnalysisResult(response)).toBeNull();
