@@ -3872,6 +3872,9 @@
     "sha512Desc": "SHA512 校验失败。\n这通常是由于 CDN 缓存不一致或网络劫持导致的。\n文件可能已下载完成，您可以尝试手动安装。"
   },
   "toast": {
+    "importRollbackFailed": "匯入和自動還原快照均失敗。請在資料設定中檢查目前資料與本機快照，再決定是否重新匯入。",
+    "importRollbackRestart": "匯入失敗。請重新啟動以完成快照還原。",
+    "importRolledBack": "匯入失敗，已還原安全快照。",
     "backupConflict": "備份衝突：其他用戶端已更新遠端備份。",
     "movedPromptToFolder": "已移動到「{{folder}}」",
     "movedPromptsToFolder": "已將 {{count}} 個 Prompt 移動到「{{folder}}」",
@@ -3886,6 +3889,19 @@
     "exitApp": "結束應用程式",
     "rememberChoice": "記住我的選擇",
     "rememberFailed": "無法儲存此選擇，請重試。"
+  },
+  "analysisFeedback": {
+    "saved": "原文已儲存。{{reason}}",
+    "retry": "重新分析",
+    "answer": "模型未傳回可用結果，請重新產生。",
+    "credentials": "模型服務拒絕存取，請檢查金鑰及權限。",
+    "endpoint": "找不到模型端點，請檢查 API 位址和模型設定。",
+    "limited": "已達模型服務請求上限，請稍後再試。",
+    "timeout": "模型請求逾時，請稍後重試。",
+    "request": "模型請求失敗，請檢查連線及模型設定。",
+    "settings": "檢查模型設定",
+    "save": "無法儲存產生的結果。",
+    "retrySave": "重新儲存"
   },
   "quickAdd": {
     "savedAnalysisFailed": "「{{title}}」已儲存，但 AI 分析失敗。可開啟此 Prompt 重新解析標題和標籤，或手動編輯。",

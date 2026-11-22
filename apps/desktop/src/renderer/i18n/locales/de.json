@@ -3872,6 +3872,9 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "importRollbackFailed": "Import und automatische Wiederherstellung fehlgeschlagen. Vor einem erneuten Import Daten und lokale Sicherungen prüfen.",
+    "importRollbackRestart": "Import fehlgeschlagen. App neu starten, um die Wiederherstellung abzuschließen.",
+    "importRolledBack": "Import fehlgeschlagen. Die Sicherung wurde wiederhergestellt.",
     "backupConflict": "Sicherungskonflikt: Ein anderer Client hat die Remote-Sicherung aktualisiert.",
     "movedPromptToFolder": "Nach \"{{folder}}\" verschoben",
     "movedPromptsToFolder": "{{count}} Prompts nach \"{{folder}}\" verschoben",
@@ -3886,6 +3889,19 @@
     "exitApp": "Anwendung beenden",
     "rememberChoice": "Meine Auswahl merken",
     "rememberFailed": "Diese Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut."
+  },
+  "analysisFeedback": {
+    "saved": "Prompt gespeichert. {{reason}}",
+    "retry": "Analyse wiederholen",
+    "answer": "Keine verwertbare Modellantwort. Erneut generieren.",
+    "credentials": "Zugriff verweigert. Schlüssel und Berechtigungen prüfen.",
+    "endpoint": "Modellendpunkt nicht gefunden. API-Adresse und Modell prüfen.",
+    "limited": "Anfragelimit erreicht. Später erneut versuchen.",
+    "timeout": "Zeitüberschreitung bei der Modellanfrage. Später erneut versuchen.",
+    "request": "Modellanfrage fehlgeschlagen. Verbindung und Modelleinstellungen prüfen.",
+    "settings": "Modelleinstellungen prüfen",
+    "save": "Das generierte Ergebnis konnte nicht gespeichert werden.",
+    "retrySave": "Speichern wiederholen"
   },
   "quickAdd": {
     "savedAnalysisFailed": "„{{title}}“ wurde gespeichert, aber die KI-Analyse ist fehlgeschlagen. Öffnen Sie diesen Prompt, um Titel und Tags erneut zu analysieren, oder bearbeiten Sie sie manuell.",

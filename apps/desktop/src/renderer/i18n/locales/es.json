@@ -3872,6 +3872,9 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "importRollbackFailed": "Fallaron la importación y la recuperación automática. Comprueba los datos y las copias locales antes de volver a importar.",
+    "importRollbackRestart": "Falló la importación. Reinicia la aplicación para completar la recuperación.",
+    "importRolledBack": "Falló la importación. Se restauró la copia de seguridad.",
     "backupConflict": "Conflicto de copia: otro cliente ha actualizado la copia remota.",
     "movedPromptToFolder": "Movido a \"{{folder}}\"",
     "movedPromptsToFolder": "{{count}} prompts movidos a \"{{folder}}\"",
@@ -3886,6 +3889,19 @@
     "exitApp": "Salir de la aplicación",
     "rememberChoice": "Recordar mi elección",
     "rememberFailed": "No se pudo guardar esta opción. Inténtalo de nuevo."
+  },
+  "analysisFeedback": {
+    "saved": "Prompt guardado. {{reason}}",
+    "retry": "Reintentar análisis",
+    "answer": "El modelo no devolvió un resultado válido. Vuelve a generarlo.",
+    "credentials": "Acceso denegado. Revisa la clave y los permisos.",
+    "endpoint": "No se encontró el servicio del modelo. Revisa la dirección de la API y el modelo.",
+    "limited": "Se alcanzó el límite de solicitudes. Inténtalo más tarde.",
+    "timeout": "Se agotó el tiempo de espera. Inténtalo más tarde.",
+    "request": "Falló la solicitud. Revisa la conexión y la configuración del modelo.",
+    "settings": "Revisar configuración del modelo",
+    "save": "No se pudo guardar el resultado generado.",
+    "retrySave": "Reintentar guardado"
   },
   "quickAdd": {
     "savedAnalysisFailed": "Se guardó «{{title}}», pero falló el análisis de IA. Abre este Prompt para volver a analizar el título y las etiquetas, o edítalos manualmente.",

@@ -3872,6 +3872,9 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "importRollbackFailed": "インポートとスナップショットの自動復元に失敗しました。再度インポートする前に、現在のデータとローカルのスナップショットを確認してください。",
+    "importRollbackRestart": "インポートに失敗しました。再起動して復元を完了してください。",
+    "importRolledBack": "インポートに失敗しました。事前のスナップショットを復元しました。",
     "backupConflict": "バックアップが競合しました。別のクライアントがリモートのバックアップを更新しました。",
     "movedPromptToFolder": "「{{folder}}」に移動しました",
     "movedPromptsToFolder": "{{count}} 件の Prompt を「{{folder}}」に移動しました",
@@ -3886,6 +3889,19 @@
     "exitApp": "アプリを終了",
     "rememberChoice": "選択を記憶する",
     "rememberFailed": "この選択を保存できませんでした。もう一度お試しください。"
+  },
+  "analysisFeedback": {
+    "saved": "プロンプトを保存しました。{{reason}}",
+    "retry": "もう一度分析",
+    "answer": "モデルから有効な結果が返りませんでした。再生成してください。",
+    "credentials": "アクセスが拒否されました。キーと権限を確認してください。",
+    "endpoint": "モデルの接続先が見つかりません。API アドレスとモデル設定を確認してください。",
+    "limited": "リクエストの上限に達しました。時間をおいて再試行してください。",
+    "timeout": "モデルへのリクエストがタイムアウトしました。時間をおいて再試行してください。",
+    "request": "モデルへのリクエストに失敗しました。接続とモデル設定を確認してください。",
+    "settings": "モデル設定を確認",
+    "save": "生成結果を保存できませんでした。",
+    "retrySave": "保存を再試行"
   },
   "quickAdd": {
     "savedAnalysisFailed": "「{{title}}」は保存されましたが、AI 分析に失敗しました。この Prompt を開いてタイトルとタグを再解析するか、手動で編集できます。",

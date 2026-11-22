@@ -3873,6 +3873,9 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "importRollbackFailed": "L’importation et la récupération automatique ont échoué. Vérifiez les données et les sauvegardes locales avant de réimporter.",
+    "importRollbackRestart": "L’importation a échoué. Redémarrez pour terminer la récupération.",
+    "importRolledBack": "L’importation a échoué. La sauvegarde a été restaurée.",
     "backupConflict": "Conflit de sauvegarde : un autre client a mis à jour la sauvegarde distante.",
     "movedPromptToFolder": "Déplacé vers \"{{folder}}\"",
     "movedPromptsToFolder": "{{count}} prompts déplacés vers \"{{folder}}\"",
@@ -3887,6 +3890,19 @@
     "exitApp": "Quitter l'application",
     "rememberChoice": "Se souvenir de mon choix",
     "rememberFailed": "Impossible d’enregistrer ce choix. Veuillez réessayer."
+  },
+  "analysisFeedback": {
+    "saved": "Prompt enregistré. {{reason}}",
+    "retry": "Relancer l’analyse",
+    "answer": "La réponse du modèle est inutilisable. Relancez la génération.",
+    "credentials": "Accès refusé. Vérifiez la clé et les autorisations.",
+    "endpoint": "Point de terminaison introuvable. Vérifiez l’adresse de l’API et le modèle.",
+    "limited": "Limite de requêtes atteinte. Réessayez plus tard.",
+    "timeout": "La requête a expiré. Réessayez plus tard.",
+    "request": "La requête a échoué. Vérifiez la connexion et les paramètres du modèle.",
+    "settings": "Vérifier les paramètres du modèle",
+    "save": "Impossible d’enregistrer le résultat généré.",
+    "retrySave": "Réessayer l’enregistrement"
   },
   "quickAdd": {
     "savedAnalysisFailed": "« {{title}} » a été enregistré, mais l’analyse IA a échoué. Ouvrez ce Prompt pour réessayer l’analyse du titre et des tags, ou modifiez-les manuellement.",
