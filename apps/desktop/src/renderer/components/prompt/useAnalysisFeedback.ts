@@ -1,3 +1,4 @@
+import { isPromptUpdateConflict } from "@prompthub/shared/utils/prompt-update-condition";
 import { useTranslation } from "react-i18next";
 import { analysisFailureKey } from "../../services/ai-failure";
 import { useUIStore } from "../../stores/ui.store";
@@ -31,7 +32,11 @@ export function useAnalysisFeedback() {
   async function save(write: () => Promise<void>, message = t("analysisFeedback.save")) {
     try {
       await write();
-    } catch {
+    } catch (error) {
+      if (isPromptUpdateConflict(error)) {
+        showToast(t("analysisFeedback.changed"), "warning");
+        return;
+      }
       showToast(message, "error", true, {
         label: t("analysisFeedback.retrySave"),
         run: () => { void save(write, message); },

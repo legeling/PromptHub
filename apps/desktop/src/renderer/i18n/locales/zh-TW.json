@@ -3891,6 +3891,7 @@
     "rememberFailed": "無法儲存此選擇，請重試。"
   },
   "analysisFeedback": {
+    "changed": "這則提示詞已變更或刪除，先前的 AI 結果未寫入。",
     "saved": "原文已儲存。{{reason}}",
     "retry": "重新分析",
     "answer": "模型未傳回可用結果，請重新產生。",

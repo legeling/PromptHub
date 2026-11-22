@@ -1,3 +1,4 @@
+import { capturePromptUpdateCondition, type PromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import { useAnalysisFeedback } from "./useAnalysisFeedback";
 import { AIResponseError } from "../../services/ai-failure";
 import { usePromptMediaManager } from "./usePromptMediaManager";
@@ -43,7 +44,7 @@ interface QuickAddModalProps {
     tags?: string[];
     images?: string[];
     videos?: string[];
-  }) => Promise<Pick<Prompt, "id"> | null | undefined>;
+  }) => Promise<(Pick<Prompt, "id"> & PromptUpdateCondition) | null | undefined>;
   defaultPromptType?: PromptType;
   initialMode?: QuickAddMode;
 }
@@ -331,6 +332,7 @@ function QuickAddDialog({
     if (canApplyAsyncResult(session)) onClose();
 
     // Each invocation keeps its own input and record ID across modal reopenings.
+    const expected = capturePromptUpdateCondition(createdPrompt);
     const analyzeSavedPrompt = async () => {
       let parsedResult;
       try {
@@ -358,7 +360,7 @@ function QuickAddDialog({
           description: parsedResult.description,
           folderId: resolveMatchedFolderId(parsedResult.suggestedFolder),
           tags: parsedResult.tags,
-        });
+        }, expected);
       }, t("quickAdd.analysisSaveFailed", { title }));
     };
     await analyzeSavedPrompt();

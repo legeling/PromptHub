@@ -1,3 +1,4 @@
+import { isPromptUpdateConflict, type PromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import type { PromptTypeFilter } from "../services/prompt-filter";
 import type { PreparedWorkspaceRefresh } from "../services/local-data-refresh";
 import { create } from "zustand";
@@ -232,7 +233,7 @@ interface PromptState {
   prepareWorkspaceRefresh: () => Promise<PreparedWorkspaceRefresh>;
   getPromptDetail: (id: string) => Promise<Prompt | null>;
   createPrompt: (data: CreatePromptDTO) => Promise<Prompt>;
-  updatePrompt: (id: string, data: UpdatePromptDTO) => Promise<void>;
+  updatePrompt: (id: string, data: UpdatePromptDTO, expected?: PromptUpdateCondition) => Promise<void>;
   fetchRelations: () => Promise<void>;
   createRelation: (data: CreatePromptRelationDTO) => Promise<PromptRelation>;
   updateRelation: (id: string, data: UpdatePromptRelationDTO) => Promise<void>;
@@ -471,12 +472,18 @@ export const usePromptStore = create<PromptState>()(
         return prompt;
       },
 
-      updatePrompt: async (id, data) => {
+      updatePrompt: async (id, data, expected) => {
         invalidatePromptReads([id]);
         set((state) => ({
           promptDetailCache: removeCachedDetails(state.promptDetailCache, [id]),
         }));
-        const updated = await db.updatePrompt(id, data);
+        const updated = await db.updatePrompt(id, data, expected).catch(async (error: unknown) => {
+          if (isPromptUpdateConflict(error)) {
+            // Refresh the open record even when the competing writer was another window.
+            await get().getPromptDetail(id).catch(() => null);
+          }
+          throw error;
+        });
         invalidatePromptReads([id]);
         set((state) => ({
           prompts: state.prompts.map((p) =>

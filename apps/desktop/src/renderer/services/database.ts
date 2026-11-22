@@ -1,3 +1,4 @@
+import type { PromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import type {
   CreateOutputFormatItemDTO,
   CreatePromptRelationDTO,
@@ -53,6 +54,7 @@ export async function createPrompt(
 export async function updatePrompt(
   id: string,
   data: Partial<Prompt>,
+  expected?: PromptUpdateCondition,
 ): Promise<Prompt> {
   const keepEmptyString = (value: string | null | undefined) =>
     value === undefined || value === null ? undefined : value;
@@ -76,7 +78,7 @@ export async function updatePrompt(
     source: keepEmptyString(data.source),
     notes: keepEmptyString(data.notes),
     lastAiResponse: keepEmptyString(data.lastAiResponse),
-  });
+  }, expected);
   if (!updated) {
     throw new Error(`Prompt not found: ${id}`);
   }

@@ -18,6 +18,10 @@ vi.mock("../../../src/renderer/services/ai", async (importOriginal) => ({
   chatCompletion: (...args: unknown[]) => completion(...args),
 }));
 
+function created(id: string, title: string) {
+  return { id, title, tags: [], updatedAt: "2026-11-22T00:00:00.000Z" };
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: Error) => void;
@@ -82,8 +86,8 @@ describe("quick add background analysis", () => {
       .mockReturnValueOnce(second.promise);
     const create = vi
       .fn()
-      .mockResolvedValueOnce({ id: "first" })
-      .mockResolvedValueOnce({ id: "second" });
+      .mockResolvedValueOnce(created("first", "First landscape prompt"))
+      .mockResolvedValueOnce(created("second", "Second portrait prompt"));
     const update = vi
       .spyOn(usePromptStore.getState(), "updatePrompt")
       .mockResolvedValue();
@@ -105,6 +109,7 @@ describe("quick add background analysis", () => {
       expect(update).toHaveBeenCalledWith(
         "second",
         expect.objectContaining({ title: "Portrait", tags: ["portrait"] }),
+        expect.objectContaining({ title: "Second portrait prompt", tags: [] }),
       ),
     );
     await act(async () => {
@@ -114,6 +119,7 @@ describe("quick add background analysis", () => {
       expect(update).toHaveBeenCalledWith(
         "first",
         expect.objectContaining({ title: "Landscape", tags: ["landscape"] }),
+        expect.objectContaining({ title: "First landscape prompt", tags: [] }),
       ),
     );
     expect(create.mock.calls.map(([data]) => data.title)).toEqual([
@@ -131,7 +137,7 @@ describe("quick add background analysis", () => {
     async (response) => {
       const pending = deferred<{ content: string }>();
       completion.mockReturnValue(pending.promise);
-      const create = vi.fn().mockResolvedValue({ id: "saved" });
+      const create = vi.fn().mockResolvedValue(created("saved", "Original content"));
       const update = vi
         .spyOn(usePromptStore.getState(), "updatePrompt")
         .mockResolvedValue();
@@ -165,7 +171,7 @@ describe("quick add background analysis", () => {
       if (response === "{}") {
         completion.mockResolvedValueOnce({content: '{"title":"Recovered","tags":["tag"]}'});
         fireEvent.click(screen.getByRole("button", {name: "Retry analysis"}));
-        await waitFor(() => expect(update).toHaveBeenCalledWith("saved", expect.objectContaining({title:"Recovered"})));
+        await waitFor(() => expect(update).toHaveBeenCalledWith("saved", expect.objectContaining({title:"Recovered"}), expect.objectContaining({title: "Original content"})));
         expect(create).toHaveBeenCalledTimes(1);
       }
     },
@@ -179,7 +185,7 @@ describe("quick add background analysis", () => {
       .spyOn(usePromptStore.getState(), "updatePrompt")
       .mockRejectedValue(new Error("Disk unavailable"));
     await renderWithI18n(
-      <Harness onCreate={vi.fn().mockResolvedValue({ id: "saved" })} />,
+      <Harness onCreate={vi.fn().mockResolvedValue(created("saved", "Original content"))} />,
       { language: "en" },
     );
     submit("Preserved content");
@@ -202,7 +208,7 @@ describe("quick add background analysis", () => {
       const create = vi.fn();
       if (failure === "null") create.mockResolvedValueOnce(null);
       else create.mockRejectedValueOnce(new Error("Create failed"));
-      create.mockResolvedValueOnce({ id: "retried" });
+      create.mockResolvedValueOnce(created("retried", "Keep my input"));
       completion.mockResolvedValue({ content: '{"title":"Recovered"}' });
       vi.spyOn(usePromptStore.getState(), "updatePrompt").mockResolvedValue();
       await renderWithI18n(<Harness onCreate={create} />, { language: "en" });
@@ -223,7 +229,7 @@ describe("quick add background analysis", () => {
   );
 
   it("does not duplicate a pending save or let that save close a reopened dialog", async () => {
-    const pending = deferred<{ id: string }>();
+    const pending = deferred<ReturnType<typeof created>>();
     const create = vi.fn().mockReturnValue(pending.promise);
     completion.mockResolvedValue({ content: '{"title":"First result"}' });
     const update = vi
@@ -239,12 +245,13 @@ describe("quick add background analysis", () => {
       target: { value: "Second draft" },
     });
     await act(async () => {
-      pending.resolve({ id: "first" });
+      pending.resolve(created("first", "First input"));
     });
     await waitFor(() =>
       expect(update).toHaveBeenCalledWith(
         "first",
         expect.objectContaining({ title: "First result" }),
+        expect.objectContaining({ title: "First input", tags: [] }),
       ),
     );
     expect(screen.getByRole("textbox")).toHaveValue("Second draft");

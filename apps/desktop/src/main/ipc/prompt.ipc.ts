@@ -1,3 +1,4 @@
+import type { PromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import { migrateIndexedDbSnapshot } from "@prompthub/core/migrations/indexeddb-prompts-v1";
 import {
   getUserDataPath,
@@ -156,10 +157,8 @@ export function registerPromptIPC(
 
   ipcMain.handle(
     IPC_CHANNELS.PROMPT_UPDATE,
-    async (_, id: string, data: UpdatePromptDTO) => {
-      const updated = db.update(id, data);
-      return updated;
-    },
+    async (_, id: string, data: UpdatePromptDTO, expected?: PromptUpdateCondition) =>
+      db.update(id, data, expected),
   );
 
   // Delete Prompt

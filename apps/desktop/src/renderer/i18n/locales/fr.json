@@ -3892,6 +3892,7 @@
     "rememberFailed": "Impossible d’enregistrer ce choix. Veuillez réessayer."
   },
   "analysisFeedback": {
+    "changed": "Ce prompt a été modifié ou supprimé. Le résultat précédent de l’IA n’a pas été enregistré.",
     "saved": "Prompt enregistré. {{reason}}",
     "retry": "Relancer l’analyse",
     "answer": "La réponse du modèle est inutilisable. Relancez la génération.",

@@ -3891,6 +3891,7 @@
     "rememberFailed": "Diese Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
   "analysisFeedback": {
+    "changed": "Dieser Prompt wurde geändert oder gelöscht. Das frühere KI-Ergebnis wurde nicht gespeichert.",
     "saved": "Prompt gespeichert. {{reason}}",
     "retry": "Analyse wiederholen",
     "answer": "Keine verwertbare Modellantwort. Erneut generieren.",

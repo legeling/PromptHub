@@ -3929,6 +3929,7 @@
     "rememberFailed": "无法保存此选择，请重试。"
   },
   "analysisFeedback": {
+    "changed": "这条提示词已更改或删除，先前的 AI 结果未写入。",
     "saved": "原文已保存。{{reason}}",
     "retry": "重新分析",
     "answer": "模型未返回可用结果，请重新生成。",

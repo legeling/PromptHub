@@ -3891,6 +3891,7 @@
     "rememberFailed": "No se pudo guardar esta opción. Inténtalo de nuevo."
   },
   "analysisFeedback": {
+    "changed": "Este prompt se ha modificado o eliminado. El resultado anterior de la IA no se ha guardado.",
     "saved": "Prompt guardado. {{reason}}",
     "retry": "Reintentar análisis",
     "answer": "El modelo no devolvió un resultado válido. Vuelve a generarlo.",

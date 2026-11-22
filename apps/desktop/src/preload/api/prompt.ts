@@ -1,3 +1,4 @@
+import type { PromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import type {
   IndexedDbMigrationRequest,
   IndexedDbMigrationResponse,
@@ -44,8 +45,8 @@ export const promptApi = {
     ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RENAME_TAG, oldTag, newTag),
   deleteTag: (tag: string): Promise<{ deleted: boolean; referenced: number }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PROMPT_DELETE_TAG, tag),
-  update: (id: string, data: UpdatePromptDTO) =>
-    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_UPDATE, id, data),
+  update: (id: string, data: UpdatePromptDTO, expected?: PromptUpdateCondition) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_UPDATE, id, data, expected),
   delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_DELETE, id),
   search: (query: SearchQuery) =>
     ipcRenderer.invoke(IPC_CHANNELS.PROMPT_SEARCH, query),

@@ -3929,6 +3929,7 @@
     "rememberFailed": "Could not save this choice. Please try again."
   },
   "analysisFeedback": {
+    "changed": "This Prompt has changed or was removed. The earlier AI result was not saved.",
     "saved": "Prompt saved. {{reason}}",
     "retry": "Retry analysis",
     "answer": "The model returned no usable result. Generate again.",

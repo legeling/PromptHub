@@ -1,3 +1,4 @@
+import { matchesPromptUpdateCondition, PROMPT_UPDATE_CONFLICT, type PromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import { assertVersionImportMatches } from "./version-import";
 import Database from "./adapter";
 import { v4 as uuidv4 } from "uuid";
@@ -292,10 +293,19 @@ export class PromptDB {
    * Performance optimized: Builds return object in memory instead of re-querying
    * 性能优化：在内存中构建返回对象，而不是重新查询
    */
-  update(id: string, data: UpdatePromptDTO): Prompt | null {
+  update(id: string, data: UpdatePromptDTO, expected?: PromptUpdateCondition): Prompt | null {
     assertPromptTextHasNoNullBytes(data);
-    const existingPrompt = this.getById(id);
-    if (!existingPrompt) return null;
+    return this.db.transaction(() => {
+      const current = this.getById(id);
+      if (expected !== undefined && !matchesPromptUpdateCondition(current, expected)) {
+        throw new Error(PROMPT_UPDATE_CONFLICT);
+      }
+      return current ? this.updateExisting(current, data) : null;
+    })();
+  }
+
+  private updateExisting(existingPrompt: Prompt, data: UpdatePromptDTO): Prompt {
+    const id = existingPrompt.id;
     if (data.systemPrompt !== undefined || data.userPrompt !== undefined) {
       assertPromptContent({
         systemPrompt:
@@ -309,7 +319,8 @@ export class PromptDB {
       });
     }
 
-    const now = Date.now();
+    // Even two edits in one clock tick must invalidate an older save condition.
+    const now = Math.max(Date.now(), Date.parse(existingPrompt.updatedAt) + 1);
     const updates: string[] = ["updated_at = ?"];
     const values: Array<string | number | null> = [now];
 
@@ -400,27 +411,22 @@ export class PromptDB {
 
     values.push(id);
 
-    // Wrap SQL update + version creation in a transaction for atomicity
-    const runUpdate = this.db.transaction(() => {
-      const stmt = this.db.prepare(
-        `UPDATE prompts SET ${updates.join(", ")} WHERE id = ?`,
-      );
-      stmt.run(...values);
+    const stmt = this.db.prepare(
+      `UPDATE prompts SET ${updates.join(", ")} WHERE id = ?`,
+    );
+    stmt.run(...values);
 
-      // Create a new version if content changes
-      // 如果内容有变化，创建新版本
-      if (
-        data.systemPrompt !== undefined ||
-        data.systemPromptEn !== undefined ||
-        data.userPrompt !== undefined ||
-        data.userPromptEn !== undefined ||
-        data.variables !== undefined
-      ) {
-        this.createVersion(id);
-      }
-    });
-
-    runUpdate();
+    // Create a new version if content changes
+    // 如果内容有变化，创建新版本
+    if (
+      data.systemPrompt !== undefined ||
+      data.systemPromptEn !== undefined ||
+      data.userPrompt !== undefined ||
+      data.userPromptEn !== undefined ||
+      data.variables !== undefined
+    ) {
+      this.createVersion(id);
+    }
 
     // Build updated prompt in memory instead of re-querying (performance optimization)
     // 在内存中构建更新后的 prompt 对象，而不是重新查询（性能优化）

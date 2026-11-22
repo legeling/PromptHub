@@ -46,9 +46,9 @@ function registerDomain() {
 function Harness() {
   const [open, setOpen] = useState(true);
   const [detailPrompt, setDetailPrompt] = useState<Prompt | null>(null);
-  const openFailedPrompt = async () => {
+  const openPrompt = async (body: string) => {
     const saved = (await promptApi.getAll()).find(
-      (prompt) => prompt.userPrompt === "Failed analysis content",
+      (prompt) => prompt.userPrompt === body,
     );
     if (!saved) return;
     setDetailPrompt(await usePromptStore.getState().getPromptDetail(saved.id));
@@ -56,7 +56,10 @@ function Harness() {
   return (
     <ToastProvider>
       <button onClick={() => setOpen(true)}>Open quick add</button>
-      <button onClick={() => void openFailedPrompt()}>
+      <button onClick={() => void openPrompt("Other body")}>
+        Open other Prompt
+      </button>
+      <button onClick={() => void openPrompt("Failed analysis content")}>
         Open failed Prompt
       </button>
       <QuickAddModal
@@ -209,4 +212,154 @@ it("persists concurrent quick additions, isolates failure, and retains results a
   await runtime.reopen();
   registerDomain();
   expect(await promptApi.getAll()).toEqual(saved);
+});
+
+const originalBody = "Failed analysis content";
+const conflict =
+  "This Prompt has changed or was removed. The earlier AI result was not saved.";
+const result = (title: string, tag: string) => ({
+  content: JSON.stringify({ title, tags: [tag] }),
+});
+
+async function openDetail() {
+  fireEvent.click(screen.getByText("Open failed Prompt"));
+  return screen.findByRole("button", { name: "Reanalyze title and tags" });
+}
+
+async function reopenAndRead() {
+  cleanup();
+  await runtime.reopen();
+  registerDomain();
+  return promptApi.getAll() as Promise<Prompt[]>;
+}
+
+function rejectFirstAnalysisWrite() {
+  getDatabase()
+    .exec(`CREATE TEMP TRIGGER reject_analysis BEFORE UPDATE OF title ON prompts
+    WHEN NEW.title = 'Result A' BEGIN SELECT RAISE(ABORT, 'test write failure'); END`);
+}
+
+async function failFirstSave(entry: "detail" | "quick") {
+  rejectFirstAnalysisWrite();
+  completion.mockResolvedValueOnce(result("Result A", "first"));
+  if (entry === "detail") {
+    await usePromptStore
+      .getState()
+      .createPrompt({ title: "Original", userPrompt: originalBody });
+  }
+  await renderWithI18n(<Harness />, { language: "en" });
+  if (entry === "detail") {
+    fireEvent.click(await openDetail());
+  } else {
+    await submit(originalBody);
+  }
+  const retry = await screen.findByRole("button", { name: "Retry save" });
+  getDatabase().exec("DROP TRIGGER reject_analysis");
+  const [record] = await promptApi.getAll();
+  return { retry, record: record as Prompt };
+}
+
+it.each(["detail", "quick"] as const)(
+  "rejects an old %s retry after B is saved, including after switching records",
+  async (entry) => {
+    const { retry, record } = await failFirstSave(entry);
+    completion.mockResolvedValueOnce(result("Result B", "second"));
+    fireEvent.click(await openDetail());
+    await screen.findByText("Result B");
+    expect(await promptApi.get(record.id)).toMatchObject({
+      title: "Result B",
+      tags: ["second"],
+    });
+    const other = await promptApi.create({
+      title: "Other",
+      userPrompt: "Other body",
+    });
+    fireEvent.click(screen.getByText("Open other Prompt"));
+    await screen.findByText("Other");
+    fireEvent.click(retry);
+    await screen.findByText(conflict);
+    expect(screen.queryByText("Other")).not.toBeNull();
+    const records = await reopenAndRead();
+    expect(records).toHaveLength(2);
+    expect(records.find((p) => p.id === record.id)).toMatchObject({
+      title: "Result B",
+      tags: ["second"],
+      userPrompt: originalBody,
+    });
+    expect(records.find((p) => p.id === other.id)).toEqual(other);
+    expect(completion).toHaveBeenCalledTimes(2);
+  },
+);
+
+it.each([
+  ["detail", "title"],
+  ["detail", "tags"],
+  ["quick", "title"],
+  ["quick", "tags"],
+] as const)(
+  "preserves a manual edit after %s when only %s changed",
+  async (entry, field) => {
+    const { retry, record } = await failFirstSave(entry);
+    const edit =
+      field === "title" ? { title: "Edited by hand" } : { tags: ["manual"] };
+    // Simulate an edit from another window, with the first renderer still stale.
+    await promptApi.update(record.id, edit);
+    fireEvent.click(retry);
+    await screen.findByText(conflict);
+    const [saved] = await reopenAndRead();
+    expect(saved).toMatchObject({
+      id: record.id,
+      title: record.title,
+      tags: record.tags,
+      userPrompt: originalBody,
+      ...edit,
+    });
+    expect(completion).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each(["detail", "quick"] as const)(
+  "retries an unchanged %s write without another model call",
+  async (entry) => {
+    const writes = vi.spyOn(window.api.prompt, "update");
+    const { retry, record } = await failFirstSave(entry);
+    fireEvent.click(retry);
+    await waitFor(async () =>
+      expect(await promptApi.get(record.id)).toMatchObject({
+        title: "Result A",
+      }),
+    );
+    expect(writes).toHaveBeenCalledTimes(2);
+    expect(writes.mock.calls[1]).toEqual(writes.mock.calls[0]);
+    expect(await reopenAndRead()).toMatchObject([
+      {
+        id: record.id,
+        title: "Result A",
+        tags: ["first"],
+        userPrompt: originalBody,
+      },
+    ]);
+    expect(completion).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("protects a detail result when an earlier quick-add answer arrives late", async () => {
+  let finish!: (response: { content: string }) => void;
+  completion
+    .mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    )
+    .mockResolvedValueOnce(result("Result B", "second"));
+  await renderWithI18n(<Harness />, { language: "en" });
+  await submit(originalBody);
+  fireEvent.click(await openDetail());
+  await screen.findByText("Result B");
+  await act(async () => finish(result("Result A", "first")));
+  await screen.findByText(conflict);
+  expect(await reopenAndRead()).toMatchObject([
+    { title: "Result B", tags: ["second"], userPrompt: originalBody },
+  ]);
+  expect(completion).toHaveBeenCalledTimes(2);
 });

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import {
   createSkillTestRuntime,
@@ -81,4 +81,30 @@ it("retains video classification, tags and ordered reference image bytes after r
     expect(await invokeSkillIPC(IPC_CHANNELS.IMAGE_READ_BASE64, name)).toBe(references[index]);
   }
   expect(await promptApi.getAll()).toEqual(expect.arrayContaining([expect.objectContaining({ id: created.id, promptType: "video" })]));
+});
+
+it("allows only one conditional writer even within the same clock tick", async () => {
+  const saved = await promptApi.create({ title: "Original", userPrompt: "Body", tags: ["first"] });
+  const condition = { updatedAt: saved.updatedAt, title: saved.title, tags: saved.tags };
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(saved.updatedAt));
+  try {
+    // The first writer changes only the description. Title, tags and wall time
+    // all remain identical when the second writer tries the same snapshot.
+    const [first, second] = await Promise.allSettled([
+      promptApi.update(saved.id, { description: "New description" }, condition),
+      promptApi.update(saved.id, { title: "Obsolete" }, condition),
+    ]);
+    expect(first.status).toBe("fulfilled");
+    expect(second).toMatchObject({status: "rejected", reason: new Error("PROMPT_UPDATE_CONFLICT")});
+  } finally {
+    clock.mockRestore();
+  }
+  await runtime.reopen();
+  registerDomain();
+  expect(await promptApi.get(saved.id)).toMatchObject({
+    title: "Original", tags: ["first"], description: "New description", userPrompt: "Body",
+  });
+  await promptApi.delete(saved.id);
+  await expect(promptApi.update(saved.id, { title: "Stale" }, condition)).rejects.toThrow("PROMPT_UPDATE_CONFLICT");
+  expect(await promptApi.getAll()).toEqual([]);
 });

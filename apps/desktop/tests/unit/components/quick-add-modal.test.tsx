@@ -98,7 +98,7 @@ describe("QuickAddModal", () => {
     const original = window.electron;
     vi.stubGlobal("electron", { ...original, selectImage: async () => ["/tmp/ref.png"], saveImage: async () => ["ref.png"],
       selectVideo: async () => ["/tmp/clip.mp4"], saveVideo: async () => ["clip.mp4"] });
-    const onCreate = vi.fn().mockResolvedValue({ id: "tracking-shot" });
+    const onCreate = vi.fn().mockResolvedValue({ id: "tracking-shot", title: "A slow tracking shot.", tags: [], updatedAt: "2026-11-22T00:00:00.000Z" });
     const updateMetadata = vi.spyOn(usePromptStore.getState(), "updatePrompt").mockResolvedValue();
     chatCompletionMock.mockResolvedValue({ content: '{"title":"Tracking shot"}' });
     await renderWithI18n(
@@ -118,7 +118,7 @@ describe("QuickAddModal", () => {
       userPrompt: "A slow tracking shot.", promptType: "video", images: ["ref.png"], videos: ["clip.mp4"],
     })));
     await waitFor(() => expect(updateMetadata).toHaveBeenCalledWith("tracking-shot",
-      expect.objectContaining({ title: "Tracking shot" })));
+      expect.objectContaining({ title: "Tracking shot" }), expect.objectContaining({ title: "A slow tracking shot." })));
     expect(updateMetadata.mock.calls[0][1]).not.toHaveProperty("promptType");
   });
 

@@ -1,3 +1,4 @@
+import { capturePromptUpdateCondition } from "@prompthub/shared/utils/prompt-update-condition";
 import { useAnalysisFeedback } from "./useAnalysisFeedback";
 import { AIResponseError } from "../../services/ai-failure";
 import { useTranslation } from "react-i18next";
@@ -75,7 +76,7 @@ interface PromptDetailModalProps {
 export function PromptDetailModal({
   isOpen,
   onClose,
-  prompt,
+  prompt: initialPrompt,
   onCopy,
   onEdit,
   onQuickRewriteEdit,
@@ -99,11 +100,10 @@ export function PromptDetailModal({
   const [isQuickRewriteOpen, setIsQuickRewriteOpen] = useState(false);
   const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
-  const [reanalyzedMetadata, setReanalyzedMetadata] = useState<{
-    id: string;
-    title: string;
-    tags: string[];
-  } | null>(null);
+  const cachedPrompt = usePromptStore((state) =>
+    initialPrompt ? state.promptDetailCache[initialPrompt.id] : undefined,
+  );
+  const prompt = cachedPrompt ?? initialPrompt;
   const reanalysisInFlightRef = useRef(false);
   const feedbackTimersRef = useRef<
     Record<string, ReturnType<typeof setTimeout> | null>
@@ -166,10 +166,6 @@ export function PromptDetailModal({
   useEffect(() => {
     setIsRelationshipModalOpen(false);
   }, [isOpen, prompt?.id]);
-
-  useEffect(() => {
-    setReanalyzedMetadata(null);
-  }, [prompt?.id]);
 
   const sanitizeSchema: any = useMemo(() => {
     const schema = {
@@ -301,6 +297,7 @@ export function PromptDetailModal({
           usePromptStore.getState().prompts.flatMap((item) => item.tags || []),
         ),
       ].sort();
+      const expected = capturePromptUpdateCondition(prompt);
       const result = await chatCompletion(
         analysisConfig,
         [
@@ -324,12 +321,7 @@ export function PromptDetailModal({
         await usePromptStore.getState().updatePrompt(prompt.id, {
           title: parsed.title,
           tags: parsed.tags,
-        });
-        setReanalyzedMetadata({
-          id: prompt.id,
-          title: parsed.title,
-          tags: parsed.tags,
-        });
+        }, expected);
         showToast(t("quickAdd.reanalysisSucceeded"), "success");
       });
     } catch (error) {
@@ -339,14 +331,6 @@ export function PromptDetailModal({
       setIsReanalyzing(false);
     }
   };
-  const displayedTitle =
-    reanalyzedMetadata?.id === prompt.id
-      ? reanalyzedMetadata.title
-      : prompt.title;
-  const displayedTags =
-    reanalyzedMetadata?.id === prompt.id
-      ? reanalyzedMetadata.tags
-      : prompt.tags;
   const relationshipPrompt =
     prompts.find((candidate) => candidate.id === prompt.id) ?? prompt;
   const promptSourceHref = resolvePromptMarkdownHref(prompt.source);
@@ -412,13 +396,13 @@ export function PromptDetailModal({
     if (!prompt) return;
 
     const data = {
-      name: displayedTitle,
+      name: prompt.title,
       description: prompt.description,
       userPrompt: prompt.userPrompt,
       systemPrompt: prompt.systemPrompt,
       userPromptEn: prompt.userPromptEn,
       systemPromptEn: prompt.systemPromptEn,
-      tags: displayedTags,
+      tags: prompt.tags,
       variables: allVariables,
       source: "prompthub",
       version: "1.0",
@@ -560,7 +544,7 @@ export function PromptDetailModal({
         setIsFullscreen(false);
         onClose();
       }}
-      title={displayedTitle}
+      title={prompt.title}
       size={isFullscreen ? "fullscreen" : "xl"}
       headerActions={headerActions}
     >
@@ -695,13 +679,13 @@ export function PromptDetailModal({
         )}
 
         {/* 标签 */}
-        {displayedTags && displayedTags.length > 0 && (
+        {prompt.tags && prompt.tags.length > 0 && (
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2">
               {t("prompt.tags")}
             </h4>
             <div className="flex flex-wrap gap-2">
-              {displayedTags.map((tag) => (
+              {prompt.tags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs"
