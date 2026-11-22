@@ -151,7 +151,7 @@ describe("quick add background analysis", () => {
       });
       expect(
         await screen.findByText(
-          response === "network-error" ? "Model request failed. Check the connection and model settings." : "The model returned no usable result. Generate again.",
+          response === "network-error" ? "Prompt saved. Model request failed. Check the connection and model settings." : "Prompt saved. The model returned no usable result. Generate again.",
         ),
       ).toBeInTheDocument();
       expect(screen.getByRole("textbox")).toHaveValue("Next unsaved prompt");
@@ -162,6 +162,12 @@ describe("quick add background analysis", () => {
         }),
       );
       expect(update).not.toHaveBeenCalled();
+      if (response === "{}") {
+        completion.mockResolvedValueOnce({content: '{"title":"Recovered","tags":["tag"]}'});
+        fireEvent.click(screen.getByRole("button", {name: "Retry analysis"}));
+        await waitFor(() => expect(update).toHaveBeenCalledWith("saved", expect.objectContaining({title:"Recovered"})));
+        expect(create).toHaveBeenCalledTimes(1);
+      }
     },
   );
 

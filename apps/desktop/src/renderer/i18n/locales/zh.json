@@ -3929,6 +3929,8 @@
     "rememberFailed": "无法保存此选择，请重试。"
   },
   "analysisFeedback": {
+    "saved": "原文已保存。{{reason}}",
+    "retry": "重新分析",
     "answer": "模型未返回可用结果，请重新生成。",
     "credentials": "模型服务拒绝访问，请检查密钥及权限。",
     "endpoint": "模型接口未找到，请检查 API 地址和模型配置。",

@@ -276,24 +276,24 @@ function QuickAddDialog({
         }
 
         await feedback.save(async () => {
-        const createdPrompt = await onCreate({
-          title: generatedDraft.title,
-          userPrompt: generatedDraft.userPrompt,
-          systemPrompt: generatedDraft.systemPrompt,
-          description: generatedDraft.description,
-          folderId: resolveMatchedFolderId(generatedDraft.suggestedFolder),
-          promptType: generatedDraft.promptType,
-          ...(media.images.length ? { images: media.images } : {}),
-          ...(media.videos.length ? { videos: media.videos } : {}),
-          tags: generatedDraft.tags,
-        });
+          const createdPrompt = await onCreate({
+            title: generatedDraft.title,
+            userPrompt: generatedDraft.userPrompt,
+            systemPrompt: generatedDraft.systemPrompt,
+            description: generatedDraft.description,
+            folderId: resolveMatchedFolderId(generatedDraft.suggestedFolder),
+            promptType: generatedDraft.promptType,
+            ...(media.images.length ? { images: media.images } : {}),
+            ...(media.videos.length ? { videos: media.videos } : {}),
+            tags: generatedDraft.tags,
+          });
 
-        if (!canApplyAsyncResult(generateSession)) {
-          return;
-        }
+          if (!canApplyAsyncResult(generateSession)) {
+            return;
+          }
 
-        if (!createdPrompt) throw new Error("Creation failed");
-        onClose();
+          if (!createdPrompt) throw new Error("Creation failed");
+          onClose();
         });
       } catch (err) {
         if (!canApplyAsyncResult(generateSession)) {
@@ -331,34 +331,37 @@ function QuickAddDialog({
     if (canApplyAsyncResult(session)) onClose();
 
     // Each invocation keeps its own input and record ID across modal reopenings.
-    let parsedResult;
-    try {
-      const analysisPrompt = buildQuickAddAnalysisPrompt(promptText, {
-        folderNames,
-        tagsString,
-      });
-      const aiResult = await chatCompletion(
-        analysisConfig,
-        [{ role: "user", content: analysisPrompt }],
-        { temperature: 0.3 },
-      );
+    const analyzeSavedPrompt = async () => {
+      let parsedResult;
+      try {
+        const analysisPrompt = buildQuickAddAnalysisPrompt(promptText, {
+          folderNames,
+          tagsString,
+        });
+        const aiResult = await chatCompletion(
+          analysisConfig,
+          [{ role: "user", content: analysisPrompt }],
+          { temperature: 0.3 },
+        );
 
-      parsedResult = parseQuickAddAnalysisResult(aiResult.content);
-      if (!parsedResult) throw new AIResponseError("Missing title");
-    } catch (err) {
-      feedback.report(err);
-      return;
-    }
+        parsedResult = parseQuickAddAnalysisResult(aiResult.content);
+        if (!parsedResult) throw new AIResponseError("Missing title");
+      } catch (err) {
+        feedback.report(err, {saved: true, retry: () => void analyzeSavedPrompt()});
+        return;
+      }
 
-    await feedback.save(async () => {
-      await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-        title: parsedResult.title,
-        systemPrompt: parsedResult.systemPrompt,
-        description: parsedResult.description,
-        folderId: resolveMatchedFolderId(parsedResult.suggestedFolder),
-        tags: parsedResult.tags,
-      });
-    }, t("quickAdd.analysisSaveFailed", { title }));
+      await feedback.save(async () => {
+        await usePromptStore.getState().updatePrompt(createdPrompt.id, {
+          title: parsedResult.title,
+          systemPrompt: parsedResult.systemPrompt,
+          description: parsedResult.description,
+          folderId: resolveMatchedFolderId(parsedResult.suggestedFolder),
+          tags: parsedResult.tags,
+        });
+      }, t("quickAdd.analysisSaveFailed", { title }));
+    };
+    await analyzeSavedPrompt();
   };
 
   if (!isOpen) return null;

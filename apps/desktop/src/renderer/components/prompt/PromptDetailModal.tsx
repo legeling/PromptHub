@@ -321,19 +321,19 @@ export function PromptDetailModal({
         throw new AIResponseError("Missing title");
 
       await feedback.save(async () => {
-      await usePromptStore.getState().updatePrompt(prompt.id, {
-        title: parsed.title,
-        tags: parsed.tags,
-      });
-      setReanalyzedMetadata({
-        id: prompt.id,
-        title: parsed.title,
-        tags: parsed.tags,
-      });
-      showToast(t("quickAdd.reanalysisSucceeded"), "success");
+        await usePromptStore.getState().updatePrompt(prompt.id, {
+          title: parsed.title,
+          tags: parsed.tags,
+        });
+        setReanalyzedMetadata({
+          id: prompt.id,
+          title: parsed.title,
+          tags: parsed.tags,
+        });
+        showToast(t("quickAdd.reanalysisSucceeded"), "success");
       });
     } catch (error) {
-      feedback.report(error, onClose);
+      feedback.report(error, {close: onClose});
     } finally {
       reanalysisInFlightRef.current = false;
       setIsReanalyzing(false);

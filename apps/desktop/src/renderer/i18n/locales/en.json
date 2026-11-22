@@ -3929,6 +3929,8 @@
     "rememberFailed": "Could not save this choice. Please try again."
   },
   "analysisFeedback": {
+    "saved": "Prompt saved. {{reason}}",
+    "retry": "Retry analysis",
     "answer": "The model returned no usable result. Generate again.",
     "credentials": "Model access was denied. Check credentials and permissions.",
     "endpoint": "Model endpoint not found. Check the API address and model.",

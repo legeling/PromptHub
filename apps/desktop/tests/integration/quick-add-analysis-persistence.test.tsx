@@ -144,7 +144,7 @@ it("persists concurrent quick additions, isolates failure, and retains results a
   fireEvent.click(screen.getByText("Open quick add"));
   await submit("Failed analysis content");
   await screen.findByText(
-    "The model returned no usable result. Generate again.",
+    "Prompt saved. The model returned no usable result. Generate again.",
   );
   const failedPrompt = (await promptApi.getAll()).find(
     (prompt) => prompt.userPrompt === "Failed analysis content",

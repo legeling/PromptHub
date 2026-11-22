@@ -6,16 +6,26 @@ import { useToast } from "../ui/Toast";
 export function useAnalysisFeedback() {
   const { showToast } = useToast();
   const { t } = useTranslation();
-  function report(error: unknown, close?: () => void) {
+  function report(error: unknown, options: { close?: () => void; retry?: () => void; saved?: boolean } = {}) {
     const key = analysisFailureKey(error);
-    const settings = ["endpoint", "credentials", "request"].includes(key);
-    showToast(t(`analysisFeedback.${key}`), "error", true, settings ? {
-      label: t("analysisFeedback.settings"),
-      run: () => {
-        close?.();
-        useUIStore.getState().requestSettingsSection("ai");
-      },
-    } : undefined);
+    const reason = t(`analysisFeedback.${key}`);
+    const message = options.saved ? t("analysisFeedback.saved", { reason }) : reason;
+    if (["endpoint", "credentials", "request"].includes(key)) {
+      showToast(message, "error", true, {
+        label: t("analysisFeedback.settings"),
+        run: () => {
+          options.close?.();
+          useUIStore.getState().requestSettingsSection("ai");
+        },
+      });
+    } else if (options.retry) {
+      showToast(message, "error", true, {
+        label: t("analysisFeedback.retry"),
+        run: options.retry,
+      });
+    } else {
+      showToast(message, "error");
+    }
   }
 
   async function save(write: () => Promise<void>, message = t("analysisFeedback.save")) {
