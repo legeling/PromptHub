@@ -29,35 +29,41 @@ export function PromptEditScreen() {
   const [saving, setSaving] = useState(false);
 
   const isEditing = !!id;
+  const [loadedId, setLoadedId] = useState<string>();
+  const [loadError, setLoadError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const ready = !id || loadedId === id;
 
   useEffect(() => {
     let mounted = true;
+    setLoadedId(undefined);
+    setLoadError("");
     if (id) {
       void promptRepository
         .getById(id)
         .then((data) => {
-          if (mounted && data) {
+          if (!mounted) return;
+          if (data) {
+            setLoadedId(id);
             setTitle(data.title);
             setDescription(data.description || "");
             setSystemPrompt(data.systemPrompt || "");
             setUserPrompt(data.userPrompt);
-          }
+          } else setLoadError("prompts.workflow.notFound");
         })
         .catch(() => {
           if (mounted) {
-            showPlatformAlert(
-              t("prompts.workflow.loadErrorTitle"),
-              t("prompts.workflow.loadError"),
-            );
+            setLoadError("prompts.workflow.loadError");
           }
         });
     }
     return () => {
       mounted = false;
     };
-  }, [id, t]);
+  }, [id, attempt]);
 
   const handleSave = async () => {
+    if (!ready || saving) return;
     if (!title.trim() || !hasPromptContent({ systemPrompt, userPrompt })) {
       showPlatformAlert(
         t("prompts.workflow.validationTitle"),
@@ -94,6 +100,16 @@ export function PromptEditScreen() {
       setSaving(false);
     }
   };
+
+  if (!ready) {
+    return <AppScreen>
+      <Stack.Screen options={{ title: t("prompts.workflow.editTitle"), headerRight: () => null }} />
+      <AppText>{loadError ? t(loadError) : t("prompts.workflow.loading")}</AppText>
+      {loadError && <Pressable accessibilityRole="button" onPress={() => setAttempt(value => value + 1)}>
+        <AppText>{t("prompts.workflow.retry")}</AppText>
+      </Pressable>}
+    </AppScreen>;
+  }
 
   return (
     <AppScreen>
