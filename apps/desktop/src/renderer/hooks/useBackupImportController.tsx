@@ -16,6 +16,7 @@ import {
   createUpgradeBackup,
   restoreUpgradeBackup,
 } from "../services/upgrade-backup";
+import { useUIStore } from "../stores/ui.store";
 import { isWebRuntime } from "../runtime";
 
 export interface BackupImportPreviewState {
@@ -128,16 +129,18 @@ export function useBackupImportController() {
       setImportPreview(null);
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
-      console.error("Import failed:", error);
       if (safetyBackupId) {
-        try {
-          const rollback = await restoreUpgradeBackup(safetyBackupId);
-          if (!rollback.success) {
-            console.error("Import rollback failed:", rollback.error);
-          }
-        } catch (rollbackError) {
-          console.error("Import rollback failed:", rollbackError);
+        const rollback = await restoreUpgradeBackup(safetyBackupId).catch(() => null);
+        setImportPreview(null);
+        if (!rollback?.success) {
+          showToast(t("toast.importRollbackFailed"), "error", true, {
+            label: t("settings.data"),
+            run: () => useUIStore.getState().requestSettingsSection("data"),
+          });
+        } else {
+          showToast(t(rollback.needsRestart ? "toast.importRollbackRestart" : "toast.importRolledBack"), "error");
         }
+        return;
       }
       showToast(
         `${t("toast.importFailed")}: ${formatBackupImportError(error)}`,

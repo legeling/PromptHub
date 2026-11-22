@@ -3880,6 +3880,9 @@
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
   },
   "toast": {
+    "importRollbackFailed": "Import and automatic snapshot recovery failed. Review the current data and local snapshots before importing again.",
+    "importRollbackRestart": "Import failed. Restart the app to finish snapshot recovery.",
+    "importRolledBack": "Import failed. The safety snapshot was restored.",
     "backupConflict": "Backup conflict: another client updated the remote backup.",
     "exportSuccess": "Data exported successfully",
     "exportFailed": "Export failed",

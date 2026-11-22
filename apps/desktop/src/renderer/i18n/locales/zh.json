@@ -3880,6 +3880,9 @@
     "sha512Desc": "SHA512 校验失败。\n这通常是由于 CDN 缓存不一致或网络劫持导致的。\n文件可能已下载完成，您可以尝试手动安装。"
   },
   "toast": {
+    "importRollbackFailed": "导入和自动恢复快照均失败。请在数据设置中核对当前数据和本地快照，再决定是否重新导入。",
+    "importRollbackRestart": "导入失败。请重启应用以完成快照恢复。",
+    "importRolledBack": "导入失败，已恢复导入前的安全快照。",
     "backupConflict": "备份冲突：其他客户端已更新远端备份。",
     "exportSuccess": "数据导出成功",
     "exportFailed": "导出失败",

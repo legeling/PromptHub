@@ -256,7 +256,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       .__PROMPTHUB_WEB__;
   });
 
-  it("imports a backup file through the import action with preview confirmation", async () => {
+  it.each(["success", "rollback rejected", "rollback returned failure"])("imports through preview: %s", async (outcome) => {
     const showToast = vi.fn();
     useToastMock.mockReturnValue({ showToast });
     vi.mocked(previewImportFile).mockResolvedValue({
@@ -311,6 +311,11 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       versions: 0,
     });
 
+    if (outcome !== "success") {
+      vi.mocked(restoreFromFile).mockRejectedValueOnce(new Error("private path"));
+      if (outcome === "rollback rejected") vi.mocked(restoreUpgradeBackup).mockRejectedValueOnce(new Error("private path"));
+      else vi.mocked(restoreUpgradeBackup).mockResolvedValueOnce({success: false, needsRestart: false});
+    }
     let input = originalCreateElement("input");
 
     await act(async () => {
@@ -359,6 +364,12 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       expect(createUpgradeBackup).toHaveBeenCalled();
     });
     expect(restoreFromFile).toHaveBeenCalledWith(file);
+    if (outcome !== "success") {
+      expect(restoreUpgradeBackup).toHaveBeenCalledWith("backup-1");
+      expect(showToast).toHaveBeenCalledWith(expect.stringContaining("Import and automatic snapshot recovery failed"), "error", true, expect.objectContaining({run: expect.any(Function)}));
+      expect(screen.queryByText("Review import summary")).toBeNull();
+      return;
+    }
     expect(showToast).toHaveBeenCalledWith(
       "Data imported successfully",
       "success",
