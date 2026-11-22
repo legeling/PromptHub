@@ -15,6 +15,8 @@
 
 最新安定版は `0.6.3` です（2026-11-21 公開）。
 
+[ローカル検証用プレビュー候補](<../spec/releases/0.6.4-beta.1.md>) · `0.6.4-beta.1`
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

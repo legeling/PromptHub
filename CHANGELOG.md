@@ -4,6 +4,23 @@
 
 后续改动将记录于此。 / Changes after 0.6.3 will be recorded here.
 
+## [0.6.4-beta.1]
+
+### 问题修复 / Fixes
+
+- 快速添加和详情页重新解析失败时，会区分模型连接、回答格式和本地保存问题。可按提示检查模型设置、重新生成或单独重试保存；较早的结果不会覆盖后来保存的标题和标签。
+  - Quick Add and prompt details distinguish model connection, response format and local save errors. Follow the message to check settings, generate again or retry saving. Earlier results preserve later title and tag edits.
+- 当模型在有效回答前写出含花括号的说明时，仍可从回答中提取标题和标签。
+  - Titles and tags can be read from a valid model response even when its introduction contains braces.
+- 批量修改提示词或插件标签时，部分失败会保留失败项，可只重试这些条目。
+  - When a batch tag edit partly succeeds, retry just the prompts or plugins that failed.
+- 导入数据失败且安全快照也未能恢复时，桌面端会提示核对当前数据，并提供数据设置入口。
+  - If an import and its automatic snapshot recovery both fail, the desktop app prompts you to check your data and opens data settings on request.
+- 移动端编辑已有提示词时，读到原记录后才开放编辑和保存。读取失败可以重试，避免空表单覆盖原有内容。
+  - On mobile, editing and saving become available once the existing prompt has loaded. A failed read can be retried safely.
+- 自部署 Web 备份会区分输入无效、备份版本冲突和服务端存储故障；Cloudflare 版注册遇到数据库故障时会提示服务暂不可用。
+  - Self-hosted Web backups distinguish invalid input, version conflicts and server storage failures. Cloudflare registration reports temporary unavailability when its database fails.
+
 ## [0.6.3] - 2026-11-21
 
 ### 新功能与改进 / Features and improvements

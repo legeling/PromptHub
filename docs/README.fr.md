@@ -15,6 +15,8 @@ Un espace de travail local-first pour les prompts, les skills et les assets de c
 
 La dernière version stable est `0.6.3`, publiée le 2026-11-21.
 
+[Version candidate en test local](<../spec/releases/0.6.4-beta.1.md>) · `0.6.4-beta.1`
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

@@ -15,6 +15,8 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 
 La última versión estable es `0.6.3`, publicada el 2026-11-21.
 
+[Versión preliminar en pruebas locales](<../spec/releases/0.6.4-beta.1.md>) · `0.6.4-beta.1`
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)

@@ -15,6 +15,8 @@ Ein Local-First-Arbeitsbereich für Prompts, Skills und KI-Coding-Assets.
 
 Die aktuelle stabile Version ist `0.6.3`, veröffentlicht am 2026-11-21.
 
+[Lokaler Vorschaukandidat](<../spec/releases/0.6.4-beta.1.md>) · `0.6.4-beta.1`
+
   <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
