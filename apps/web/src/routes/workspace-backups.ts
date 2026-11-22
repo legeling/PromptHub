@@ -1,4 +1,5 @@
 import {
+  InvalidWorkspacePublication,
   validateWorkspacePublication,
   retainPreviousWorkspaceManifest,
   pruneWorkspaceHistory,
@@ -21,7 +22,7 @@ function target(userId: string, name: string): string {
     name !== "manifest.json" &&
     !/^data\.json\.workspace-[a-f0-9-]{36}-[0-9]+-[a-f0-9]{64}$/.test(name)
   )
-    throw new Error("Invalid workspace object name");
+    throw new InvalidWorkspacePublication("Invalid workspace object name");
   const root = getBackupsDir();
   const file = path.join(
     root,
@@ -37,21 +38,28 @@ export function listWorkspaceBackups(
 ): ReturnType<typeof listWorkspaceHistory> {
   return listWorkspaceHistory(path.dirname(target(userId, "manifest.json")));
 }
+function readIfPresent(file: string): Buffer | null {
+  try {
+    return fs.readFileSync(file);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 function etag(content: Buffer): string {
   return `"${createHash("sha256").update(content).digest("hex")}"`;
 }
 workspaceBackups.get("/:name", (c) => {
   try {
     const file = target(getAuthUser(c).userId, c.req.param("name"));
-    if (!fs.existsSync(file)) return c.text("Not found", 404);
-    const content = fs.readFileSync(file);
+    const content = readIfPresent(file);
+    if (!content) return c.text("Not found", 404);
     c.header("ETag", etag(content));
     return c.text(content.toString("utf8"));
   } catch (error) {
-    return c.text(
-      error instanceof Error ? error.message : "Invalid backup",
-      400,
-    );
+    if (error instanceof InvalidWorkspacePublication) return c.text(error.message, 400);
+    return c.text("Workspace backup storage unavailable", 500);
   }
 });
 workspaceBackups.put("/:name", async (c) => {
@@ -62,7 +70,7 @@ workspaceBackups.put("/:name", async (c) => {
   let temporary: string | undefined;
   try {
     const file = target(getAuthUser(c).userId, c.req.param("name"));
-    const previous = fs.existsSync(file) ? fs.readFileSync(file) : null;
+    const previous = readIfPresent(file);
     if (
       (c.req.header("If-None-Match") === "*" && previous) ||
       (c.req.header("If-Match") &&
@@ -87,6 +95,7 @@ workspaceBackups.put("/:name", async (c) => {
       fs.closeSync(fd);
     }
     fs.renameSync(temporary, file);
+    temporary = undefined;
     fsyncDirectory(path.dirname(file));
     if (manifest) {
       try {
@@ -98,12 +107,13 @@ workspaceBackups.put("/:name", async (c) => {
     c.header("ETag", etag(Buffer.from(input.bytes)));
     return c.text("Stored");
   } catch (error) {
-    return c.text(
-      error instanceof Error ? error.message : "Backup storage failed",
-      400,
-    );
+    if (error instanceof InvalidWorkspacePublication) return c.text(error.message, 400);
+    return c.text("Workspace backup storage unavailable", 500);
   } finally {
-    if (temporary) fs.rmSync(temporary, { force: true });
+    if (temporary) {
+      try { fs.rmSync(temporary, { force: true }); }
+      catch { console.warn("Failed to remove temporary workspace backup"); }
+    }
   }
 });
 workspaceBackups.delete("/:name", (c) => {
@@ -114,9 +124,7 @@ workspaceBackups.delete("/:name", (c) => {
     fs.rmSync(file, { force: true });
     return c.text("Deleted");
   } catch (error) {
-    return c.text(
-      error instanceof Error ? error.message : "Backup deletion failed",
-      400,
-    );
+    if (error instanceof InvalidWorkspacePublication) return c.text(error.message, 400);
+    return c.text("Workspace backup storage unavailable", 500);
   }
 });

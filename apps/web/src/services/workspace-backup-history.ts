@@ -9,6 +9,8 @@ import { assertStoragePathComponentsSafe } from "@prompthub/core/runtime-storage
 import { DEFAULT_DESKTOP_BACKUP_RETENTION } from "./desktop-backup-store.js";
 import { writeJsonFileAtomicExclusive } from "./atomic-json-file.js";
 
+export class InvalidWorkspacePublication extends Error {}
+
 function historyFiles(root: string): string[] {
   const directory = path.join(root, "history");
   assertStoragePathComponentsSafe(root, directory);
@@ -29,15 +31,20 @@ export function validateWorkspacePublication(
   content: Buffer,
 ): WorkspaceBackupManifest {
   const manifest = parseWorkspaceBackupManifest(content.toString("utf8"));
-  if (!manifest) throw new Error("Invalid workspace manifest");
+  if (!manifest) throw new InvalidWorkspacePublication("Invalid workspace manifest");
   for (const chunk of manifest.chunks) {
     const file = path.join(root, `data.json.workspace-${chunk.objectId}`);
     assertStoragePathComponentsSafe(root, file);
-    if (
-      createHash("sha256").update(fs.readFileSync(file)).digest("hex") !==
-      chunk.hash
-    )
-      throw new Error("Workspace backup chunk integrity failed");
+    let bytes: Buffer;
+    try {
+      bytes = fs.readFileSync(file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT")
+        throw new InvalidWorkspacePublication("Missing workspace backup chunk");
+      throw error;
+    }
+    if (createHash("sha256").update(bytes).digest("hex") !== chunk.hash)
+      throw new InvalidWorkspacePublication("Workspace backup chunk integrity failed");
   }
   return manifest;
 }

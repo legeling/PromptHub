@@ -63,6 +63,11 @@ it("publishes verified opaque chunks with tenant isolation, conflicts and retain
       })
     ).status,
   ).toBe(404);
+  const failedWrite = vi.spyOn(fs, "writeFileSync").mockImplementationOnce(() => { throw new Error("private/server/path"); });
+  const unavailable = await put("manifest.json", JSON.stringify(manifest));
+  failedWrite.mockRestore();
+  expect(unavailable.status).toBe(500);
+  expect(await unavailable.text()).toBe("Workspace backup storage unavailable");
   const read = await app.request("/manifest.json");
   expect(JSON.parse(await read.text())).toEqual(manifest);
   expect(
