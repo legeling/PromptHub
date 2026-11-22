@@ -66,6 +66,7 @@ describe("auth captcha", () => {
   });
 
   it("registers and logs in without captcha when captcha is disabled", async () => {
+    let storageUnavailable = true;
     let storedUser: {
       id: string;
       password_hash: string;
@@ -96,6 +97,11 @@ describe("auth captcha", () => {
           }),
           run: vi.fn(async () => {
             if (sql.includes("INSERT INTO users")) {
+              if (storageUnavailable) {
+                storageUnavailable = false;
+                throw new Error("private database detail");
+              }
+              if (storedUser) return { success: true, meta: { changes: 0 } };
               storedUser = {
                 id: String(args[0]),
                 username: String(args[1]),
@@ -103,7 +109,7 @@ describe("auth captcha", () => {
                 role: args[3] as "admin" | "user",
               };
             }
-            return { success: true };
+            return { success: true, meta: { changes: 1 } };
           }),
         }),
       })),
@@ -113,13 +119,13 @@ describe("auth captcha", () => {
       AUTH_CAPTCHA_ENABLED: "false",
       DB: db,
       JWT_SECRET: "test-secret-for-disabled-captcha-auth-flow",
-      ALLOW_REGISTRATION: "false",
+      ALLOW_REGISTRATION: "true",
       ACCESS_TOKEN_TTL_SECONDS: "86400",
       MEDIA: {} as R2Bucket,
       ASSETS: { fetch: vi.fn() } as Fetcher,
     };
 
-    const registerResponse = await app.request(
+    const register = () => app.request(
       "https://example.com/api/auth/register",
       {
         method: "POST",
@@ -131,7 +137,11 @@ describe("auth captcha", () => {
       },
       env,
     );
-    expect(registerResponse.status).toBe(201);
+    const unavailable = await register();
+    expect(unavailable.status).toBe(503);
+    expect(await unavailable.text()).not.toContain("private database detail");
+    expect((await register()).status).toBe(201);
+    expect((await register()).status).toBe(409);
 
     const loginResponse = await app.request(
       "https://example.com/api/auth/login",

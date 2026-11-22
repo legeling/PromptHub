@@ -336,12 +336,17 @@ export async function register(c: Context<{ Bindings: Env }>): Promise<Response>
   const role = users === 0 ? "admin" : "user";
 
   try {
-    await c.env.DB
-      .prepare("INSERT INTO users (id, username, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(id, username, passwordHash, role, timestamp, timestamp)
-      .run();
+    const inserted = await c.env.DB.prepare(
+      `INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(username) DO NOTHING
+       ON CONFLICT(LOWER(username)) DO NOTHING`,
+    ).bind(id, username, passwordHash, role, timestamp, timestamp).run();
+    if (!inserted.success) throw new Error("Registration storage unavailable");
+    if (inserted.meta.changes === 0)
+      return failure(c, 409, ErrorCode.CONFLICT, "Username already exists");
   } catch {
-    return failure(c, 409, ErrorCode.CONFLICT, "Username already exists");
+    return failure(c, 503, ErrorCode.INTERNAL_ERROR, "Registration temporarily unavailable");
   }
 
   const result = await signSession(c.env, { userId: id, username, role });
