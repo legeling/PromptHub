@@ -16,6 +16,7 @@ interface ModalProps {
   contentClassName?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "full" | "fullscreen";
   showCloseButton?: boolean;
+  disableBackgroundInteraction?: boolean;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
@@ -51,6 +52,7 @@ export function Modal({
   contentClassName,
   size = "md",
   showCloseButton = true,
+  disableBackgroundInteraction = false,
   closeOnBackdrop = true,
   closeOnEscape = true,
   onKeyDown,
@@ -126,7 +128,13 @@ export function Modal({
         ? document.activeElement
         : null;
 
+    // The dialog and actionable notifications are both portaled outside the app root.
+    const background = disableBackgroundInteraction ? document.getElementById("root") : null;
+    const wasInert = background?.inert ?? false;
+    if (background) background.inert = true;
+
     return () => {
+      if (background) background.inert = wasInert;
       const previousFocus = previousFocusRef.current;
       const modal = modalRef.current;
       const activeElement = document.activeElement;
@@ -142,7 +150,7 @@ export function Modal({
 
       previousFocusRef.current = null;
     };
-  }, [isOpen]);
+  }, [isOpen, disableBackgroundInteraction]);
 
   useEffect(() => {
     if (!isOpen || !shouldRender) {

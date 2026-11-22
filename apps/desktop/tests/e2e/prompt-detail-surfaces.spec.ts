@@ -204,6 +204,15 @@ test("compact detail keeps content aligned and editable in both themes", async (
         .getByText("You are a careful SRE assistant.", { exact: true })
         .locator("..");
       await expect(modalNotes).toBeVisible();
+      const close = dialog.getByRole("button", { name: "Close", exact: true });
+      await close.focus();
+      for (const key of ["Tab", "Shift+Tab"]) {
+        const count = await dialog.locator("button:visible, a[href]:visible").count();
+        for (let index = 0; index < count + 3; index++) {
+          await page.keyboard.press(key);
+          expect(await page.evaluate(() => !!document.activeElement?.closest("#root"))).toBe(false);
+        }
+      }
       expect(await surface(modalNotes)).toEqual(await surface(modalSource));
       expect(await surface(modalNotes)).toEqual(await surface(modalBody));
       await page.keyboard.press("Escape");

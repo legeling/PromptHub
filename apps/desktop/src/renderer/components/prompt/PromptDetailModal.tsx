@@ -539,6 +539,7 @@ export function PromptDetailModal({
 
   return (
     <Modal
+      disableBackgroundInteraction
       isOpen={isOpen}
       onClose={() => {
         setIsFullscreen(false);
