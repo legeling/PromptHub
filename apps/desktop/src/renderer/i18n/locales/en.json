@@ -3923,6 +3923,17 @@
     "rememberChoice": "Remember my choice",
     "rememberFailed": "Could not save this choice. Please try again."
   },
+  "analysisFeedback": {
+    "answer": "The model returned no usable result. Generate again.",
+    "credentials": "Model access was denied. Check credentials and permissions.",
+    "endpoint": "Model endpoint not found. Check the API address and model.",
+    "limited": "Model rate limit reached. Try again later.",
+    "timeout": "The model request timed out. Try again later.",
+    "request": "Model request failed. Check the connection and model settings.",
+    "settings": "Check model settings",
+    "save": "Generated changes could not be saved.",
+    "retrySave": "Retry save"
+  },
   "quickAdd": {
     "savedAnalysisFailed": "\"{{title}}\" was saved, but AI analysis failed. Open this Prompt to retry its title and tags, or edit them manually.",
     "reanalyzeTitleAndTags": "Reanalyze title and tags",

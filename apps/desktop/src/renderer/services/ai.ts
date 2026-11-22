@@ -1,3 +1,4 @@
+import { AIHttpError, AIResponseError } from "./ai-failure";
 import {
   createStreamState,
   processStreamTextChunk,
@@ -192,7 +193,7 @@ export async function chatCompletion(
     });
 
     if (!response.ok) {
-      throw new Error(await getErrorMessageFromResponse(response));
+      throw new AIHttpError(response.status, await getErrorMessageFromResponse(response));
     }
 
     const data = await response.json<{
@@ -204,7 +205,7 @@ export async function chatCompletion(
       .join("");
 
     if (!content) {
-      throw new Error("AI returned an unexpected response format");
+      throw new AIResponseError("Unexpected response");
     }
 
     return {
@@ -328,7 +329,7 @@ export async function chatCompletion(
       if (streamState.error) throw new Error(streamState.error);
       if (!response.ok) {
         if (receivedStreamDelta)
-          throw new Error(
+          throw new AIHttpError(response.status,
             await getErrorMessageFromResponse(createResponseLike(response)),
           );
         return { response: createResponseLike(response) };
@@ -457,7 +458,7 @@ export async function chatCompletion(
         retried.thinking = true;
         body.enable_thinking = false;
       } else {
-        throw new Error(errorMessage);
+        throw new AIHttpError(response.status, errorMessage);
       }
       requestResult = await sendRequest();
       response = requestResult.response;
@@ -468,14 +469,14 @@ export async function chatCompletion(
     }
 
     if (!response) {
-      throw new Error("AI 返回结果为空");
+      throw new AIResponseError("Empty response");
     }
 
     // 非流式响应 / Non-streaming response
     const data: ChatCompletionResponse = await response.json();
 
     if (!data.choices || data.choices.length === 0) {
-      throw new Error("AI 返回结果为空");
+      throw new AIResponseError("Empty response");
       // AI returned empty result
     }
 

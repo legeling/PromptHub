@@ -8,7 +8,10 @@ import { MOTION_DURATION } from '../../styles/motion-tokens';
 // Toast 类型
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
+interface ToastAction { label: string; run: () => void }
+
 interface Toast {
+  action?: ToastAction;
   id: string;
   message: string;
   type: ToastType;
@@ -24,7 +27,7 @@ interface Toast {
 
 interface ToastContextType {
   /** Local operation feedback only; task/system events use application-notifications. */
-  showToast: (message: string, type?: ToastType, enabled?: boolean) => void;
+  showToast: (message: string, type?: ToastType, enabled?: boolean, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -67,14 +70,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     exitTimers.current.set(id, timer);
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success', enabled = true) => {
+  const showToast = useCallback((message: string, type: ToastType = 'success', enabled = true, action?: ToastAction) => {
     if (!enabled) return;
     idCounter.current += 1;
     const id = `${Date.now()}-${idCounter.current}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action }]);
 
     // Auto-dismiss after 3 seconds via the same exit-animation pipeline.
     // 3 秒后自动通过同一个退场动画管线消失。
+    if (action) return;
     const dismiss = setTimeout(() => {
       autoDismissTimers.current.delete(id);
       removeToast(id);
@@ -147,6 +151,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               {getIcon(toast.type)}
               <span className="text-sm font-semibold text-foreground">{toast.message}</span>
+              {toast.action && <button type="button" disabled={toast.leaving} onClick={() => { removeToast(toast.id); toast.action?.run(); }}>{toast.action.label}</button>}
               <button
                 type="button"
                 onClick={() => removeToast(toast.id)}

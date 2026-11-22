@@ -1,3 +1,5 @@
+import { useAnalysisFeedback } from "./useAnalysisFeedback";
+import { AIResponseError } from "../../services/ai-failure";
 import { useTranslation } from "react-i18next";
 import {
   StarIcon,
@@ -85,6 +87,7 @@ export function PromptDetailModal({
   onSelectPrompt,
 }: PromptDetailModalProps) {
   const { t, i18n } = useTranslation();
+  const feedback = useAnalysisFeedback();
   const { showToast } = useToast();
   const [copiedSystem, setCopiedSystem] = useState(false);
   const [copiedUser, setCopiedUser] = useState(false);
@@ -315,8 +318,9 @@ export function PromptDetailModal({
       );
       const parsed = parseQuickAddAnalysisResult(result.content);
       if (!parsed)
-        throw new Error("Quick Add analysis returned no usable title");
+        throw new AIResponseError("Missing title");
 
+      await feedback.save(async () => {
       await usePromptStore.getState().updatePrompt(prompt.id, {
         title: parsed.title,
         tags: parsed.tags,
@@ -327,9 +331,9 @@ export function PromptDetailModal({
         tags: parsed.tags,
       });
       showToast(t("quickAdd.reanalysisSucceeded"), "success");
+      });
     } catch (error) {
-      console.error("Failed to reanalyze saved Prompt:", error);
-      showToast(t("quickAdd.reanalysisFailed"), "error");
+      feedback.report(error, onClose);
     } finally {
       reanalysisInFlightRef.current = false;
       setIsReanalyzing(false);

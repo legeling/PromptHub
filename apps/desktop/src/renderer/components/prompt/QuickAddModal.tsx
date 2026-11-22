@@ -1,3 +1,5 @@
+import { useAnalysisFeedback } from "./useAnalysisFeedback";
+import { AIResponseError } from "../../services/ai-failure";
 import { usePromptMediaManager } from "./usePromptMediaManager";
 import { PromptReferenceImages } from "./PromptReferenceImages";
 import { PromptTypePicker } from "./PromptTypePicker";
@@ -58,6 +60,7 @@ function QuickAddDialog({
   initialMode = "analyze",
 }: QuickAddModalProps) {
   const { t } = useTranslation();
+  const feedback = useAnalysisFeedback();
   const { showToast } = useToast();
   const media = usePromptMediaManager({ isOpen, translate: (key, fallback) => t(key, fallback), showToast });
   const [picking, setPicking] = useState(false);
@@ -272,6 +275,7 @@ function QuickAddDialog({
           return;
         }
 
+        await feedback.save(async () => {
         const createdPrompt = await onCreate({
           title: generatedDraft.title,
           userPrompt: generatedDraft.userPrompt,
@@ -288,15 +292,14 @@ function QuickAddDialog({
           return;
         }
 
-        if (createdPrompt) {
-          onClose();
-        }
+        if (!createdPrompt) throw new Error("Creation failed");
+        onClose();
+        });
       } catch (err) {
         if (!canApplyAsyncResult(generateSession)) {
           return;
         }
-        console.error("AI prompt generation failed:", err);
-        showToast(t("quickAdd.analysisFailed"), "error");
+        feedback.report(err);
       } finally {
         if (canApplyAsyncResult(generateSession)) {
           setIsSubmitting(false);
@@ -341,14 +344,13 @@ function QuickAddDialog({
       );
 
       parsedResult = parseQuickAddAnalysisResult(aiResult.content);
-      if (!parsedResult) throw new Error("Quick Add analysis returned no usable title");
+      if (!parsedResult) throw new AIResponseError("Missing title");
     } catch (err) {
-      console.error("Background AI analysis failed:", err);
-      showToast(t("quickAdd.savedAnalysisFailed", { title }), "error");
+      feedback.report(err);
       return;
     }
 
-    try {
+    await feedback.save(async () => {
       await usePromptStore.getState().updatePrompt(createdPrompt.id, {
         title: parsedResult.title,
         systemPrompt: parsedResult.systemPrompt,
@@ -356,10 +358,7 @@ function QuickAddDialog({
         folderId: resolveMatchedFolderId(parsedResult.suggestedFolder),
         tags: parsedResult.tags,
       });
-    } catch (err) {
-      console.error("Failed to save Quick Add analysis:", err);
-      showToast(t("quickAdd.analysisSaveFailed", { title }), "error");
-    }
+    }, t("quickAdd.analysisSaveFailed", { title }));
   };
 
   if (!isOpen) return null;

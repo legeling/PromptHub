@@ -144,7 +144,7 @@ it("persists concurrent quick additions, isolates failure, and retains results a
   fireEvent.click(screen.getByText("Open quick add"));
   await submit("Failed analysis content");
   await screen.findByText(
-    '"Failed analysis content" was saved, but AI analysis failed. Open this Prompt to retry its title and tags, or edit them manually.',
+    "The model returned no usable result. Generate again.",
   );
   const failedPrompt = (await promptApi.getAll()).find(
     (prompt) => prompt.userPrompt === "Failed analysis content",
@@ -169,7 +169,7 @@ it("persists concurrent quick additions, isolates failure, and retains results a
     screen.getByRole("button", { name: "Reanalyze title and tags" }),
   );
   await screen.findByText(
-    "Reanalysis failed. The original Prompt is unchanged; please try again.",
+    "The model returned no usable result. Generate again.",
   );
   expect(await promptApi.get(failedPrompt.id)).toMatchObject({
     title: "Failed analysis content",

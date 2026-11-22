@@ -151,7 +151,7 @@ describe("quick add background analysis", () => {
       });
       expect(
         await screen.findByText(
-          '"Original content" was saved, but AI analysis failed. Open this Prompt to retry its title and tags, or edit them manually.',
+          response === "network-error" ? "Model request failed. Check the connection and model settings." : "The model returned no usable result. Generate again.",
         ),
       ).toBeInTheDocument();
       expect(screen.getByRole("textbox")).toHaveValue("Next unsaved prompt");
@@ -183,6 +183,11 @@ describe("quick add background analysis", () => {
       ),
     ).toBeInTheDocument();
     expect(update).toHaveBeenCalledTimes(1);
+    update.mockResolvedValueOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
+    expect(update.mock.calls[1]).toEqual(update.mock.calls[0]);
+    expect(completion).toHaveBeenCalledTimes(1);
   });
 
   it.each(["null", "throw"])(
