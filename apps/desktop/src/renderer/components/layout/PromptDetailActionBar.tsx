@@ -103,7 +103,7 @@ function PromptDetailDefaultActions() {
 export function PromptDetailActionBar() {
   const detail = usePromptWorkspaceDetailContext();
   return (
-    <div className="flex-shrink-0 border-t border-border app-wallpaper-panel-strong px-6 py-3">
+    <div className="[anchor-name:--prompt-detail-actions] flex-shrink-0 border-t border-border app-wallpaper-panel-strong px-6 py-3">
       <div className="w-full flex items-center gap-3 flex-wrap">
         {detail.isDetailInlineEditing ? (
           <PromptDetailEditActions />

@@ -169,6 +169,11 @@ test("compact detail keeps content aligned and editable in both themes", async (
       });
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(editTarget).toContainText("Updated inline.");
+      const feedback = page.getByRole("status").filter({ has: page.getByRole("button", { name: "Close" }) }).last();
+      await expect(feedback).toBeVisible();
+      const feedbackBounds = await feedback.boundingBox();
+      const copyBounds = await page.getByRole("button", { name: "Copy Prompt", exact: true }).last().boundingBox();
+      expect(feedbackBounds!.y + feedbackBounds!.height).toBeLessThan(copyBounds!.y);
       await expect
         .poll(() =>
           page.evaluate(

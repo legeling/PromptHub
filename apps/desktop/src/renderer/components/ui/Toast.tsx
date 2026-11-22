@@ -133,7 +133,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Toast container - z-index needs to be the highest to stay above everything */}
       {/* Toast 容器 - z-index 需要最高，确保在所有元素之上 */}
       {createPortal(
-        <div className="fixed bottom-6 right-6 z-[100001] flex flex-col gap-3 pointer-events-none">
+        <div style={{ bottom: "calc(anchor(--prompt-detail-actions top, 0px) + 1.5rem)" }} className="fixed bottom-6 right-6 z-[100001] flex flex-col gap-3 pointer-events-none">
           {toasts.map((toast) => (
             <div
               key={toast.id}
