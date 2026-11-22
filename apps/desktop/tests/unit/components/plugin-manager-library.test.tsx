@@ -927,8 +927,9 @@ describe("PluginManager", () => {
     });
   });
 
-  it("updates My Plugins user tags from batch mode", async () => {
+  it.each([false, true])("updates My Plugins user tags from batch mode (retry=%s)", async (retry) => {
     installPluginApiMock(installedLibrary);
+    if (retry) vi.mocked(window.api.plugin.updatePluginMetadata).mockRejectedValueOnce(new Error("disk busy"));
     usePluginStore.setState({ selectedTab: "library" });
 
     await renderPluginManager();
@@ -953,6 +954,10 @@ describe("PluginManager", () => {
         { userTags: ["finance"] },
       );
     });
+    if (retry) {
+      fireEvent.click(await within(dialog).findByRole("button", {name: "Retry failed items"}));
+      await waitFor(() => expect(window.api.plugin.updatePluginMetadata).toHaveBeenCalledTimes(2));
+    }
     expect(await screen.findByText("finance")).toBeInTheDocument();
   });
 

@@ -274,7 +274,7 @@ function useBatchTagAction(options: PluginManagerBatchActionOptions) {
           state,
         ),
     );
-    state.setSelectedLibraryPluginIds(new Set());
+    state.setSelectedLibraryPluginIds(new Set(result.failedIds));
     showToast(
       result.failed > 0
         ? t("plugin.batchTagPartialFailure", {
@@ -288,6 +288,7 @@ function useBatchTagAction(options: PluginManagerBatchActionOptions) {
           }),
       result.failed > 0 ? "error" : "success",
     );
+    return result.failed === 0;
   };
 }
 
@@ -297,18 +298,17 @@ async function updateMatchingPlugins(
   update: (plugin: PluginLibraryEntry) => Promise<void>,
 ) {
   let updated = 0;
-  let failed = 0;
+  const failedIds: string[] = [];
   for (const plugin of plugins) {
     if (!shouldUpdate(plugin)) continue;
     try {
       await update(plugin);
       updated += 1;
-    } catch (error) {
-      console.error("Failed to update Plugin metadata:", error);
-      failed += 1;
+    } catch {
+      failedIds.push(plugin.id);
     }
   }
-  return { failed, updated };
+  return { failed: failedIds.length, failedIds, updated };
 }
 
 export function usePluginManagerBatchActions(

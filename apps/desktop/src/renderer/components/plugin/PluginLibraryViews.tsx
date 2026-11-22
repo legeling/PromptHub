@@ -38,12 +38,13 @@ export function PluginBatchTagDialog({
   plugins,
 }: {
   onClose: () => void;
-  onSubmit: (tag: string, mode: PluginBatchTagMode) => Promise<void>;
+  onSubmit: (tag: string, mode: PluginBatchTagMode) => Promise<boolean>;
   plugins: PluginLibraryEntry[];
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<PluginBatchTagMode>("add");
   const [tagInput, setTagInput] = useState("");
+  const [retry, setRetry] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const suggestedTags = useMemo(
     () => collectPluginTagSuggestions(plugins),
@@ -64,8 +65,8 @@ export function PluginBatchTagDialog({
     if (!tagInput.trim()) return;
     setIsSubmitting(true);
     try {
-      await onSubmit(tagInput, mode);
-      onClose();
+      if (await onSubmit(tagInput, mode)) onClose();
+      else setRetry(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -90,6 +91,7 @@ export function PluginBatchTagDialog({
           </div>
         </div>
 
+        {retry && <p>{plugins.map(plugin => plugin.displayName).join(", ")}</p>}
         <div className="grid gap-2 sm:grid-cols-2">
           {(
             [
@@ -184,7 +186,7 @@ export function PluginBatchTagDialog({
                 />
                 {t("common.saving", "Saving")}
               </>
-            ) : mode === "add" ? (
+            ) : retry ? t("prompt.retryFailedTags", "Retry failed items") : mode === "add" ? (
               t("plugin.addTag", "Add tag")
             ) : (
               t("plugin.removeTag", "Remove tag")
