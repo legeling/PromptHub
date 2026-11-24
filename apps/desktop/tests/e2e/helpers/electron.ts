@@ -125,6 +125,12 @@ export async function launchPromptHub(
 
   try {
     const page = await app.firstWindow();
+    if (executablePath && process.platform === "win32" && launchArgs.includes("--hidden")) {
+      // The fixture drives a hidden window as an interactive user would.
+      // Keep its renderer scheduled while the native window remains hidden.
+      const window = await app.browserWindow(page);
+      await window.evaluate((win) => win.webContents.setBackgroundThrottling(false));
+    }
     // Finish main's initial loadFile before replacing it with the live renderer.
     await waitForRendererReady(page);
     // Explicit test opt-in only; never inherit an ordinary development session.
@@ -137,6 +143,10 @@ export async function launchPromptHub(
     }
     return { app, page, userDataDir };
   } catch (error) {
+    const startupLog = path.join(userDataDir, "logs", "startup.log");
+    if (executablePath && fs.existsSync(startupLog)) {
+      console.error(fs.readFileSync(startupLog, "utf8"));
+    }
     await closePromptHub(app, userDataDir);
     throw error;
   }
