@@ -39,6 +39,8 @@ import {
 } from "../src/mcp-resource-schema";
 import type { McpServerConfig } from "@prompthub/shared/types";
 
+import { configureRuntimePaths, resetRuntimePaths } from "../src/runtime-paths";
+
 const roots: string[] = [];
 
 function root(): string {
@@ -673,6 +675,44 @@ describe("complete canonical storage shadow", () => {
       expect(database.pragma("quick_check")).toEqual([{ quick_check: "ok" }]);
     } finally {
       database.close();
+    }
+  });
+
+  it("rebases a managed Skill directory alias but preserves a stale external binding for validation", () => {
+    const base = root();
+    const targetPath = path.join(base, "shadow");
+    const entry = skill();
+    const skillFile = path.join(base, "SKILL.md");
+    fs.writeFileSync(skillFile, entry.content);
+    materializeCanonicalStorageShadow({
+      targetPath,
+      prompts: emptyPrompts(),
+      skills: [{ skill: entry, versions: [], packageFiles: [{ path: "SKILL.md", sourcePath: skillFile }] }],
+    });
+    const alias = path.join(base, "alias");
+    fs.symlinkSync(targetPath, alias, "junction");
+    const suffix = path.join("skills", entry.id, "files");
+    const operationalPath = path.join(base, "original.db");
+    stageCanonicalStorageDatabase(targetPath, operationalPath);
+    const source = new DatabaseAdapter(operationalPath);
+    configureRuntimePaths({ userDataPath: base });
+    try {
+      for (const [index, prefix] of [alias, path.join(base, "missing")].entries()) {
+        const stored = path.join(prefix, suffix);
+        source.run("UPDATE skills SET source_url = ?, local_repo_path = ? WHERE id = ?", base, stored, entry.id);
+        const catalog = path.join(base, `rebuilt-${index}.db`);
+        stageCanonicalStorageDatabase(targetPath, catalog, { operationalSourceDatabasePath: operationalPath });
+        const projected = new DatabaseAdapter(catalog, { readOnly: true });
+        try {
+          expect(new SkillDB(projected).getById(entry.id)?.local_repo_path)
+            .toBe(prefix === alias ? path.join(targetPath, suffix) : stored);
+        } finally {
+          projected.close();
+        }
+      }
+    } finally {
+      resetRuntimePaths();
+      source.close();
     }
   });
 
