@@ -5,9 +5,98 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      sign_arm64_dmg:
+        description: Sign only the accepted arm64 DMG from run 45534693300
+        type: boolean
+        default: false
 
 jobs:
+  sign-arm64-dmg:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.sign_arm64_dmg
+    runs-on: macos-15
+    timeout-minutes: 65
+    permissions:
+      actions: read
+    env:
+      GH_REPO: ${{ github.repository }}
+      SOURCE: df7eb864a6631998fb9c9c751b635cff90924714
+      DMG: PromptHub-0.6.4-beta.1-arm64.dmg
+    steps:
+      - name: Retrieve only the previously accepted disk image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/45534693300" |
+            jq -e --arg sha "$SOURCE" '.head_sha==$sha and .head_branch=="test" and .conclusion=="success"' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/14986502179/zip" > original.zip
+          echo 'fcdf82f108a75f68dd3daedbb0d4d2da441d426ecad11f6dd7d3249c353389cf  original.zip' | shasum -a 256 -c -
+          unzip -p original.zip "$DMG" > "$DMG"
+          echo "5ba2f56244694fa6c93d35ffd266a2479704d32b2b6878ff261c5b7abf414e99  $DMG" | shasum -a 256 -c -
+      - name: Sign the outer image, notarize and staple
+        env:
+          P12_B64: ${{ secrets.MAC_CSC_LINK }}
+          P12_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_B64: ${{ secrets.APPLE_API_KEY }}
+          KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          kc="$RUNNER_TEMP/sign.keychain-db"
+          p12="$RUNNER_TEMP/sign.p12"
+          key="$RUNNER_TEMP/notary.p8"
+          pw=$(openssl rand -hex 32)
+          trap 'security delete-keychain "$kc" >/dev/null 2>&1 || true; rm -f "$key" "$p12"' EXIT
+          printf %s "$P12_B64" | base64 -D > "$p12"
+          security create-keychain -p "$pw" "$kc"
+          security unlock-keychain -p "$pw" "$kc"
+          security import "$p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign >/dev/null
+          security set-key-partition-list -S apple-tool:,apple: -k "$pw" "$kc" >/dev/null
+          identity=$(security find-identity -v -p codesigning "$kc" | awk -v team="($TEAM)" '/Developer ID Application:/ && index($0,team){print $2}')
+          [[ "$identity" =~ ^[0-9A-Fa-f]{40}$ ]]
+          codesign --keychain "$kc" --sign "$identity" --timestamp "$DMG"
+          if [[ -n "$KEY_B64" && -n "$ISSUER" && -n "$KEY_ID" ]]; then
+            printf %s "$KEY_B64" | base64 -D > "$key"
+            credentials=(--key "$key" --key-id "$KEY_ID" --issuer "$ISSUER")
+          else
+            credentials=(--apple-id "${APPLE_ID:?}" --password "${APPLE_PASSWORD:?}" --team-id "${TEAM:?}")
+          fi
+          xcrun notarytool submit "$DMG" "${credentials[@]}" --wait --timeout 45m --output-format json > "$RUNNER_TEMP/notary.json"
+          jq -e '.status=="Accepted"' "$RUNNER_TEMP/notary.json"
+          xcrun stapler staple "$DMG"
+          codesign --verify --strict --verbose=2 "$DMG"
+          xcrun stapler validate "$DMG"
+          spctl -a -t open --context context:primary-signature -vv "$DMG"
+          shasum -a 256 "$DMG" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install the stapled image in isolation and verify the original app
+        run: |
+          set -euo pipefail
+          mount_dir=$(mktemp -d)
+          install_dir=$(mktemp -d)
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount_dir" "$DMG" >/dev/null
+          trap 'hdiutil detach "$mount_dir" -quiet' EXIT
+          ditto "$mount_dir/PromptHub.app" "$install_dir/PromptHub.app"
+          hdiutil detach "$mount_dir" -quiet
+          trap - EXIT
+          app="$install_dir/PromptHub.app"
+          codesign --verify --deep --strict "$app"
+          codesign -d --verbose=4 "$app" 2>&1 | grep -Fx 'CDHash=63104a6ff89e711ee40673ac83d0a65e70368ead'
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=4 "$app"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: notarized-arm64-dmg
+          path: PromptHub-0.6.4-beta.1-arm64.dmg
+          if-no-files-found: error
+          compression-level: 0
+
   verify-plan:
+    if: inputs.sign_arm64_dmg != true
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -20,6 +109,7 @@ jobs:
         run: echo "matrix=$(node scripts/verification/ci.mts matrix)" >> "$GITHUB_OUTPUT"
 
   verify-group:
+    if: inputs.sign_arm64_dmg != true
     needs: verify-plan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -105,7 +195,7 @@ jobs:
 
   verify:
     needs: [verify-plan, verify-group]
-    if: ${{ always() }}
+    if: ${{ always() && inputs.sign_arm64_dmg != true }}
     runs-on: ubuntu-latest
     steps:
       - name: Require all verification jobs
@@ -132,6 +222,7 @@ jobs:
           if-no-files-found: error
 
   build:
+    if: inputs.sign_arm64_dmg != true
     strategy:
       fail-fast: false
       matrix:
@@ -593,7 +684,7 @@ jobs:
   release:
     needs: [verify, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && inputs.sign_arm64_dmg != true
     permissions:
       contents: write
 
