@@ -36,7 +36,7 @@ jobs:
           echo "5ba2f56244694fa6c93d35ffd266a2479704d32b2b6878ff261c5b7abf414e99  $DMG" | shasum -a 256 -c -
       - name: Sign the outer image, notarize and staple
         env:
-          P12_B64: ${{ secrets.MAC_CSC_LINK }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           P12_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
           KEY_B64: ${{ secrets.APPLE_API_KEY }}
@@ -52,25 +52,61 @@ jobs:
           key="$RUNNER_TEMP/notary.p8"
           pw=$(openssl rand -hex 32)
           trap 'security delete-keychain "$kc" >/dev/null 2>&1 || true; rm -f "$key" "$p12"' EXIT
-          printf %s "$P12_B64" | base64 -D > "$p12"
+          phase="resolve signing certificate"
+          trap 'echo "::error::Failed at: $phase" >&2' ERR
+          case "$CSC_LINK" in
+            data:*";base64,"*) printf %s "${CSC_LINK#*,}" | base64 -D > "$p12" 2>/dev/null ;;
+            https://*) curl -fsSL --proto '=https' --proto-redir '=https' -- "$CSC_LINK" > "$p12" 2>/dev/null ;;
+            file://*) cp -- "${CSC_LINK#file://}" "$p12" 2>/dev/null ;;
+            "~/"*) cp -- "$HOME/${CSC_LINK:2}" "$p12" 2>/dev/null ;;
+            /*|./*|../*) cp -- "$CSC_LINK" "$p12" 2>/dev/null ;;
+            *) if [[ ${#CSC_LINK} -lt 2048 && "$CSC_LINK" != *= && -f "$CSC_LINK" ]]; then
+                 cp -- "$CSC_LINK" "$p12" 2>/dev/null
+               else
+                 printf %s "$CSC_LINK" | base64 -D > "$p12"
+               fi ;;
+          esac
+          test -s "$p12"
+          phase="create temporary keychain"
           security create-keychain -p "$pw" "$kc"
           security unlock-keychain -p "$pw" "$kc"
+          security set-keychain-settings "$kc"
+          phase="add temporary keychain to the runner search list"
+          python3 - "$kc" <<'PYTHON'
+          import subprocess, sys
+          kc = sys.argv[1]
+          output = subprocess.check_output(["security", "list-keychains", "-d", "user"], text=True)
+          paths = [line.strip().strip('"') for line in output.splitlines() if line.strip()]
+          subprocess.run(["security", "list-keychains", "-d", "user", "-s", kc,
+                          *(path for path in paths if path != kc)], check=True)
+          PYTHON
+          phase="import PKCS#12"
           security import "$p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign >/dev/null
-          security set-key-partition-list -S apple-tool:,apple: -k "$pw" "$kc" >/dev/null
+          phase="allow codesign to use imported signing keys"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$kc" >/dev/null
+          phase="find one valid Developer ID identity for the configured team"
           identity=$(security find-identity -v -p codesigning "$kc" | awk -v team="($TEAM)" '/Developer ID Application:/ && index($0,team){print $2}')
           [[ "$identity" =~ ^[0-9A-Fa-f]{40}$ ]]
+          phase="codesign outer DMG with timestamp"
           codesign --keychain "$kc" --sign "$identity" --timestamp "$DMG"
+          phase="prepare notarization credentials"
           if [[ -n "$KEY_B64" && -n "$ISSUER" && -n "$KEY_ID" ]]; then
             printf %s "$KEY_B64" | base64 -D > "$key"
             credentials=(--key "$key" --key-id "$KEY_ID" --issuer "$ISSUER")
           else
             credentials=(--apple-id "${APPLE_ID:?}" --password "${APPLE_PASSWORD:?}" --team-id "${TEAM:?}")
           fi
+          phase="submit DMG for notarization"
           xcrun notarytool submit "$DMG" "${credentials[@]}" --wait --timeout 45m --output-format json > "$RUNNER_TEMP/notary.json"
+          phase="require accepted notarization"
           jq -e '.status=="Accepted"' "$RUNNER_TEMP/notary.json"
+          phase="staple notarization ticket"
           xcrun stapler staple "$DMG"
+          phase="verify outer signature"
           codesign --verify --strict --verbose=2 "$DMG"
+          phase="validate outer ticket"
           xcrun stapler validate "$DMG"
+          phase="assess outer disk image"
           spctl -a -t open --context context:primary-signature -vv "$DMG"
           shasum -a 256 "$DMG" >> "$GITHUB_STEP_SUMMARY"
       - name: Install the stapled image in isolation and verify the original app
