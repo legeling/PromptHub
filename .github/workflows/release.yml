@@ -11,9 +11,73 @@ on:
         type: boolean
         default: false
 
+      publish_arm64_beta:
+        description: Publish the accepted v0.6.4-beta.1 Apple silicon disk image
+        type: boolean
+        default: false
+
 jobs:
+  publish-arm64-beta:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.publish_arm64_beta && !inputs.sign_arm64_dmg
+    runs-on: ubuntu-latest
+    concurrency: publish-v0.6.4-beta.1
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: v0.6.4-beta.1
+      SOURCE: df7eb864a6631998fb9c9c751b635cff90924714
+      DMG: PromptHub-0.6.4-beta.1-arm64.dmg
+      DIGEST: 5419e8c4740953615b5400623f56799a430481fbdaab52f3b38c636736d9be0e
+    steps:
+      - name: Verify and publish the accepted disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="repos/$GH_REPO"
+          gh api "$api/actions/runs/45588532801" | jq -e '.conclusion=="success" and .head_sha=="3643a6237c450c43fc77c54925d5703673ff4a2e"' >/dev/null
+          mkdir accepted
+          gh api "$api/actions/artifacts/15008739525/zip" > accepted.zip
+          echo '1a1af392d933d98f9f07ba3e28c81659df3fcd3f7259a388c7b780bbafa46949  accepted.zip' | sha256sum -c -
+          unzip -p accepted.zip "$DMG" > "accepted/$DMG"
+          echo "$DIGEST  accepted/$DMG" | sha256sum -c -
+          idle() {
+            test "$(gh api "$api/releases/latest" --jq .tag_name)" = v0.6.3
+            for state in queued in_progress waiting pending requested; do
+              gh api --paginate "$api/actions/workflows/release.yml/runs?status=$state" |
+                jq -se --arg id "$GITHUB_RUN_ID" 'all(.[].workflow_runs[]; (.id|tostring)==$id)' >/dev/null
+            done
+          }
+          refs() { gh api "$api/git/matching-refs/tags/$TAG"; }
+          releases() { gh api --paginate "$api/releases?per_page=100" | jq -sc --arg tag "$TAG" '[.[][]|select(.tag_name==$tag)]'; }
+          inspect_draft() {
+            releases | jq -e --argjson id "$DRAFT_ID" --arg name "$DMG" --arg digest "sha256:$DIGEST" '
+              length==1 and .[0].id==$id and .[0].draft and .[0].prerelease and
+              (.[0].assets|length)==1 and .[0].assets[0].name==$name and
+              .[0].assets[0].state=="uploaded" and .[0].assets[0].digest==$digest' >/dev/null
+            refs | jq -e --arg ref "refs/tags/$TAG" --arg sha "$SOURCE" 'any(.[]; .ref==$ref and .object.type=="commit" and .object.sha==$sha)' >/dev/null
+          }
+          idle
+          refs | jq -e --arg ref "refs/tags/$TAG" 'all(.[]; .ref!=$ref)' >/dev/null
+          releases | jq -e 'length==0' >/dev/null
+          gh api --method POST "$api/git/refs" -f ref="refs/tags/$TAG" -f sha="$SOURCE" >/dev/null
+          test "$(gh api "$api/git/ref/tags/$TAG" --jq .object.sha)" = "$SOURCE"
+          gh release create "$TAG" "accepted/$DMG" --repo "$GH_REPO" --verify-tag --draft --prerelease --latest=false --title "$TAG" --notes 'macOS Apple 芯片预览版。修复旧 Skill 目录迁移，并保留通过链接导入的外部目录。仅提供手动安装的 DMG。'
+          DRAFT_ID=$(releases | jq -er 'select(length==1)|.[0].id')
+          inspect_draft
+          idle
+          inspect_draft
+          gh api --method PATCH "$api/releases/$DRAFT_ID" -F draft=false -F prerelease=true -f make_latest=false >/dev/null
+          gh api "$api/releases/$DRAFT_ID" | jq -e --arg digest "sha256:$DIGEST" --arg name "$DMG" --arg tag "$TAG" '.tag_name==$tag and .prerelease and (.draft|not) and (.assets|length)==1 and .assets[0].name==$name and .assets[0].digest==$digest' >/dev/null
+          test "$(gh api "$api/releases/latest" --jq .tag_name)" = v0.6.3
+          mkdir public
+          curl --fail --location --retry 3 --retry-all-errors --output "public/$DMG" "https://github.com/$GH_REPO/releases/download/$TAG/$DMG"
+          echo "$DIGEST  public/$DMG" | sha256sum -c -
+
   sign-arm64-dmg:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.sign_arm64_dmg
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.sign_arm64_dmg && !inputs.publish_arm64_beta
     runs-on: macos-15
     timeout-minutes: 65
     permissions:
@@ -132,7 +196,7 @@ jobs:
           compression-level: 0
 
   verify-plan:
-    if: inputs.sign_arm64_dmg != true
+    if: inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -145,7 +209,7 @@ jobs:
         run: echo "matrix=$(node scripts/verification/ci.mts matrix)" >> "$GITHUB_OUTPUT"
 
   verify-group:
-    if: inputs.sign_arm64_dmg != true
+    if: inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true
     needs: verify-plan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -231,7 +295,7 @@ jobs:
 
   verify:
     needs: [verify-plan, verify-group]
-    if: ${{ always() && inputs.sign_arm64_dmg != true }}
+    if: ${{ always() && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true }}
     runs-on: ubuntu-latest
     steps:
       - name: Require all verification jobs
@@ -258,7 +322,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    if: inputs.sign_arm64_dmg != true
+    if: inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true
     strategy:
       fail-fast: false
       matrix:
@@ -720,7 +784,7 @@ jobs:
   release:
     needs: [verify, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && inputs.sign_arm64_dmg != true
+    if: startsWith(github.ref, 'refs/tags/') && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true
     permissions:
       contents: write
 
