@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
   createSkillTestRuntime,
   fileInventory,
+  prepareFreshProfile,
   skillApi,
   type SkillTestRuntime,
 } from "./helpers/skill-runtime";
@@ -195,4 +196,47 @@ it("restores a linked entrypoint if metadata finalization fails, then permits re
   expect(
     fs.readFileSync(path.join(runtime.source, "SKILL.md"), "utf8"),
   ).toContain("description: Retried change");
+});
+
+it("publishes and reopens a mixed copy and link catalog without moving the external package", async () => {
+  runtime = await createSkillTestRuntime({ freshStartup: true });
+  Object.defineProperty(window, "api", {
+    configurable: true,
+    value: { skill: skillApi },
+  });
+  const imported = [];
+  for (const mode of ["copy", "symlink"] as const) {
+    const source = path.join(runtime.root, mode);
+    const scanned = writeSource(source, `mixed-${mode}`);
+    const result = await useSkillStore.getState().importScannedSkills([scanned], {}, mode);
+    expect(result.failed).toEqual([]);
+    const skill = result.importedSkills[0];
+    expect(skill.local_repo_path === source).toBe(mode === "symlink");
+    imported.push({ id: skill.id, source, repo: skill.local_repo_path!, files: fileInventory(source) });
+  }
+  await prepareFreshProfile(runtime.profile);
+  await runtime.reopen();
+  for (const { id, source, repo, files } of imported) {
+    expect(await skillApi.get(id)).toMatchObject({ source_url: source, local_repo_path: repo });
+    expect(fileInventory(repo)).toEqual(files);
+    expect(fileInventory(source)).toEqual(files);
+  }
+});
+
+it("rejects a copied Skill whose persisted path points at an unrelated package", async () => {
+  runtime = await createSkillTestRuntime({ freshStartup: true });
+  Object.defineProperty(window, "api", {
+    configurable: true,
+    value: { skill: skillApi },
+  });
+  const scanned = writeSource(runtime.source, "stale-copy");
+  const result = await useSkillStore.getState().importScannedSkills([scanned], {}, "copy");
+  expect(result.failed).toEqual([]);
+  const unrelated = path.join(runtime.root, "unrelated");
+  fs.cpSync(runtime.source, unrelated, { recursive: true });
+  const { getDatabase } = await import("../../src/main/database");
+  getDatabase().prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")
+    .run(unrelated, result.importedSkills[0].id);
+  await expect(prepareFreshProfile(runtime.profile)).rejects.toThrow("stale Skill path");
+  expect(fileInventory(unrelated)).toEqual(fileInventory(runtime.source));
 });

@@ -735,7 +735,7 @@ function isSameManagedSkillDirectory(repoPath: string, publishedRoot: string, id
   }
 }
 
-function localSkillBindings(
+export function readLocalSkillBindings(
   sourcePath: string | undefined,
   publishedRoot: string,
 ): Map<string, Pick<Skill, "source_url" | "local_repo_path">> {
@@ -871,7 +871,7 @@ export function stageCanonicalStorageDatabase(
         includeSkills,
         includeGenerations,
       );
-      const deviceSkills = localSkillBindings(
+      const deviceSkills = readLocalSkillBindings(
         options.operationalSourceDatabasePath,
         publishedRootPath,
       );
