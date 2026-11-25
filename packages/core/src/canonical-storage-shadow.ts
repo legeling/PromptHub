@@ -724,8 +724,20 @@ function copyPreservedDatabaseState(
   }
 }
 
-function localSkillBindings(
+function isSameManagedSkillDirectory(repoPath: string, publishedRoot: string, id: string): boolean {
+  const suffix = path.join("skills", encodeCanonicalResourceDirectory(id), "files");
+  if (!path.isAbsolute(repoPath) || !repoPath.endsWith(path.sep + suffix)) return false;
+  try {
+    return fs.realpathSync(repoPath) === path.join(fs.realpathSync(publishedRoot), suffix)
+      && fs.statSync(repoPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+export function readLocalSkillBindings(
   sourcePath: string | undefined,
+  publishedRoot: string,
 ): Map<string, Pick<Skill, "source_url" | "local_repo_path">> {
   if (!sourcePath) return new Map();
   const source = new DatabaseAdapter(sourcePath, { readOnly: true });
@@ -739,6 +751,7 @@ function localSkillBindings(
             {
               source_url: skill.source_url,
               ...(isExternalSkillRepoPath(skill.id, skill.local_repo_path)
+                && !isSameManagedSkillDirectory(skill.local_repo_path, publishedRoot, skill.id)
                 ? { local_repo_path: skill.local_repo_path }
                 : {}),
             },
@@ -858,8 +871,9 @@ export function stageCanonicalStorageDatabase(
         includeSkills,
         includeGenerations,
       );
-      const deviceSkills = localSkillBindings(
+      const deviceSkills = readLocalSkillBindings(
         options.operationalSourceDatabasePath,
+        publishedRootPath,
       );
       database.transaction(() => {
         const skillDb = new SkillDB(database);

@@ -4,6 +4,13 @@
 
 后续改动将记录于此。 / Changes after 0.6.3 will be recorded here.
 
+## [0.6.4-beta.1]
+
+### 问题修复 / Fixes
+
+- 修复升级或重建本机目录索引时，因两种路径写法指向同一个托管 Skill 目录而无法启动的问题。通过「链接」导入的 Skill 会保留原外部目录绑定。
+  - Fixed a startup failure during local catalog migration when two paths refer to the same managed Skill directory. Skills imported in link mode keep their original external directory bindings.
+
 ## [0.6.3] - 2026-11-21
 
 ### 新功能与改进 / Features and improvements

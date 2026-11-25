@@ -123,7 +123,7 @@ async function openSkillRuntime(
   await registerSkillIPC(new SkillDB(database));
 }
 
-async function prepareFreshProfile(profile: string): Promise<void> {
+export async function prepareFreshProfile(profile: string): Promise<void> {
   configureRuntimePaths({ userDataPath: profile });
   writeRuntimeLayoutState(profile);
   const database = initDatabase();

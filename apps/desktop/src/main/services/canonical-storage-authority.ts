@@ -6,6 +6,7 @@ import {
   acquireStorageMaintenanceIntent,
   deriveStorageRootIdentity,
   readCanonicalStorageAuthority,
+  readLocalSkillBindings,
   readPromptCanonicalGraph,
   readRendererPersistenceMigrationMarker,
   readRuntimeLayoutState,
@@ -136,6 +137,7 @@ function verifyPublishedCatalogPaths(
   databasePath: string,
   publishedDataPath: string,
   metadataSource: "portable-bundles" | "local-sqlite",
+  linkedSkillPaths?: ReadonlyMap<string, string>,
 ): void {
   const database = new DatabaseAdapter(databasePath, { readOnly: true });
   try {
@@ -148,14 +150,17 @@ function verifyPublishedCatalogPaths(
     const skillRoot = `${path.join(publishedDataPath, "skills")}${path.sep}`;
     const ruleRoot = `${path.join(publishedDataPath, metadataSource === "local-sqlite" ? "rule-files" : "rules")}${path.sep}`;
     const skills = database.all(
-      "SELECT local_repo_path AS path FROM skills WHERE local_repo_path IS NOT NULL",
-    ) as Array<{ path: string }>;
+      "SELECT id, source_url, local_repo_path AS path FROM skills WHERE local_repo_path IS NOT NULL",
+    ) as Array<{ id: string; source_url: string | null; path: string }>;
     const rules = database.all(
       "SELECT managed_path AS path FROM rules WHERE managed_path IS NOT NULL",
     ) as Array<{ path: string }>;
     if (
       metadataSource === "portable-bundles" &&
-      skills.some((entry) => !entry.path.startsWith(skillRoot))
+      skills.some((entry) =>
+        !entry.path.startsWith(skillRoot) &&
+        !(entry.source_url === entry.path && linkedSkillPaths?.get(entry.id) === entry.path)
+      )
     ) {
       throw new Error(
         "Canonical authority catalog contains a stale Skill path",
@@ -174,6 +179,7 @@ export function verifyCanonicalAuthorityRoot(
   manifest: CanonicalStorageCheckpointManifest,
   identityRoot = rootPath,
   metadataSource: "portable-bundles" | "local-sqlite" = "portable-bundles",
+  linkedSkillPaths?: ReadonlyMap<string, string>,
 ): void {
   const root = path.resolve(rootPath);
   const identity = path.resolve(identityRoot);
@@ -208,6 +214,7 @@ export function verifyCanonicalAuthorityRoot(
     databasePath,
     path.join(identity, "data"),
     metadataSource,
+    linkedSkillPaths,
   );
 }
 
@@ -289,6 +296,16 @@ async function publishCanonicalStorageAuthorityInternal(
     });
     ownsCheckpoint = true;
     const manifest = verifyCanonicalStorageCheckpoint(checkpoint.targetPath);
+    // Authorize only links already recorded for the same Skill on this device.
+    // Portable restores do not inherit these source-database exceptions.
+    const linkedSkillPaths = new Map<string, string>();
+    for (const [id, binding] of readLocalSkillBindings(
+      options.sourceDatabasePath,
+      path.join(activeRoot, "data"),
+    )) {
+      if (binding.local_repo_path && binding.local_repo_path === binding.source_url)
+        linkedSkillPaths.set(id, binding.local_repo_path);
+    }
     const result = await runJournaledStorageRestore({
       activeRoot,
       operationId,
@@ -297,9 +314,9 @@ async function publishCanonicalStorageAuthorityInternal(
       prepareCandidate: (stageRoot) =>
         prepareAuthorityCandidate(stageRoot, options, manifest, operationId),
       verifyCandidate: (stageRoot) =>
-        verifyCanonicalAuthorityRoot(stageRoot, manifest, activeRoot),
+        verifyCanonicalAuthorityRoot(stageRoot, manifest, activeRoot, "portable-bundles", linkedSkillPaths),
       verifyActive: (publishedRoot) =>
-        verifyCanonicalAuthorityRoot(publishedRoot, manifest),
+        verifyCanonicalAuthorityRoot(publishedRoot, manifest, activeRoot, "portable-bundles", linkedSkillPaths),
       injectFailure: options.injectFailure,
       now: options.now,
     });
