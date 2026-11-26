@@ -6,6 +6,11 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
+      stable_arm64:
+        description: Check the accepted 0.6.4 DMG or publish after release approval
+        type: choice
+        options: [off-mode, check, publish]
+        default: off-mode
       prepare_arm64_candidate:
         description: Build and notarize the 0.6.4 Apple silicon DMG for testing only
         type: boolean
@@ -27,8 +32,65 @@ on:
         default: false
 
 jobs:
+  check-stable-dmg:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && (inputs.stable_arm64 == 'check' || inputs.stable_arm64 == 'publish') && !inputs.prepare_arm64_candidate && !inputs.sign_arm64_dmg && !inputs.publish_arm64_beta && !inputs.check_arm64_beta
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    env: &stable_env
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: v0.6.4
+      SOURCE: e2ad6a87cc357abbfc2620d512a8827a9f7545d9
+      DMG: PromptHub-0.6.4-arm64.dmg
+      DIGEST: 13330b9f34dd4321408af789f0a38bce898dfd19d70c274909e72dd6a577b336
+    steps:
+      - &check_stable
+        name: Verify the original build, DMG and release prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="repos/$GH_REPO"
+          run="$api/actions/runs/45791725516"
+          gh api "$run" | jq -e --arg sha "$SOURCE" '.head_sha==$sha and .head_branch=="test" and .conclusion=="success"' >/dev/null
+          gh api "$run/artifacts" | jq -e '.artifacts | any(.[]; .id==15103286395 and .name=="notarized-arm64-dmg" and (.expired|not))' >/dev/null
+          gh api "$api/actions/artifacts/15103286395/zip" > accepted.zip
+          echo '5c4a6bfbb82287726e86ec9d0a08ae55e3deea210cbb18efe785cbdf2da840e8  accepted.zip' | sha256sum -c -
+          test "$(unzip -Z1 accepted.zip)" = "$DMG"
+          unzip -p accepted.zip "$DMG" > "$DMG"
+          echo "$DIGEST  $DMG" | sha256sum -c -
+          test "$(gh api "$api/releases/latest" --jq .tag_name)" = v0.6.3
+          gh api "$api/git/matching-refs/tags/$TAG" | jq -e --arg ref "refs/tags/$TAG" 'all(.[]; .ref!=$ref)' >/dev/null
+          gh api --paginate "$api/releases?per_page=100" | jq -se --arg tag "$TAG" 'all(.[][]; .tag_name!=$tag)' >/dev/null
+          echo "$SOURCE  $DMG  SHA-256 $DIGEST; tag and release checks passed." >> "$GITHUB_STEP_SUMMARY"
+
+  publish-stable-dmg:
+    needs: check-stable-dmg
+    if: inputs.stable_arm64 == 'publish'
+    concurrency: publish-v0.6.4
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env: *stable_env
+    steps:
+      - *check_stable
+      - name: Publish only the verified disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="repos/$GH_REPO"
+          gh api --method POST "$api/git/refs" -f ref="refs/tags/$TAG" -f sha="$SOURCE"
+          gh release create "$TAG" "$DMG" --verify-tag --draft --title "$TAG" --notes 'Apple 芯片 Mac 手动安装包。修复旧库中托管 Skill 路径别名导致的启动失败，并保留外链 Skill 的原目录绑定。'
+          release_id=$(gh release view "$TAG" --json databaseId --jq .databaseId)
+          gh api "$api/releases/$release_id" | jq -e --arg tag "$TAG" --arg name "$DMG" --arg digest "sha256:$DIGEST" '.draft and (.prerelease|not) and .tag_name==$tag and (.assets|length)==1 and .assets[0].name==$name and .assets[0].state=="uploaded" and .assets[0].digest==$digest' >/dev/null
+          test "$(gh api "$api/git/ref/tags/$TAG" --jq .object.sha)" = "$SOURCE"
+          gh api --method PATCH "$api/releases/$release_id" -F draft=false -f make_latest=true >/dev/null
+          curl -fLsS --retry 3 "https://github.com/$GH_REPO/releases/download/$TAG/$DMG" | sha256sum | grep -Fx "$DIGEST  -"
+
   publish-arm64-beta:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && !inputs.prepare_arm64_candidate && !inputs.sign_arm64_dmg && (inputs.publish_arm64_beta || inputs.check_arm64_beta) && !(inputs.publish_arm64_beta && inputs.check_arm64_beta)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && !inputs.prepare_arm64_candidate && !inputs.sign_arm64_dmg && (inputs.publish_arm64_beta || inputs.check_arm64_beta) && !(inputs.publish_arm64_beta && inputs.check_arm64_beta)
     runs-on: ubuntu-latest
     concurrency: publish-v0.6.4-beta.2
     permissions:
@@ -92,7 +154,7 @@ jobs:
           echo "$DIGEST  public/$ZIP" | sha256sum -c -
 
   sign-arm64-dmg:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && (inputs.sign_arm64_dmg != inputs.prepare_arm64_candidate) && !inputs.publish_arm64_beta && !inputs.check_arm64_beta
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && (inputs.sign_arm64_dmg != inputs.prepare_arm64_candidate) && !inputs.publish_arm64_beta && !inputs.check_arm64_beta
     runs-on: macos-15
     timeout-minutes: 65
     permissions:
@@ -262,7 +324,7 @@ jobs:
           compression-level: 0
 
   verify-plan:
-    if: inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -275,7 +337,7 @@ jobs:
         run: echo "matrix=$(node scripts/verification/ci.mts matrix)" >> "$GITHUB_OUTPUT"
 
   verify-group:
-    if: inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     needs: verify-plan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -361,7 +423,7 @@ jobs:
 
   verify:
     needs: [verify-plan, verify-group]
-    if: ${{ always() && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true }}
+    if: ${{ always() && inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true }}
     runs-on: ubuntu-latest
     steps:
       - name: Require all verification jobs
@@ -388,7 +450,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    if: inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     strategy:
       fail-fast: false
       matrix:
@@ -850,7 +912,7 @@ jobs:
   release:
     needs: [verify, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: startsWith(github.ref, 'refs/tags/') && inputs.stable_arm64 != 'check' && inputs.stable_arm64 != 'publish' && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     permissions:
       contents: write
 
