@@ -4,6 +4,11 @@
 
 后续改动将记录于此。 / Changes after 0.6.3 will be recorded here.
 
+## [0.6.4]
+
+- Apple 芯片 Mac 手动安装：修复旧资料库重建索引时因托管 Skill 路径别名而无法启动的问题，并保留通过链接导入的 Skill 的外部目录绑定。
+- Apple silicon Mac manual installation: restore startup for libraries with managed Skill path aliases and preserve external directory bindings for linked Skills.
+
 ## [0.6.4-beta.1]
 
 ### 问题修复 / Fixes

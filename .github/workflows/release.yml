@@ -6,6 +6,11 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
+      prepare_arm64_candidate:
+        description: Build and notarize the 0.6.4 Apple silicon DMG for testing only
+        type: boolean
+        default: false
+
       sign_arm64_dmg:
         description: Sign only the accepted arm64 DMG from run 45534693300
         type: boolean
@@ -23,7 +28,7 @@ on:
 
 jobs:
   publish-arm64-beta:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && !inputs.sign_arm64_dmg && (inputs.publish_arm64_beta || inputs.check_arm64_beta) && !(inputs.publish_arm64_beta && inputs.check_arm64_beta)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && !inputs.prepare_arm64_candidate && !inputs.sign_arm64_dmg && (inputs.publish_arm64_beta || inputs.check_arm64_beta) && !(inputs.publish_arm64_beta && inputs.check_arm64_beta)
     runs-on: ubuntu-latest
     concurrency: publish-v0.6.4-beta.2
     permissions:
@@ -87,17 +92,63 @@ jobs:
           echo "$DIGEST  public/$ZIP" | sha256sum -c -
 
   sign-arm64-dmg:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && inputs.sign_arm64_dmg && !inputs.publish_arm64_beta && !inputs.check_arm64_beta
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/test' && (inputs.sign_arm64_dmg != inputs.prepare_arm64_candidate) && !inputs.publish_arm64_beta && !inputs.check_arm64_beta
     runs-on: macos-15
     timeout-minutes: 65
     permissions:
       actions: read
+      contents: read
     env:
       GH_REPO: ${{ github.repository }}
       SOURCE: df7eb864a6631998fb9c9c751b635cff90924714
-      DMG: PromptHub-0.6.4-beta.1-arm64.dmg
+      DMG: ${{ inputs.prepare_arm64_candidate && 'PromptHub-0.6.4-arm64.dmg' || 'PromptHub-0.6.4-beta.1-arm64.dmg' }}
     steps:
+      - uses: actions/checkout@v6
+        if: inputs.prepare_arm64_candidate
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        if: inputs.prepare_arm64_candidate
+        with:
+          node-version: "24"
+          architecture: arm64
+      - uses: pnpm/action-setup@v6
+        if: inputs.prepare_arm64_candidate
+        with:
+          version: 9.15.0
+      - name: Install dependencies and compile the candidate
+        if: inputs.prepare_arm64_candidate
+        run: |
+          test "$(uname -m)" = arm64
+          test "$(node -p "require('./apps/desktop/package.json').version")" = 0.6.4
+          pnpm install --frozen-lockfile
+          cd apps/desktop
+          pnpm vite build
+      - name: Package the signed arm64 application
+        if: inputs.prepare_arm64_candidate
+        working-directory: apps/desktop
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          PROMPTHUB_MAC_RELEASE_SIGN: "true"
+        run: |
+          set -euo pipefail
+          if [[ -n "$APPLE_API_KEY_B64" ]]; then
+            umask 077
+            export APPLE_API_KEY="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+            trap 'rm -f "$APPLE_API_KEY"' EXIT
+            printf %s "$APPLE_API_KEY_B64" | base64 -D > "$APPLE_API_KEY"
+          fi
+          pnpm electron-builder --config electron-builder.config.cjs --mac dmg --arm64 --publish never
+          mv "dist/$DMG" "$GITHUB_WORKSPACE/$DMG"
       - name: Retrieve only the previously accepted disk image
+        if: inputs.sign_arm64_dmg
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -195,18 +246,23 @@ jobs:
           trap - EXIT
           app="$install_dir/PromptHub.app"
           codesign --verify --deep --strict "$app"
-          codesign -d --verbose=4 "$app" 2>&1 | grep -Fx 'CDHash=63104a6ff89e711ee40673ac83d0a65e70368ead'
+          if [[ "$DMG" == PromptHub-0.6.4-arm64.dmg ]]; then
+            test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist")" = 0.6.4
+            test "$(lipo -archs "$app/Contents/MacOS/PromptHub")" = arm64
+          else
+            codesign -d --verbose=4 "$app" 2>&1 | grep -Fx 'CDHash=63104a6ff89e711ee40673ac83d0a65e70368ead'
+          fi
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=4 "$app"
       - uses: actions/upload-artifact@v6
         with:
           name: notarized-arm64-dmg
-          path: PromptHub-0.6.4-beta.1-arm64.dmg
+          path: ${{ env.DMG }}
           if-no-files-found: error
           compression-level: 0
 
   verify-plan:
-    if: inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -219,7 +275,7 @@ jobs:
         run: echo "matrix=$(node scripts/verification/ci.mts matrix)" >> "$GITHUB_OUTPUT"
 
   verify-group:
-    if: inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     needs: verify-plan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -305,7 +361,7 @@ jobs:
 
   verify:
     needs: [verify-plan, verify-group]
-    if: ${{ always() && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true }}
+    if: ${{ always() && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true }}
     runs-on: ubuntu-latest
     steps:
       - name: Require all verification jobs
@@ -332,7 +388,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    if: inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     strategy:
       fail-fast: false
       matrix:
@@ -794,7 +850,7 @@ jobs:
   release:
     needs: [verify, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
+    if: startsWith(github.ref, 'refs/tags/') && inputs.prepare_arm64_candidate != true && inputs.sign_arm64_dmg != true && inputs.publish_arm64_beta != true && inputs.check_arm64_beta != true
     permissions:
       contents: write
 
