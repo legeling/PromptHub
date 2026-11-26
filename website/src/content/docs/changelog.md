@@ -4,6 +4,13 @@
 
 后续改动将记录于此。 / Changes after 0.6.3 will be recorded here.
 
+## [0.6.4-beta.2]
+
+### 问题修复 / Fixes
+
+- 快速添加可从带有 `{CHARACTER}` 等前言的模型回复中提取唯一有效的标题和标签。解析失败时可在该条详情中重试。
+  - Quick Add extracts the title and tags when a model reply contains one valid result after a preamble such as `{CHARACTER}`. Failed analysis can be retried from the saved entry.
+
 ## [0.6.4-beta.1]
 
 ### 问题修复 / Fixes

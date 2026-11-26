@@ -17,6 +17,7 @@
 
 | Version        | Status                                            | Path                            | Updated    |
 | -------------- | ------------------------------------------------- | ------------------------------- | ---------- |
+| `0.6.4-beta.2` | Apple silicon macOS ZIP candidate; unpublished | `spec/releases/0.6.4-beta.2.md` | 2026-11-26 |
 | `0.6.4-beta.1` | local preview candidate; unpublished | `spec/releases/0.6.4-beta.1.md` | 2026-11-25 |
 | `0.6.3` | stable record | `spec/releases/0.6.3.md` | 2026-11-21 |
 | `0.6.3-rc.1` | local macOS candidate; unpublished | `spec/releases/0.6.3-rc.1.md` | 2026-11-21 |

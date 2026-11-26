@@ -15,7 +15,7 @@ Un espace de travail local-first pour les prompts, les skills et les assets de c
 
 La dernière version stable est `0.6.3`, publiée le 2026-11-21.
 
-[Version candidate en test local](<../spec/releases/0.6.4-beta.1.md>) · `0.6.4-beta.1`
+[Version candidate en test local](<../spec/releases/0.6.4-beta.2.md>) · `0.6.4-beta.2`
 
   <br/>
 

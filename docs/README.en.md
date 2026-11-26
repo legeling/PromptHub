@@ -15,7 +15,7 @@ A local-first workspace for prompts, skills, and AI coding assets.
 
 The latest stable release is `0.6.3`, published on 2026-11-21.
 
-[Local preview candidate](<../spec/releases/0.6.4-beta.1.md>) · `0.6.4-beta.1`
+[Local preview candidate](<../spec/releases/0.6.4-beta.2.md>) · `0.6.4-beta.2`
 
   <br/>
 
